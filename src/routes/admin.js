@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import { authenticate } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/rbac.js';
 import { logAccess } from '../services/auditService.js';
+import { adminOverrideDecision } from '../services/votingService.js';
 
 const router = express.Router();
 
@@ -192,6 +193,104 @@ router.patch('/config/quota', authenticate, (req, res) => {
     config: {
       limit: parseInt(currentLimit, 10),
       windowDays: parseInt(currentWindow, 10)
+    }
+  });
+});
+
+// 9. PATCH /api/admin/ideas/:id/override (Admin only - Veto / Manual Decision)
+router.patch('/ideas/:id/override', authenticate, (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can override idea decisions' });
+  }
+
+  const { id } = req.params;
+  const { decision, reason } = req.body || {};
+
+  const overrideResult = adminOverrideDecision({
+    ideaId: id,
+    adminUserId: req.user.id,
+    decision,
+    reason,
+    ipAddress
+  });
+
+  if (!overrideResult.success) {
+    return res.status(overrideResult.status || 400).json({ error: overrideResult.error });
+  }
+
+  return res.status(200).json({
+    message: `Idea decision manually overridden to ${decision} by Admin`,
+    override: overrideResult.override,
+    idea: overrideResult.idea
+  });
+});
+
+// 10. PATCH /api/admin/config/voting (Admin only - Threshold / Quorum / Window hours)
+router.patch('/config/voting', authenticate, (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can update voting configuration' });
+  }
+
+  const { approvalThreshold, quorumPercentage, windowHours } = req.body || {};
+
+  if (approvalThreshold === undefined && quorumPercentage === undefined && windowHours === undefined) {
+    return res.status(400).json({ error: 'At least one voting configuration parameter must be provided' });
+  }
+
+  if (approvalThreshold !== undefined) {
+    const val = parseFloat(approvalThreshold);
+    if (isNaN(val) || val < 50 || val > 100) {
+      return res.status(400).json({ error: 'approvalThreshold must be a percentage between 50 and 100' });
+    }
+    execute(
+      'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+      [val.toString(), req.user.id, 'vote_approval_threshold']
+    );
+  }
+
+  if (quorumPercentage !== undefined) {
+    const val = parseFloat(quorumPercentage);
+    if (isNaN(val) || val < 1 || val > 100) {
+      return res.status(400).json({ error: 'quorumPercentage must be a percentage between 1 and 100' });
+    }
+    execute(
+      'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+      [val.toString(), req.user.id, 'vote_quorum_percentage']
+    );
+  }
+
+  if (windowHours !== undefined) {
+    const val = parseInt(windowHours, 10);
+    if (isNaN(val) || val < 1) {
+      return res.status(400).json({ error: 'windowHours must be a positive integer' });
+    }
+    execute(
+      'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+      [val.toString(), req.user.id, 'voting_window_hours']
+    );
+  }
+
+  const currentThreshold = queryOne("SELECT value FROM system_config WHERE key = 'vote_approval_threshold'")?.value;
+  const currentQuorum = queryOne("SELECT value FROM system_config WHERE key = 'vote_quorum_percentage'")?.value;
+  const currentWindow = queryOne("SELECT value FROM system_config WHERE key = 'voting_window_hours'")?.value;
+
+  logAccess({
+    userId: req.user.id,
+    action: 'voting_config_updated',
+    resource: `/api/admin/config/voting (threshold: ${currentThreshold}%, quorum: ${currentQuorum}%, window: ${currentWindow}h)`,
+    ipAddress
+  });
+
+  return res.status(200).json({
+    message: 'Voting configuration updated successfully',
+    config: {
+      approvalThreshold: parseFloat(currentThreshold),
+      quorumPercentage: parseFloat(currentQuorum),
+      windowHours: parseInt(currentWindow, 10)
     }
   });
 });

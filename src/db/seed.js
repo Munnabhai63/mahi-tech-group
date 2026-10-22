@@ -84,10 +84,13 @@ export async function runSeed() {
     console.log(`>>> Default Admin User already exists: ${adminEmail}`);
   }
 
-  // 3. Seed Default System Config (idea_quota_limit = 2, idea_quota_window_days = 7)
+  // 3. Seed Default System Config (Step 02 & Step 03)
   const defaultConfigs = [
     { key: 'idea_quota_limit', value: '2' },
-    { key: 'idea_quota_window_days', value: '7' }
+    { key: 'idea_quota_window_days', value: '7' },
+    { key: 'vote_approval_threshold', value: '70' },
+    { key: 'vote_quorum_percentage', value: '70' },
+    { key: 'voting_window_hours', value: '48' }
   ];
 
   for (const cfg of defaultConfigs) {

@@ -3,6 +3,7 @@ import { config } from './config.js';
 import { runMigration } from './db/migrate.js';
 import { runSeed } from './db/seed.js';
 import { startScheduledQuotaReset, stopScheduledQuotaReset } from './jobs/quotaResetJob.js';
+import { startScheduledVotingDecision, stopScheduledVotingDecision } from './jobs/votingDecisionJob.js';
 
 async function startServer() {
   try {
@@ -10,8 +11,9 @@ async function startServer() {
     runMigration();
     await runSeed();
 
-    // Start automated daily quota cycle reset job
+    // Start automated background jobs
     startScheduledQuotaReset();
+    startScheduledVotingDecision();
 
     const app = createApp();
 
@@ -19,7 +21,7 @@ async function startServer() {
       console.log(`===================================================================`);
       console.log(`  MAHI TECH GROUP PLATFORM — BACKEND SERVER RUNNING`);
       console.log(`  Port: http://localhost:${config.PORT}`);
-      console.log(`  Step: 02_IDEA_QUOTA_ENGINE`);
+      console.log(`  Step: 03_VOTING_GATE`);
       console.log(`  Environment: local (node:sqlite WAL mode)`);
       console.log(`===================================================================`);
     });
@@ -27,6 +29,7 @@ async function startServer() {
     const shutdown = () => {
       console.log('\n>>> Gracefully shutting down server...');
       stopScheduledQuotaReset();
+      stopScheduledVotingDecision();
       server.close(() => {
         console.log('>>> Server closed cleanly.');
         process.exit(0);

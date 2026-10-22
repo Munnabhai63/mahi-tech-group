@@ -15,7 +15,7 @@ export function createApp() {
   app.get('/api/health', (req, res) => {
     res.status(200).json({
       status: 'ok',
-      service: 'Mahi Tech Group Platform - Step 02 Idea Quota Engine',
+      service: 'Mahi Tech Group Platform - Step 03 Voting Gate',
       timestamp: new Date().toISOString()
     });
   });

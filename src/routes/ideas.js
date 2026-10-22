@@ -5,6 +5,7 @@ import { authenticate } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/rbac.js';
 import { consumeQuota } from '../services/quotaService.js';
 import { logAccess } from '../services/auditService.js';
+import { castVote, getIdeaVotingSummary } from '../services/votingService.js';
 
 const router = express.Router();
 
@@ -97,7 +98,7 @@ router.patch('/:id/draft', authenticate, (req, res) => {
   });
 });
 
-// 3. POST /api/ideas/:id/submit (Owner only - Triggers Server-Side Quota Enforcement)
+// 3. POST /api/ideas/:id/submit (Owner only - Triggers Server-Side Quota Enforcement + Review Meeting)
 router.post('/:id/submit', authenticate, requirePermission('idea.submit'), (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
   const { id } = req.params;
@@ -135,30 +136,65 @@ router.post('/:id/submit', authenticate, requirePermission('idea.submit'), (req,
     });
   }
 
-  // Transition to PENDING_REVIEW and record submitted_at
+  // Fetch voting window hours from system_config (default 48 hours)
+  const windowRow = queryOne("SELECT value FROM system_config WHERE key = 'voting_window_hours'");
+  const windowHours = windowRow ? parseInt(windowRow.value, 10) : 48;
+  const deadline = new Date(Date.now() + windowHours * 60 * 60 * 1000).toISOString();
+
+  // Create review_meetings row
+  const meetingId = crypto.randomUUID();
+  execute(`
+    INSERT INTO review_meetings (id, idea_id, scheduled_at, voting_window_end, status, created_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP, ?, 'SCHEDULED', CURRENT_TIMESTAMP)
+  `, [meetingId, id, deadline]);
+
+  // Transition to PENDING_REVIEW and set submitted_at and voting_deadline
   execute(`
     UPDATE ideas
-    SET status = 'PENDING_REVIEW', submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+    SET status = 'PENDING_REVIEW', submitted_at = CURRENT_TIMESTAMP, voting_deadline = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
-  `, [id]);
+  `, [deadline, id]);
 
   logAccess({
     userId: req.user.id,
     action: 'idea_submitted',
-    resource: `/api/ideas/${id}/submit`,
+    resource: `/api/ideas/${id}/submit (meeting_id: ${meetingId}, deadline: ${deadline})`,
     ipAddress
   });
 
   const submittedIdea = queryOne('SELECT * FROM ideas WHERE id = ?', [id]);
+  const meeting = queryOne('SELECT * FROM review_meetings WHERE id = ?', [meetingId]);
 
   return res.status(200).json({
     message: 'Idea submitted for review successfully',
     idea: submittedIdea,
+    meeting,
     quota: quotaResult
   });
 });
 
-// 4. GET /api/ideas/my (Authenticated - List authenticated user's ideas)
+// 4. GET /api/ideas/pending-my-vote (Authenticated - Ideas awaiting this user's vote)
+// NOTE: MUST be defined before /:id route to prevent collision
+router.get('/pending-my-vote', authenticate, (req, res) => {
+  const currentUserId = req.user.id;
+
+  // Active ideas in PENDING_REVIEW where owner != current user AND current user hasn't voted
+  const ideas = queryAll(`
+    SELECT i.id, i.owner_id, i.title, i.description, i.attachment_url,
+           i.status, i.submitted_at, i.voting_deadline, i.green_percentage,
+           u.name as owner_name, u.role as owner_role
+    FROM ideas i
+    JOIN users u ON i.owner_id = u.id
+    WHERE i.status = 'PENDING_REVIEW'
+      AND i.owner_id != ?
+      AND i.id NOT IN (SELECT idea_id FROM votes WHERE voter_id = ?)
+    ORDER BY i.submitted_at ASC
+  `, [currentUserId, currentUserId]);
+
+  return res.status(200).json({ pendingIdeas: ideas });
+});
+
+// 5. GET /api/ideas/my (Authenticated - List authenticated user's ideas)
 router.get('/my', authenticate, (req, res) => {
   const ideas = queryAll(`
     SELECT id, owner_id, title, description, attachment_url,
@@ -172,7 +208,63 @@ router.get('/my', authenticate, (req, res) => {
   return res.status(200).json({ ideas });
 });
 
-// 5. GET /api/ideas/:id (Authenticated - Single idea detail)
+// 6. POST /api/ideas/:id/vote (Non-owner only - Cast vote)
+router.post('/:id/vote', authenticate, requirePermission('idea.vote'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+  const { score_feasibility, score_market, score_capacity, vote_color, comment } = req.body || {};
+
+  const result = castVote({
+    ideaId: id,
+    voterId: req.user.id,
+    scoreFeasibility: score_feasibility !== undefined ? parseInt(score_feasibility, 10) : null,
+    scoreMarket: score_market !== undefined ? parseInt(score_market, 10) : null,
+    scoreCapacity: score_capacity !== undefined ? parseInt(score_capacity, 10) : null,
+    voteColor: vote_color,
+    comment,
+    ipAddress
+  });
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(200).json({
+    message: 'Vote cast successfully',
+    vote: result
+  });
+});
+
+// 7. GET /api/ideas/:id/votes (Authenticated - All votes & current green percentage)
+router.get('/:id/votes', authenticate, (req, res) => {
+  try {
+    const summary = getIdeaVotingSummary(req.params.id);
+    return res.status(200).json({ summary });
+  } catch (err) {
+    return res.status(404).json({ error: err.message });
+  }
+});
+
+// 8. GET /api/ideas/:id/meeting (Authenticated - Review meeting details / deadline)
+router.get('/:id/meeting', authenticate, (req, res) => {
+  const meeting = queryOne(
+    'SELECT * FROM review_meetings WHERE idea_id = ? ORDER BY created_at DESC LIMIT 1',
+    [req.params.id]
+  );
+
+  if (!meeting) {
+    return res.status(404).json({ error: 'No review meeting scheduled for this idea' });
+  }
+
+  const idea = queryOne('SELECT id, title, status, voting_deadline, green_percentage FROM ideas WHERE id = ?', [req.params.id]);
+
+  return res.status(200).json({
+    meeting,
+    idea
+  });
+});
+
+// 9. GET /api/ideas/:id (Authenticated - Single idea detail)
 router.get('/:id', authenticate, (req, res) => {
   const { id } = req.params;
 
