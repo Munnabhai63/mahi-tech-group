@@ -2,6 +2,16 @@ import crypto from 'node:crypto';
 import { queryOne, queryAll, execute, execRaw } from '../db/database.js';
 import { logAccess } from './auditService.js';
 
+// The 6 foundational dev, research, and test preparation tasks required before QA testing can begin
+export const DEV_AND_TEST_PREP_PREREQUISITES = [
+  'Deep Research',
+  'Backend Architecture Setup',
+  'Frontend UI Scaffolding',
+  'Test Plan Preparation',
+  'Frontend API Integration',
+  'Feature Logic Lock'
+];
+
 /**
  * Workload-Based Member Selection:
  * 1. Least active assigned tasks (status != 'DONE')
@@ -143,25 +153,25 @@ export function triggerProjectFanout(ideaId) {
     `, [taskTestingPrepId, projectId, producer ? producer.id : null]);
 
     // D. 4 Dependent Tasks (status = 'BLOCKED', depends_on set)
-    // Task 5: Frontend API Integration (depends on Backend Architecture Setup)
+    // Task 5: Frontend API Integration (Gate 1: depends on Backend Architecture Setup)
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
       VALUES (?, ?, ?, 'Frontend API Integration', 'frontend', ?, 'BLOCKED', CURRENT_TIMESTAMP)
     `, [taskApiIntegrationId, projectId, frontendDev ? frontendDev.id : null, taskBackendId]);
 
-    // Task 6: Feature Logic Lock (depends on Deep Research)
+    // Task 6: Feature Logic Lock (Gate 2: depends on Deep Research)
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
       VALUES (?, ?, ?, 'Feature Logic Lock', 'backend', ?, 'BLOCKED', CURRENT_TIMESTAMP)
     `, [taskLogicLockId, projectId, backendDev ? backendDev.id : null, taskResearchId]);
 
-    // Task 7: Full QA Testing (depends on Feature Logic Lock)
+    // Task 7: Full QA Testing (Gate 3: Dev build complete & test plan ready - primary parent is Feature Logic Lock)
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
       VALUES (?, ?, ?, 'Full QA Testing', 'testing', ?, 'BLOCKED', CURRENT_TIMESTAMP)
     `, [taskFullQaId, projectId, producer ? producer.id : null, taskLogicLockId]);
 
-    // Task 8: Admin Final Review (depends on Full QA Testing)
+    // Task 8: Admin Final Review (Gate 4: Testing passed - depends on Full QA Testing)
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
       VALUES (?, ?, ?, 'Admin Final Review', 'review', ?, 'BLOCKED', CURRENT_TIMESTAMP)
@@ -197,8 +207,50 @@ export function triggerProjectFanout(ideaId) {
 }
 
 /**
+ * Check which prerequisite tasks are missing before a task can start
+ */
+export function getMissingPrerequisites(task, allTasks) {
+  const taskMap = {};
+  for (const t of allTasks) {
+    taskMap[t.task_name] = t.status;
+  }
+
+  const missing = [];
+
+  if (task.task_name === 'Frontend API Integration') {
+    if (taskMap['Backend Architecture Setup'] !== 'DONE') {
+      missing.push('Backend Architecture Setup');
+    }
+  } else if (task.task_name === 'Feature Logic Lock') {
+    if (taskMap['Deep Research'] !== 'DONE') {
+      missing.push('Deep Research');
+    }
+  } else if (task.task_name === 'Full QA Testing') {
+    // Gate 3: Dev build complete (Backend + Frontend) AND Test Plan Preparation
+    for (const prereq of DEV_AND_TEST_PREP_PREREQUISITES) {
+      if (taskMap[prereq] !== 'DONE') {
+        missing.push(prereq);
+      }
+    }
+  } else if (task.task_name === 'Admin Final Review') {
+    // Gate 4: Full QA Testing + ALL preceding 6 tasks must be DONE
+    for (const prereq of DEV_AND_TEST_PREP_PREREQUISITES) {
+      if (taskMap[prereq] !== 'DONE') {
+        missing.push(prereq);
+      }
+    }
+    if (taskMap['Full QA Testing'] !== 'DONE') {
+      missing.push('Full QA Testing');
+    }
+  }
+
+  return missing;
+}
+
+/**
  * Recalculate Project Stage:
  * RESEARCH_DEV_PARALLEL -> INTEGRATION -> TESTING -> ADMIN_REVIEW -> LIVE
+ * Strictly validates that ALL parallel tracks have completed their required tasks.
  */
 export function evaluateProjectStage(projectId) {
   const tasks = queryAll('SELECT task_name, status FROM project_tasks WHERE project_id = ?', [projectId]);
@@ -207,22 +259,35 @@ export function evaluateProjectStage(projectId) {
     taskMap[t.task_name] = t.status;
   }
 
+  // Check completion of the 6 dev and test-plan preparation prerequisites
+  const allDevAndPrepDone = DEV_AND_TEST_PREP_PREREQUISITES.every(name => taskMap[name] === 'DONE');
+  const qaTestingDone = taskMap['Full QA Testing'] === 'DONE';
+  const adminReviewDone = taskMap['Admin Final Review'] === 'DONE';
+
   let stage = 'RESEARCH_DEV_PARALLEL';
 
-  if (taskMap['Admin Final Review'] === 'DONE') {
+  if (adminReviewDone && allDevAndPrepDone && qaTestingDone) {
+    // Stage 5: LIVE — All 8 tasks across all roles are 100% DONE
     stage = 'LIVE';
-  } else if (taskMap['Full QA Testing'] === 'DONE') {
+  } else if (allDevAndPrepDone && qaTestingDone) {
+    // Stage 4: ADMIN_REVIEW — QA testing passed and all 6 dev/prep tasks are DONE
     stage = 'ADMIN_REVIEW';
-  } else if (taskMap['Full QA Testing'] === 'IN_PROGRESS' || taskMap['Full QA Testing'] === 'TODO') {
+  } else if (allDevAndPrepDone && (taskMap['Full QA Testing'] === 'TODO' || taskMap['Full QA Testing'] === 'IN_PROGRESS')) {
+    // Stage 3: TESTING — All 6 dev/prep tasks are DONE, QA testing underway
     stage = 'TESTING';
   } else if (
-    (taskMap['Backend Architecture Setup'] === 'DONE' && taskMap['Deep Research'] === 'DONE') ||
+    taskMap['Backend Architecture Setup'] === 'DONE' ||
+    taskMap['Deep Research'] === 'DONE' ||
     taskMap['Frontend API Integration'] === 'IN_PROGRESS' ||
     taskMap['Frontend API Integration'] === 'DONE' ||
     taskMap['Feature Logic Lock'] === 'IN_PROGRESS' ||
     taskMap['Feature Logic Lock'] === 'DONE'
   ) {
+    // Stage 2: INTEGRATION — Foundational tasks started unblocking integration gates
     stage = 'INTEGRATION';
+  } else {
+    // Stage 1: RESEARCH_DEV_PARALLEL — Initial 4 parallel tasks underway
+    stage = 'RESEARCH_DEV_PARALLEL';
   }
 
   execute(
@@ -234,7 +299,7 @@ export function evaluateProjectStage(projectId) {
 }
 
 /**
- * Update Task Status with Dependency Auto-Unblock:
+ * Update Task Status with Multi-Track Dependency Auto-Unblock:
  */
 export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, ipAddress = null }) {
   const validStatuses = ['TODO', 'IN_PROGRESS', 'DONE'];
@@ -251,18 +316,18 @@ export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, i
     return { success: false, status: 403, error: 'Forbidden: You can only update tasks assigned to you' };
   }
 
-  // Structural prevention of sequential fallback: BLOCKED tasks cannot be started
+  const allTasks = queryAll('SELECT id, task_name, status, assigned_to FROM project_tasks WHERE project_id = ?', [task.project_id]);
+
+  // Structural prevention of sequential fallback: BLOCKED tasks cannot be started until ALL prerequisites are DONE
   if (task.status === 'BLOCKED' && newStatus !== 'BLOCKED') {
-    let parentTaskName = 'parent dependency';
-    if (task.depends_on_task_id) {
-      const parent = queryOne('SELECT task_name, status FROM project_tasks WHERE id = ?', [task.depends_on_task_id]);
-      if (parent) parentTaskName = `"${parent.task_name}" (currently: ${parent.status})`;
+    const missing = getMissingPrerequisites(task, allTasks);
+    if (missing.length > 0) {
+      return {
+        success: false,
+        status: 400,
+        error: `Cannot start task. "${task.task_name}" is BLOCKED until all prerequisite tasks are marked DONE. Incomplete prerequisites: ${missing.join(', ')}`
+      };
     }
-    return {
-      success: false,
-      status: 400,
-      error: `Cannot start task. This task is BLOCKED until ${parentTaskName} is marked DONE.`
-    };
   }
 
   const completedAt = newStatus === 'DONE' ? new Date().toISOString() : null;
@@ -275,26 +340,26 @@ export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, i
 
   let unblockedTasks = [];
 
-  // If task is completed, automatically unblock all dependent tasks
+  // When a task completes, evaluate all BLOCKED tasks in the project to see which can now unblock
   if (newStatus === 'DONE') {
-    const dependentTasks = queryAll(
-      "SELECT id, task_name, assigned_to FROM project_tasks WHERE depends_on_task_id = ? AND status = 'BLOCKED'",
-      [taskId]
-    );
+    // Refresh task list with current update
+    const currentTasks = queryAll('SELECT id, task_name, status, assigned_to FROM project_tasks WHERE project_id = ?', [task.project_id]);
+    const blockedTasks = currentTasks.filter(t => t.status === 'BLOCKED');
 
-    for (const dep of dependentTasks) {
-      execute(
-        "UPDATE project_tasks SET status = 'TODO' WHERE id = ?",
-        [dep.id]
-      );
-      unblockedTasks.push(dep);
+    for (const bTask of blockedTasks) {
+      const missing = getMissingPrerequisites(bTask, currentTasks);
+      if (missing.length === 0) {
+        // All prerequisites are satisfied — automatically flip from BLOCKED to TODO
+        execute("UPDATE project_tasks SET status = 'TODO' WHERE id = ?", [bTask.id]);
+        unblockedTasks.push(bTask);
 
-      logAccess({
-        userId: dep.assigned_to,
-        action: 'task_auto_unblocked',
-        resource: `/api/tasks/${dep.id} ("${dep.task_name}" unblocked by completion of task "${task.task_name}")`,
-        ipAddress
-      });
+        logAccess({
+          userId: bTask.assigned_to,
+          action: 'task_auto_unblocked',
+          resource: `/api/tasks/${bTask.id} ("${bTask.task_name}" auto-unblocked to TODO as all prerequisites are now DONE)`,
+          ipAddress
+        });
+      }
     }
   }
 
@@ -327,7 +392,7 @@ export function reassignTask({ taskId, newUserId, adminUserId, ipAddress = null 
     return { success: false, status: 404, error: 'Task not found' };
   }
 
-  const targetUser = queryOne('SELECT id, name, role, status FROM users WHERE id = ?', [newUserId]);
+  const targetUser = queryOne('SELECT id, name, role, status, sub_role FROM users WHERE id = ?', [newUserId]);
   if (!targetUser) {
     return { success: false, status: 404, error: 'New user not found' };
   }
@@ -372,12 +437,37 @@ export function reassignTask({ taskId, newUserId, adminUserId, ipAddress = null 
 }
 
 /**
- * Admin Final Review
+ * Admin Final Review:
+ * Requires ALL 7 preceding tasks across research, backend, frontend, and QA testing to be DONE.
+ * Launch approval sets stage=LIVE, status=LIVE, and marks Admin Final Review task as DONE.
  */
 export function adminFinalReview({ projectId, adminUserId, approved, notes = null, ipAddress = null }) {
   const project = queryOne('SELECT * FROM projects WHERE id = ?', [projectId]);
   if (!project) {
     return { success: false, status: 404, error: 'Project not found' };
+  }
+
+  const tasks = queryAll('SELECT id, task_name, task_type, status FROM project_tasks WHERE project_id = ?', [projectId]);
+  const taskMap = {};
+  for (const t of tasks) {
+    taskMap[t.task_name] = t.status;
+  }
+
+  // If Admin attempts to APPROVE the project for launch, strictly verify all 7 preceding tasks
+  if (approved) {
+    const requiredTasks = [
+      ...DEV_AND_TEST_PREP_PREREQUISITES,
+      'Full QA Testing'
+    ];
+    const incompleteTasks = requiredTasks.filter(name => taskMap[name] !== 'DONE');
+
+    if (incompleteTasks.length > 0) {
+      return {
+        success: false,
+        status: 400,
+        error: `Cannot approve project for LIVE launch: all 7 preceding tasks across research, backend, frontend, and QA testing must be DONE. Incomplete tasks: ${incompleteTasks.join(', ')}`
+      };
+    }
   }
 
   const newStage = approved ? 'LIVE' : 'REJECTED_AT_REVIEW';

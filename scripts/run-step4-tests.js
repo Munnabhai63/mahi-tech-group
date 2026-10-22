@@ -258,22 +258,27 @@ async function runStep4Tests() {
     execute("UPDATE users SET rating_avg = 4.2 WHERE id = ?", [candB.user.id]);
     execute("UPDATE users SET rating_avg = 4.8 WHERE id = ?", [candC.user.id]);
 
-    // Clean up any tasks previously assigned to these candidates from earlier runs
-    execute("DELETE FROM project_tasks WHERE assigned_to IN (?, ?, ?)", [candA.user.id, candB.user.id, candC.user.id]);
+    // Clean up any tasks previously assigned to these candidates from earlier standalone runs (exclude active project)
+    execute("DELETE FROM project_tasks WHERE assigned_to IN (?, ?, ?) AND project_id != ?", [candA.user.id, candB.user.id, candC.user.id, project.id]);
+
+    // Create separate project for workload candidate evaluation so we do not pollute the main project tasks
+    const workloadProjectId = crypto.randomUUID();
+    execute("INSERT INTO projects (id, idea_id, org_id, title, owner_id) VALUES (?, ?, 'DEFAULT_ORG', 'Workload Test Project', ?)",
+      [workloadProjectId, project.idea_id, adminUser.id]);
 
     // Give Alice 2 active tasks (fake assigned tasks in project_tasks)
     execute("INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, status) VALUES (?, ?, ?, 'Alice Task 1', 'backend', 'IN_PROGRESS')",
-      [crypto.randomUUID(), project.id, candA.user.id]);
+      [crypto.randomUUID(), workloadProjectId, candA.user.id]);
     execute("INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, status) VALUES (?, ?, ?, 'Alice Task 2', 'backend', 'TODO')",
-      [crypto.randomUUID(), project.id, candA.user.id]);
+      [crypto.randomUUID(), workloadProjectId, candA.user.id]);
 
     // Give Bob 1 active task
     execute("INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, status) VALUES (?, ?, ?, 'Bob Task 1', 'backend', 'IN_PROGRESS')",
-      [crypto.randomUUID(), project.id, candB.user.id]);
+      [crypto.randomUUID(), workloadProjectId, candB.user.id]);
 
     // Give Charlie 1 active task
     execute("INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, status) VALUES (?, ?, ?, 'Charlie Task 1', 'backend', 'IN_PROGRESS')",
-      [crypto.randomUUID(), project.id, candC.user.id]);
+      [crypto.randomUUID(), workloadProjectId, candC.user.id]);
 
     const candidates = [candA.user.id, candB.user.id, candC.user.id];
     const candidateStats = queryAll(`
@@ -363,13 +368,13 @@ async function runStep4Tests() {
     results.push({ test: 'Project owner_id Strict Immutability', status: 'PASS' });
 
     // -----------------------------------------------------------------
-    // TEST 8: Full Stage Progression Through All Gates
+    // TEST 8: Full Stage Progression Through All Gates & All 8 Tasks Verification
     // -----------------------------------------------------------------
-    console.log('\n--- TEST 8: Stage Progression State Machine Through All Gates ---');
+    console.log('\n--- TEST 8: Stage Progression State Machine Through All Gates (All 8 Tasks) ---');
     console.log(`Initial Stage: ${queryOne('SELECT current_stage FROM projects WHERE id = ?', [project.id]).current_stage}`);
 
-    // Gate 1 & 2: Complete "Deep Research"
-    // (Backend Architecture Setup was already completed in Test 4)
+    // Track A: Complete "Deep Research" (Gate 2: unblocks Feature Logic Lock)
+    // (Note: Backend Architecture Setup was already completed in Test 4, which unblocked Frontend API Integration)
     const researchTask = tasks.find(t => t.task_name === 'Deep Research');
     const compResearchRes = await fetch(`${BASE_URL}/api/tasks/${researchTask.id}/status`, {
       method: 'PATCH',
@@ -384,42 +389,119 @@ async function runStep4Tests() {
       throw new Error(`Expected stage 'INTEGRATION', got '${compResearchData.currentStage}'`);
     }
 
-    // Gate 3: Complete "Feature Logic Lock" -> Unblocks "Full QA Testing" & triggers 'TESTING' stage
+    // Complete "Feature Logic Lock"
     const logicLockTask = tasks.find(t => t.task_name === 'Feature Logic Lock');
-    const compLogicRes = await fetch(`${BASE_URL}/api/tasks/${logicLockTask.id}/status`, {
+    await fetch(`${BASE_URL}/api/tasks/${logicLockTask.id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getTokenForUser(logicLockTask.assigned_to)}` },
       body: JSON.stringify({ status: 'DONE' })
     });
-    const compLogicData = await compLogicRes.json();
-    console.log(`Completed "Feature Logic Lock" -> Child "Full QA Testing" unblocked:`, compLogicData.unblockedTasks);
-    console.log(`Stage after Feature Logic Lock complete: ${compLogicData.currentStage}`);
+    console.log('Completed "Feature Logic Lock".');
 
-    if (compLogicData.currentStage !== 'TESTING') {
-      throw new Error(`Expected stage 'TESTING', got '${compLogicData.currentStage}'`);
+    // VERIFICATION OF GAP FIX 1: Full QA Testing CANNOT unblock or start while Frontend or Test Plan Prep are incomplete!
+    const qaTaskCheck = queryOne('SELECT status FROM project_tasks WHERE id = ?', [fullQaTask.id]);
+    console.log(`Checking "Full QA Testing" status while Frontend & Test Plan are still incomplete: ${qaTaskCheck.status}`);
+    if (qaTaskCheck.status !== 'BLOCKED') {
+      throw new Error(`Expected Full QA Testing to remain BLOCKED, but found: ${qaTaskCheck.status}`);
     }
 
-    // Gate 4: Complete "Full QA Testing" -> Unblocks "Admin Final Review" & triggers 'ADMIN_REVIEW' stage
-    const compQaRes = await fetch(`${BASE_URL}/api/tasks/${fullQaTask.id}/status`, {
+    // Attempting to start Full QA Testing must be rejected with HTTP 400
+    const prematureQaRes = await fetch(`${BASE_URL}/api/tasks/${fullQaTask.id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getTokenForUser(fullQaTask.assigned_to)}` },
+      body: JSON.stringify({ status: 'IN_PROGRESS' })
+    });
+    const prematureQaData = await prematureQaRes.json();
+    console.log(`Premature QA start rejection status: ${prematureQaRes.status}`);
+    console.log(`Premature QA start rejection response:`, prematureQaData.error);
+    if (prematureQaRes.status !== 400 || !prematureQaData.error.includes('BLOCKED until all prerequisite')) {
+      throw new Error('API failed to block premature QA start!');
+    }
+
+    // VERIFICATION OF GAP FIX 2: Admin Final Review approval CANNOT be granted while other tracks are incomplete!
+    const prematureAdminRes = await fetch(`${BASE_URL}/api/admin/projects/${project.id}/final-review`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+      body: JSON.stringify({ approved: true, notes: 'Premature approval attempt' })
+    });
+    const prematureAdminData = await prematureAdminRes.json();
+    console.log(`Premature Admin approval rejection status: ${prematureAdminRes.status}`);
+    console.log(`Premature Admin approval rejection response:`, prematureAdminData.error);
+    if (prematureAdminRes.status !== 400 || !prematureAdminData.error.includes('all 7 preceding tasks')) {
+      throw new Error('API failed to reject premature Admin launch approval!');
+    }
+
+    // Now complete the remaining parallel dev and test preparation tasks:
+    // 1. Complete "Frontend UI Scaffolding"
+    const frontendScaffoldTask = tasks.find(t => t.task_name === 'Frontend UI Scaffolding');
+    const freshScaffold = queryOne('SELECT assigned_to FROM project_tasks WHERE id = ?', [frontendScaffoldTask.id]);
+    const resScaffold = await fetch(`${BASE_URL}/api/tasks/${frontendScaffoldTask.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getTokenForUser(freshScaffold.assigned_to)}` },
       body: JSON.stringify({ status: 'DONE' })
     });
+    if (resScaffold.status !== 200) {
+      throw new Error(`Failed to complete Frontend UI Scaffolding: ${await resScaffold.text()}`);
+    }
+    console.log('Completed "Frontend UI Scaffolding".');
+
+    // 2. Complete "Frontend API Integration"
+    const freshApi = queryOne('SELECT assigned_to FROM project_tasks WHERE id = ?', [apiIntegrationTask.id]);
+    const resApi = await fetch(`${BASE_URL}/api/tasks/${apiIntegrationTask.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getTokenForUser(freshApi.assigned_to)}` },
+      body: JSON.stringify({ status: 'DONE' })
+    });
+    if (resApi.status !== 200) {
+      throw new Error(`Failed to complete Frontend API Integration: ${await resApi.text()}`);
+    }
+    console.log('Completed "Frontend API Integration".');
+
+    // 3. Complete "Test Plan Preparation" -> This completes all 6 prerequisites!
+    const freshTestPlan = queryOne('SELECT assigned_to FROM project_tasks WHERE id = ?', [testPlanTask.id]);
+    const compTestPrepRes = await fetch(`${BASE_URL}/api/tasks/${testPlanTask.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getTokenForUser(freshTestPlan.assigned_to)}` },
+      body: JSON.stringify({ status: 'DONE' })
+    });
+    if (compTestPrepRes.status !== 200) {
+      throw new Error(`Failed to complete Test Plan Preparation: ${await compTestPrepRes.text()}`);
+    }
+    const compTestPrepData = await compTestPrepRes.json();
+    console.log('Completed "Test Plan Preparation".');
+    console.log('Unblocked tasks after all 6 dev/prep tasks complete:', compTestPrepData.unblockedTasks);
+    console.log('Stage after all 6 dev/prep tasks complete:', compTestPrepData.currentStage);
+
+    if (compTestPrepData.currentStage !== 'TESTING') {
+      throw new Error(`Expected stage 'TESTING', got '${compTestPrepData.currentStage}'`);
+    }
+
+    // Now "Full QA Testing" is unblocked to TODO -> Complete it!
+    const freshQa = queryOne('SELECT assigned_to FROM project_tasks WHERE id = ?', [fullQaTask.id]);
+    const compQaRes = await fetch(`${BASE_URL}/api/tasks/${fullQaTask.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getTokenForUser(freshQa.assigned_to)}` },
+      body: JSON.stringify({ status: 'DONE' })
+    });
+    if (compQaRes.status !== 200) {
+      throw new Error(`Failed to complete Full QA Testing: ${await compQaRes.text()}`);
+    }
     const compQaData = await compQaRes.json();
-    console.log(`Completed "Full QA Testing" -> Child "Admin Final Review" unblocked:`, compQaData.unblockedTasks);
-    console.log(`Stage after Full QA Testing complete: ${compQaData.currentStage}`);
+    console.log('Completed "Full QA Testing".');
+    console.log('Unblocked tasks after QA complete:', compQaData.unblockedTasks);
+    console.log('Stage after QA complete:', compQaData.currentStage);
 
     if (compQaData.currentStage !== 'ADMIN_REVIEW') {
       throw new Error(`Expected stage 'ADMIN_REVIEW', got '${compQaData.currentStage}'`);
     }
 
-    // Gate 5: Admin Final Launch Review Approval -> stage=LIVE, status=LIVE
+    // Admin Final Launch Review Approval -> stage=LIVE, status=LIVE
     const finalReviewRes = await fetch(`${BASE_URL}/api/admin/projects/${project.id}/final-review`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
       body: JSON.stringify({
         approved: true,
-        notes: 'QA test suite passed 100% green. Security audit approved. Ready for production release.'
+        notes: 'All 7 multi-disciplinary tasks complete. QA verified green. Production release approved.'
       })
     });
     const finalReviewData = await finalReviewRes.json();
@@ -431,12 +513,23 @@ async function runStep4Tests() {
       throw new Error(`Expected stage and status 'LIVE', got stage: ${finalReviewData.stage}, status: ${finalReviewData.project.status}`);
     }
 
-    const reviewTaskDb = queryOne("SELECT * FROM project_tasks WHERE project_id = ? AND task_type = 'review'", [project.id]);
-    console.log(`Admin Final Review task status in database: ${reviewTaskDb.status}`);
-    if (reviewTaskDb.status !== 'DONE') {
-      throw new Error('Admin Final Review task was not marked DONE!');
+    // Direct Database Query: Verify status of ALL 8 tasks at the moment LIVE is reached
+    const allFinalTasks = queryAll('SELECT id, task_name, task_type, status, completed_at FROM project_tasks WHERE project_id = ? ORDER BY task_type ASC, task_name ASC', [project.id]);
+    console.log('\n[COMPLETE DATABASE PROOF: ALL 8 TASKS AT LIVE STAGE]');
+    console.table(allFinalTasks.map(t => ({
+      task_name: t.task_name,
+      type: t.task_type,
+      status: t.status,
+      completed_at: t.completed_at
+    })));
+
+    const allEightDone = allFinalTasks.every(t => t.status === 'DONE');
+    console.log(`All 8 tasks across all 4 roles are strictly DONE: ${allEightDone}`);
+    if (!allEightDone) {
+      throw new Error('Not all 8 tasks reached DONE status at LIVE stage!');
     }
-    results.push({ test: 'Stage Progression State Machine (Parallel -> Integration -> Testing -> Admin Review -> Live)', status: 'PASS' });
+
+    results.push({ test: 'Stage Progression & All 8 Tasks Gating (Parallel -> Integration -> Testing -> Admin Review -> Live)', status: 'PASS' });
 
     // -----------------------------------------------------------------
     // TEST 9: PRD Section 5 Endpoint Coverage Verification
