@@ -13,6 +13,14 @@ export function runMigration() {
 
   execRaw(schemaSql);
 
+  // Check if wallet_frozen column exists on users table (for existing DB instances)
+  const userColumns = queryAll('PRAGMA table_info(users);');
+  const hasWalletFrozen = userColumns.some(c => c.name === 'wallet_frozen');
+  if (!hasWalletFrozen) {
+    execRaw('ALTER TABLE users ADD COLUMN wallet_frozen BOOLEAN DEFAULT 0;');
+    console.log('>>> Added wallet_frozen column to users table.');
+  }
+
   // Verification of tables
   const tables = queryAll("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;");
   console.log('>>> Migration executed successfully.');

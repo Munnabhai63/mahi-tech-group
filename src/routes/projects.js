@@ -3,6 +3,7 @@ import { queryOne, queryAll, execute } from '../db/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { triggerProjectFanout } from '../services/fanoutService.js';
 import { logAccess } from '../services/auditService.js';
+import { createAsset, getProjectAssets } from '../services/assetService.js';
 
 const router = express.Router();
 
@@ -156,6 +157,45 @@ router.patch('/:id', authenticate, (req, res) => {
 
   const updatedProject = queryOne('SELECT * FROM projects WHERE id = ?', [id]);
   return res.status(200).json({ project: updatedProject });
+});
+
+/**
+ * 5. POST /api/projects/:id/assets (Authenticated)
+ * Registers an asset. Hardcodes owner_entity = 'ORG'
+ */
+router.post('/:id/assets', authenticate, (req, res) => {
+  const { id } = req.params;
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { type, url } = req.body || {};
+
+  const result = createAsset({
+    projectId: id,
+    type,
+    url,
+    uploadedBy: req.user.id,
+    ipAddress
+  });
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(201).json(result);
+});
+
+/**
+ * 6. GET /api/projects/:id/assets (Authenticated)
+ * Lists all assets for a project with attribution formatting
+ */
+router.get('/:id/assets', authenticate, (req, res) => {
+  const { id } = req.params;
+  const result = getProjectAssets(id);
+
+  if (!result.success) {
+    return res.status(result.status || 404).json({ error: result.error });
+  }
+
+  return res.status(200).json(result);
 });
 
 export default router;

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     idea_quota_used   INT DEFAULT 0,
     quota_reset_date  DATE,
     wallet_balance    DECIMAL(12,2) DEFAULT 0.0,
+    wallet_frozen     BOOLEAN DEFAULT 0,
     profile_photo_url TEXT,
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -205,3 +206,40 @@ CREATE INDEX IF NOT EXISTS idx_project_tasks_project_id ON project_tasks(project
 CREATE INDEX IF NOT EXISTS idx_project_tasks_assigned_to ON project_tasks(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_project_tasks_status ON project_tasks(status);
 CREATE INDEX IF NOT EXISTS idx_project_tasks_depends_on ON project_tasks(depends_on_task_id);
+
+-- ===================================================================
+-- STEP 05: Admin Offboarding Kill-Switch Tables
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS offboarding (
+    id                      TEXT PRIMARY KEY,
+    user_id                 TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    initiated_by            TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    reason                  TEXT,
+    initiated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at            TIMESTAMP,
+    revoked_services_json   TEXT,
+    wallet_frozen_amount    DECIMAL(12,2) DEFAULT 0.0,
+    status                  VARCHAR(20) DEFAULT 'IN_PROGRESS' CHECK (status IN
+                            ('IN_PROGRESS','COMPLETED','FAILED'))
+);
+
+CREATE TABLE IF NOT EXISTS assets (
+    id                  TEXT PRIMARY KEY,
+    project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+    type                VARCHAR(30) CHECK (type IN
+                        ('code_repo','pdf_doc','design_file','domain',
+                         'app_listing','other')),
+    url                 TEXT NOT NULL,
+    owner_entity        VARCHAR(20) NOT NULL DEFAULT 'ORG' CHECK (owner_entity = 'ORG'),
+    uploaded_by         TEXT REFERENCES users(id) ON DELETE RESTRICT,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_offboarding_user_id ON offboarding(user_id);
+CREATE INDEX IF NOT EXISTS idx_offboarding_initiated_by ON offboarding(initiated_by);
+CREATE INDEX IF NOT EXISTS idx_offboarding_status ON offboarding(status);
+
+CREATE INDEX IF NOT EXISTS idx_assets_project_id ON assets(project_id);
+CREATE INDEX IF NOT EXISTS idx_assets_uploaded_by ON assets(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_assets_type ON assets(type);

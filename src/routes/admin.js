@@ -8,6 +8,13 @@ import { requirePermission } from '../middleware/rbac.js';
 import { logAccess } from '../services/auditService.js';
 import { adminOverrideDecision } from '../services/votingService.js';
 import { reassignTask, adminFinalReview } from '../services/fanoutService.js';
+import {
+  executeOffboardingKillswitch,
+  getOffboardingStatus,
+  updateOffboardingChecklist,
+  getOffboardingHistory,
+  getFrozenWallets
+} from '../services/offboardingService.js';
 
 const router = express.Router();
 
@@ -380,6 +387,93 @@ router.patch('/projects/:id/final-review', authenticate, (req, res) => {
     message: approved ? 'Project approved and moved to LIVE stage' : 'Project rejected at review',
     stage: result.stage,
     project: result.project
+  });
+});
+
+// ===================================================================
+// STEP 05: Offboarding Kill-Switch Endpoints (Admin Only)
+// ===================================================================
+
+// 14. POST /api/admin/members/:id/offboard (Admin only - RBAC: member.remove)
+router.post('/members/:id/offboard', authenticate, requirePermission('member.remove'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+  const { reason } = req.body || {};
+
+  const result = executeOffboardingKillswitch({
+    userId: id,
+    adminUserId: req.user.id,
+    reason,
+    ipAddress
+  });
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error, offboardingRecord: result.offboardingRecord });
+  }
+
+  return res.status(200).json({
+    message: result.message,
+    offboarding: result.offboarding,
+    stepsExecuted: result.stepsExecuted,
+    executionTimestamps: result.executionTimestamps,
+    reassignedTasks: result.reassignedTasks,
+    frozenAmount: result.frozenAmount,
+    attributionBadge: result.attributionBadge
+  });
+});
+
+// 15. GET /api/admin/offboarding/:id/status (Admin only - RBAC: member.remove)
+router.get('/offboarding/:id/status', authenticate, requirePermission('member.remove'), (req, res) => {
+  const { id } = req.params;
+  const result = getOffboardingStatus(id);
+
+  if (!result.success) {
+    return res.status(result.status || 404).json({ error: result.error });
+  }
+
+  return res.status(200).json(result);
+});
+
+// 16. PATCH /api/admin/offboarding/:id/checklist (Admin only - RBAC: member.remove)
+router.patch('/offboarding/:id/checklist', authenticate, requirePermission('member.remove'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+  const { serviceId, completed } = req.body || {};
+
+  if (!serviceId || typeof completed !== 'boolean') {
+    return res.status(400).json({ error: "serviceId and boolean 'completed' flag are required" });
+  }
+
+  const result = updateOffboardingChecklist({
+    offboardingId: id,
+    serviceId,
+    completed,
+    adminUserId: req.user.id,
+    ipAddress
+  });
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(200).json(result);
+});
+
+// 17. GET /api/admin/offboarding/history (Admin only - RBAC: member.remove)
+router.get('/offboarding/history', authenticate, requirePermission('member.remove'), (req, res) => {
+  const history = getOffboardingHistory();
+  return res.status(200).json({
+    count: history.length,
+    offboardingHistory: history
+  });
+});
+
+// 18. GET /api/admin/wallets/frozen (Admin only - RBAC: member.remove)
+router.get('/wallets/frozen', authenticate, requirePermission('member.remove'), (req, res) => {
+  const frozenWallets = getFrozenWallets();
+  return res.status(200).json({
+    count: frozenWallets.length,
+    frozenWallets
   });
 });
 
