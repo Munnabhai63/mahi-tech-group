@@ -2,6 +2,7 @@ import { createApp } from './app.js';
 import { config } from './config.js';
 import { runMigration } from './db/migrate.js';
 import { runSeed } from './db/seed.js';
+import { startScheduledQuotaReset, stopScheduledQuotaReset } from './jobs/quotaResetJob.js';
 
 async function startServer() {
   try {
@@ -9,19 +10,23 @@ async function startServer() {
     runMigration();
     await runSeed();
 
+    // Start automated daily quota cycle reset job
+    startScheduledQuotaReset();
+
     const app = createApp();
 
     const server = app.listen(config.PORT, () => {
       console.log(`===================================================================`);
       console.log(`  MAHI TECH GROUP PLATFORM — BACKEND SERVER RUNNING`);
       console.log(`  Port: http://localhost:${config.PORT}`);
-      console.log(`  Step: 01_DATABASE_AUTH_BACKBONE`);
+      console.log(`  Step: 02_IDEA_QUOTA_ENGINE`);
       console.log(`  Environment: local (node:sqlite WAL mode)`);
       console.log(`===================================================================`);
     });
 
     const shutdown = () => {
       console.log('\n>>> Gracefully shutting down server...');
+      stopScheduledQuotaReset();
       server.close(() => {
         console.log('>>> Server closed cleanly.');
         process.exit(0);

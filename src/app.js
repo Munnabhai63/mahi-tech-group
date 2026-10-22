@@ -3,6 +3,7 @@ import cors from 'cors';
 import authRouter from './routes/auth.js';
 import adminRouter from './routes/admin.js';
 import usersRouter from './routes/users.js';
+import ideasRouter from './routes/ideas.js';
 
 export function createApp() {
   const app = express();
@@ -14,7 +15,7 @@ export function createApp() {
   app.get('/api/health', (req, res) => {
     res.status(200).json({
       status: 'ok',
-      service: 'Mahi Tech Group Platform - Step 01 Auth Backbone',
+      service: 'Mahi Tech Group Platform - Step 02 Idea Quota Engine',
       timestamp: new Date().toISOString()
     });
   });
@@ -23,6 +24,7 @@ export function createApp() {
   app.use('/api/auth', authRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/users', usersRouter);
+  app.use('/api/ideas', ideasRouter);
 
   // 404 handler for unknown routes
   app.use((req, res) => {

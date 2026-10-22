@@ -141,4 +141,59 @@ router.get('/members', authenticate, requirePermission('member.add'), (req, res)
   return res.status(200).json({ members });
 });
 
+// 8. PATCH /api/admin/config/quota (Admin only)
+router.patch('/config/quota', authenticate, (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can update system configuration' });
+  }
+
+  const { limit, windowDays } = req.body || {};
+
+  if (limit === undefined && windowDays === undefined) {
+    return res.status(400).json({ error: "At least one of 'limit' or 'windowDays' must be provided" });
+  }
+
+  if (limit !== undefined) {
+    const numLimit = parseInt(limit, 10);
+    if (isNaN(numLimit) || numLimit < 1) {
+      return res.status(400).json({ error: "'limit' must be a positive integer" });
+    }
+    execute(
+      'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+      [numLimit.toString(), req.user.id, 'idea_quota_limit']
+    );
+  }
+
+  if (windowDays !== undefined) {
+    const numWindow = parseInt(windowDays, 10);
+    if (isNaN(numWindow) || numWindow < 1) {
+      return res.status(400).json({ error: "'windowDays' must be a positive integer" });
+    }
+    execute(
+      'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+      [numWindow.toString(), req.user.id, 'idea_quota_window_days']
+    );
+  }
+
+  const currentLimit = queryOne("SELECT value FROM system_config WHERE key = 'idea_quota_limit'")?.value;
+  const currentWindow = queryOne("SELECT value FROM system_config WHERE key = 'idea_quota_window_days'")?.value;
+
+  logAccess({
+    userId: req.user.id,
+    action: 'quota_config_updated',
+    resource: `/api/admin/config/quota (limit: ${currentLimit}, windowDays: ${currentWindow})`,
+    ipAddress
+  });
+
+  return res.status(200).json({
+    message: 'Quota configuration updated successfully',
+    config: {
+      limit: parseInt(currentLimit, 10),
+      windowDays: parseInt(currentWindow, 10)
+    }
+  });
+});
+
 export default router;

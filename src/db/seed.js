@@ -84,10 +84,31 @@ export async function runSeed() {
     console.log(`>>> Default Admin User already exists: ${adminEmail}`);
   }
 
+  // 3. Seed Default System Config (idea_quota_limit = 2, idea_quota_window_days = 7)
+  const defaultConfigs = [
+    { key: 'idea_quota_limit', value: '2' },
+    { key: 'idea_quota_window_days', value: '7' }
+  ];
+
+  for (const cfg of defaultConfigs) {
+    const existingCfg = queryOne('SELECT key FROM system_config WHERE key = ?', [cfg.key]);
+    if (!existingCfg) {
+      execute(
+        'INSERT INTO system_config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+        [cfg.key, cfg.value]
+      );
+      console.log(`>>> Seeded System Config: ${cfg.key} = ${cfg.value}`);
+    } else {
+      console.log(`>>> System Config exists: ${cfg.key}`);
+    }
+  }
+
   const roleCount = queryAll('SELECT role, COUNT(*) as cnt FROM roles_permissions GROUP BY role;');
   console.log('>>> Roles Permissions Distribution:', roleCount);
   const userCount = queryOne('SELECT COUNT(*) as cnt FROM users;');
   console.log('>>> Total Users in DB:', userCount.cnt);
+  const configs = queryAll('SELECT key, value FROM system_config;');
+  console.log('>>> System Config Entries:', configs);
 }
 
 // When run directly from CLI

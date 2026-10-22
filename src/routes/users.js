@@ -4,6 +4,7 @@ import { queryOne, queryAll, execute } from '../db/database.js';
 import { config } from '../config.js';
 import { authenticate } from '../middleware/auth.js';
 import { logAccess } from '../services/auditService.js';
+import { getUserQuotaStatus } from '../services/quotaService.js';
 
 const router = express.Router();
 
@@ -74,6 +75,16 @@ router.patch('/me/password', authenticate, async (req, res) => {
   });
 
   return res.status(200).json({ message: 'Password updated successfully' });
+});
+
+// GET /api/users/me/quota-status (Authenticated - Fetch remaining quota and reset date)
+router.get('/me/quota-status', authenticate, (req, res) => {
+  try {
+    const quotaStatus = getUserQuotaStatus(req.user.id);
+    return res.status(200).json({ quota: quotaStatus });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to retrieve quota status', message: err.message });
+  }
 });
 
 export default router;
