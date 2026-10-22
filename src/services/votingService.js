@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
+import { triggerProjectFanout } from './fanoutService.js';
 
 export function getVotingConfig() {
   const thresholdRow = queryOne("SELECT value FROM system_config WHERE key = 'vote_approval_threshold'");
@@ -234,11 +235,17 @@ export function evaluateVotingDecision(ideaId, simulatedDate = null) {
     resource: `/api/ideas/${ideaId}/decision (green: ${greenPercentage}%, threshold: ${approvalThreshold}%)`
   });
 
+  let projectData = null;
+  if (newStatus === 'APPROVED') {
+    projectData = triggerProjectFanout(ideaId);
+  }
+
   return {
     action: 'DECIDED',
     status: newStatus,
     greenPercentage,
-    participationRate
+    participationRate,
+    project: projectData ? projectData.project : null
   };
 }
 
@@ -275,6 +282,11 @@ export function adminOverrideDecision({ ideaId, adminUserId, decision, reason, i
     ipAddress
   });
 
+  let projectData = null;
+  if (decision === 'APPROVED') {
+    projectData = triggerProjectFanout(ideaId);
+  }
+
   const updatedIdea = queryOne('SELECT * FROM ideas WHERE id = ?', [ideaId]);
 
   return {
@@ -284,6 +296,7 @@ export function adminOverrideDecision({ ideaId, adminUserId, decision, reason, i
       decision,
       reason: reason.trim(),
       adminUserId
-    }
+    },
+    project: projectData ? projectData.project : null
   };
 }

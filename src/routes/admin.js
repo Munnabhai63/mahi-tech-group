@@ -7,6 +7,7 @@ import { authenticate } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/rbac.js';
 import { logAccess } from '../services/auditService.js';
 import { adminOverrideDecision } from '../services/votingService.js';
+import { reassignTask, adminFinalReview } from '../services/fanoutService.js';
 
 const router = express.Router();
 
@@ -292,6 +293,93 @@ router.patch('/config/voting', authenticate, (req, res) => {
       quorumPercentage: parseFloat(currentQuorum),
       windowHours: parseInt(currentWindow, 10)
     }
+  });
+});
+
+// 11. GET /api/admin/projects/all (Admin only)
+router.get('/projects/all', authenticate, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can view all projects' });
+  }
+
+  const projects = queryAll(`
+    SELECT p.*, u.name as owner_name, u.email as owner_email,
+           (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.removed_at IS NULL) as member_count,
+           (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id) as total_tasks,
+           (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id AND pt.status = 'DONE') as done_tasks
+    FROM projects p
+    JOIN users u ON p.owner_id = u.id
+    ORDER BY p.created_at DESC
+  `);
+
+  return res.status(200).json({
+    count: projects.length,
+    projects
+  });
+});
+
+// 12. PATCH /api/admin/projects/:id/reassign (Admin only)
+router.patch('/projects/:id/reassign', authenticate, (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can reassign project tasks' });
+  }
+
+  const { taskId, newUserId } = req.body || {};
+
+  if (!taskId || !newUserId) {
+    return res.status(400).json({ error: 'taskId and newUserId are required' });
+  }
+
+  const result = reassignTask({
+    taskId,
+    newUserId,
+    adminUserId: req.user.id,
+    ipAddress
+  });
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(200).json({
+    message: 'Task successfully reassigned by Admin',
+    task: result.task
+  });
+});
+
+// 13. PATCH /api/admin/projects/:id/final-review (Admin only)
+router.patch('/projects/:id/final-review', authenticate, (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can perform final review' });
+  }
+
+  const { approved, notes } = req.body || {};
+
+  if (typeof approved !== 'boolean') {
+    return res.status(400).json({ error: "'approved' boolean flag (true/false) is required" });
+  }
+
+  const result = adminFinalReview({
+    projectId: id,
+    adminUserId: req.user.id,
+    approved,
+    notes,
+    ipAddress
+  });
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(200).json({
+    message: approved ? 'Project approved and moved to LIVE stage' : 'Project rejected at review',
+    stage: result.stage,
+    project: result.project
   });
 });
 

@@ -2,7 +2,7 @@ import http from 'node:http';
 import { createApp } from '../src/app.js';
 import { runMigration } from '../src/db/migrate.js';
 import { runSeed } from '../src/db/seed.js';
-import { queryOne, queryAll } from '../src/db/database.js';
+import { queryOne, queryAll, execute } from '../src/db/database.js';
 
 const TEST_PORT = 4999;
 const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
@@ -78,8 +78,10 @@ async function runAllTests() {
     // TEST 4: Admin Adds Member (POST /api/admin/members/add)
     // -----------------------------------------------------------------
     console.log('\n--- TEST 4: Admin Adds New Member - Researcher (POST /api/admin/members/add) ---');
-    const researcherEmail = 'researcher.arjun@mahitechgroup.com';
+    const timestamp = Date.now();
+    const researcherEmail = `researcher.arjun.${timestamp}@mahitechgroup.com`;
     const researcherPassword = 'ResearcherSecret123!';
+    const devEmail = `dev.riya.${timestamp}@mahitechgroup.com`;
 
     const addMemberRes = await fetch(`${BASE_URL}/api/admin/members/add`, {
       method: 'POST',
@@ -103,7 +105,6 @@ async function runAllTests() {
     results.push({ test: 'Admin Adds Member (Researcher)', status: 'PASS' });
 
     // Also add a developer to test developer role & deactivation
-    const devEmail = 'dev.riya@mahitechgroup.com';
     const devPassword = 'DevPassword123!';
     const addDevRes = await fetch(`${BASE_URL}/api/admin/members/add`, {
       method: 'POST',

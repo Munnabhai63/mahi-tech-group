@@ -43,6 +43,10 @@ async function runStep2Tests() {
     if (adminLoginRes.status !== 200) throw new Error('Admin login failed');
     const adminToken = adminLoginData.token;
 
+    // Ensure initial quota limit is 2 for Step 2 baseline
+    execute("UPDATE system_config SET value = '2' WHERE key = 'idea_quota_limit'");
+    execute("UPDATE system_config SET value = '7' WHERE key = 'idea_quota_window_days'");
+
     const configRows = queryAll('SELECT key, value FROM system_config');
     console.log('Database system_config initial values:', JSON.stringify(configRows, null, 2));
     results.push({ test: 'Admin Login & System Config Seed Check', status: 'PASS' });
