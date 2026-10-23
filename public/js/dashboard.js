@@ -153,6 +153,7 @@ async function switchAccount(roleKey) {
     state.token = data.token;
     state.user = data.user;
     localStorage.setItem('token', state.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
 
     updateUserBadge(data.user);
     highlightActiveCornerPanel(data.user.role);
