@@ -335,7 +335,7 @@ export function updateDisputeStatus(disputeId, newStatus, { resolution_notes = n
 /**
  * Add a party to a dispute
  */
-export function addDisputeParty(disputeId, { user_id = null, party_name, party_type, adminId, ipAddress = '127.0.0.1' }) {
+export function addDisputeParty(disputeId, { user_id = null, party_name, party_type, role_in_dispute, adminId, ipAddress = '127.0.0.1' }) {
   const dispute = queryOne('SELECT id, status FROM disputes WHERE id = ?', [disputeId]);
   if (!dispute) {
     const err = new Error('Dispute not found');
@@ -349,12 +349,16 @@ export function addDisputeParty(disputeId, { user_id = null, party_name, party_t
     throw err;
   }
 
+  let normalizedType = party_type || role_in_dispute;
+  if (normalizedType === 'claimant') normalizedType = 'complainant';
+
   const validPartyTypes = ['complainant', 'respondent', 'witness', 'admin'];
-  if (!party_type || !validPartyTypes.includes(party_type)) {
+  if (!normalizedType || !validPartyTypes.includes(normalizedType)) {
     const err = new Error(`Invalid party_type. Must be one of: ${validPartyTypes.join(', ')}`);
     err.status = 400;
     throw err;
   }
+  party_type = normalizedType;
 
   if (!party_name && user_id) {
     const u = queryOne('SELECT name FROM users WHERE id = ?', [user_id]);
@@ -429,8 +433,9 @@ export function createDisputeAgreement(disputeId, { agreement_text, adminId, ipA
 
   // Fetch all parties that have registered user accounts to request signatures
   const parties = queryAll(`
-    SELECT * FROM dispute_parties 
+    SELECT DISTINCT user_id, party_name, party_type FROM dispute_parties 
     WHERE dispute_id = ? AND user_id IS NOT NULL
+    GROUP BY user_id
   `, [disputeId]);
 
   const createdSignatures = [];
@@ -500,6 +505,7 @@ export function createDisputeAgreement(disputeId, { agreement_text, adminId, ipA
   });
 
   return {
+    id: agreementId,
     agreement: queryOne('SELECT * FROM dispute_agreements WHERE id = ?', [agreementId]),
     signatures_requested: createdSignatures.length,
     signatures: createdSignatures

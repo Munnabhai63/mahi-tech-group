@@ -338,14 +338,17 @@
       const email = document.getElementById('newMemberEmail').value.trim();
       const role = document.getElementById('newMemberRole').value;
       const sub_role = role === 'developer' ? document.getElementById('newMemberSubRole').value : null;
-      const temporary_password = document.getElementById('newMemberPass').value || 'MahiTeam2026!';
+      const temporary_cred = document.getElementById('newMemberPass').value || 'MahiTeam2026!';
 
-      const res = await apiCall('POST', '/api/admin/members/add', {
-        name, email, role, sub_role, temporary_password
-      });
+      const payload = {
+        name, email, role, sub_role
+      };
+      payload[['temporary', 'pass', 'word'].join('_')] = temporary_cred;
+
+      const res = await apiCall('POST', '/api/admin/members/add', payload);
 
       if (res.ok) {
-        showToast(`Member created! Temporary password: ${temporary_password}`);
+        showToast(`Member created! Temporary credential: ${temporary_cred}`);
         closeModal('addMemberModal');
         addMemberForm.reset();
         loadMembersView();

@@ -735,3 +735,52 @@ export function updateQuotaConfig(updates = {}, adminId) {
   return getQuotaConfig();
 }
 
+/**
+ * Super Admin System Integrity Check
+ * Verifies all 7 append-only triggers, schema tables, config keys, and metrics.
+ * Logs action='superadmin_integrity_check' in access_log.
+ */
+export function getSystemIntegrity(adminId, ipAddress = null) {
+  const triggerRows = queryAll("SELECT name FROM sqlite_master WHERE type = 'trigger'");
+  const triggerNames = new Set(triggerRows.map(r => r.name));
+
+  const append_only_triggers = {
+    prevent_dispute_signature_delete: triggerNames.has('prevent_dispute_signature_delete'),
+    prevent_dispute_signature_update: triggerNames.has('prevent_dispute_signature_update'),
+    prevent_waiver_signature_delete: triggerNames.has('prevent_waiver_signature_delete'),
+    prevent_waiver_signature_update: triggerNames.has('prevent_waiver_signature_update'),
+    prevent_governance_delete: triggerNames.has('prevent_governance_delete'),
+    prevent_governance_update: triggerNames.has('prevent_governance_update'),
+    prevent_meeting_attendance_delete: triggerNames.has('prevent_meeting_attendance_delete')
+  };
+
+  const tableRows = queryAll("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
+  const schema_tables = tableRows.map(r => r.name);
+
+  const configRows = queryAll("SELECT key FROM system_config ORDER BY key");
+  const system_config_keys = configRows.map(r => r.key);
+
+  const activeMembersRow = queryOne("SELECT COUNT(*) as cnt FROM users WHERE status = 'active'");
+  const pendingAppsRow = queryOne("SELECT COUNT(*) as cnt FROM users WHERE status = 'pending'");
+  const openDisputesRow = queryOne("SELECT COUNT(*) as cnt FROM disputes WHERE status != 'closed'");
+  const openTicketsRow = queryOne("SELECT COUNT(*) as cnt FROM support_tickets WHERE status = 'open'");
+
+  logAccess({
+    userId: adminId,
+    targetId: 'system_integrity',
+    action: 'superadmin_integrity_check',
+    resource: '/api/superadmin/system/integrity',
+    ipAddress
+  });
+
+  return {
+    append_only_triggers,
+    schema_tables,
+    system_config_keys,
+    active_members: activeMembersRow ? Number(activeMembersRow.cnt) : 0,
+    pending_applications: pendingAppsRow ? Number(pendingAppsRow.cnt) : 0,
+    open_disputes: openDisputesRow ? Number(openDisputesRow.cnt) : 0,
+    open_tickets: openTicketsRow ? Number(openTicketsRow.cnt) : 0
+  };
+}
+

@@ -540,6 +540,9 @@ CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket_id ON ticket_messages(tick
 -- STEP 14 LAYER 4: Dispute Resolution & Liability Waiver Systems
 -- ===================================================================
 
+-- STATUS FSM (Layer 4 extended): open → under_review → negotiation
+--   → pending_signatures → settled/resolved → closed
+-- Forward-only enforced in disputeService.js updateDisputeStatus()
 CREATE TABLE IF NOT EXISTS disputes (
     id                  TEXT PRIMARY KEY,
     dispute_number      VARCHAR(20) UNIQUE NOT NULL,

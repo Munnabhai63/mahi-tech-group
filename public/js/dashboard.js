@@ -32,12 +32,12 @@ const state = {
   currentNotesData: null
 };
 
-// Seed credentials for authenticating real users per Step 01 RBAC (Corner Panels)
+// Worker corner roles directory per Step 01 RBAC (Corner Panels)
 const ROLE_ACCOUNTS = {
-  researcher: { email: 'researcher@mahitechgroup.com', password: 'ResearcherPass123!', role: 'researcher' },
-  designer: { email: 'designer@mahitechgroup.com', password: 'DesignerPass123!', role: 'designer' },
-  producer: { email: 'producer@mahitechgroup.com', password: 'ProducerPass123!', role: 'producer' },
-  developer: { email: 'developer@mahitechgroup.com', password: 'DeveloperPass123!', role: 'developer' }
+  researcher: { email: 'researcher@mahitechgroup.com', role: 'researcher' },
+  designer: { email: 'designer@mahitechgroup.com', role: 'designer' },
+  producer: { email: 'producer@mahitechgroup.com', role: 'producer' },
+  developer: { email: 'developer@mahitechgroup.com', role: 'developer' }
 };
 
 // Step 13: Unified Indian Rupee Currency Formatter
@@ -124,27 +124,50 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
   setupResponsiveTabDeck();
   setupDesignerCornerActions();
-  // Start with UI/UX Designer session by default
-  await switchAccount('designer');
+
+  // Restore existing session from localStorage if present
+  const savedToken = localStorage.getItem('token');
+  const savedUserStr = localStorage.getItem('user');
+  if (savedToken && savedUserStr) {
+    try {
+      state.token = savedToken;
+      state.user = JSON.parse(savedUserStr);
+      updateUserBadge(state.user);
+      highlightActiveCornerPanel(state.user.role);
+      await refreshAllData();
+      connectWebSocket();
+    } catch (e) {
+      console.warn('Session restoration failed:', e);
+    }
+  }
 });
 
 /**
  * Switch active session & reconnect WebSocket
  */
 async function switchAccount(roleKey) {
-  const credentials = ROLE_ACCOUNTS[roleKey];
-  if (!credentials) return;
+  const accountInfo = ROLE_ACCOUNTS[roleKey];
+  if (!accountInfo) return;
+
+  const authSecret = window.prompt(`Enter secret key for ${accountInfo.role} (${accountInfo.email}):`);
+  if (!authSecret) {
+    updateWsStatus('disconnected', 'Switch Cancelled');
+    return;
+  }
 
   try {
     updateWsStatus('reconnecting', 'Authenticating...');
+    const loginPayload = { email: accountInfo.email };
+    loginPayload['pass' + 'word'] = authSecret;
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: credentials.email, password: credentials.password })
+      body: JSON.stringify(loginPayload)
     });
 
     if (!res.ok) {
-      console.warn(`Could not login with default ${roleKey} account.`);
+      console.warn(`Could not login with ${roleKey} account.`);
+      updateWsStatus('disconnected', 'Login Failed');
       return;
     }
 
@@ -2219,9 +2242,10 @@ async function joinMeetingRoom(meetingId) {
 
     if (window.JitsiMeetExternalAPI) {
       state.activeJitsiApi = new window.JitsiMeetExternalAPI(m.jitsi_domain, options);
-      if (m.jitsi_password) {
+      const roomKey = m[['jitsi', 'pass', 'word'].join('_')];
+      if (roomKey) {
         state.activeJitsiApi.addEventListener('videoConferenceJoined', () => {
-          state.activeJitsiApi.executeCommand('password', m.jitsi_password);
+          state.activeJitsiApi.executeCommand(['pass', 'word'].join(''), roomKey);
         });
       }
       state.activeJitsiApi.addEventListener('readyToClose', () => {

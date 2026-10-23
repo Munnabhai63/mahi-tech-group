@@ -11,6 +11,66 @@ import { createNotification } from '../services/notificationService.js';
 
 const router = express.Router();
 
+// Direct Idea Submission: POST /api/ideas
+router.post('/', authenticate, requirePermission('idea.submit'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { title, description, attachment_url } = req.body || {};
+
+  if (!title || typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ error: 'Idea title is required' });
+  }
+
+  if (!description || typeof description !== 'string' || !description.trim()) {
+    return res.status(400).json({ error: 'Idea description is required' });
+  }
+
+  const ideaId = crypto.randomUUID();
+
+  const windowRow = queryOne("SELECT value FROM system_config WHERE key = 'voting_window_hours'");
+  const windowHours = windowRow ? parseInt(windowRow.value, 10) : 48;
+  const deadline = new Date(Date.now() + windowHours * 60 * 60 * 1000).toISOString();
+
+  execute(`
+    INSERT INTO ideas (
+      id, owner_id, title, description, attachment_url,
+      status, submitted_at, voting_deadline, green_percentage, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, 'PENDING_REVIEW', CURRENT_TIMESTAMP, ?, 0.0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  `, [
+    ideaId,
+    req.user.id,
+    title.trim(),
+    description.trim(),
+    attachment_url || null,
+    deadline
+  ]);
+
+  // Server-Side Quota Check & Deduction
+  const quotaResult = consumeQuota(req.user.id, ideaId);
+  if (!quotaResult.success) {
+    execute('DELETE FROM ideas WHERE id = ?', [ideaId]);
+    return res.status(quotaResult.status || 403).json({ error: quotaResult.error });
+  }
+
+  const meetingId = crypto.randomUUID();
+  execute(`
+    INSERT INTO review_meetings (id, idea_id, scheduled_at, voting_window_end, status, created_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP, ?, 'SCHEDULED', CURRENT_TIMESTAMP)
+  `, [meetingId, ideaId, deadline]);
+
+  logAccess({
+    userId: req.user.id,
+    action: 'idea_submitted',
+    resource: `/api/ideas/${ideaId}`,
+    ipAddress
+  });
+
+  const createdIdea = queryOne('SELECT * FROM ideas WHERE id = ?', [ideaId]);
+  return res.status(201).json({
+    message: 'Idea submitted successfully',
+    idea: createdIdea
+  });
+});
+
 // 1. POST /api/ideas/draft (All authenticated roles with idea.submit permission)
 router.post('/draft', authenticate, requirePermission('idea.submit'), (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;

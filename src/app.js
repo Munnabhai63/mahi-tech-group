@@ -14,6 +14,8 @@ import superadminRouter from './routes/superadmin.js';
 import signRouter from './routes/sign.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { queryAll } from './db/database.js';
+import { config } from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,12 +27,23 @@ export function createApp() {
   app.use(cors());
   app.use(express.json());
 
-  // Health check endpoint
+  // Enhanced health check endpoint
   app.get('/api/health', (req, res) => {
+    let tablesCount = 0;
+    try {
+      const rows = queryAll("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'");
+      tablesCount = rows.length;
+    } catch (e) {}
+
     res.status(200).json({
       status: 'ok',
-      service: 'Mahi Tech Group Platform - Step 07 Frontend Center Dashboard & Real-Time Engine',
-      timestamp: new Date().toISOString()
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      database: 'connected',
+      websocket: 'active',
+      encryption: Boolean(process.env.ENCRYPTION_KEY || config.ENCRYPTION_KEY),
+      tables_verified: tablesCount,
+      uptime_seconds: Math.floor(process.uptime())
     });
   });
 

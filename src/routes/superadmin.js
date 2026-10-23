@@ -15,7 +15,8 @@ import {
   killIdea,
   restoreIdea,
   getQuotaConfig,
-  updateQuotaConfig
+  updateQuotaConfig,
+  getSystemIntegrity
 } from '../services/superadminService.js';
 import {
   createTicket,
@@ -89,6 +90,23 @@ router.get('/overview', (req, res) => {
   } catch (err) {
     console.error('Error fetching superadmin overview:', err);
     return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+/**
+ * Super Admin System Integrity Check
+ * GET /api/superadmin/system/integrity
+ * Returns trigger status, schema tables, config keys, and metrics.
+ * Logs action='superadmin_integrity_check' in access_log.
+ */
+router.get('/system/integrity', (req, res) => {
+  try {
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const integrity = getSystemIntegrity(req.user.id, ipAddress);
+    return res.status(200).json(integrity);
+  } catch (err) {
+    console.error('Error fetching system integrity:', err);
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -412,7 +430,7 @@ router.post('/ideas/:id/kill', (req, res) => {
 router.post('/ideas/:id/restore', (req, res) => {
   try {
     const ideaId = req.params.id;
-    const { reason } = req.body || {};
+    const reason = (req.body?.reason || req.body?.notes || '').trim();
     const result = restoreIdea(ideaId, reason, req.user.id);
     return res.status(200).json(result);
   } catch (err) {
