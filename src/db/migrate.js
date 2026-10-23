@@ -58,6 +58,51 @@ export function runMigration() {
     console.log('>>> Successfully updated users table CHECK constraint.');
   }
 
+  // 1b. Check if users table includes 'pending' status and 'desired_role'
+  const currentUsersSql = queryOne("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")?.sql || '';
+  if (currentUsersSql && (!currentUsersSql.includes("'pending'") || !currentUsersSql.includes('desired_role'))) {
+    console.log('>>> Migrating users table to add pending/rejected status and desired_role...');
+    execRaw(`
+      PRAGMA foreign_keys=OFF;
+      BEGIN TRANSACTION;
+      CREATE TABLE users_dg_tmp (
+        id                TEXT PRIMARY KEY,
+        name              VARCHAR(100) NOT NULL,
+        email             VARCHAR(150) UNIQUE NOT NULL,
+        password_hash     VARCHAR(255) NOT NULL,
+        phone_number      VARCHAR(30),
+        role              VARCHAR(20) CHECK (role IN ('researcher','developer','producer','admin','designer')),
+        sub_role          VARCHAR(20) CHECK (sub_role IN ('frontend','backend',NULL)),
+        desired_role      VARCHAR(20) CHECK (desired_role IN ('researcher','developer','producer','designer')),
+        desired_sub_role  VARCHAR(20) CHECK (desired_sub_role IN ('frontend','backend',NULL)),
+        status            VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('active','inactive','suspended','pending','rejected')),
+        rating_avg        DECIMAL(3,2) DEFAULT 0.0,
+        idea_quota_used   INT DEFAULT 0,
+        quota_reset_date  DATE,
+        wallet_balance    DECIMAL(12,2) DEFAULT 0.0,
+        wallet_frozen     BOOLEAN DEFAULT 0,
+        profile_photo_url TEXT,
+        created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deactivated_at    TIMESTAMP NULL,
+        approved_at       TIMESTAMP NULL,
+        approved_by       TEXT REFERENCES users(id),
+        rejected_at       TIMESTAMP NULL,
+        rejected_by       TEXT REFERENCES users(id)
+      );
+      INSERT INTO users_dg_tmp (id, name, email, password_hash, role, sub_role, status, rating_avg, idea_quota_used, quota_reset_date, wallet_balance, wallet_frozen, profile_photo_url, created_at, updated_at, deactivated_at)
+        SELECT id, name, email, password_hash, role, sub_role, status, rating_avg, idea_quota_used, quota_reset_date, wallet_balance, wallet_frozen, profile_photo_url, created_at, updated_at, deactivated_at FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_dg_tmp RENAME TO users;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+      CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+      COMMIT;
+      PRAGMA foreign_keys=ON;
+    `);
+    console.log('>>> Successfully updated users table schema for pending approval gate.');
+  }
+
   // 2. Check if project_members table role_in_project CHECK constraint includes 'designer'
   const membersSql = queryOne("SELECT sql FROM sqlite_master WHERE type='table' AND name='project_members'")?.sql || '';
   if (membersSql && !membersSql.includes("'designer'")) {

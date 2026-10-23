@@ -7,9 +7,12 @@ CREATE TABLE IF NOT EXISTS users (
     name              VARCHAR(100) NOT NULL,
     email             VARCHAR(150) UNIQUE NOT NULL,
     password_hash     VARCHAR(255) NOT NULL,
-    role              VARCHAR(20) NOT NULL CHECK (role IN ('researcher','developer','producer','admin','designer')),
+    phone_number      VARCHAR(30),
+    role              VARCHAR(20) CHECK (role IN ('researcher','developer','producer','admin','designer')),
     sub_role          VARCHAR(20) CHECK (sub_role IN ('frontend','backend',NULL)),
-    status            VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','suspended')),
+    desired_role      VARCHAR(20) CHECK (desired_role IN ('researcher','developer','producer','designer')),
+    desired_sub_role  VARCHAR(20) CHECK (desired_sub_role IN ('frontend','backend',NULL)),
+    status            VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('active','inactive','suspended','pending','rejected')),
     rating_avg        DECIMAL(3,2) DEFAULT 0.0,
     idea_quota_used   INT DEFAULT 0,
     quota_reset_date  DATE,
@@ -18,7 +21,11 @@ CREATE TABLE IF NOT EXISTS users (
     profile_photo_url TEXT,
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deactivated_at    TIMESTAMP NULL
+    deactivated_at    TIMESTAMP NULL,
+    approved_at       TIMESTAMP NULL,
+    approved_by       TEXT REFERENCES users(id),
+    rejected_at       TIMESTAMP NULL,
+    rejected_by       TEXT REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS sessions (

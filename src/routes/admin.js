@@ -160,6 +160,130 @@ router.get('/members', authenticate, requirePermission('member.add'), (req, res)
   return res.status(200).json({ members });
 });
 
+// 7b. GET /api/admin/applications/pending (Admin only - RBAC: member.add)
+router.get('/applications/pending', authenticate, requirePermission('member.add'), (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can view pending applications' });
+  }
+
+  const applications = queryAll(`
+    SELECT id, name, email, phone_number, desired_role, desired_sub_role,
+           status, created_at, updated_at
+    FROM users
+    WHERE status = 'pending'
+    ORDER BY created_at ASC
+  `);
+
+  return res.status(200).json({
+    count: applications.length,
+    applications
+  });
+});
+
+// 7c. PATCH /api/admin/applications/:id/decide (Admin only - RBAC: member.add)
+router.patch('/applications/:id/decide', authenticate, requirePermission('member.add'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+  const { decision, finalRole, finalSubRole } = req.body || {};
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can decide on applications' });
+  }
+
+  if (!decision || !['approve', 'reject'].includes(decision)) {
+    return res.status(400).json({ error: "decision must be either 'approve' or 'reject'" });
+  }
+
+  const application = queryOne('SELECT * FROM users WHERE id = ?', [id]);
+  if (!application) {
+    return res.status(404).json({ error: 'Application not found' });
+  }
+
+  if (application.status !== 'pending') {
+    return res.status(400).json({
+      error: `Cannot decide on application with status '${application.status}'. Only 'pending' applications can be reviewed.`
+    });
+  }
+
+  const validRoles = ['researcher', 'developer', 'producer', 'admin', 'designer'];
+
+  if (decision === 'approve') {
+    const assignedRole = finalRole || application.desired_role;
+    if (!assignedRole || !validRoles.includes(assignedRole)) {
+      return res.status(400).json({
+        error: `Invalid or missing finalRole. Must be one of: ${validRoles.join(', ')}`
+      });
+    }
+
+    let assignedSubRole = null;
+    if (assignedRole === 'developer') {
+      assignedSubRole = finalSubRole !== undefined ? finalSubRole : application.desired_sub_role;
+      if (assignedSubRole && !['frontend', 'backend'].includes(assignedSubRole)) {
+        return res.status(400).json({ error: "Invalid finalSubRole. Must be 'frontend', 'backend', or null" });
+      }
+    }
+
+    execute(`
+      UPDATE users SET
+        status = 'active',
+        role = ?,
+        sub_role = ?,
+        approved_at = CURRENT_TIMESTAMP,
+        approved_by = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [assignedRole, assignedSubRole, req.user.id, id]);
+
+    logAccess({
+      userId: req.user.id,
+      action: 'application_approved',
+      resource: `/api/admin/applications/${id}/decide (desired_role: ${application.desired_role}, assigned_role: ${assignedRole}, approved_by: ${req.user.id})`,
+      ipAddress
+    });
+
+    const updated = queryOne(`
+      SELECT id, name, email, phone_number, desired_role, desired_sub_role,
+             role, sub_role, status, approved_at, approved_by, created_at, updated_at
+      FROM users WHERE id = ?
+    `, [id]);
+
+    return res.status(200).json({
+      message: 'Application approved successfully',
+      user: updated
+    });
+  }
+
+  if (decision === 'reject') {
+    execute(`
+      UPDATE users SET
+        status = 'rejected',
+        rejected_at = CURRENT_TIMESTAMP,
+        rejected_by = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [req.user.id, id]);
+
+    logAccess({
+      userId: req.user.id,
+      action: 'application_rejected',
+      resource: `/api/admin/applications/${id}/decide (desired_role: ${application.desired_role}, rejected_by: ${req.user.id})`,
+      ipAddress
+    });
+
+    const updated = queryOne(`
+      SELECT id, name, email, phone_number, desired_role, desired_sub_role,
+             role, sub_role, status, rejected_at, rejected_by, created_at, updated_at
+      FROM users WHERE id = ?
+    `, [id]);
+
+    return res.status(200).json({
+      message: 'Application rejected',
+      user: updated
+    });
+  }
+});
+
+
 // 8. PATCH /api/admin/config/quota (Admin only)
 router.patch('/config/quota', authenticate, (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;

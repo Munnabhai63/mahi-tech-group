@@ -310,6 +310,12 @@ async function runFollowUpTests() {
     await req('PATCH', `/api/tasks/${prepTask.id}/status`, sessions.admin.token, { status: 'DONE' });
   }
 
+  // Designer completes UI/UX Design task
+  const designTask = bannerProjDetails.tasks.find(t => t.task_type === 'design' || t.task_name === 'UI/UX Design');
+  if (designTask) {
+    await req('PATCH', `/api/tasks/${designTask.id}/status`, sessions.admin.token, { status: 'DONE' });
+  }
+
   // Developer completes initial frontend scaffolding and backend architecture
   const initialDevTasks = bannerProjDetails.tasks.filter(t => t.task_name === 'Frontend UI Scaffolding' || t.task_name === 'Backend Architecture Setup');
   for (const t of initialDevTasks) {
