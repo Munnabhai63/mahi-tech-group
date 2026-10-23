@@ -22,6 +22,13 @@ router.patch('/:id/status', authenticate, (req, res) => {
 
   const isAdmin = req.user.role === 'admin';
 
+  if (!isAdmin && req.user.role === 'designer') {
+    const task = queryOne('SELECT task_type FROM project_tasks WHERE id = ?', [id]);
+    if (task && task.task_type !== 'design') {
+      return res.status(403).json({ error: 'Forbidden: Designer can only act on design tasks' });
+    }
+  }
+
   const result = updateTaskStatus({
     taskId: id,
     userId: req.user.id,
@@ -44,7 +51,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
 
 /**
  * POST /api/tasks/:id/upload (Assigned user or Admin)
- * Attaches a research PDF or QA test report, registers ORG asset, and completes task
+ * Attaches a research PDF, design asset, or QA test report, registers ORG asset, and completes task
  */
 router.post('/:id/upload', authenticate, (req, res) => {
   const { id } = req.params;
@@ -59,6 +66,10 @@ router.post('/:id/upload', authenticate, (req, res) => {
   const isAdmin = req.user.role === 'admin';
   if (!isAdmin && task.assigned_to !== req.user.id) {
     return res.status(403).json({ error: 'Forbidden: You can only upload files to your assigned tasks' });
+  }
+
+  if (!isAdmin && req.user.role === 'designer' && task.task_type !== 'design') {
+    return res.status(403).json({ error: 'Forbidden: Designer can only upload files to design tasks' });
   }
 
   let asset = null;

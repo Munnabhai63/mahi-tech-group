@@ -49,10 +49,10 @@
       <div class="role-selector-wrap">
         <label for="roleSelect" class="sr-only">Switch User Role</label>
         <select id="roleSelect" class="role-select" title="Switch active test identity">
-          <option value="admin">System Admin (All Panels)</option>
           <option value="researcher">Researcher (Top-Left)</option>
-          <option value="developer">Developer (Top-Right)</option>
-          <option value="producer">Producer/Tester (Bottom-Right)</option>
+          <option value="designer" selected>UI/UX Designer (Top-Right)</option>
+          <option value="producer">Producer / Tester (Bottom-Left)</option>
+          <option value="developer">Developer (Bottom-Right)</option>
         </select>
       </div>
 
@@ -75,10 +75,10 @@
 
       <!-- User Profile Snapshot -->
       <div class="user-profile-badge">
-        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-avatar" id="userAvatar">D</div>
         <div class="user-info">
-          <span class="user-name" id="userNameDisplay">System Admin</span>
-          <span class="user-role-badge" id="userRoleDisplay">ADMIN</span>
+          <span class="user-name" id="userNameDisplay">Diya Designer</span>
+          <span class="user-role-badge" id="userRoleDisplay">DESIGNER</span>
         </div>
       </div>
     </div>
@@ -162,64 +162,59 @@
         </div>
       </section>
 
-      <!-- 2.2 DEVELOPER CORNER PANEL (Top-Right) -->
-      <section class="corner-panel developer-corner" id="developerCornerPanel" data-role="developer">
+      <!-- 2.2 UI/UX DESIGNER CORNER PANEL (Top-Right) -->
+      <section class="corner-panel designer-corner" id="designerCornerPanel" data-role="designer">
         <div class="corner-panel-header">
-          <div class="panel-tag emerald">
-            <span class="tag-icon">💻</span>
-            <span class="tag-title">DEVELOPER CORNER</span>
+          <div class="panel-tag rose">
+            <span class="tag-icon">🎨</span>
+            <span class="tag-title">UI/UX DESIGNER CORNER</span>
             <span class="spatial-badge">TOP-RIGHT</span>
           </div>
           <div class="panel-header-actions">
-            <!-- Sub-role filter tabs -->
-            <div class="subrole-toggle-group" id="devSubroleFilter">
-              <button class="subrole-btn active" data-filter="all">All</button>
-              <button class="subrole-btn" data-filter="frontend">Frontend</button>
-              <button class="subrole-btn" data-filter="backend">Backend</button>
-            </div>
+            <span class="badge badge-role rose">DESIGN QUEUE</span>
           </div>
         </div>
 
-        <!-- Cross-Role Real-Time Banner: "Research Ready" alert -->
-        <div class="corner-banners-container" id="developerBannersList"></div>
+        <!-- Role Alert Banners Container -->
+        <div class="corner-banners-container" id="designerBannersList"></div>
 
         <!-- Shared Component: Profile Summary Mini-Card (Section 7) -->
-        <div class="profile-mini-card" id="developerProfileCard">
+        <div class="profile-mini-card" id="designerProfileCard">
           <div class="profile-mini-header">
-            <div class="avatar-sm emerald-glow" id="developerMiniAvatar">D</div>
+            <div class="avatar-sm rose-glow" id="designerMiniAvatar">D</div>
             <div class="profile-mini-meta">
-              <h4 class="profile-mini-name" id="developerMiniName">Developer</h4>
-              <span class="badge badge-role emerald" id="developerSubRoleBadge">DEVELOPER</span>
+              <h4 class="profile-mini-name" id="designerMiniName">UI/UX Designer</h4>
+              <span class="badge badge-role rose">UI/UX DESIGNER</span>
             </div>
           </div>
           <div class="profile-mini-metrics">
             <div class="mini-metric">
-              <span class="metric-val" id="developerIdeasCount">0</span>
+              <span class="metric-val" id="designerIdeasCount">0</span>
               <span class="metric-lbl">Ideas</span>
             </div>
             <div class="mini-metric">
-              <span class="metric-val" id="developerProjectsBuilt">0</span>
+              <span class="metric-val" id="designerProjectsBuilt">0</span>
               <span class="metric-lbl">Projects</span>
             </div>
             <div class="mini-metric">
-              <span class="metric-val" id="developerRatingAvg">5.0 ★</span>
+              <span class="metric-val" id="designerRatingAvg">5.0 ★</span>
               <span class="metric-lbl">Rating</span>
             </div>
             <div class="mini-metric">
-              <span class="metric-val" id="developerWallet">₹0.00</span>
+              <span class="metric-val" id="designerWallet">₹0.00</span>
               <span class="metric-lbl">Revenue</span>
             </div>
           </div>
         </div>
 
-        <!-- Developer Task Queue (TODO / Blocked / In Progress / Done) -->
+        <!-- Design Task Queue (TODO / Blocked / In Progress / Done) -->
         <div class="corner-task-queue">
           <div class="queue-header">
-            <h4 class="queue-title">My Development Tasks</h4>
-            <span class="queue-count" id="devTaskCount">0 active</span>
+            <h4 class="queue-title">My Design Tasks</h4>
+            <span class="queue-count" id="designerTaskCount">0 active</span>
           </div>
-          <div class="task-items-list" id="developerTasksList">
-            <div class="loading-state">Loading assigned development tasks...</div>
+          <div class="task-items-list" id="designerTasksList">
+            <div class="loading-state">Loading assigned design tasks...</div>
           </div>
         </div>
       </section>
@@ -375,81 +370,17 @@
     </div>
 
     <!-- ===================================================================
-         BOTTOM CORNERS ROW (Admin Bottom-Left & Producer Bottom-Right)
+         BOTTOM CORNERS ROW (Producer Bottom-Left & Developer Bottom-Right)
          =================================================================== -->
     <div class="corners-row bottom-corners">
       
-      <!-- 2.3 ADMIN CORNER PANEL (Bottom-Left - Quick Access Version) -->
-      <section class="corner-panel admin-corner" id="adminCornerPanel" data-role="admin">
-        <div class="corner-panel-header">
-          <div class="panel-tag amber">
-            <span class="tag-icon">👑</span>
-            <span class="tag-title">ADMIN CORNER</span>
-            <span class="spatial-badge">BOTTOM-LEFT</span>
-          </div>
-          <div class="panel-header-actions">
-            <span class="badge badge-role amber">QUICK-ACCESS WORKSPACE</span>
-          </div>
-        </div>
-
-        <!-- Role Alert Banners Container -->
-        <div class="corner-banners-container" id="adminBannersList"></div>
-
-        <!-- Shared Component: Profile Summary Mini-Card (Section 7) -->
-        <div class="profile-mini-card" id="adminProfileCard">
-          <div class="profile-mini-header">
-            <div class="avatar-sm amber-glow" id="adminMiniAvatar">A</div>
-            <div class="profile-mini-meta">
-              <h4 class="profile-mini-name" id="adminMiniName">System Admin</h4>
-              <span class="badge badge-role amber">ADMINISTRATOR</span>
-            </div>
-          </div>
-          <div class="profile-mini-metrics">
-            <div class="mini-metric">
-              <span class="metric-val" id="adminIdeasCount">0</span>
-              <span class="metric-lbl">Ideas Submitted</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="adminProjectsBuilt">0</span>
-              <span class="metric-lbl">Projects Built</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="adminRatingAvg">5.0 ★</span>
-              <span class="metric-lbl">Avg Rating</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="adminWallet">₹0.00</span>
-              <span class="metric-lbl">Total Revenue</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quick Actions Toolbar -->
-        <div class="admin-quick-actions">
-          <button class="btn btn-primary btn-xs" id="btnAdminAddMember">+ Add Member</button>
-          <button class="btn btn-rose btn-xs" id="btnAdminKillswitch">Killswitch</button>
-          <button class="btn btn-green btn-xs" id="btnAdminRevenue">+ Revenue</button>
-        </div>
-
-        <!-- Pending Approvals Quick Queue -->
-        <div class="corner-approvals-queue">
-          <div class="queue-header">
-            <h4 class="queue-title">Pending Approvals</h4>
-            <span class="queue-count" id="adminPendingCount">0 pending</span>
-          </div>
-          <div class="approvals-items-list" id="adminApprovalsList">
-            <div class="loading-state">Loading pending approvals...</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 2.4 PRODUCER/TESTER CORNER PANEL (Bottom-Right) -->
+      <!-- 2.3 PRODUCER/TESTER CORNER PANEL (Bottom-Left) -->
       <section class="corner-panel producer-corner" id="producerCornerPanel" data-role="producer">
         <div class="corner-panel-header">
           <div class="panel-tag purple">
             <span class="tag-icon">🧪</span>
             <span class="tag-title">PRODUCER / QA CORNER</span>
-            <span class="spatial-badge">BOTTOM-RIGHT</span>
+            <span class="spatial-badge">BOTTOM-LEFT</span>
           </div>
           <div class="panel-header-actions">
             <span class="badge badge-role purple">TESTING QUEUE</span>
@@ -496,6 +427,68 @@
           </div>
           <div class="task-items-list" id="producerTasksList">
             <div class="loading-state">Loading assigned testing tasks...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2.4 DEVELOPER CORNER PANEL (Bottom-Right) -->
+      <section class="corner-panel developer-corner" id="developerCornerPanel" data-role="developer">
+        <div class="corner-panel-header">
+          <div class="panel-tag emerald">
+            <span class="tag-icon">💻</span>
+            <span class="tag-title">DEVELOPER CORNER</span>
+            <span class="spatial-badge">BOTTOM-RIGHT</span>
+          </div>
+          <div class="panel-header-actions">
+            <!-- Sub-role filter tabs -->
+            <div class="subrole-toggle-group" id="devSubroleFilter">
+              <button class="subrole-btn active" data-filter="all">All</button>
+              <button class="subrole-btn" data-filter="frontend">Frontend</button>
+              <button class="subrole-btn" data-filter="backend">Backend</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cross-Role Real-Time Banner: "Research Ready" alert -->
+        <div class="corner-banners-container" id="developerBannersList"></div>
+
+        <!-- Shared Component: Profile Summary Mini-Card (Section 7) -->
+        <div class="profile-mini-card" id="developerProfileCard">
+          <div class="profile-mini-header">
+            <div class="avatar-sm emerald-glow" id="developerMiniAvatar">D</div>
+            <div class="profile-mini-meta">
+              <h4 class="profile-mini-name" id="developerMiniName">Developer</h4>
+              <span class="badge badge-role emerald" id="developerSubRoleBadge">DEVELOPER</span>
+            </div>
+          </div>
+          <div class="profile-mini-metrics">
+            <div class="mini-metric">
+              <span class="metric-val" id="developerIdeasCount">0</span>
+              <span class="metric-lbl">Ideas Submitted</span>
+            </div>
+            <div class="mini-metric">
+              <span class="metric-val" id="developerProjectsBuilt">0</span>
+              <span class="metric-lbl">Projects Built</span>
+            </div>
+            <div class="mini-metric">
+              <span class="metric-val" id="developerRatingAvg">5.0 ★</span>
+              <span class="metric-lbl">Avg Rating</span>
+            </div>
+            <div class="mini-metric">
+              <span class="metric-val" id="developerWallet">₹0.00</span>
+              <span class="metric-lbl">Total Revenue</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Developer Task Queue (TODO / Blocked / In Progress / Done) -->
+        <div class="corner-task-queue">
+          <div class="queue-header">
+            <h4 class="queue-title">My Development Tasks</h4>
+            <span class="queue-count" id="devTaskCount">0 active</span>
+          </div>
+          <div class="task-items-list" id="developerTasksList">
+            <div class="loading-state">Loading assigned development tasks...</div>
           </div>
         </div>
       </section>
@@ -583,7 +576,7 @@
         <button class="modal-close-btn" id="closeTestReportModalBtn">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="text-muted text-sm mb-3">Passing QA completes testing and advances project to Admin Final Review.</p>
+        <p class="text-muted text-sm mb-3">Passing QA completes testing and advances project to Final Launch Review stage.</p>
         <form id="testReportForm">
           <input type="hidden" id="qaTaskId">
           <div class="form-group mb-3">
@@ -616,105 +609,32 @@
     </div>
   </div>
 
-  <!-- 4. Admin Add Member Modal -->
-  <div class="modal-backdrop" id="adminAddMemberModal" style="display: none;">
+  <!-- 4. Upload Design Deliverables Modal (UI/UX Designer Corner) -->
+  <div class="modal-backdrop" id="uploadDesignModal" style="display: none;">
     <div class="modal-dialog modal-sm">
       <div class="modal-header">
-        <h3 class="modal-title">Add Workspace Member</h3>
-        <button class="modal-close-btn" id="closeAddMemberModalBtn">&times;</button>
+        <h3 class="modal-title">Upload UI/UX Design Deliverables</h3>
+        <button class="modal-close-btn" id="closeUploadDesignModalBtn">&times;</button>
       </div>
       <div class="modal-body">
-        <form id="adminAddMemberForm">
+        <p class="text-muted text-sm mb-3">Upload Figma spec, mockups, or UI asset pack to complete design track.</p>
+        <form id="uploadDesignForm">
+          <input type="hidden" id="designTaskId">
           <div class="form-group mb-3">
-            <label for="newMemberName">Full Name *</label>
-            <input type="text" id="newMemberName" class="form-input" placeholder="Jane Doe" required>
+            <label>Task</label>
+            <div class="form-read-only" id="designTaskNameDisplay">Task Name</div>
           </div>
           <div class="form-group mb-3">
-            <label for="newMemberEmail">Email Address *</label>
-            <input type="email" id="newMemberEmail" class="form-input" placeholder="jane@mahitechgroup.com" required>
-          </div>
-          <div class="form-group mb-3">
-            <label for="newMemberRole">Primary Role *</label>
-            <select id="newMemberRole" class="form-input" required>
-              <option value="developer">Developer</option>
-              <option value="researcher">Researcher</option>
-              <option value="producer">Producer</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-          <div class="form-group mb-3">
-            <label for="newMemberSubRole">Developer Sub-Role (Optional)</label>
-            <select id="newMemberSubRole" class="form-input">
-              <option value="">None / Not Applicable</option>
-              <option value="frontend">Frontend Specialist</option>
-              <option value="backend">Backend Specialist</option>
-            </select>
+            <label for="designFileUrl">Figma Mockup / Design Spec URL *</label>
+            <input type="url" id="designFileUrl" class="form-input" placeholder="https://www.figma.com/file/..." required>
           </div>
           <div class="form-group mb-4">
-            <label for="newMemberPassword">Initial Temporary Password</label>
-            <input type="password" id="newMemberPassword" class="form-input" value="WelcomeMTG@2026">
+            <label for="designNotes">Design Notes & System Specifications</label>
+            <textarea id="designNotes" class="form-input" rows="3" placeholder="Design tokens, component library, typography, and wireframe highlights..."></textarea>
           </div>
           <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" id="btnCancelAddMember">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="btnConfirmAddMember">Create Member</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- 5. Admin Killswitch Offboard Modal -->
-  <div class="modal-backdrop" id="adminOffboardModal" style="display: none;">
-    <div class="modal-dialog modal-sm">
-      <div class="modal-header">
-        <h3 class="modal-title text-rose">⚠️ Member Offboarding Killswitch</h3>
-        <button class="modal-close-btn" id="closeOffboardModalBtn">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p class="text-sm text-secondary mb-3">Executes 7-step atomic offboarding: revokes sessions, freezes wallet, reassigns tasks, locks repo access, and preserves historical IP attribution.</p>
-        <form id="adminOffboardForm">
-          <div class="form-group mb-3">
-            <label for="offboardMemberSelect">Select Member *</label>
-            <select id="offboardMemberSelect" class="form-input" required></select>
-          </div>
-          <div class="form-group mb-4">
-            <label for="offboardReason">Documented Reason *</label>
-            <textarea id="offboardReason" class="form-input" rows="2" placeholder="Contract expiration / IP governance policy compliance..." required></textarea>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" id="btnCancelOffboard">Cancel</button>
-            <button type="submit" class="btn btn-rose" id="btnConfirmOffboard">Execute Killswitch</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- 6. Admin Record Revenue Modal -->
-  <div class="modal-backdrop" id="adminRevenueModal" style="display: none;">
-    <div class="modal-dialog modal-sm">
-      <div class="modal-header">
-        <h3 class="modal-title">Record Project Revenue</h3>
-        <button class="modal-close-btn" id="closeRevenueModalBtn">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p class="text-sm text-secondary mb-3">Splits gross revenue across active contributors per 50% time-boxed rule and immutable append-only ledger.</p>
-        <form id="adminRevenueForm">
-          <div class="form-group mb-3">
-            <label for="revProjectSelect">Select Live Project *</label>
-            <select id="revProjectSelect" class="form-input" required></select>
-          </div>
-          <div class="form-group mb-3">
-            <label for="revAmount">Gross Revenue Amount (₹) *</label>
-            <input type="number" id="revAmount" class="form-input" min="1" step="0.01" placeholder="10000.00" required>
-          </div>
-          <div class="form-group mb-4">
-            <label for="revSource">Revenue Source *</label>
-            <input type="text" id="revSource" class="form-input" placeholder="Enterprise License / SaaS Subscription" required>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" id="btnCancelRevenue">Cancel</button>
-            <button type="submit" class="btn btn-green" id="btnConfirmRevenue">Distribute & Record</button>
+            <button type="button" class="btn btn-secondary" id="btnCancelUploadDesign">Cancel</button>
+            <button type="submit" class="btn btn-rose" id="btnConfirmUploadDesign">Upload & Complete Design (Mark Done)</button>
           </div>
         </form>
       </div>

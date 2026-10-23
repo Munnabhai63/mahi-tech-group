@@ -351,6 +351,11 @@ export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, i
     return { success: false, status: 403, error: 'Forbidden: You can only update tasks assigned to you' };
   }
 
+  const user = queryOne('SELECT role FROM users WHERE id = ?', [userId]);
+  if (!isAdmin && user && user.role === 'designer' && task.task_type !== 'design') {
+    return { success: false, status: 403, error: 'Forbidden: Designer can only act on design tasks' };
+  }
+
   const allTasks = queryAll('SELECT id, task_name, status, assigned_to FROM project_tasks WHERE project_id = ?', [task.project_id]);
 
   // Structural prevention of sequential fallback: BLOCKED tasks cannot be started until ALL prerequisites are DONE

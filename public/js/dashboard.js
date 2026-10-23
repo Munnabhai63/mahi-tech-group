@@ -1,6 +1,6 @@
 /**
  * MAHI TECH GROUP — 4 CORNER PANELS & CENTER DASHBOARD ENGINE
- * Step 08: Researcher (TL), Developer (TR), Admin (BL), Producer (BR)
+ * Step 08 Revision: Researcher (TL), UI/UX Designer (TR), Producer/Tester (BL), Developer (BR)
  * Flanking the Shared Real-Time Consensus & Revenue Center Dashboard.
  */
 
@@ -22,16 +22,16 @@ const state = {
 
 // Seed credentials for authenticating real users per Step 01 RBAC
 const ROLE_ACCOUNTS = {
-  admin: { email: 'admin@mahitechgroup.com', password: 'AdminPassword@2026', role: 'admin' },
   researcher: { email: 'researcher@mahitechgroup.com', password: 'ResearcherPass123!', role: 'researcher' },
-  developer: { email: 'developer@mahitechgroup.com', password: 'DeveloperPass123!', role: 'developer' },
-  producer: { email: 'producer@mahitechgroup.com', password: 'ProducerPass123!', role: 'producer' }
+  designer: { email: 'designer@mahitechgroup.com', password: 'DesignerPass123!', role: 'designer' },
+  producer: { email: 'producer@mahitechgroup.com', password: 'ProducerPass123!', role: 'producer' },
+  developer: { email: 'developer@mahitechgroup.com', password: 'DeveloperPass123!', role: 'developer' }
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
-  // Start with Admin session by default
-  await switchAccount('admin');
+  // Start with UI/UX Designer session by default
+  await switchAccount('designer');
 });
 
 /**
@@ -197,6 +197,7 @@ function handleWebSocketMessage(msg) {
       fetchSummary();
       fetchVotesFeed();
       fetchKanban();
+      fetchDesignerTasks();
       fetchDeveloperTasks();
       fetchResearcherIdeas();
       addTickerItem(`🎉 Idea Approved: "${data.title}" (${data.greenPercentage}% Green) — Parallel fanout initiated`);
@@ -215,7 +216,6 @@ function handleWebSocketMessage(msg) {
       fetchKanban();
       fetchSummary();
       fetchRoleBanners();
-      fetchAdminApprovals();
       addTickerItem(`Project transitioned to stage: ${data.newStage}`);
       break;
 
@@ -225,7 +225,6 @@ function handleWebSocketMessage(msg) {
 
     case 'revenue.credited':
       fetchSummary();
-      fetchAdminStats();
       addTickerItem(`💰 Revenue Credited: ₹${data.amount} on "${data.projectTitle}"`);
       break;
 
@@ -310,9 +309,7 @@ async function refreshAllData() {
     fetchNotifications(),
     fetchMiniProfiles(),
     fetchRoleBanners(),
-    refreshCornerTasks(),
-    fetchAdminApprovals(),
-    fetchAdminStats()
+    refreshCornerTasks()
   ]);
 }
 
@@ -323,6 +320,7 @@ async function refreshCornerTasks() {
   await Promise.allSettled([
     fetchResearcherTasks(),
     fetchResearcherIdeas(),
+    fetchDesignerTasks(),
     fetchDeveloperTasks(),
     fetchProducerTasks()
   ]);
@@ -520,14 +518,14 @@ async function fetchMiniProfiles() {
 
     if (data.role === 'researcher') {
       populateCard('researcher');
+    } else if (data.role === 'designer') {
+      populateCard('designer');
     } else if (data.role === 'developer') {
       populateCard('developer');
       const subBadge = document.getElementById('developerSubRoleBadge');
       if (subBadge) subBadge.textContent = data.subRole ? data.subRole.toUpperCase() : 'DEVELOPER';
     } else if (data.role === 'producer') {
       populateCard('producer');
-    } else if (data.role === 'admin') {
-      populateCard('admin');
     }
   } catch (err) {
     console.error('Failed to fetch mini profile:', err);
@@ -553,6 +551,15 @@ async function fetchRoleBanners() {
       });
     }
 
+    // Designer Banners ("Research Ready")
+    const desBox = document.getElementById('designerBannersList');
+    if (desBox) {
+      desBox.innerHTML = '';
+      banners.filter(b => b.type === 'RESEARCH_READY').forEach(b => {
+        desBox.appendChild(createBannerEl(b, 'research-ready'));
+      });
+    }
+
     // Developer Banners ("Research Ready")
     const dBox = document.getElementById('developerBannersList');
     if (dBox) {
@@ -568,15 +575,6 @@ async function fetchRoleBanners() {
       pBox.innerHTML = '';
       banners.filter(b => b.type === 'BUILD_READY').forEach(b => {
         pBox.appendChild(createBannerEl(b, 'build-ready'));
-      });
-    }
-
-    // Admin Banners ("Final Review Pending", "Withdrawals Pending")
-    const aBox = document.getElementById('adminBannersList');
-    if (aBox) {
-      aBox.innerHTML = '';
-      banners.filter(b => b.type === 'ADMIN_REVIEW_PENDING' || b.type === 'WITHDRAWALS_PENDING').forEach(b => {
-        aBox.appendChild(createBannerEl(b, 'review-ready'));
       });
     }
   } catch (err) {
@@ -820,87 +818,74 @@ async function fetchProducerTasks() {
 }
 
 /**
- * 9. Admin Approvals Queue & Team Health Stats
+ * 9. UI/UX Designer Panel Data & Tasks
  */
-async function fetchAdminApprovals() {
-  const listEl = document.getElementById('adminApprovalsList');
-  const countEl = document.getElementById('adminPendingCount');
+async function fetchDesignerTasks() {
+  const listEl = document.getElementById('designerTasksList');
+  const countEl = document.getElementById('designerTaskCount');
   if (!listEl) return;
 
-  if (state.user?.role !== 'admin') {
-    listEl.innerHTML = '<div class="empty-state text-muted">Approvals restricted to Admin</div>';
-    return;
-  }
-
   try {
-    const [withdrawalsRes, projectsRes] = await Promise.all([
-      apiFetch('/api/admin/withdrawals/pending'),
-      apiFetch('/api/admin/projects/all')
-    ]);
+    const res = await apiFetch('/api/projects/my-tasks?role=designer');
+    if (!res || !res.tasks) {
+      listEl.innerHTML = '<div class="empty-state">No design tasks assigned</div>';
+      return;
+    }
 
-    const withdrawals = withdrawalsRes?.withdrawals || [];
-    const reviewProjects = (projectsRes?.projects || []).filter(p => p.current_stage === 'ADMIN_REVIEW');
+    if (countEl) countEl.textContent = `${res.tasks.length} active`;
 
-    const totalPending = withdrawals.length + reviewProjects.length;
-    if (countEl) countEl.textContent = `${totalPending} pending`;
-
-    if (totalPending === 0) {
-      listEl.innerHTML = '<div class="empty-state">No pending approvals required</div>';
+    if (res.tasks.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No design tasks in queue</div>';
       return;
     }
 
     listEl.innerHTML = '';
+    res.tasks.forEach(task => {
+      const card = document.createElement('div');
+      card.className = 'corner-task-card';
 
-    // Render Pending Withdrawals
-    withdrawals.forEach(w => {
-      const item = document.createElement('div');
-      item.className = 'approval-item';
-      item.innerHTML = `
-        <div class="approval-meta">
-          <span class="approval-title">Payout: ₹${w.amount}</span>
-          <span class="approval-sub">Requester: ${escapeHtml(w.user_name || 'Member')}</span>
-        </div>
-        <button class="btn btn-green btn-xs" onclick="approveWithdrawalQuick('${w.id}')">Approve</button>
-      `;
-      listEl.appendChild(item);
-    });
+      const isBlocked = task.status === 'BLOCKED';
+      const isTodo = task.status === 'TODO';
+      const isInProgress = task.status === 'IN_PROGRESS';
+      const isDone = task.status === 'DONE';
 
-    // Render Projects Awaiting Final Review
-    reviewProjects.forEach(p => {
-      const item = document.createElement('div');
-      item.className = 'approval-item';
-      item.innerHTML = `
-        <div class="approval-meta">
-          <span class="approval-title">Launch Review: ${escapeHtml(p.title)}</span>
-          <span class="approval-sub">QA Verified • Ready for LIVE</span>
+      card.innerHTML = `
+        <div class="task-card-header">
+          <span class="task-project-name">${escapeHtml(task.project_title || 'Project')}</span>
+          <span class="task-status-pill ${task.status}">${task.status}</span>
         </div>
-        <button class="btn btn-primary btn-xs" onclick="approveProjectFinal('${p.id}')">Approve Launch</button>
+        <div class="task-card-name">${escapeHtml(task.task_name)}</div>
+        <div class="task-card-meta">
+          <span class="badge badge-role rose">DESIGN</span>
+          ${isBlocked ? `
+            <span class="task-dep-pill" title="Waiting on prerequisite research">
+              🔒 Waiting on: ${escapeHtml(task.depends_on_task_name || 'Deep Research')}
+            </span>
+          ` : ''}
+        </div>
+        <div class="task-card-actions">
+          ${isTodo ? `
+            <button class="btn btn-secondary btn-xs" onclick="updateTaskState('${task.id}', 'IN_PROGRESS')">
+              ▶ Start Design
+            </button>
+            <button class="btn btn-rose btn-xs" onclick="openUploadDesignModal('${task.id}', '${escapeHtml(task.task_name)}')">
+              🎨 Upload Deliverables
+            </button>
+          ` : ''}
+          ${isInProgress ? `
+            <button class="btn btn-rose btn-xs" onclick="openUploadDesignModal('${task.id}', '${escapeHtml(task.task_name)}')">
+              🎨 Upload Deliverables (Mark Done)
+            </button>
+          ` : ''}
+          ${isDone ? `
+            <span class="text-muted text-xs">✓ Design deliverables uploaded & pushed</span>
+          ` : ''}
+        </div>
       `;
-      listEl.appendChild(item);
+      listEl.appendChild(card);
     });
   } catch (err) {
-    console.error('Failed to fetch admin approvals:', err);
-  }
-}
-
-async function fetchAdminStats() {
-  if (state.user?.role !== 'admin') return;
-
-  try {
-    const [membersRes, projectsRes] = await Promise.all([
-      apiFetch('/api/admin/members'),
-      apiFetch('/api/admin/projects/all')
-    ]);
-
-    const activeMembers = (membersRes?.members || []).filter(m => m.status === 'active').length;
-    const liveProjects = (projectsRes?.projects || []).filter(p => p.current_stage === 'LIVE').length;
-
-    const mEl = document.getElementById('adminMembersCount');
-    const pEl = document.getElementById('adminLiveProjects');
-    if (mEl) mEl.textContent = activeMembers;
-    if (pEl) pEl.textContent = liveProjects;
-  } catch (err) {
-    console.error('Failed to fetch admin stats:', err);
+    listEl.innerHTML = '<div class="empty-state text-muted">Design tasks unavailable for this role</div>';
   }
 }
 
@@ -925,40 +910,10 @@ window.updateTaskState = async function(taskId, newStatus) {
   }
 };
 
-/**
- * Quick Admin Approvals
- */
-window.approveWithdrawalQuick = async function(wId) {
-  try {
-    const res = await apiFetch(`/api/admin/withdrawals/${wId}/approve`, { method: 'POST' });
-    if (res && res.message) {
-      addTickerItem(res.message);
-      await fetchAdminApprovals();
-      await fetchSummary();
-    } else if (res && res.error) {
-      alert(`Approval error: ${res.error}`);
-    }
-  } catch (err) {
-    console.error('Error approving payout:', err);
-  }
-};
-
-window.approveProjectFinal = async function(projectId) {
-  try {
-    const res = await apiFetch(`/api/admin/projects/${projectId}/final-review`, {
-      method: 'PATCH',
-      body: JSON.stringify({ approved: true, notes: 'Approved via Admin Quick-Access Corner' })
-    });
-
-    if (res && res.message) {
-      addTickerItem(res.message);
-      await refreshAllData();
-    } else if (res && res.error) {
-      alert(`Review rejection: ${res.error}`);
-    }
-  } catch (err) {
-    console.error('Error approving project final review:', err);
-  }
+window.openUploadDesignModal = function(taskId, taskName) {
+  document.getElementById('designTaskId').value = taskId;
+  document.getElementById('designTaskNameDisplay').textContent = taskName;
+  document.getElementById('uploadDesignModal').style.display = 'flex';
 };
 
 /**
@@ -1281,7 +1236,7 @@ function setupEventListeners() {
       if (res && res.task) {
         document.getElementById('testReportModal').style.display = 'none';
         document.getElementById('testReportForm').reset();
-        addTickerItem(`QA verified for task "${res.task.task_name}" — Advanced to Admin Review`);
+        addTickerItem(`QA verified for task "${res.task.task_name}" — Advanced to Final Launch Review`);
         await refreshAllData();
       } else {
         alert(`QA report submission failed: ${res?.error || 'Error'}`);
@@ -1298,141 +1253,36 @@ function setupEventListeners() {
     document.getElementById('testReportModal').style.display = 'none';
   });
 
-  // Admin Quick Action: Add Member Modal
-  document.getElementById('btnAdminAddMember').addEventListener('click', () => {
-    document.getElementById('adminAddMemberModal').style.display = 'flex';
+  // Handle Design Deliverables Form (UI/UX Designer Corner)
+  document.getElementById('btnCancelUploadDesign').addEventListener('click', () => {
+    document.getElementById('uploadDesignModal').style.display = 'none';
   });
-  document.getElementById('btnCancelAddMember').addEventListener('click', () => {
-    document.getElementById('adminAddMemberModal').style.display = 'none';
-  });
-  document.getElementById('closeAddMemberModalBtn').addEventListener('click', () => {
-    document.getElementById('adminAddMemberModal').style.display = 'none';
+  document.getElementById('closeUploadDesignModalBtn').addEventListener('click', () => {
+    document.getElementById('uploadDesignModal').style.display = 'none';
   });
 
-  document.getElementById('adminAddMemberForm').addEventListener('submit', async (e) => {
+  document.getElementById('uploadDesignForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = document.getElementById('newMemberName').value;
-    const email = document.getElementById('newMemberEmail').value;
-    const role = document.getElementById('newMemberRole').value;
-    const subRole = document.getElementById('newMemberSubRole').value || null;
-    const password = document.getElementById('newMemberPassword').value;
+    const taskId = document.getElementById('designTaskId').value;
+    const fileUrl = document.getElementById('designFileUrl').value;
+    const notes = document.getElementById('designNotes').value;
 
     try {
-      const res = await apiFetch('/api/admin/members/add', {
+      const res = await apiFetch(`/api/tasks/${taskId}/upload`, {
         method: 'POST',
-        body: JSON.stringify({ name, email, role, sub_role: subRole, temporary_password: password })
+        body: JSON.stringify({ file_url: fileUrl, notes, mark_done: true, asset_type: 'design_file' })
       });
 
-      if (res && res.user) {
-        document.getElementById('adminAddMemberModal').style.display = 'none';
-        document.getElementById('adminAddMemberForm').reset();
-        addTickerItem(`New member added: ${name} (${role})`);
-        await fetchAdminStats();
-      } else {
-        alert(`Add member error: ${res?.error || 'Failed'}`);
-      }
-    } catch (err) {
-      console.error('Error adding member:', err);
-    }
-  });
-
-  // Admin Quick Action: Killswitch Offboard Modal
-  document.getElementById('btnAdminKillswitch').addEventListener('click', async () => {
-    const selectEl = document.getElementById('offboardMemberSelect');
-    selectEl.innerHTML = '<option value="">Loading members...</option>';
-    document.getElementById('adminOffboardModal').style.display = 'flex';
-
-    try {
-      const res = await apiFetch('/api/admin/members');
-      if (res && res.members) {
-        selectEl.innerHTML = res.members
-          .filter(m => m.status === 'active' && m.id !== state.user?.id)
-          .map(m => `<option value="${m.id}">${escapeHtml(m.name)} (${m.role} - ${m.email})</option>`)
-          .join('');
-      }
-    } catch (e) {}
-  });
-
-  document.getElementById('btnCancelOffboard').addEventListener('click', () => {
-    document.getElementById('adminOffboardModal').style.display = 'none';
-  });
-  document.getElementById('closeOffboardModalBtn').addEventListener('click', () => {
-    document.getElementById('adminOffboardModal').style.display = 'none';
-  });
-
-  document.getElementById('adminOffboardForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const memberId = document.getElementById('offboardMemberSelect').value;
-    const reason = document.getElementById('offboardReason').value;
-
-    if (!memberId) return alert('Please select a member');
-
-    try {
-      const res = await apiFetch(`/api/admin/members/${memberId}/offboard`, {
-        method: 'POST',
-        body: JSON.stringify({ reason })
-      });
-
-      if (res && res.offboarding) {
-        document.getElementById('adminOffboardModal').style.display = 'none';
-        document.getElementById('adminOffboardForm').reset();
-        addTickerItem(`⚠️ Offboarding killswitch executed for member`);
+      if (res && res.task) {
+        document.getElementById('uploadDesignModal').style.display = 'none';
+        document.getElementById('uploadDesignForm').reset();
+        addTickerItem(`Design deliverables uploaded for task "${res.task.task_name}" — Design complete`);
         await refreshAllData();
       } else {
-        alert(`Offboarding error: ${res?.error || 'Failed'}`);
+        alert(`Design upload failed: ${res?.error || 'Error'}`);
       }
     } catch (err) {
-      console.error('Error offboarding member:', err);
-    }
-  });
-
-  // Admin Quick Action: Record Revenue Modal
-  document.getElementById('btnAdminRevenue').addEventListener('click', async () => {
-    const selectEl = document.getElementById('revProjectSelect');
-    selectEl.innerHTML = '<option value="">Loading live projects...</option>';
-    document.getElementById('adminRevenueModal').style.display = 'flex';
-
-    try {
-      const res = await apiFetch('/api/admin/projects/all');
-      if (res && res.projects) {
-        selectEl.innerHTML = res.projects
-          .map(p => `<option value="${p.id}">${escapeHtml(p.title)} (${p.current_stage})</option>`)
-          .join('');
-      }
-    } catch (e) {}
-  });
-
-  document.getElementById('btnCancelRevenue').addEventListener('click', () => {
-    document.getElementById('adminRevenueModal').style.display = 'none';
-  });
-  document.getElementById('closeRevenueModalBtn').addEventListener('click', () => {
-    document.getElementById('adminRevenueModal').style.display = 'none';
-  });
-
-  document.getElementById('adminRevenueForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const projectId = document.getElementById('revProjectSelect').value;
-    const amount = parseFloat(document.getElementById('revAmount').value);
-    const source = document.getElementById('revSource').value;
-
-    if (!projectId) return alert('Please select a project');
-
-    try {
-      const res = await apiFetch(`/api/admin/projects/${projectId}/revenue`, {
-        method: 'POST',
-        body: JSON.stringify({ amount, source })
-      });
-
-      if (res && res.revenueEvent) {
-        document.getElementById('adminRevenueModal').style.display = 'none';
-        document.getElementById('adminRevenueForm').reset();
-        addTickerItem(`Gross revenue recorded: ₹${amount}`);
-        await refreshAllData();
-      } else {
-        alert(`Revenue recording error: ${res?.error || 'Failed'}`);
-      }
-    } catch (err) {
-      console.error('Error recording revenue:', err);
+      console.error('Error uploading design deliverables:', err);
     }
   });
 

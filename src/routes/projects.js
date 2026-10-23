@@ -51,6 +51,25 @@ router.post('/auto-create', authenticate, (req, res) => {
 router.get('/my-tasks', authenticate, (req, res) => {
   const { role, task_type, status } = req.query;
 
+  // RBAC isolation: Non-designer roles must not be able to access Designer corner's data
+  if (role === 'designer' && req.user.role !== 'designer' && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Access to Designer corner data is restricted to Designer role' });
+  }
+
+  if (task_type === 'design' && req.user.role !== 'designer' && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Access to design tasks is restricted to Designer role' });
+  }
+
+  // Cross-role protection: Users cannot query other roles' corner queues
+  if (role && role !== req.user.role && req.user.role !== 'admin') {
+    return res.status(403).json({ error: `Forbidden: Access to ${role} corner data is restricted to ${role} role` });
+  }
+
+  // Designer role isolation: Designer can only see tasks of task_type = 'design'
+  if (req.user.role === 'designer' && task_type && task_type !== 'design') {
+    return res.status(403).json({ error: 'Forbidden: Designer can only access design tasks' });
+  }
+
   let query = `
     SELECT pt.*, p.title as project_title, p.current_stage as project_stage,
            dep.task_name as depends_on_task_name, dep.status as depends_on_task_status
@@ -61,16 +80,18 @@ router.get('/my-tasks', authenticate, (req, res) => {
   `;
   const params = [req.user.id];
 
+  const effectiveRole = req.user.role === 'admin' ? (role || null) : req.user.role;
+
   if (task_type) {
     query += ' AND pt.task_type = ?';
     params.push(task_type);
-  } else if (role === 'researcher') {
+  } else if (effectiveRole === 'researcher') {
     query += " AND pt.task_type = 'research'";
-  } else if (role === 'developer') {
+  } else if (effectiveRole === 'developer') {
     query += " AND pt.task_type IN ('backend', 'frontend')";
-  } else if (role === 'producer') {
+  } else if (effectiveRole === 'producer') {
     query += " AND pt.task_type = 'testing'";
-  } else if (role === 'designer') {
+  } else if (effectiveRole === 'designer') {
     query += " AND pt.task_type = 'design'";
   }
 

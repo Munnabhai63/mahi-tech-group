@@ -692,6 +692,18 @@ router.get('/corners-overview', authenticate, (req, res) => {
     ORDER BY pt.created_at ASC
   `);
 
+  // 3b. UI/UX Designer Corner data
+  const designTasks = queryAll(`
+    SELECT pt.id, pt.task_name, pt.task_type, pt.status, p.title as project_title,
+           u.name as assigned_to_name, dep.task_name as depends_on_task_name
+    FROM project_tasks pt
+    JOIN projects p ON pt.project_id = p.id
+    LEFT JOIN users u ON pt.assigned_to = u.id
+    LEFT JOIN project_tasks dep ON pt.depends_on_task_id = dep.id
+    WHERE pt.task_type = 'design' AND pt.status IN ('TODO', 'BLOCKED', 'IN_PROGRESS')
+    ORDER BY pt.created_at ASC
+  `);
+
   // 4. Admin Corner data
   const pendingWithdrawals = getPendingWithdrawals();
   const pendingFinalReviews = queryAll(`
@@ -712,6 +724,10 @@ router.get('/corners-overview', authenticate, (req, res) => {
       pendingIdeas,
       activeResearchTasksCount: activeResearchTasks.length,
       activeResearchTasks
+    },
+    designerCorner: {
+      activeDesignTasksCount: designTasks.length,
+      designTasks
     },
     developerCorner: {
       activeDevTasksCount: devTasks.length,
