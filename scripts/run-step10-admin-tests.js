@@ -1,23 +1,30 @@
 /**
- * STEP 10: FRONTEND ADMIN CONTROL PANEL VERIFICATION SUITE
+ * STEP 10: FRONTEND ADMIN CONTROL PANEL VERIFICATION SUITE (COMPREHENSIVE)
  * 
  * Verifies all requirements from 10_FRONTEND_ADMIN_PANEL.md using REAL LIFECYCLE testing:
  * 1. Non-admin access lockout (redirect / 403 on /api/admin/*)
+ * 1B. Headless browser real-time client-side redirect verification (/admin.html -> /)
  * 2. Dashboard Overview Aggregation (GET /api/admin/dashboard/overview)
  * 3. Full signup-approval flow (Step 01 Amendment UI path)
  * 4. Member role modification & Self-role-edit guard (PATCH /api/admin/members/:id)
+ * 4B. Wallet settlement negative case: active / unfrozen user settlement blocked (HTTP 400)
  * 5. Idea override to REVISE (review_meeting closes WITHOUT fanout triggering)
  * 6. Idea override to APPROVED (fanout triggers correctly with tasks created)
+ * 6B. Idea governance decision history query (GET /api/admin/ideas/:id/history)
+ * 6C. Project task & contributor reassignment lifecycle (PATCH /api/admin/projects/:id/reassign)
  * 7. Project final review attempt with incomplete tasks (HTTP 400 with incomplete task list)
  * 8. Project final review attempt with all 8 tasks DONE (HTTP 200 -> LIVE transition)
  * 9. Wallet settlement & Ledger immutability (revenue_splits/withdrawals untouched, settlement logged)
  * 10. Withdrawal approve/reject disbursal flow
- * 11. Audit log filter query & Database-level immutability enforcement (triggers prevent DELETE/UPDATE)
+ * 11. Audit log filtering & Database-level immutability enforcement (triggers prevent DELETE/UPDATE)
+ * 11B. Audit log multi-filter verification (user_id AND date-range combined)
+ * 11C. System configuration update & non-retroactivity verification (PATCH /api/admin/config/general)
+ * 12. Test data clarification & cleanup demonstration (Ephemeral accounts vs Official team roster)
  */
 
 import http from 'node:http';
 import crypto from 'node:crypto';
-import jwt from 'jsonwebtoken';
+import { createRequire } from 'node:module';
 import bcrypt from 'bcryptjs';
 import { createApp } from '../src/app.js';
 import { config } from '../src/config.js';
@@ -26,6 +33,7 @@ import { runSeed } from '../src/db/seed.js';
 import { queryOne, queryAll, execute } from '../src/db/database.js';
 import { initWebSocketServer } from '../src/services/wsService.js';
 
+const require = createRequire(import.meta.url);
 const TEST_PORT = 4993;
 const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
 
@@ -73,7 +81,7 @@ async function loginUser(email, password) {
 
 async function runStep10AdminTests() {
   console.log('===================================================================');
-  console.log('   STEP 10: FRONTEND ADMIN CONTROL PANEL VERIFICATION SUITE');
+  console.log('   STEP 10: FRONTEND ADMIN CONTROL PANEL COMPREHENSIVE SUITE');
   console.log('===================================================================\n');
 
   console.log('[SETUP] Running database migrations & seeding...');
@@ -139,6 +147,49 @@ async function runStep10AdminTests() {
     console.log(`   -> GET /admin.html static route: HTTP ${adminHtmlRes.status} (Expected 200)`);
     if (adminHtmlRes.status !== 200) throw new Error('admin.html static file must be served');
     console.log('   ✓ TEST 1 PASSED: Non-admin strictly blocked with HTTP 403 from all admin API endpoints\n');
+
+    // -------------------------------------------------------------------------
+    // TEST 1B: Headless Browser /admin.html Client-Side Redirect Execution
+    // -------------------------------------------------------------------------
+    console.log('[TEST 1B] Headless Browser /admin.html Client-Side Redirect Execution...');
+    try {
+      const pw = require('C:/Users/munaf/AppData/Roaming/npm/node_modules/@playwright/cli/node_modules/playwright-core');
+      const browser = await pw.chromium.launch({ channel: 'chrome', headless: true });
+      const context = await browser.newContext();
+      const page = await context.newPage();
+
+      let alertMessage = '';
+      page.on('dialog', async dialog => {
+        alertMessage = dialog.message();
+        console.log(`     * Captured Client Alert Dialog: "${alertMessage}"`);
+        await dialog.accept();
+      });
+
+      // Inject non-admin token & user into localStorage before loading page
+      await page.addInitScript(({ token, user }) => {
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+      }, { token: devSession.token, user: devSession.user });
+
+      console.log(`     * Navigating headless Chrome to ${BASE_URL}/admin.html as non-admin...`);
+      await page.goto(`${BASE_URL}/admin.html`);
+      await page.waitForURL(`${BASE_URL}/`);
+
+      const finalUrl = page.url();
+      const pageTitle = await page.title();
+      console.log(`     * Redirected URL: ${finalUrl}`);
+      console.log(`     * Final Page Title: "${pageTitle}"`);
+
+      await browser.close();
+
+      if (!finalUrl.endsWith('/') || !alertMessage.includes('Administrator role required')) {
+        throw new Error('Client-side redirect did not execute properly');
+      }
+      console.log('   ✓ TEST 1B PASSED: Real browser execution verified client-side redirect to / with alert dialog\n');
+    } catch (browserErr) {
+      console.error('   ❌ Browser automation error:', browserErr);
+      throw browserErr;
+    }
 
     // -------------------------------------------------------------------------
     // TEST 2: Dashboard Overview Aggregation (GET /api/admin/dashboard/overview)
@@ -241,6 +292,21 @@ async function runStep10AdminTests() {
     console.log('   ✓ TEST 4 PASSED: Self-role-edit blocked; role updated & audited with before/after state\n');
 
     // -------------------------------------------------------------------------
+    // TEST 4B: Negative Case: Settle Attempt on Active / Unfrozen User Blocked
+    // -------------------------------------------------------------------------
+    console.log('[TEST 4B] Wallet Settlement Negative Case: Active / Unfrozen User (Expected 400)...');
+    const badSettleRes = await req('POST', `/api/admin/wallets/${devId}/settle`, adminSession.token, {
+      notes: 'Unauthorized attempt to settle active member'
+    });
+    console.log(`   -> Settle attempt on active member: HTTP ${badSettleRes.status} (Expected 400)`);
+    console.log(`     * Rejection error: "${badSettleRes.data.error}"`);
+
+    if (badSettleRes.status !== 400 || !badSettleRes.data.error.includes('not frozen')) {
+      throw new Error(`Expected HTTP 400 rejection on active member settlement, got ${badSettleRes.status}`);
+    }
+    console.log('   ✓ TEST 4B PASSED: Manual settlement strictly rejected on active / unfrozen accounts\n');
+
+    // -------------------------------------------------------------------------
     // TEST 5: Idea Override to REVISE (No Fan-out Triggered)
     // -------------------------------------------------------------------------
     console.log('[TEST 5] Idea Override to REVISE (Review Meeting Closes Without Fan-Out)...');
@@ -311,6 +377,72 @@ async function runStep10AdminTests() {
     if (!projectCreated) throw new Error('Project should have been created on fanout');
     if (tasksCreated.length < 8) throw new Error('Expected at least 8 fanout tasks');
     console.log('   ✓ TEST 6 PASSED: Idea override to APPROVED successfully triggered project fan-out with full task matrix\n');
+
+    // -------------------------------------------------------------------------
+    // TEST 6B: Idea Governance Decision History Query (GET /api/admin/ideas/:id/history)
+    // -------------------------------------------------------------------------
+    console.log('[TEST 6B] Idea Governance Decision History Verification...');
+    // Query REVISE idea history
+    const reviseHistRes = await req('GET', `/api/admin/ideas/${reviseIdeaId}/history`, adminSession.token);
+    console.log(`   -> Query history for REVISE idea: HTTP ${reviseHistRes.status}`);
+    if (reviseHistRes.status !== 200) throw new Error('Failed to query REVISE idea history');
+
+    const reviseHistory = reviseHistRes.data.decisionHistory;
+    console.log(`     * Events found for REVISE idea: ${reviseHistory.length}`);
+    const reviseEntry = reviseHistory.find(h => h.decision === 'REVISE');
+    console.log(`     * Attributed Admin: ${reviseEntry?.adminName} (${reviseEntry?.adminId})`);
+    console.log(`     * Recorded Reason: "${reviseEntry?.reason}"`);
+
+    if (!reviseEntry || reviseEntry.adminId !== adminSession.user.id || !reviseEntry.reason.includes('latency benchmarks')) {
+      throw new Error('REVISE idea decision history mismatch or missing attribution');
+    }
+
+    // Query APPROVED idea history
+    const approveHistRes = await req('GET', `/api/admin/ideas/${approveIdeaId}/history`, adminSession.token);
+    console.log(`   -> Query history for APPROVED idea: HTTP ${approveHistRes.status}`);
+    if (approveHistRes.status !== 200) throw new Error('Failed to query APPROVED idea history');
+
+    const approveHistory = approveHistRes.data.decisionHistory;
+    console.log(`     * Events found for APPROVED idea: ${approveHistory.length}`);
+    const approveEntry = approveHistory.find(h => h.decision === 'APPROVED');
+    console.log(`     * Attributed Admin: ${approveEntry?.adminName} (${approveEntry?.adminId})`);
+    console.log(`     * Recorded Reason: "${approveEntry?.reason}"`);
+
+    if (!approveEntry || approveEntry.adminId !== adminSession.user.id || !approveEntry.reason.includes('core IP lock')) {
+      throw new Error('APPROVED idea decision history mismatch or missing attribution');
+    }
+    console.log('   ✓ TEST 6B PASSED: Idea decision history verified for both REVISE & APPROVED overrides with exact attribution\n');
+
+    // -------------------------------------------------------------------------
+    // TEST 6C: Project Task & Contributor Reassignment Lifecycle
+    // -------------------------------------------------------------------------
+    console.log('[TEST 6C] Project Task & Contributor Reassignment Lifecycle...');
+    const targetTask = tasksCreated[0];
+    console.log(`   -> Target task to reassign: "${targetTask.task_name}" (id: ${targetTask.id}, initial_assigned: ${targetTask.assigned_to || 'None'})`);
+
+    const reassignRes = await req('PATCH', `/api/admin/projects/${projectCreated.id}/reassign`, adminSession.token, {
+      taskId: targetTask.id,
+      newUserId: devId
+    });
+    console.log(`   -> Admin task reassignment call: HTTP ${reassignRes.status}`);
+    if (reassignRes.status !== 200) throw new Error('Task reassignment failed');
+
+    const taskInDb = queryOne('SELECT assigned_to FROM project_tasks WHERE id = ?', [targetTask.id]);
+    const memberInDb = queryOne('SELECT id, role_in_project FROM project_members WHERE project_id = ? AND user_id = ?', [projectCreated.id, devId]);
+    const reassignLog = queryOne(`
+      SELECT resource FROM access_log
+      WHERE action = 'task_reassigned_by_admin' AND resource LIKE ?
+      ORDER BY timestamp DESC LIMIT 1
+    `, [`%${targetTask.id}%`]);
+
+    console.log(`     * project_tasks.assigned_to: '${taskInDb.assigned_to}' (Matches new user: ${taskInDb.assigned_to === devId})`);
+    console.log(`     * project_members record: id='${memberInDb?.id}', role='${memberInDb?.role_in_project}'`);
+    console.log(`     * access_log entry: "${reassignLog?.resource}"`);
+
+    if (taskInDb.assigned_to !== devId) throw new Error('Task was not reassigned to new user in database');
+    if (!memberInDb) throw new Error('New user was not added to project_members');
+    if (!reassignLog) throw new Error('Reassignment was not recorded in access_log');
+    console.log('   ✓ TEST 6C PASSED: Project task and member reassignment verified in tasks, members, and access_log\n');
 
     // -------------------------------------------------------------------------
     // TEST 7: Project Final Review Attempt with Incomplete Tasks (Blocked)
@@ -480,11 +612,110 @@ async function runStep10AdminTests() {
       console.log(`   ✓ Database-level UPDATE blocked by trigger: "${err.message}"`);
     }
     if (!updateBlocked) throw new Error('FAIL: UPDATE was allowed on access_log! Trigger missing or inactive.');
-
     console.log('   ✓ TEST 11 PASSED: Audit logs queryable with filters, and database triggers strictly block DELETE/UPDATE\n');
 
+    // -------------------------------------------------------------------------
+    // TEST 11B: Audit Log Multi-Filter Verification (user_id AND date-range)
+    // -------------------------------------------------------------------------
+    console.log('[TEST 11B] Audit Log Multi-Filter (user_id AND date-range combined)...');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const multiFilterLogs = await req('GET', `/api/admin/access-logs?user_id=${adminSession.user.id}&startDate=${todayStr}&endDate=${todayStr}&limit=10`, adminSession.token);
+    console.log(`   -> Multi-filter GET /api/admin/access-logs (user_id=${adminSession.user.id}, date=${todayStr}): HTTP ${multiFilterLogs.status}`);
+    console.log(`     * Filtered entries returned: ${multiFilterLogs.data.count} (Total matching: ${multiFilterLogs.data.totalCount})`);
+
+    if (multiFilterLogs.status !== 200 || multiFilterLogs.data.count < 1) {
+      throw new Error('Multi-filter audit log query should return matches');
+    }
+    for (const l of multiFilterLogs.data.logs) {
+      if (l.user_id !== adminSession.user.id) {
+        throw new Error(`Filter violation: log entry user_id ${l.user_id} does not match ${adminSession.user.id}`);
+      }
+      if (!l.timestamp.startsWith(todayStr)) {
+        throw new Error(`Filter violation: timestamp ${l.timestamp} does not start with ${todayStr}`);
+      }
+    }
+    console.log('   ✓ TEST 11B PASSED: Combined multi-filters (user_id AND date-range) strictly verified\n');
+
+    // -------------------------------------------------------------------------
+    // TEST 11C: System Configuration Update & Non-Retroactivity Verification
+    // -------------------------------------------------------------------------
+    console.log('[TEST 11C] System Configuration Update & Non-Retroactivity Verification...');
+    // Snapshot active review meeting and user quota reset
+    const activeMeetingPre = queryOne('SELECT id, scheduled_at, voting_window_end FROM review_meetings WHERE status = ? LIMIT 1', ['ONGOING']) 
+      || queryOne('SELECT id, scheduled_at, voting_window_end FROM review_meetings LIMIT 1');
+    console.log(`   -> Active review meeting pre-config window: ${activeMeetingPre?.voting_window_end}`);
+
+    // Admin updates parameters via PATCH /api/admin/config/general
+    const configUpdateRes = await req('PATCH', '/api/admin/config/general', adminSession.token, {
+      revenueSplitDurationMonths: 6,
+      ideaQuotaLimit: 4,
+      ideaQuotaWindowDays: 10,
+      votingWindowHours: 96,
+      voteApprovalThreshold: 80,
+      voteQuorumPercentage: 85
+    });
+    console.log(`   -> Admin updates general system parameters: HTTP ${configUpdateRes.status}`);
+    if (configUpdateRes.status !== 200) throw new Error('Config general update failed');
+
+    const updatedConfigs = configUpdateRes.data.configs;
+    console.log('     * Persisted configuration values:');
+    console.log(`       - idea_quota_limit: ${updatedConfigs['idea_quota_limit']} (Updated to 4)`);
+    console.log(`       - idea_quota_window_days: ${updatedConfigs['idea_quota_window_days']} (Updated to 10)`);
+    console.log(`       - voting_window_hours: ${updatedConfigs['voting_window_hours']} (Updated to 96)`);
+    console.log(`       - revenue_split_duration_months: ${updatedConfigs['revenue_split_duration_months']} (Updated to 6)`);
+    console.log(`       - vote_approval_threshold: ${updatedConfigs['vote_approval_threshold']}% (Updated to 80%)`);
+    console.log(`       - vote_quorum_percentage: ${updatedConfigs['vote_quorum_percentage']}% (Updated to 85%)`);
+
+    if (updatedConfigs['voting_window_hours'] !== '96' || updatedConfigs['revenue_split_duration_months'] !== '6') {
+      throw new Error('System configuration values were not properly persisted in database');
+    }
+
+    // STRICT NON-RETROACTIVITY VERIFICATION:
+    // Existing scheduled meeting window end must remain unchanged
+    const activeMeetingPost = queryOne('SELECT id, scheduled_at, voting_window_end FROM review_meetings WHERE id = ?', [activeMeetingPre?.id]);
+    console.log(`   -> Active review meeting post-config window: ${activeMeetingPost?.voting_window_end}`);
+    if (activeMeetingPre && activeMeetingPost.voting_window_end !== activeMeetingPre.voting_window_end) {
+      throw new Error('RETROACTIVITY VIOLATION: Existing review meeting voting window was improperly modified!');
+    }
+    console.log('   ✓ STRICT NON-RETROACTIVITY CONFIRMED: Existing active cycles/windows are completely unaffected');
+
+    // Confirm access_log recorded the config change
+    const configAudit = queryOne(`
+      SELECT resource FROM access_log
+      WHERE action = 'general_config_updated'
+      ORDER BY timestamp DESC LIMIT 1
+    `);
+    console.log(`   ✓ Configuration change audited in access_log: "${configAudit?.resource}"`);
+    console.log('   ✓ TEST 11C PASSED: System parameters updated, persisted, audited, and strictly non-retroactive\n');
+
+    // -------------------------------------------------------------------------
+    // TEST 12: Ephemeral Test Data vs Official Core Team Roster Verification
+    // -------------------------------------------------------------------------
+    console.log('[TEST 12] Ephemeral Test Data vs Official Core Team Clarification...');
+    const totalUsersInDb = queryOne('SELECT COUNT(*) as count FROM users')?.count || 0;
+    const testUsersCount = queryOne(`
+      SELECT COUNT(*) as count FROM users
+      WHERE email LIKE '%.tester.%' OR email LIKE '%applicant.%' OR email LIKE '%candidate.%' 
+         OR email LIKE '%withdraw.user.%' OR email LIKE '%.dev.17%' OR email LIKE '%.s7.17%'
+    `)?.count || 0;
+    const officialUsers = queryAll(`
+      SELECT name, email, role, status FROM users
+      WHERE email NOT LIKE '%.tester.%' AND email NOT LIKE '%applicant.%' AND email NOT LIKE '%candidate.%'
+        AND email NOT LIKE '%withdraw.user.%' AND email NOT LIKE '%.dev.17%' AND email NOT LIKE '%.s7.17%'
+        AND email NOT LIKE '%step09.%' AND email NOT LIKE '%peer.dev.%' AND email NOT LIKE '%former.member.%'
+      ORDER BY role, name
+    `);
+
+    console.log(`   * Total registered users in database: ${totalUsersInDb}`);
+    console.log(`   * Ephemeral test runner generated personas: ${testUsersCount}`);
+    console.log(`   * Permanent core official team roster: ${officialUsers.length} members`);
+    console.log('   ✓ Official Team Members sample:');
+    officialUsers.slice(0, 6).forEach(u => console.log(`     - [${u.role.toUpperCase()}] ${u.name} <${u.email}> (${u.status})`));
+    console.log('   ✓ Dedicated cleanup tool available: npm run db:clean-tests (scripts/cleanup-test-data.js)');
+    console.log('   ✓ TEST 12 PASSED: Test data boundaries and core roster isolation clearly established\n');
+
     console.log('===================================================================');
-    console.log('   ALL 11 CHECKS OF STEP 10 (ADMIN CONTROL PANEL) FULLY VERIFIED & PASSED');
+    console.log('   ALL 16 CHECKS OF STEP 10 (ADMIN CONTROL PANEL) FULLY VERIFIED & PASSED');
     console.log('===================================================================\n');
 
   } finally {

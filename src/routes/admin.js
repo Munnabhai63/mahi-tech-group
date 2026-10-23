@@ -1082,6 +1082,13 @@ router.post('/wallets/:user_id/settle', authenticate, (req, res) => {
     return res.status(404).json({ error: 'User not found' });
   }
 
+  // Negative Check: Settlement is strictly reserved for frozen wallets of offboarded members
+  if (user.status === 'active' || user.wallet_frozen !== 1) {
+    return res.status(400).json({
+      error: 'Cannot settle wallet: Member is active and wallet is not frozen. Settlement is strictly reserved for frozen wallets of offboarded members.'
+    });
+  }
+
   const frozenAmount = Number(user.wallet_balance || 0);
 
   // Integrity Check: revenue_splits and withdrawals are NEVER modified or deleted
@@ -1149,12 +1156,14 @@ router.get('/access-logs', authenticate, (req, res) => {
     params.push(`%${action}%`);
   }
   if (startDate) {
+    const formattedStart = startDate.length === 10 ? `${startDate} 00:00:00` : startDate;
     baseSql += ' AND al.timestamp >= ?';
-    params.push(startDate);
+    params.push(formattedStart);
   }
   if (endDate) {
+    const formattedEnd = endDate.length === 10 ? `${endDate} 23:59:59` : endDate;
     baseSql += ' AND al.timestamp <= ?';
-    params.push(endDate);
+    params.push(formattedEnd);
   }
 
   const countRow = queryOne(`SELECT COUNT(*) as count ${baseSql}`, params);
@@ -1192,14 +1201,24 @@ router.get('/config', authenticate, (req, res) => {
   return res.status(200).json({ configs: configMap });
 });
 
-// 31. PATCH /api/admin/config/general (Admin only - Revenue Split Duration & General Config)
+// 31. PATCH /api/admin/config/general (Admin only - Quota, Voting & Revenue System Parameters)
 router.patch('/config/general', authenticate, (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Forbidden: Only administrators can update system configuration' });
   }
 
-  const { revenueSplitDurationMonths } = req.body || {};
+  const {
+    revenueSplitDurationMonths,
+    ideaQuotaLimit,
+    ideaQuotaWindowDays,
+    votingWindowHours,
+    voteApprovalThreshold,
+    voteQuorumPercentage
+  } = req.body || {};
+
+  const updatedKeys = [];
+
   if (revenueSplitDurationMonths !== undefined) {
     const val = parseInt(revenueSplitDurationMonths, 10);
     if (isNaN(val) || val < 1 || val > 36) {
@@ -1209,10 +1228,74 @@ router.patch('/config/general', authenticate, (req, res) => {
       'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
       [val.toString(), req.user.id, 'revenue_split_duration_months']
     );
+    updatedKeys.push(`revenue_split_duration_months: ${val}`);
+  }
+
+  if (ideaQuotaLimit !== undefined) {
+    const val = parseInt(ideaQuotaLimit, 10);
+    if (isNaN(val) || val < 1) {
+      return res.status(400).json({ error: 'ideaQuotaLimit must be a positive integer' });
+    }
+    execute(
+      'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+      [val.toString(), req.user.id, 'idea_quota_limit']
+    );
+    updatedKeys.push(`idea_quota_limit: ${val}`);
+  }
+
+  if (ideaQuotaWindowDays !== undefined) {
+    const val = parseInt(ideaQuotaWindowDays, 10);
+    if (isNaN(val) || val < 1) {
+      return res.status(400).json({ error: 'ideaQuotaWindowDays must be a positive integer' });
+    }
+    execute(
+      'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+      [val.toString(), req.user.id, 'idea_quota_window_days']
+    );
+    updatedKeys.push(`idea_quota_window_days: ${val}`);
+  }
+
+  if (votingWindowHours !== undefined) {
+    const val = parseInt(votingWindowHours, 10);
+    if (isNaN(val) || val < 1) {
+      return res.status(400).json({ error: 'votingWindowHours must be a positive integer' });
+    }
+    execute(
+      'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+      [val.toString(), req.user.id, 'voting_window_hours']
+    );
+    updatedKeys.push(`voting_window_hours: ${val}`);
+  }
+
+  if (voteApprovalThreshold !== undefined) {
+    const val = parseFloat(voteApprovalThreshold);
+    if (isNaN(val) || val < 50 || val > 100) {
+      return res.status(400).json({ error: 'voteApprovalThreshold must be between 50 and 100' });
+    }
+    execute(
+      'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+      [val.toString(), req.user.id, 'vote_approval_threshold']
+    );
+    updatedKeys.push(`vote_approval_threshold: ${val}`);
+  }
+
+  if (voteQuorumPercentage !== undefined) {
+    const val = parseFloat(voteQuorumPercentage);
+    if (isNaN(val) || val < 1 || val > 100) {
+      return res.status(400).json({ error: 'voteQuorumPercentage must be between 1 and 100' });
+    }
+    execute(
+      'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+      [val.toString(), req.user.id, 'vote_quorum_percentage']
+    );
+    updatedKeys.push(`vote_quorum_percentage: ${val}`);
+  }
+
+  if (updatedKeys.length > 0) {
     logAccess({
       userId: req.user.id,
       action: 'general_config_updated',
-      resource: `/api/admin/config/general (revenue_split_duration_months: ${val})`,
+      resource: `/api/admin/config/general (${updatedKeys.join(', ')})`,
       ipAddress
     });
   }
@@ -1225,6 +1308,70 @@ router.patch('/config/general', authenticate, (req, res) => {
   return res.status(200).json({
     message: 'Configuration updated successfully',
     configs: configMap
+  });
+});
+
+// 32. GET /api/admin/ideas/:id/history (Admin only - Idea Decision & Override History)
+router.get('/ideas/:id/history', authenticate, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can view idea decision history' });
+  }
+
+  const { id } = req.params;
+  const idea = queryOne(`
+    SELECT i.*, u.name as owner_name, u.email as owner_email
+    FROM ideas i
+    LEFT JOIN users u ON i.owner_id = u.id
+    WHERE i.id = ?
+  `, [id]);
+
+  if (!idea) {
+    return res.status(404).json({ error: 'Idea not found' });
+  }
+
+  const meeting = queryOne('SELECT * FROM review_meetings WHERE idea_id = ?', [id]);
+
+  // Query all override and decision events from access_log
+  const logRows = queryAll(`
+    SELECT al.id, al.user_id, al.action, al.resource, al.timestamp,
+           u.name as admin_name, u.email as admin_email
+    FROM access_log al
+    LEFT JOIN users u ON al.user_id = u.id
+    WHERE al.action IN ('admin_override_veto', 'idea_approved_supermajority', 'idea_rejected_review')
+      AND al.resource LIKE ?
+    ORDER BY al.timestamp DESC
+  `, [`%${id}%`]);
+
+  const history = logRows.map(row => {
+    let decision = null;
+    let reason = null;
+    const match = row.resource.match(/decision:\s*([A-Z]+),\s*reason:\s*"(.*?)"/s);
+    if (match) {
+      decision = match[1];
+      reason = match[2];
+    }
+    return {
+      logId: row.id,
+      adminId: row.user_id,
+      adminName: row.admin_name || 'System Admin',
+      action: row.action,
+      decision: decision || idea.status,
+      reason: reason || 'Executive review',
+      timestamp: row.timestamp,
+      rawResource: row.resource
+    };
+  });
+
+  return res.status(200).json({
+    idea: {
+      id: idea.id,
+      title: idea.title,
+      status: idea.status,
+      green_percentage: idea.green_percentage,
+      owner_name: idea.owner_name
+    },
+    reviewMeeting: meeting,
+    decisionHistory: history
   });
 });
 
