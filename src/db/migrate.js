@@ -21,6 +21,12 @@ export function runMigration() {
     console.log('>>> Added wallet_frozen column to users table.');
   }
 
+  const hasBio = userColumns.some(c => c.name === 'bio');
+  if (!hasBio) {
+    execRaw('ALTER TABLE users ADD COLUMN bio TEXT;');
+    console.log('>>> Added bio column to users table.');
+  }
+
   // 1. Check if users table role CHECK constraint includes 'designer'
   const usersSql = queryOne("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")?.sql || '';
   if (usersSql && !usersSql.includes("'designer'")) {

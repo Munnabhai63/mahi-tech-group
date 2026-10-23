@@ -78,6 +78,48 @@ router.patch('/me/password', authenticate, async (req, res) => {
   return res.status(200).json({ message: 'Password updated successfully' });
 });
 
+// 8b. PATCH /api/users/me/profile (Authenticated - Edit own photo/bio)
+router.patch('/me/profile', authenticate, (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { profile_photo_url, bio } = req.body || {};
+
+  const currentUser = queryOne('SELECT status FROM users WHERE id = ?', [req.user.id]);
+  if (!currentUser) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  // Non-negotiable rule: Former Member profile is READ-ONLY
+  if (currentUser.status === 'inactive' || currentUser.status === 'suspended') {
+    return res.status(403).json({ error: 'Former or inactive member profile is read-only. Editing is disabled.' });
+  }
+
+  if (profile_photo_url === undefined && bio === undefined) {
+    return res.status(400).json({ error: "At least one of 'profile_photo_url' or 'bio' must be provided" });
+  }
+
+  execute(
+    'UPDATE users SET profile_photo_url = COALESCE(?, profile_photo_url), bio = COALESCE(?, bio), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [profile_photo_url !== undefined ? profile_photo_url : null, bio !== undefined ? bio : null, req.user.id]
+  );
+
+  logAccess({
+    userId: req.user.id,
+    action: 'profile_updated',
+    resource: '/api/users/me/profile',
+    ipAddress
+  });
+
+  const updatedUser = queryOne(
+    'SELECT id, name, email, role, sub_role, status, profile_photo_url, bio, rating_avg, updated_at FROM users WHERE id = ?',
+    [req.user.id]
+  );
+
+  return res.status(200).json({
+    message: 'Profile updated successfully',
+    user: updatedUser
+  });
+});
+
 // GET /api/users/me/quota-status (Authenticated - Fetch remaining quota and reset date)
 router.get('/me/quota-status', authenticate, (req, res) => {
   try {
@@ -160,5 +202,245 @@ function handleProfileMini(userId, res) {
     quotaWeeklyLimit
   });
 }
+
+// ===================================================================
+// STEP 09: FRONTEND USER PROFILE PAGE ENDPOINTS
+// ===================================================================
+
+// 1. GET /api/users/:id/profile (Authenticated - Full profile header + stats)
+router.get('/:id/profile', authenticate, (req, res) => {
+  const { id } = req.params;
+  const targetId = id === 'me' ? req.user.id : id;
+
+  const user = queryOne(`
+    SELECT id, name, email, role, sub_role, status, rating_avg,
+           wallet_balance, wallet_frozen, profile_photo_url, bio,
+           created_at, updated_at, deactivated_at
+    FROM users WHERE id = ?
+  `, [targetId]);
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const ideasSubmitted = queryOne('SELECT COUNT(*) as count FROM ideas WHERE owner_id = ?', [targetId])?.count || 0;
+  const nonDraftIdeas = queryOne("SELECT COUNT(*) as count FROM ideas WHERE owner_id = ? AND status != 'DRAFT'", [targetId])?.count || 0;
+  const approvedIdeas = queryOne("SELECT COUNT(*) as count FROM ideas WHERE owner_id = ? AND status = 'APPROVED'", [targetId])?.count || 0;
+  const approvalRate = nonDraftIdeas > 0 ? Math.round((approvedIdeas / nonDraftIdeas) * 100) : 0;
+
+  const projectsBuilt = queryOne(`
+    SELECT COUNT(DISTINCT p.id) as count
+    FROM projects p
+    LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.removed_at IS NULL
+    WHERE pm.user_id = ? OR p.owner_id = ?
+  `, [targetId, targetId])?.count || 0;
+
+  const revSplitTotal = queryOne('SELECT COALESCE(SUM(amount), 0) as total FROM revenue_splits WHERE user_id = ?', [targetId])?.total || 0;
+  const totalRevenue = Math.max(Number(revSplitTotal), Number(user.wallet_balance || 0));
+
+  return res.status(200).json({
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      subRole: user.sub_role,
+      status: user.status,
+      avatar: user.name ? user.name.charAt(0).toUpperCase() : 'U',
+      profilePhotoUrl: user.profile_photo_url,
+      bio: user.bio || '',
+      ratingAvg: Number(user.rating_avg || 5.0).toFixed(1),
+      isFormerMember: user.status === 'inactive',
+      isWalletFrozen: user.wallet_frozen === 1,
+      createdAt: user.created_at,
+      deactivatedAt: user.deactivated_at
+    },
+    stats: {
+      ideasSubmitted: Number(ideasSubmitted),
+      projectsBuilt: Number(projectsBuilt),
+      approvalRate,
+      totalRevenueEarned: totalRevenue.toFixed(2),
+      walletBalance: Number(user.wallet_balance || 0).toFixed(2)
+    }
+  });
+});
+
+// 2. GET /api/users/:id/ideas (Authenticated - Ideas history tab)
+router.get('/:id/ideas', authenticate, (req, res) => {
+  const { id } = req.params;
+  const targetId = id === 'me' ? req.user.id : id;
+
+  const user = queryOne('SELECT id FROM users WHERE id = ?', [targetId]);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const ideas = queryAll(`
+    SELECT i.id, i.title, i.description, i.status, i.submitted_at,
+           i.voting_deadline, i.green_percentage, i.created_at,
+           p.id as project_id, p.title as project_title, p.current_stage as project_stage
+    FROM ideas i
+    LEFT JOIN projects p ON p.idea_id = i.id
+    WHERE i.owner_id = ?
+    ORDER BY i.created_at DESC
+  `, [targetId]);
+
+  return res.status(200).json({
+    count: ideas.length,
+    ideas
+  });
+});
+
+// 3. GET /api/users/:id/projects (Authenticated - Projects history tab)
+router.get('/:id/projects', authenticate, (req, res) => {
+  const { id } = req.params;
+  const targetId = id === 'me' ? req.user.id : id;
+
+  const user = queryOne('SELECT id FROM users WHERE id = ?', [targetId]);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const projects = queryAll(`
+    SELECT DISTINCT p.id, p.title, p.current_stage, p.status, p.created_at,
+           p.owner_id,
+           COALESCE(pm.contribution_weight, 0) as contribution_weight,
+           pm.role_in_project as member_role,
+           (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id AND pt.assigned_to = ?) as assigned_tasks,
+           (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id AND pt.assigned_to = ? AND pt.status = 'DONE') as completed_tasks
+    FROM projects p
+    LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ? AND pm.removed_at IS NULL
+    WHERE pm.user_id = ? OR p.owner_id = ?
+    ORDER BY p.created_at DESC
+  `, [targetId, targetId, targetId, targetId, targetId]);
+
+  const formatted = projects.map(p => ({
+    id: p.id,
+    title: p.title,
+    currentStage: p.current_stage,
+    status: p.status,
+    role: p.member_role || (p.owner_id === targetId ? 'idea_owner' : 'contributor'),
+    contributionWeight: parseFloat(Number(p.contribution_weight).toFixed(2)),
+    isIdeaOwner: p.owner_id === targetId,
+    assignedTasks: p.assigned_tasks,
+    completedTasks: p.completed_tasks,
+    createdAt: p.created_at
+  }));
+
+  return res.status(200).json({
+    count: formatted.length,
+    projects: formatted
+  });
+});
+
+// 4. GET /api/users/:id/ratings (Authenticated - Ratings tab)
+router.get('/:id/ratings', authenticate, (req, res) => {
+  const { id } = req.params;
+  const targetId = id === 'me' ? req.user.id : id;
+
+  const user = queryOne('SELECT id, name, rating_avg FROM users WHERE id = ?', [targetId]);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const projectsCount = queryOne(`
+    SELECT COUNT(DISTINCT p.id) as count
+    FROM projects p
+    LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.removed_at IS NULL
+    WHERE pm.user_id = ? OR p.owner_id = ?
+  `, [targetId, targetId])?.count || 0;
+
+  return res.status(200).json({
+    userId: user.id,
+    ratingAverage: Number(user.rating_avg || 5.0).toFixed(1),
+    totalRatedProjects: Number(projectsCount),
+    ratingScale: '0.0 - 5.0',
+    status: 'MVP rating display (detailed peer-ratings engine planned for future addendum)'
+  });
+});
+
+// 5. GET /api/users/:id/earnings (Owner or Admin ONLY - Detailed revenue split ledger)
+router.get('/:id/earnings', authenticate, (req, res) => {
+  const { id } = req.params;
+  const targetId = id === 'me' ? req.user.id : id;
+
+  const user = queryOne('SELECT id, name, wallet_balance, wallet_frozen FROM users WHERE id = ?', [targetId]);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  // Privacy Rule: Detailed financial ledger is restricted strictly to profile owner and Admin
+  if (req.user.id !== targetId && req.user.role !== 'admin') {
+    return res.status(403).json({
+      error: 'Forbidden: Detailed earnings ledger is private to profile owner and administrators'
+    });
+  }
+
+  const splits = queryAll(`
+    SELECT rs.id, rs.amount, rs.rule_applied, rs.created_at,
+           p.id as project_id, p.title as project_title
+    FROM revenue_splits rs
+    JOIN revenue_events re ON rs.revenue_event_id = re.id
+    LEFT JOIN projects p ON re.project_id = p.id
+    WHERE rs.user_id = ?
+    ORDER BY rs.created_at DESC
+  `, [targetId]);
+
+  const timeline = queryAll(`
+    SELECT strftime('%Y-%m', created_at) as month, SUM(amount) as monthly_total
+    FROM revenue_splits
+    WHERE user_id = ?
+    GROUP BY strftime('%Y-%m', created_at)
+    ORDER BY month ASC
+  `, [targetId]);
+
+  const withdrawals = queryAll(`
+    SELECT id, amount, status, requested_at, COALESCE(paid_at, approved_at) as processed_at, rejection_reason
+    FROM withdrawals
+    WHERE user_id = ?
+    ORDER BY requested_at DESC
+  `, [targetId]);
+
+  const revSplitTotal = queryOne('SELECT COALESCE(SUM(amount), 0) as total FROM revenue_splits WHERE user_id = ?', [targetId])?.total || 0;
+  const totalRevenue = Math.max(Number(revSplitTotal), Number(user.wallet_balance || 0));
+
+  return res.status(200).json({
+    userId: user.id,
+    totalEarned: totalRevenue.toFixed(2),
+    walletBalance: Number(user.wallet_balance || 0).toFixed(2),
+    isWalletFrozen: user.wallet_frozen === 1,
+    timeline,
+    splits,
+    withdrawals
+  });
+});
+
+// 6. GET /api/users/:id/earnings-summary (Authenticated - Peer safe aggregate)
+router.get('/:id/earnings-summary', authenticate, (req, res) => {
+  const { id } = req.params;
+  const targetId = id === 'me' ? req.user.id : id;
+
+  const user = queryOne('SELECT id, wallet_balance FROM users WHERE id = ?', [targetId]);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const projectsCount = queryOne(`
+    SELECT COUNT(DISTINCT p.id) as count
+    FROM projects p
+    LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.removed_at IS NULL
+    WHERE pm.user_id = ? OR p.owner_id = ?
+  `, [targetId, targetId])?.count || 0;
+
+  const revSplitTotal = queryOne('SELECT COALESCE(SUM(amount), 0) as total FROM revenue_splits WHERE user_id = ?', [targetId])?.total || 0;
+  const totalRevenue = Math.max(Number(revSplitTotal), Number(user.wallet_balance || 0));
+
+  return res.status(200).json({
+    userId: user.id,
+    totalRevenueEarned: totalRevenue.toFixed(2),
+    projectsContributedCount: Number(projectsCount),
+    privacyNotice: 'Detailed transaction breakdown is restricted to profile owner and administrators'
+  });
+});
 
 export default router;

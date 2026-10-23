@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
     wallet_balance    DECIMAL(12,2) DEFAULT 0.0,
     wallet_frozen     BOOLEAN DEFAULT 0,
     profile_photo_url TEXT,
+    bio               TEXT,
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deactivated_at    TIMESTAMP NULL,

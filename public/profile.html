@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Profile — Mahi Tech Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    .profile-container {
+      max-width: 1100px;
+      margin: 1.5rem auto 3rem auto;
+      padding: 0 1rem;
+    }
+    .profile-header-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+    .profile-top-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.75rem;
+    }
+    .profile-avatar-large {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.25rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+    }
+    .profile-details {
+      flex: 1;
+    }
+    .profile-name-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 0.35rem;
+    }
+    .profile-name {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #f8fafc;
+      font-family: 'Outfit', sans-serif;
+    }
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .role-badge.researcher { background: rgba(6, 182, 212, 0.2); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.4); }
+    .role-badge.designer   { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+    .role-badge.developer  { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+    .role-badge.producer   { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .role-badge.admin      { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    
+    .former-member-pill {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .profile-meta-line {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+    .rating-gauge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: #fbbf24;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .profile-bio {
+      margin-top: 0.75rem;
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      background: #0f172a;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+    .bio-actions {
+      margin-top: 0.5rem;
+    }
+    .btn-small {
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8rem;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-small:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    /* Quick stats grid */
+    .quick-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .stat-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat-val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #f8fafc;
+      font-family: 'Outfit', sans-serif;
+    }
+    .stat-lbl {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.25rem;
+    }
+
+    /* Navigation Tabs */
+    .profile-tabs-nav {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 2px solid #334155;
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 0.75rem 1.25rem;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover {
+      color: #f8fafc;
+    }
+    .tab-btn.active {
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+    }
+
+    /* Tab Contents */
+    .tab-content-pane {
+      display: none;
+    }
+    .tab-content-pane.active {
+      display: block;
+    }
+
+    .card-list-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .card-list-table th, .card-list-table td {
+      padding: 0.85rem 1.15rem;
+      text-align: left;
+      border-bottom: 1px solid #334155;
+      font-size: 0.9rem;
+    }
+    .card-list-table th {
+      background: #0b1120;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .card-list-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-approved { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .badge-rejected { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .badge-pending  { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .badge-draft    { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+    
+    .idea-owner-tag {
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid #f59e0b;
+      color: #fde68a;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+
+    .privacy-banner {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: #94a3b8;
+    }
+    .privacy-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+    }
+  </style>
+</head>
+<body class="dark-theme">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <a href="/" style="text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+        <span class="logo-icon">⚡</span>
+        <span class="brand-name">MAHI TECH GROUP</span>
+      </a>
+      <span class="center-badge" style="margin-left: 0.5rem;">MEMBER PORTFOLIO</span>
+    </div>
+
+    <div class="header-right">
+      <a href="/" class="view-btn" style="text-decoration: none;">📐 Return to Dashboard</a>
+      <a href="/signup.html" class="view-btn" style="text-decoration: none;">📝 Sign Up Gate</a>
+    </div>
+  </header>
+
+  <main class="profile-container">
+    <!-- Profile Header Card -->
+    <section class="profile-header-card" id="profileHeaderCard">
+      <div class="profile-top-row">
+        <div class="profile-avatar-large" id="avatarDisplay">U</div>
+        <div class="profile-details">
+          <div class="profile-name-row">
+            <h1 class="profile-name" id="nameDisplay">Loading Profile...</h1>
+            <span class="role-badge" id="roleBadge">ROLE</span>
+            <span class="former-member-pill" id="formerMemberPill" style="display: none;">⚠️ Former Member</span>
+          </div>
+
+          <div class="profile-meta-line" id="metaLine">
+            <span id="emailDisplay">user@mahitechgroup.com</span> • 
+            <span class="rating-gauge" id="ratingGauge">★ 5.0</span>
+          </div>
+
+          <div class="profile-bio" id="bioDisplay">
+            No bio provided yet.
+          </div>
+
+          <div class="bio-actions" id="bioActions" style="display: none;">
+            <button class="btn-small" id="btnEditBio">✏️ Edit Profile</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Stats Row -->
+      <div class="quick-stats-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="statIdeas">0</div>
+          <div class="stat-lbl">Ideas Submitted</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statProjects">0</div>
+          <div class="stat-lbl">Projects Built</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statApproval">0%</div>
+          <div class="stat-lbl">Approval Rate</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statEarned">₹0.00</div>
+          <div class="stat-lbl">Total Earned</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tabs Navigation -->
+    <nav class="profile-tabs-nav" aria-label="Profile Sections">
+      <button class="tab-btn active" data-tab="ideas" id="tabBtnIdeas">💡 Ideas History</button>
+      <button class="tab-btn" data-tab="projects" id="tabBtnProjects">🚀 Projects & Contributions</button>
+      <button class="tab-btn" data-tab="ratings" id="tabBtnRatings">⭐ Performance Ratings</button>
+      <button class="tab-btn" data-tab="earnings" id="tabBtnEarnings">💰 Revenue & Earnings</button>
+    </nav>
+
+    <!-- Tab 1: Ideas -->
+    <section class="tab-content-pane active" id="paneIdeas">
+      <div id="ideasContainer">Loading ideas history...</div>
+    </section>
+
+    <!-- Tab 2: Projects -->
+    <section class="tab-content-pane" id="paneProjects">
+      <div id="projectsContainer">Loading projects history...</div>
+    </section>
+
+    <!-- Tab 3: Ratings -->
+    <section class="tab-content-pane" id="paneRatings">
+      <div id="ratingsContainer">Loading ratings breakdown...</div>
+    </section>
+
+    <!-- Tab 4: Earnings -->
+    <section class="tab-content-pane" id="paneEarnings">
+      <div id="earningsContainer">Loading earnings ledger...</div>
+    </section>
+  </main>
+
+  <script src="/js/profile.js"></script>
+</body>
+</html>
