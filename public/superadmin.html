@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Admin Command Center — Mahi Tech Group</title>
+  
+  <!-- Immediate Synchronous Role Verification -->
+  <script>
+    (function() {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.role !== 'admin') {
+        alert('Access Denied — Insufficient Privileges');
+        window.location.href = '/';
+      }
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/superadmin.css">
+</head>
+<body>
+
+<div class="sa-layout">
+
+  <!-- 8-Section Sidebar Navigation (Deep Indigo #4338ca) -->
+  <aside class="sa-sidebar">
+    <div class="sa-brand">
+      <div class="sa-brand-badge">SUPER</div>
+      <div class="sa-brand-text">
+        <h1>Mahi Tech Group</h1>
+        <span>Admin Governance</span>
+      </div>
+    </div>
+
+    <nav class="sa-nav">
+      <a class="sa-nav-item active" data-pane="paneOverview">
+        <svg viewBox="0 0 24 24"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
+        <span>1. Command Center</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneDirectory">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>2. Member Directory</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="panePerformance">
+        <svg viewBox="0 0 24 24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        <span>3. Performance Intelligence</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneTickets">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>4. Support Ticket Inbox</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneDisputes">
+        <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span>5. Dispute Resolution</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneGateway">
+        <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        <span>6. Payment Gateway</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneGovernance">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>7. Full Data Governance</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneAudit">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>8. Unified Audit Stream</span>
+      </a>
+    </nav>
+
+    <div class="sa-sidebar-footer">
+      <div class="sa-admin-pill">
+        <div class="sa-admin-avatar" id="adminAvatarInitial">A</div>
+        <div class="sa-admin-info">
+          <h4 id="adminName">Admin User</h4>
+          <p id="adminEmail">admin@mahitechgroup.com</p>
+        </div>
+      </div>
+      <a href="/admin.html" class="sa-btn-back" title="Switch to Step 10 Operational Admin Panel">Admin</a>
+    </div>
+  </aside>
+
+  <!-- Main Workspace -->
+  <main class="sa-main">
+
+    <!-- Section 1: Command Center (Overview Dashboard) -->
+    <section class="sa-pane active" id="paneOverview">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Command Center Overview</h2>
+          <p id="overviewLastUpdated">Real-time organizational telemetry and system status.</p>
+        </div>
+        <div class="sa-header-actions">
+          <button class="sa-btn-refresh" id="btnRefreshOverview">
+            <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Refresh Telemetry
+          </button>
+        </div>
+      </div>
+
+      <!-- 9 Real-Time Overview Metrics Grid -->
+      <div class="sa-overview-grid">
+        
+        <!-- 1. Active Members -->
+        <div class="sa-stat-card accent-indigo">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Active Members</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statActiveMembers">--</div>
+          <div class="sa-stat-sub">Verified & Active on Platform</div>
+        </div>
+
+        <!-- 2. Pending Applications -->
+        <div class="sa-stat-card accent-amber">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Pending Applications</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statPendingApps">--</div>
+          <div class="sa-stat-sub">Awaiting Admin Onboarding Review</div>
+        </div>
+
+        <!-- 3. Open Tickets -->
+        <div class="sa-stat-card accent-rose">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Open Support Tickets</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statOpenTickets">--</div>
+          <div class="sa-stat-sub">Tickets Requiring Staff Attention</div>
+        </div>
+
+        <!-- 4. Active Projects -->
+        <div class="sa-stat-card accent-blue">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Active Projects</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statActiveProjects">--</div>
+          <div class="sa-stat-sub">Projects in Research, Dev, or QA</div>
+        </div>
+
+        <!-- 5. Revenue This Month -->
+        <div class="sa-stat-card accent-emerald">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Revenue (This Month)</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statRevMonth">--</div>
+          <div class="sa-stat-sub">Total Credited Enterprise Earnings</div>
+        </div>
+
+        <!-- 6. Pending Payout Requests -->
+        <div class="sa-stat-card accent-amber">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Pending Payout Requests</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statPendingPayouts">--</div>
+          <div class="sa-stat-sub">Awaiting Executive Approval</div>
+        </div>
+
+        <!-- 7. Pending Payouts Value -->
+        <div class="sa-stat-card accent-amber">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Pending Payouts Total</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statPendingPayoutsTotal">--</div>
+          <div class="sa-stat-sub">Gross Outflow Pending Approval</div>
+        </div>
+
+        <!-- 8. Open Disputes -->
+        <div class="sa-stat-card accent-rose">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Open Disputes</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statOpenDisputes">--</div>
+          <div class="sa-stat-sub">Mediation & Waiver Cases Pending</div>
+        </div>
+
+        <!-- 9. Total Accounts -->
+        <div class="sa-stat-card accent-indigo">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Total Database Users</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statTotalUsers">--</div>
+          <div class="sa-stat-sub">All Lifecycle Statuses Combined</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Section 2: Member Directory Placeholder (Layer 2) -->
+    <section class="sa-pane" id="paneDirectory">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Full Member Directory</h2>
+          <p>Comprehensive roster with multi-vector histories and audit access.</p>
+        </div>
+      </div>
+      <div class="sa-placeholder-card">
+        <h3>Section 2: Full Member Directory</h3>
+        <p>Searchable multi-role directory, slide-out profile drawer, and CSV exports.</p>
+        <span class="sa-layer-tag">Scheduled for Layer 2 Implementation</span>
+      </div>
+    </section>
+
+    <!-- Section 3: Performance Intelligence Placeholder (Layer 2) -->
+    <section class="sa-pane" id="panePerformance">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Performance Intelligence</h2>
+          <p>Stealth team productivity telemetry and composite scoring matrix.</p>
+        </div>
+      </div>
+      <div class="sa-placeholder-card">
+        <h3>Section 3: Stealth Performance Intelligence</h3>
+        <p>Composite weighting formulas, stealth access logging, and historical activity heatmaps.</p>
+        <span class="sa-layer-tag">Scheduled for Layer 2 Implementation</span>
+      </div>
+    </section>
+
+    <!-- Section 4: Support Ticket Inbox Placeholder (Layer 3) -->
+    <section class="sa-pane" id="paneTickets">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Support Ticket Inbox</h2>
+          <p>Staff support desk with SLA tracking and dual-mode internal notes.</p>
+        </div>
+      </div>
+      <div class="sa-placeholder-card">
+        <h3>Section 4: Support Ticket Inbox</h3>
+        <p>48-hour SLA aging alerts, dual-mode internal notes, and dispute promotion.</p>
+        <span class="sa-layer-tag">Scheduled for Layer 3 Implementation</span>
+      </div>
+    </section>
+
+    <!-- Section 5: Dispute Resolution Center Placeholder (Layer 4) -->
+    <section class="sa-pane" id="paneDisputes">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Dispute Resolution Center</h2>
+          <p>Multi-party agreement mediation, digital signature ceremonies, and financial settlement.</p>
+        </div>
+      </div>
+      <div class="sa-placeholder-card">
+        <h3>Section 5: Dispute Resolution Center</h3>
+        <p>Cryptographic tokenized signing, append-only triggers, and liability waivers.</p>
+        <span class="sa-layer-tag">Scheduled for Layer 4 Implementation</span>
+      </div>
+    </section>
+
+    <!-- Section 6: Payment Gateway Control Placeholder (Layer 5) -->
+    <section class="sa-pane" id="paneGateway">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Payment Gateway Control</h2>
+          <p>Gateway parameters, cooldown policy, and human payout authorization.</p>
+        </div>
+      </div>
+      <div class="sa-placeholder-card">
+        <h3>Section 6: Payment Gateway Control</h3>
+        <p>Strict auto-payout hard block, cooldown enforcement, and ledger audits.</p>
+        <span class="sa-layer-tag">Scheduled for Layer 5 Implementation</span>
+      </div>
+    </section>
+
+    <!-- Section 7: Full Data Governance Placeholder (Layer 5) -->
+    <section class="sa-pane" id="paneGovernance">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Full Data Governance</h2>
+          <p>Multi-vector severance, real-time WebSocket eviction, and GDPR archives.</p>
+        </div>
+      </div>
+      <div class="sa-placeholder-card">
+        <h3>Section 7: Full Data Governance</h3>
+        <p>Granular action checklist, append-only unblocking, and full user data ZIP export.</p>
+        <span class="sa-layer-tag">Scheduled for Layer 5 Implementation</span>
+      </div>
+    </section>
+
+    <!-- Section 8: Unified Audit Stream Placeholder (Layer 6) -->
+    <section class="sa-pane" id="paneAudit">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Unified Audit Stream</h2>
+          <p>Consolidated administrative forensic timeline across all modules.</p>
+        </div>
+      </div>
+      <div class="sa-placeholder-card">
+        <h3>Section 8: Unified Audit Stream</h3>
+        <p>Consolidated timeline, severity tagging (Critical/Warning/Info), and CSV audit stream export.</p>
+        <span class="sa-layer-tag">Scheduled for Layer 6 Implementation</span>
+      </div>
+    </section>
+
+  </main>
+
+</div>
+
+<!-- FIFO Toast Notifications Container -->
+<div id="toastContainer"></div>
+
+<!-- Core Super Admin Logic -->
+<script src="/js/superadmin.js"></script>
+</body>
+</html>

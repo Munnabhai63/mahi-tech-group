@@ -10,6 +10,7 @@ import withdrawalsRouter from './routes/withdrawals.js';
 import coworkingRouter from './routes/coworking.js';
 import dashboardRouter from './routes/dashboard.js';
 import meetingsRouter from './routes/meetings.js';
+import superadminRouter from './routes/superadmin.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -38,6 +39,7 @@ export function createApp() {
   // Mount API routers
   app.use('/api/auth', authRouter);
   app.use('/api/admin', adminRouter);
+  app.use('/api/superadmin', superadminRouter);
   app.use('/api/users', usersRouter);
   app.use('/api/ideas', ideasRouter);
   app.use('/api/projects', projectsRouter);

@@ -28,6 +28,19 @@ export function runMigration() {
     console.log('>>> Added bio column to users table.');
   }
 
+  // Step 14 Layer 1: last_active_at and avatar_url on users table
+  const hasLastActiveAt = userColumns.some(c => c.name === 'last_active_at');
+  if (!hasLastActiveAt) {
+    execRaw('ALTER TABLE users ADD COLUMN last_active_at TIMESTAMP NULL;');
+    console.log('>>> Added last_active_at column to users table.');
+  }
+
+  const hasAvatarUrl = userColumns.some(c => c.name === 'avatar_url');
+  if (!hasAvatarUrl) {
+    execRaw('ALTER TABLE users ADD COLUMN avatar_url TEXT NULL;');
+    console.log('>>> Added avatar_url column to users table.');
+  }
+
   // 1. Check if users table role CHECK constraint includes 'designer'
   const usersSql = queryOne("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")?.sql || '';
   if (usersSql && !usersSql.includes("'designer'")) {

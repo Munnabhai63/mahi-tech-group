@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { queryOne } from '../db/database.js';
+import { queryOne, execute } from '../db/database.js';
 import { config } from '../config.js';
 import { logAccess } from '../services/auditService.js';
 
@@ -47,6 +47,13 @@ export function authenticate(req, res, next) {
       return res.status(401).json({ error: 'Unauthorized: Access Revoked' });
     }
 
+    // Step 14 Layer 1: Update users.last_active_at on every successful authenticated request
+    try {
+      execute('UPDATE users SET last_active_at = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
+    } catch (e) {
+      // Safe fallback if column not yet initialized
+    }
+
     // Attach user and session to request
     req.user = user;
     req.session = session;
@@ -58,4 +65,16 @@ export function authenticate(req, res, next) {
     }
     return res.status(401).json({ error: 'Unauthorized: Invalid token signature' });
   }
+}
+
+export function requireRole(expectedRole) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized: User authentication required' });
+    }
+    if (req.user.role !== expectedRole) {
+      return res.status(403).json({ error: 'Forbidden: Insufficient privileges' });
+    }
+    next();
+  };
 }
