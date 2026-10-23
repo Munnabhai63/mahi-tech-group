@@ -35,6 +35,17 @@ import {
   settleDispute,
   linkTicketToDispute
 } from '../services/disputeService.js';
+import {
+  getGatewayConfig,
+  updateGatewayConfig,
+  testGatewayConnection
+} from '../services/gatewayService.js';
+import {
+  addGovernanceEntry,
+  getGovernanceHistory,
+  blockMember,
+  unblockMember
+} from '../services/governanceService.js';
 import { logAccess } from '../services/auditService.js';
 
 const router = express.Router();
@@ -92,7 +103,8 @@ router.get('/overview', (req, res) => {
  */
 router.get('/members/export', (req, res) => {
   try {
-    const csvData = exportMembersCSV();
+    const { userId } = req.query;
+    const csvData = exportMembersCSV({ userId, adminId: req.user.id });
     logAccess({
       userId: req.user.id,
       action: 'superadmin_member_export',
@@ -631,5 +643,109 @@ router.patch('/tickets/:id/link-dispute', (req, res) => {
   }
 });
 
-export default router;
+// ===================================================================
+// STEP 14 LAYER 5: Payment Gateway Config Endpoints (Static Routes First)
+// ===================================================================
 
+/**
+ * GET /api/superadmin/gateway/config — Read masked gateway configuration
+ */
+router.get('/gateway/config', (req, res) => {
+  try {
+    const config = getGatewayConfig();
+    return res.status(200).json(config);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * PATCH /api/superadmin/gateway/config — Update gateway configuration
+ */
+router.patch('/gateway/config', (req, res) => {
+  try {
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const updated = updateGatewayConfig(req.body || {}, req.user.id, ipAddress);
+    return res.status(200).json(updated);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/superadmin/gateway/test — Simulated gateway ping diagnostic
+ */
+router.post('/gateway/test', (req, res) => {
+  try {
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const result = testGatewayConnection(req.user.id, ipAddress);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ===================================================================
+// STEP 14 LAYER 5: User Data Governance Endpoints (Parameterized Routes)
+// ===================================================================
+
+/**
+ * POST /api/superadmin/governance/:userId/block — Suspend member access (with preventSelfAction guard)
+ */
+router.post('/governance/:userId/block', preventSelfAction, (req, res) => {
+  try {
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const result = blockMember(req.params.userId, req.body || {}, req.user.id, ipAddress);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/superadmin/governance/:userId/unblock — Restore member access
+ */
+router.post('/governance/:userId/unblock', (req, res) => {
+  try {
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const result = unblockMember(req.params.userId, req.body || {}, req.user.id, ipAddress);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/superadmin/governance/:userId — Append-only GDPR governance entry
+ */
+router.post('/governance/:userId', (req, res) => {
+  try {
+    const { action, notes } = req.body || {};
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const entry = addGovernanceEntry({
+      userId: req.params.userId,
+      action,
+      notes,
+      adminId: req.user.id,
+      ipAddress
+    });
+    return res.status(201).json(entry);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/superadmin/governance/:userId — Fetch full chronological governance log
+ */
+router.get('/governance/:userId', (req, res) => {
+  try {
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const history = getGovernanceHistory(req.params.userId, req.user.id, ipAddress);
+    return res.status(200).json(history);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+export default router;

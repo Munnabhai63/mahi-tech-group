@@ -188,8 +188,22 @@ export function getMemberDetail(userId) {
   };
 }
 
-export function exportMembersCSV() {
-  const members = getAllMembers({ sort_by: 'created_at', order: 'DESC' });
+export function exportMembersCSV({ userId = null, adminId = null } = {}) {
+  let members = getAllMembers({ sort_by: 'created_at', order: 'DESC' });
+  if (userId) {
+    members = members.filter(m => m.id === userId);
+  }
+
+  // Record governance action if exporting data for a user
+  if (adminId && userId) {
+    const entryId = crypto.randomUUID();
+    execute(`
+      INSERT INTO user_data_governance (
+        id, user_id, action, requested_by, notes, reverted, created_at
+      ) VALUES (?, ?, 'data_export_delivered', ?, 'Member data export delivered in CSV format', 0, datetime('now'))
+    `, [entryId, userId, adminId]);
+  }
+
   const headers = [
     'ID', 'Name', 'Email', 'Phone Number', 'Role', 'Sub Role',
     'Desired Role', 'Status', 'Created At', 'Last Active At',

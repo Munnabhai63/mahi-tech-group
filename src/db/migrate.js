@@ -493,7 +493,19 @@ export function runMigration() {
     }
   }
 
+  // Step 14 Layer 5: Payment gateway config default row
+  const gwConfig = queryOne('SELECT id FROM payment_gateway_config LIMIT 1');
+  if (!gwConfig) {
+    execute(`
+      INSERT INTO payment_gateway_config (
+        id, mode, gateway_name, api_key_encrypted, webhook_secret_encrypted, auto_approve_below, created_at, updated_at
+      ) VALUES (?, 'sandbox', 'SIMULATED_GATEWAY_STUB', NULL, NULL, 0, datetime('now'), datetime('now'))
+    `, [crypto.randomUUID()]);
+    console.log('>>> Seeded default payment_gateway_config row.');
+  }
+
   // Verification of tables
+
 
   const tables = queryAll("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;");
   console.log('>>> Migration executed successfully.');

@@ -10,5 +10,10 @@ export const config = {
   JWT_EXPIRES_IN: '7d',
   DB_PATH: process.env.DB_PATH || path.join(__dirname, '../../database.sqlite'),
   BCRYPT_SALT_ROUNDS: 12,
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY || ''
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+  ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || 'mahi-tech-group-aes-256-gcm-master-key-2026'
 };
+
+if (!process.env.ENCRYPTION_KEY) {
+  process.env.ENCRYPTION_KEY = config.ENCRYPTION_KEY;
+}

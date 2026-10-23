@@ -136,6 +136,10 @@ function initNavigation() {
         loadQuotaConfig();
       } else if (targetPaneId === 'paneDisputes') {
         loadDisputes();
+      } else if (targetPaneId === 'paneGateway') {
+        loadGatewayConfig();
+      } else if (targetPaneId === 'paneGovernance') {
+        loadGovernanceMembers();
       }
     });
   });
@@ -749,8 +753,16 @@ function initEventListeners() {
   }
 
   if (blockBtn) {
-    blockBtn.addEventListener('click', () => {
-      toasts.show('Data Governance & Member Eviction scheduled for Layer 5 implementation.', 'info');
+    blockBtn.addEventListener('click', async () => {
+      const targetUserId = currentSelectedUserId;
+      if (!targetUserId) return;
+      closeMemberDrawer();
+      document.querySelector('.sa-nav-item[data-pane="paneGovernance"]')?.click();
+      await loadGovernanceMembers();
+      const sel = document.getElementById('governanceMemberSelect');
+      if (sel) sel.value = targetUserId;
+      await loadGovernanceHistory(targetUserId);
+      blockMemberUI(targetUserId);
     });
   }
 
@@ -955,6 +967,42 @@ function initEventListeners() {
       disputeSearchTimeout = setTimeout(() => loadDisputes(), 300);
     });
   }
+
+  // Layer 5: Gateway Config Listeners
+  const btnTestGateway = document.getElementById('btnTestGatewayConnection');
+  if (btnTestGateway) btnTestGateway.addEventListener('click', testGatewayConnectionUI);
+
+  const btnSaveGateway = document.getElementById('btnSaveGatewayConfig');
+  if (btnSaveGateway) btnSaveGateway.addEventListener('click', saveGatewayConfigUI);
+
+  // Layer 5: Data Governance Listeners
+  const govMemberSelect = document.getElementById('governanceMemberSelect');
+  if (govMemberSelect) {
+    govMemberSelect.addEventListener('change', (e) => {
+      loadGovernanceHistory(e.target.value);
+    });
+  }
+
+  const btnBlock = document.getElementById('btnBlockMember');
+  if (btnBlock) btnBlock.addEventListener('click', () => blockMemberUI());
+
+  const btnUnblock = document.getElementById('btnUnblockMember');
+  if (btnUnblock) btnUnblock.addEventListener('click', () => unblockMemberUI());
+
+  const btnExportGov = document.getElementById('btnExportGovernanceCSV');
+  if (btnExportGov) btnExportGov.addEventListener('click', exportGovernanceCSV);
+
+  const btnOpenGovModal = document.getElementById('btnOpenAddGovernanceModal');
+  if (btnOpenGovModal) btnOpenGovModal.addEventListener('click', () => openAddGovernanceModal());
+
+  const btnCloseGovModal = document.getElementById('btnCloseAddGovernance');
+  if (btnCloseGovModal) btnCloseGovModal.addEventListener('click', closeAddGovernanceModal);
+
+  const btnCancelGovModal = document.getElementById('btnCancelAddGovernance');
+  if (btnCancelGovModal) btnCancelGovModal.addEventListener('click', closeAddGovernanceModal);
+
+  const btnSubmitGovModal = document.getElementById('btnSubmitAddGovernance');
+  if (btnSubmitGovModal) btnSubmitGovModal.addEventListener('click', submitAddGovernanceUI);
 }
 
 // ===================================================================
@@ -1930,11 +1978,401 @@ async function executeSettlementUI(disputeId) {
   }
 }
 
+// ==========================================================================
+// 10. SECTION 6 & 7: PAYMENT GATEWAY CONFIG & USER DATA GOVERNANCE (LAYER 5)
+// ==========================================================================
+
+let allGovernanceMembers = [];
+let selectedGovernanceUserId = null;
+
+async function loadGatewayConfig() {
+  try {
+    const res = await apiCall('/api/superadmin/gateway/config');
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to fetch gateway configuration', 'error');
+      return;
+    }
+
+    const cfg = res.data;
+    const modeBadge = document.getElementById('gatewayModeBadge');
+    const displayMode = document.getElementById('displayGatewayMode');
+    const displayName = document.getElementById('displayGatewayName');
+    const displayApiKey = document.getElementById('displayApiKey');
+    const displayWebhookSecret = document.getElementById('displayWebhookSecret');
+    const displayUpdatedAt = document.getElementById('displayGatewayUpdatedAt');
+
+    const mode = (cfg.mode || 'sandbox').toLowerCase();
+    if (displayMode) displayMode.textContent = mode;
+    if (modeBadge) {
+      modeBadge.textContent = mode.toUpperCase();
+      if (mode === 'live') {
+        modeBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+        modeBadge.style.color = '#ef4444';
+        modeBadge.style.borderColor = '#ef4444';
+      } else {
+        modeBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+        modeBadge.style.color = '#10b981';
+        modeBadge.style.borderColor = '#10b981';
+      }
+    }
+
+    if (displayName) displayName.textContent = cfg.gateway_name || 'SIMULATED_GATEWAY_STUB';
+    if (displayApiKey) {
+      displayApiKey.textContent = cfg.api_key_set ? '••••••••' : 'Not configured';
+      displayApiKey.style.color = cfg.api_key_set ? '#94a3b8' : '#f59e0b';
+    }
+    if (displayWebhookSecret) {
+      displayWebhookSecret.textContent = cfg.webhook_secret_set ? '••••••••' : 'Not configured';
+      displayWebhookSecret.style.color = cfg.webhook_secret_set ? '#94a3b8' : '#f59e0b';
+    }
+    if (displayUpdatedAt) {
+      displayUpdatedAt.textContent = cfg.updated_at ? new Date(cfg.updated_at).toLocaleString() : '--';
+    }
+
+    // Set form controls
+    const modeSelect = document.getElementById('gatewayModeSelect');
+    const nameInput = document.getElementById('gatewayNameInput');
+    const keyInput = document.getElementById('gatewayApiKeyInput');
+    const secretInput = document.getElementById('gatewayWebhookSecretInput');
+
+    if (modeSelect) modeSelect.value = mode;
+    if (nameInput) nameInput.value = cfg.gateway_name || 'SIMULATED_GATEWAY_STUB';
+    if (keyInput) keyInput.value = '';
+    if (secretInput) secretInput.value = '';
+
+  } catch (err) {
+    console.error('Error loading gateway config:', err);
+    toasts.show('Network error loading gateway config', 'error');
+  }
+}
+
+async function saveGatewayConfigUI() {
+  const mode = document.getElementById('gatewayModeSelect')?.value || 'sandbox';
+  const gateway_name = document.getElementById('gatewayNameInput')?.value?.trim() || 'SIMULATED_GATEWAY_STUB';
+  const api_key = document.getElementById('gatewayApiKeyInput')?.value?.trim();
+  const webhook_secret = document.getElementById('gatewayWebhookSecretInput')?.value?.trim();
+
+  if (mode === 'live') {
+    const confirmed = confirm('WARNING: You are about to configure the Payment Gateway for LIVE mode. All subsequent transactions will target live production rails. Do you wish to proceed?');
+    if (!confirmed) return;
+  }
+
+  const payload = { mode, gateway_name };
+  if (api_key) payload.api_key = api_key;
+  if (webhook_secret) payload.webhook_secret = webhook_secret;
+
+  const btn = document.getElementById('btnSaveGatewayConfig');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await apiCall('/api/superadmin/gateway/config', 'PATCH', payload);
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to update gateway configuration', 'error');
+      return;
+    }
+
+    toasts.show('Gateway configuration updated successfully', 'success');
+    await loadGatewayConfig();
+  } catch (err) {
+    console.error('Error saving gateway config:', err);
+    toasts.show('Network error while saving gateway config', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function testGatewayConnectionUI() {
+  const banner = document.getElementById('gatewayTestResultBanner');
+  const btn = document.getElementById('btnTestGatewayConnection');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await apiCall('/api/superadmin/gateway/test', 'POST');
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Gateway test failed', 'error');
+      if (banner) {
+        banner.style.display = 'block';
+        banner.style.background = 'rgba(239,68,68,0.12)';
+        banner.style.color = '#fca5a5';
+        banner.style.border = '1px solid #ef4444';
+        banner.textContent = `Gateway Connection Failed: ${res.data?.error || 'Network error'}`;
+      }
+      return;
+    }
+
+    const d = res.data;
+    toasts.show(`Gateway Ping Successful: ${d.latency_ms}ms`, 'success');
+    if (banner) {
+      banner.style.display = 'block';
+      banner.style.background = 'rgba(16,185,129,0.12)';
+      banner.style.color = '#6ee7b7';
+      banner.style.border = '1px solid #10b981';
+      banner.textContent = `Ping Success! Latency: ${d.latency_ms}ms | Mode: ${d.mode?.toUpperCase()} | Timestamp: ${d.timestamp}`;
+    }
+  } catch (err) {
+    toasts.show('Error testing gateway connection: ' + err.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Data Governance Handlers
+async function loadGovernanceMembers() {
+  try {
+    const res = await apiCall('/api/superadmin/members?order=asc');
+    if (!res.ok) {
+      toasts.show('Failed to fetch members for data governance', 'error');
+      return;
+    }
+
+    allGovernanceMembers = res.data || [];
+    const select = document.getElementById('governanceMemberSelect');
+    const modalSelect = document.getElementById('govModalUserSelect');
+
+    if (select) {
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">Choose a member to inspect governance ledger...</option>';
+      allGovernanceMembers.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = `${m.name || 'Unknown'} (${m.email}) — [${m.status || 'active'}]`;
+        select.appendChild(opt);
+      });
+      if (currentVal) select.value = currentVal;
+    }
+
+    if (modalSelect) {
+      modalSelect.innerHTML = '<option value="">Select a member...</option>';
+      allGovernanceMembers.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = `${m.name || 'Unknown'} (${m.email})`;
+        modalSelect.appendChild(opt);
+      });
+    }
+
+    if (selectedGovernanceUserId) {
+      loadGovernanceHistory(selectedGovernanceUserId);
+    }
+  } catch (err) {
+    console.error('Error loading governance members:', err);
+  }
+}
+
+async function loadGovernanceHistory(userId) {
+  selectedGovernanceUserId = userId;
+  const tbody = document.getElementById('governanceTableBody');
+  const badge = document.getElementById('governanceMemberStatusBadge');
+  const btnBlock = document.getElementById('btnBlockMember');
+  const btnUnblock = document.getElementById('btnUnblockMember');
+
+  if (!userId) {
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="sa-loading-cell">Select a member above to inspect append-only governance ledger.</td></tr>';
+    if (badge) badge.style.display = 'none';
+    if (btnBlock) btnBlock.disabled = true;
+    if (btnUnblock) btnUnblock.disabled = true;
+    return;
+  }
+
+  const member = allGovernanceMembers.find(m => m.id === userId);
+  const isSuspended = member?.status === 'suspended';
+
+  if (badge) {
+    badge.style.display = 'inline-block';
+    badge.textContent = (member?.status || 'active').toUpperCase();
+    badge.className = `sa-badge ${isSuspended ? 'sa-badge-danger' : 'sa-badge-success'}`;
+    if (isSuspended) {
+      badge.style.background = 'rgba(239, 68, 68, 0.15)';
+      badge.style.color = '#ef4444';
+      badge.style.borderColor = '#ef4444';
+    } else {
+      badge.style.background = 'rgba(16, 185, 129, 0.15)';
+      badge.style.color = '#10b981';
+      badge.style.borderColor = '#10b981';
+    }
+  }
+
+  if (btnBlock) btnBlock.disabled = isSuspended;
+  if (btnUnblock) btnUnblock.disabled = !isSuspended;
+
+  if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="sa-loading-cell">Loading append-only governance entries...</td></tr>';
+
+  try {
+    const res = await apiCall(`/api/superadmin/governance/${userId}`);
+    if (!res.ok) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="sa-loading-cell" style="color:var(--sa-danger)">${res.data?.error || 'Failed to fetch governance history'}</td></tr>`;
+      return;
+    }
+
+    const rows = res.data || [];
+    if (rows.length === 0) {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="sa-loading-cell" style="color:var(--sa-text-muted)">No governance entries recorded yet for this member.</td></tr>';
+      return;
+    }
+
+    if (tbody) {
+      tbody.innerHTML = rows.map(r => {
+        const actionBadgeClass = r.action.includes('restrict') || r.action.includes('revoked')
+          ? 'color:#ef4444; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3);'
+          : 'color:#10b981; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3);';
+
+        const revertedBadge = r.reverted === 1
+          ? '<span style="color:#f59e0b; font-size:11px; font-weight:600;">Reverted</span>'
+          : '<span style="color:#6ee7b7; font-size:11px; font-weight:600;">Active</span>';
+
+        const requester = r.requested_by_name ? `${escapeHtml(r.requested_by_name)}` : escapeHtml(r.requested_by);
+
+        return `
+          <tr>
+            <td>
+              <span style="font-family:monospace; font-size:12px; padding:3px 8px; border-radius:4px; ${actionBadgeClass}">
+                ${escapeHtml(r.action)}
+              </span>
+            </td>
+            <td>
+              <div style="font-size:13px; font-weight:500; color:#fff;">${requester}</div>
+              <div style="font-size:11px; color:var(--sa-text-muted);">${escapeHtml(r.requested_by_email || '')}</div>
+            </td>
+            <td style="font-size:13px; color:var(--sa-text-bright); max-width:320px; white-space:pre-wrap;">${escapeHtml(r.notes || '—')}</td>
+            <td>${revertedBadge}</td>
+            <td style="font-size:12px; color:var(--sa-text-dim);">${new Date(r.created_at).toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+  } catch (err) {
+    console.error('Error fetching governance entries:', err);
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="sa-loading-cell" style="color:var(--sa-danger)">Network error while loading governance log.</td></tr>';
+  }
+}
+
+async function blockMemberUI(userIdToBlock) {
+  const userId = userIdToBlock || selectedGovernanceUserId;
+  if (!userId) {
+    toasts.show('Please select a member to restrict', 'error');
+    return;
+  }
+
+  const member = allGovernanceMembers.find(m => m.id === userId);
+  const name = member ? member.name : userId;
+
+  const confirmed = confirm(`Are you sure you want to enforce platform restriction and suspend member "${name}"? This will terminate active sessions and restrict account access.`);
+  if (!confirmed) return;
+
+  try {
+    const res = await apiCall(`/api/superadmin/governance/${userId}/block`, 'POST');
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to enforce member restriction', 'error');
+      return;
+    }
+
+    toasts.show(`Member ${name} restricted and suspended successfully`, 'success');
+    await loadGovernanceMembers();
+    await loadGovernanceHistory(userId);
+  } catch (err) {
+    toasts.show('Error blocking member: ' + err.message, 'error');
+  }
+}
+
+async function unblockMemberUI(userIdToUnblock) {
+  const userId = userIdToUnblock || selectedGovernanceUserId;
+  if (!userId) {
+    toasts.show('Please select a member to unblock', 'error');
+    return;
+  }
+
+  const member = allGovernanceMembers.find(m => m.id === userId);
+  const name = member ? member.name : userId;
+
+  const confirmed = confirm(`Are you sure you want to lift restrictions and restore account "${name}" to active status?`);
+  if (!confirmed) return;
+
+  try {
+    const res = await apiCall(`/api/superadmin/governance/${userId}/unblock`, 'POST');
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to lift member restriction', 'error');
+      return;
+    }
+
+    toasts.show(`Restrictions lifted for ${name}. Account restored to active status`, 'success');
+    await loadGovernanceMembers();
+    await loadGovernanceHistory(userId);
+  } catch (err) {
+    toasts.show('Error unblocking member: ' + err.message, 'error');
+  }
+}
+
+function openAddGovernanceModal(preselectedUserId) {
+  const modal = document.getElementById('modalAddGovernance');
+  const userSelect = document.getElementById('govModalUserSelect');
+  const notesInput = document.getElementById('govModalNotesInput');
+  const actionSelect = document.getElementById('govModalActionSelect');
+
+  if (userSelect && (preselectedUserId || selectedGovernanceUserId)) {
+    userSelect.value = preselectedUserId || selectedGovernanceUserId;
+  }
+  if (notesInput) notesInput.value = '';
+  if (actionSelect) actionSelect.value = 'consent_given';
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeAddGovernanceModal() {
+  const modal = document.getElementById('modalAddGovernance');
+  if (modal) modal.style.display = 'none';
+}
+
+async function submitAddGovernanceUI() {
+  const userId = document.getElementById('govModalUserSelect')?.value;
+  const action = document.getElementById('govModalActionSelect')?.value;
+  const notes = document.getElementById('govModalNotesInput')?.value?.trim() || '';
+
+  if (!userId) {
+    toasts.show('Please select a target member', 'error');
+    return;
+  }
+  if (!action) {
+    toasts.show('Please select a governance action', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnSubmitAddGovernance');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await apiCall(`/api/superadmin/governance/${userId}`, 'POST', { action, notes });
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to commit governance entry', 'error');
+      return;
+    }
+
+    toasts.show('Regulatory governance record appended successfully', 'success');
+    closeAddGovernanceModal();
+    const sel = document.getElementById('governanceMemberSelect');
+    if (sel) sel.value = userId;
+    await loadGovernanceHistory(userId);
+  } catch (err) {
+    toasts.show('Error saving governance entry: ' + err.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function exportGovernanceCSV() {
+  if (!selectedGovernanceUserId) {
+    toasts.show('Please select a member first to export governance ledger', 'info');
+    return;
+  }
+  window.open(`/api/superadmin/members/export?user_id=${selectedGovernanceUserId}`, '_blank');
+}
+
 // Global window exposures for inline onclick handlers in generated table markup
 window.openTicketThread = openTicketThread;
 window.openKillIdeaModal = openKillIdeaModal;
 window.openRestoreIdeaModal = openRestoreIdeaModal;
 window.openDisputeDetail = openDisputeDetail;
+window.blockMemberUI = blockMemberUI;
+window.unblockMemberUI = unblockMemberUI;
 
 // 10. Initialize Admin Profile info in sidebar
 function initAdminInfo() {

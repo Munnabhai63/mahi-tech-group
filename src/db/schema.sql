@@ -660,3 +660,48 @@ CREATE INDEX IF NOT EXISTS idx_dispute_signatures_token ON dispute_signatures(si
 CREATE INDEX IF NOT EXISTS idx_liability_waivers_dispute_id ON liability_waivers(dispute_id);
 CREATE INDEX IF NOT EXISTS idx_waiver_signatures_token ON waiver_signatures(signature_token);
 
+-- ===================================================================
+-- STEP 14 LAYER 5: Payment Gateway Config & User Data Governance
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS payment_gateway_config (
+    id                          TEXT PRIMARY KEY,
+    mode                        TEXT NOT NULL DEFAULT 'sandbox' CHECK (mode IN ('sandbox','live')),
+    gateway_name                TEXT NOT NULL DEFAULT 'SIMULATED_GATEWAY_STUB',
+    api_key_encrypted           TEXT NULL,
+    webhook_secret_encrypted    TEXT NULL,
+    auto_approve_below          INTEGER NOT NULL DEFAULT 0,
+    created_at                  TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    updated_at                  TIMESTAMP NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS user_data_governance (
+    id            TEXT PRIMARY KEY,
+    user_id       TEXT NOT NULL REFERENCES users(id),
+    action        TEXT NOT NULL CHECK (action IN (
+                    'consent_given','consent_revoked',
+                    'data_export_requested','data_export_delivered',
+                    'data_deletion_requested','data_deletion_reviewed',
+                    'right_to_restrict','restriction_lifted')),
+    requested_by  TEXT NOT NULL REFERENCES users(id),
+    notes         TEXT NULL,
+    reverted      INTEGER NOT NULL DEFAULT 0,
+    created_at    TIMESTAMP NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TRIGGER IF NOT EXISTS prevent_governance_delete
+BEFORE DELETE ON user_data_governance
+BEGIN
+    SELECT RAISE(ABORT, 'user_data_governance is append-only. Deletion is permanently forbidden.');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_governance_update
+BEFORE UPDATE ON user_data_governance
+BEGIN
+    SELECT RAISE(ABORT, 'user_data_governance is append-only. Updates are permanently forbidden.');
+END;
+
+CREATE INDEX IF NOT EXISTS idx_governance_user_id ON user_data_governance(user_id);
+CREATE INDEX IF NOT EXISTS idx_governance_created_at ON user_data_governance(created_at);
+
+

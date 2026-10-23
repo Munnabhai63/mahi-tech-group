@@ -1055,6 +1055,212 @@ async function runStep14Layer1Tests() {
     const settleLog = queryOne("SELECT * FROM access_log WHERE action = 'superadmin_dispute_settle' AND target_id = ? ORDER BY id DESC LIMIT 1", [dispute1.id]);
     assert(Boolean(settleLog), 'Access log recorded with action "superadmin_dispute_settle"');
 
+    // =============================================================
+    // TEST 31: GATEWAY CONFIG — READ & MASKED RESPONSE
+    // =============================================================
+    console.log('\n--- TEST 31: Gateway Config — Read & Masked Response ---');
+    const resGetGateway = await req('GET', '/api/superadmin/gateway/config', adminToken);
+    assert(resGetGateway.status === 200, 'Admin GET /api/superadmin/gateway/config returns HTTP 200');
+    assert(resGetGateway.data && typeof resGetGateway.data.mode === 'string', 'Gateway config response contains mode string');
+    assert(resGetGateway.data && typeof resGetGateway.data.gateway_name === 'string', 'Gateway config response contains gateway_name');
+    assert(resGetGateway.data?.auto_approve_below === 0, 'Gateway config auto_approve_below is strictly 0');
+    assert(typeof resGetGateway.data?.api_key_set === 'boolean', 'Gateway config returns api_key_set boolean indicator');
+    assert(typeof resGetGateway.data?.webhook_secret_set === 'boolean', 'Gateway config returns webhook_secret_set boolean indicator');
+    assert(resGetGateway.data?.api_key_encrypted === undefined, 'api_key_encrypted is strictly omitted from GET response');
+    assert(resGetGateway.data?.webhook_secret_encrypted === undefined, 'webhook_secret_encrypted is strictly omitted from GET response');
+    assert(resGetGateway.data?.api_key === undefined, 'Raw api_key is never exposed in response');
+
+    // =============================================================
+    // TEST 32: GATEWAY CONFIG — UPDATE & ENCRYPTION VERIFICATION
+    // =============================================================
+    console.log('\n--- TEST 32: Gateway Config — Update & Encryption Verification ---');
+    const resPatchGateway = await req('PATCH', '/api/superadmin/gateway/config', adminToken, {
+      mode: 'sandbox',
+      gateway_name: 'SIMULATED_GATEWAY_STUB',
+      api_key: 'test-api-key-12345'
+    });
+    assert(resPatchGateway.status === 200, 'Admin PATCH /api/superadmin/gateway/config returns HTTP 200');
+    assert(resPatchGateway.data?.api_key_set === true, 'api_key_set is true in response after update');
+
+    const resGetAfterPatch = await req('GET', '/api/superadmin/gateway/config', adminToken);
+    assert(resGetAfterPatch.data?.api_key_set === true, 'GET confirms api_key_set is true');
+
+    const dbConfig = queryOne('SELECT * FROM payment_gateway_config ORDER BY created_at ASC LIMIT 1');
+    assert(Boolean(dbConfig?.api_key_encrypted), 'DB payment_gateway_config stores non-null api_key_encrypted');
+    assert(dbConfig.api_key_encrypted !== 'test-api-key-12345', 'DB value is NOT the raw plaintext API key');
+
+    const cipherParts = dbConfig.api_key_encrypted.split(':');
+    assert(cipherParts.length === 3, 'DB encrypted value matches iv:authTag:ciphertext envelope structure');
+    assert(cipherParts[0].length === 24, 'AES-256-GCM 96-bit IV is 24 hex characters');
+    assert(cipherParts[1].length === 32, 'AES-256-GCM 128-bit Auth Tag is 32 hex characters');
+
+    const patchLog = queryOne("SELECT * FROM access_log WHERE action = 'superadmin_gateway_config_update' ORDER BY id DESC LIMIT 1");
+    assert(Boolean(patchLog), 'Audit access_log records action="superadmin_gateway_config_update"');
+
+    // =============================================================
+    // TEST 33: AUTO_APPROVE_BELOW HARD BLOCK
+    // =============================================================
+    console.log('\n--- TEST 33: auto_approve_below Hard Block ---');
+    const resRejectAutoApprove = await req('PATCH', '/api/superadmin/gateway/config', adminToken, {
+      auto_approve_below: 500
+    });
+    assert(resRejectAutoApprove.status === 400, `PATCH with auto_approve_below > 0 rejected with HTTP 400 (received: ${resRejectAutoApprove.status})`);
+    assert(
+      resRejectAutoApprove.data?.error?.includes('Auto-approval is permanently disabled by policy'),
+      `Error body states "Auto-approval is permanently disabled by policy" (received: "${resRejectAutoApprove.data?.error}")`
+    );
+
+    const dbCheckAuto = queryOne('SELECT auto_approve_below FROM payment_gateway_config WHERE id = ?', [dbConfig.id]);
+    assert(dbCheckAuto?.auto_approve_below === 0, 'DB value of auto_approve_below remains strictly 0');
+
+    // =============================================================
+    // TEST 34: GATEWAY CONNECTION TEST (SIMULATED)
+    // =============================================================
+    console.log('\n--- TEST 34: Gateway Connection Test (Simulated) ---');
+    const resTestPing = await req('POST', '/api/superadmin/gateway/test', adminToken);
+    assert(resTestPing.status === 200, 'POST /api/superadmin/gateway/test returns HTTP 200');
+    assert(resTestPing.data?.success === true, 'Test ping returns success: true');
+    assert(typeof resTestPing.data?.latency_ms === 'number' && resTestPing.data.latency_ms > 0, `Test ping returns positive latency_ms (${resTestPing.data?.latency_ms}ms)`);
+    assert(resTestPing.data?.mode === 'sandbox', 'Test ping returns active gateway mode ("sandbox")');
+    assert(Boolean(resTestPing.data?.timestamp), 'Test ping returns valid ISO timestamp');
+
+    const testPingLog = queryOne("SELECT * FROM access_log WHERE action = 'superadmin_gateway_test' ORDER BY id DESC LIMIT 1");
+    assert(Boolean(testPingLog), 'Audit access_log records action="superadmin_gateway_test"');
+
+    // =============================================================
+    // TEST 35: PREVENTSELFACTION — REAL HTTP 400 VERIFICATION (CRITICAL)
+    // =============================================================
+    console.log('\n--- TEST 35: preventSelfAction — Real HTTP 400 Verification ---');
+    const adminSelfId = authAdmin.data.user.id;
+    console.log(`  [REAL API CALL]: POST /api/superadmin/governance/${adminSelfId}/block with adminToken`);
+    const resSelfBlock = await req('POST', `/api/superadmin/governance/${adminSelfId}/block`, adminToken, {
+      notes: 'Attempting self-block'
+    });
+    console.log(`  [REAL API RESPONSE]: HTTP ${resSelfBlock.status} | Body:`, JSON.stringify(resSelfBlock.data));
+    assert(resSelfBlock.status === 400, `POST /api/superadmin/governance/:adminId/block on own ID returns HTTP 400 (received: ${resSelfBlock.status})`);
+    assert(
+      Boolean(resSelfBlock.data?.error && (resSelfBlock.data.error.toLowerCase().includes('self') || resSelfBlock.data.error.toLowerCase().includes('forbidden'))),
+      `Response body provides descriptive error: "${resSelfBlock.data?.error}"`
+    );
+
+    // =============================================================
+    // TEST 36: DATA GOVERNANCE — APPEND-ONLY LOG & TRIGGERS
+    // =============================================================
+    console.log('\n--- TEST 36: Data Governance — Append-Only Log & Triggers ---');
+    const targetGovUserId = authResearcher.data.user.id;
+    const resAddGov = await req('POST', `/api/superadmin/governance/${targetGovUserId}`, adminToken, {
+      action: 'consent_given',
+      notes: 'User confirmed GDPR consent during interactive onboarding'
+    });
+    assert(resAddGov.status === 201, 'POST /api/superadmin/governance/:userId returns HTTP 201 Created');
+    assert(resAddGov.data?.action === 'consent_given', 'Governance row created with action="consent_given"');
+    assert(resAddGov.data?.user_id === targetGovUserId, 'Governance row belongs to target member');
+    assert(resAddGov.data?.reverted === 0, 'New governance row is initialized with reverted=0');
+
+    const createdGovRow = queryOne('SELECT * FROM user_data_governance WHERE id = ?', [resAddGov.data.id]);
+    assert(Boolean(createdGovRow), 'Created governance row confirmed in user_data_governance table');
+
+    const govLog = queryOne("SELECT * FROM access_log WHERE action = 'superadmin_governance_entry' AND target_id = ? ORDER BY id DESC LIMIT 1", [targetGovUserId]);
+    assert(Boolean(govLog), 'Audit access_log records action="superadmin_governance_entry"');
+
+    // Confirm database triggers exist
+    const triggers = queryAll("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name IN ('prevent_governance_delete', 'prevent_governance_update')");
+    const triggerNames = triggers.map(t => t.name);
+    assert(triggerNames.includes('prevent_governance_delete'), 'Trigger "prevent_governance_delete" exists in sqlite_master');
+    assert(triggerNames.includes('prevent_governance_update'), 'Trigger "prevent_governance_update" exists in sqlite_master');
+
+    // Attempt direct SQLite DELETE
+    let deleteGovPrevented = false;
+    let deleteErrMsg = '';
+    try {
+      execute('DELETE FROM user_data_governance WHERE id = ?', [createdGovRow.id]);
+    } catch (e) {
+      deleteGovPrevented = true;
+      deleteErrMsg = e.message;
+    }
+    assert(deleteGovPrevented && deleteErrMsg.includes('append-only'), `Direct DB DELETE rejected by SQLite trigger (${deleteErrMsg})`);
+
+    // Attempt direct SQLite UPDATE
+    let updateGovPrevented = false;
+    let updateErrMsg = '';
+    try {
+      execute("UPDATE user_data_governance SET notes = 'Malicious alteration' WHERE id = ?", [createdGovRow.id]);
+    } catch (e) {
+      updateGovPrevented = true;
+      updateErrMsg = e.message;
+    }
+    assert(updateGovPrevented && updateErrMsg.includes('append-only'), `Direct DB UPDATE rejected by SQLite trigger (${updateErrMsg})`);
+
+    // =============================================================
+    // TEST 37: MEMBER BLOCK / UNBLOCK LIFECYCLE
+    // =============================================================
+    console.log('\n--- TEST 37: Member Block / Unblock Lifecycle ---');
+    const memberToBlockId = authDev.data.user.id;
+
+    // Connect WebSocket client to receive member_blocked event
+    let wsReceivedMemberBlocked = null;
+    const wsGovClient = new WebSocket(`ws://127.0.0.1:${PORT}/ws?token=${adminToken}`);
+    await new Promise((resolve, reject) => {
+      wsGovClient.on('open', () => resolve());
+      wsGovClient.on('error', (err) => reject(err));
+    });
+    wsGovClient.on('message', (raw) => {
+      try {
+        const parsed = JSON.parse(raw.toString());
+        if (parsed.event === 'member_blocked') {
+          wsReceivedMemberBlocked = parsed;
+        }
+      } catch (e) {}
+    });
+
+    // Execute Block
+    const resBlock = await req('POST', `/api/superadmin/governance/${memberToBlockId}/block`, adminToken, {
+      notes: 'Security isolation: Suspicious multiple token refresh anomalies detected'
+    });
+    assert(resBlock.status === 200, 'POST /api/superadmin/governance/:userId/block returns HTTP 200');
+    assert(resBlock.data?.status === 'suspended', 'Response status is "suspended"');
+
+    const userSuspended = queryOne('SELECT status FROM users WHERE id = ?', [memberToBlockId]);
+    assert(userSuspended?.status === 'suspended', 'User status updated to "suspended" in users table');
+
+    const blockGovRow = queryOne("SELECT * FROM user_data_governance WHERE user_id = ? AND action = 'right_to_restrict' ORDER BY created_at DESC LIMIT 1", [memberToBlockId]);
+    assert(Boolean(blockGovRow), 'Governance row appended with action="right_to_restrict"');
+
+    // Wait 200ms for WS event
+    await new Promise(r => setTimeout(r, 200));
+    assert(
+      Boolean(wsReceivedMemberBlocked && wsReceivedMemberBlocked.data?.userId === memberToBlockId),
+      `WebSocket event "member_blocked" broadcast to connected clients (received for userId: ${wsReceivedMemberBlocked?.data?.userId})`
+    );
+    wsGovClient.close();
+
+    const blockLog = queryOne("SELECT * FROM access_log WHERE action = 'superadmin_member_block' AND target_id = ? ORDER BY id DESC LIMIT 1", [memberToBlockId]);
+    assert(Boolean(blockLog), 'Audit access_log records action="superadmin_member_block"');
+
+    // Execute Unblock
+    const resUnblock = await req('POST', `/api/superadmin/governance/${memberToBlockId}/unblock`, adminToken, {
+      notes: 'Security review completed: Anomalies cleared and active status restored'
+    });
+    assert(resUnblock.status === 200, 'POST /api/superadmin/governance/:userId/unblock returns HTTP 200');
+    assert(resUnblock.data?.status === 'active', 'Response status restored to "active"');
+
+    const userActiveRestored = queryOne('SELECT status FROM users WHERE id = ?', [memberToBlockId]);
+    assert(userActiveRestored?.status === 'active', 'User status restored to "active" in users table');
+
+    const unblockGovRow = queryOne("SELECT * FROM user_data_governance WHERE user_id = ? AND action = 'restriction_lifted' ORDER BY created_at DESC LIMIT 1", [memberToBlockId]);
+    assert(Boolean(unblockGovRow), 'Governance row appended with action="restriction_lifted"');
+
+    const unblockLog = queryOne("SELECT * FROM access_log WHERE action = 'superadmin_member_unblock' AND target_id = ? ORDER BY id DESC LIMIT 1", [memberToBlockId]);
+    assert(Boolean(unblockLog), 'Audit access_log records action="superadmin_member_unblock"');
+
+    // Verify GET /api/superadmin/governance/:userId
+    const resGovHistory = await req('GET', `/api/superadmin/governance/${memberToBlockId}`, adminToken);
+    assert(resGovHistory.status === 200, 'GET /api/superadmin/governance/:userId returns HTTP 200');
+    assert(Array.isArray(resGovHistory.data?.history), 'Governance history returns array of entries');
+    const actionsInHistory = resGovHistory.data.history.map(h => h.action);
+    assert(actionsInHistory.includes('right_to_restrict'), 'History includes "right_to_restrict"');
+    assert(actionsInHistory.includes('restriction_lifted'), 'History includes "restriction_lifted"');
+
   } catch (err) {
     console.error('\n[FATAL SUITE ERROR]:', err);
     assert(false, 'Suite Execution Without Fatal Crash', err.message);
@@ -1067,14 +1273,14 @@ async function runStep14Layer1Tests() {
   }
 
   console.log('\n===================================================================');
-  console.log(`   LAYER 1, 2, 3 & 4 QA SUMMARY: ${results.filter(r => r.status === 'PASS').length} PASSED / ${results.length} TOTAL`);
+  console.log(`   LAYER 1, 2, 3, 4 & 5 QA SUMMARY: ${results.filter(r => r.status === 'PASS').length} PASSED / ${results.length} TOTAL`);
   console.log('===================================================================\n');
 
   if (!allPassed) {
     console.error('Some tests failed in Step 14 QA Suite.');
     process.exit(1);
   } else {
-    console.log('🎉 ALL STEP 14 LAYER 1, 2, 3 & 4 TESTS (TESTS 01-30) PASSED WITH ZERO ERRORS!');
+    console.log('🎉 ALL STEP 14 LAYER 1, 2, 3, 4 & 5 TESTS (TESTS 01-37) PASSED WITH ZERO ERRORS!');
     process.exit(0);
   }
 }
