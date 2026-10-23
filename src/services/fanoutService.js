@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
 import { queryOne, queryAll, execute, execRaw } from '../db/database.js';
 import { logAccess } from './auditService.js';
+import { broadcastEvent, pushToUser, pushToProject } from './wsService.js';
+import { createNotification } from './notificationService.js';
 
 // The 6 foundational dev, research, and test preparation tasks required before QA testing can begin
 export const DEV_AND_TEST_PREP_PREREQUISITES = [
@@ -353,6 +355,24 @@ export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, i
         execute("UPDATE project_tasks SET status = 'TODO' WHERE id = ?", [bTask.id]);
         unblockedTasks.push(bTask);
 
+        if (bTask.assigned_to) {
+          try {
+            createNotification({
+              userId: bTask.assigned_to,
+              eventType: 'task.unblocked',
+              message: `Task "${bTask.task_name}" is now unblocked and ready for work!`,
+              link: `/projects/${task.project_id}`
+            });
+            pushToUser(bTask.assigned_to, 'task.unblocked', {
+              taskId: bTask.id,
+              taskName: bTask.task_name,
+              projectId: task.project_id
+            });
+          } catch (e) {
+            // Non-blocking notification error
+          }
+        }
+
         logAccess({
           userId: bTask.assigned_to,
           action: 'task_auto_unblocked',
@@ -365,6 +385,16 @@ export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, i
 
   // Recalculate project stage
   const newStage = evaluateProjectStage(task.project_id);
+
+  // Broadcast stage change to project room and global org room
+  pushToProject(task.project_id, 'project.stage_changed', {
+    projectId: task.project_id,
+    newStage
+  });
+  broadcastEvent('org:global', 'project.stage_changed', {
+    projectId: task.project_id,
+    newStage
+  });
 
   logAccess({
     userId,

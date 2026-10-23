@@ -8,6 +8,14 @@ import projectsRouter from './routes/projects.js';
 import tasksRouter from './routes/tasks.js';
 import withdrawalsRouter from './routes/withdrawals.js';
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import dashboardRouter from './routes/dashboard.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const publicPath = path.join(__dirname, '..', 'public');
+
 export function createApp() {
   const app = express();
 
@@ -18,10 +26,13 @@ export function createApp() {
   app.get('/api/health', (req, res) => {
     res.status(200).json({
       status: 'ok',
-      service: 'Mahi Tech Group Platform - Step 06 Revenue Split Engine',
+      service: 'Mahi Tech Group Platform - Step 07 Frontend Center Dashboard & Real-Time Engine',
       timestamp: new Date().toISOString()
     });
   });
+
+  // Serve static frontend assets
+  app.use(express.static(publicPath));
 
   // Mount API routers
   app.use('/api/auth', authRouter);
@@ -31,6 +42,18 @@ export function createApp() {
   app.use('/api/projects', projectsRouter);
   app.use('/api/tasks', tasksRouter);
   app.use('/api/withdrawals', withdrawalsRouter);
+  app.use('/api/dashboard', dashboardRouter);
+  app.use('/api', dashboardRouter); // Covers /api/notifications/* and /api/activity/*
+
+  // Client-side SPA fallback for non-API routes (Express 5 compatible)
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
+      return res.sendFile(path.join(publicPath, 'index.html'), (err) => {
+        if (err) next();
+      });
+    }
+    next();
+  });
 
   // 404 handler for unknown routes
   app.use((req, res) => {

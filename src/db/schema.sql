@@ -340,3 +340,22 @@ BEGIN
     SELECT RAISE(FAIL, 'Immutable ledger: DELETE not allowed on withdrawals');
 END;
 
+-- ===================================================================
+-- STEP 07: Notifications & Center Dashboard Tables
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL REFERENCES users(id),
+    event_type      VARCHAR(50) NOT NULL,
+    message         TEXT NOT NULL,
+    link            TEXT,
+    read_status     INTEGER DEFAULT 0 CHECK (read_status IN (0, 1)),
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read_status);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
+
+

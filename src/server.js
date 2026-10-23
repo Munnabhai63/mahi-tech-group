@@ -4,6 +4,7 @@ import { runMigration } from './db/migrate.js';
 import { runSeed } from './db/seed.js';
 import { startScheduledQuotaReset, stopScheduledQuotaReset } from './jobs/quotaResetJob.js';
 import { startScheduledVotingDecision, stopScheduledVotingDecision } from './jobs/votingDecisionJob.js';
+import { initWebSocketServer } from './services/wsService.js';
 
 async function startServer() {
   try {
@@ -21,15 +22,20 @@ async function startServer() {
       console.log(`===================================================================`);
       console.log(`  MAHI TECH GROUP PLATFORM — BACKEND SERVER RUNNING`);
       console.log(`  Port: http://localhost:${config.PORT}`);
-      console.log(`  Step: 06_REVENUE_SPLIT_ENGINE`);
+      console.log(`  Step: 07_FRONTEND_CENTER_DASHBOARD (Real-Time Engine Active)`);
+      console.log(`  WebSocket: ws://localhost:${config.PORT}/ws`);
       console.log(`  Environment: local (node:sqlite WAL mode)`);
       console.log(`===================================================================`);
     });
+
+    // Initialize Real-Time WebSocket Server
+    const wss = initWebSocketServer(server);
 
     const shutdown = () => {
       console.log('\n>>> Gracefully shutting down server...');
       stopScheduledQuotaReset();
       stopScheduledVotingDecision();
+      wss.close();
       server.close(() => {
         console.log('>>> Server closed cleanly.');
         process.exit(0);

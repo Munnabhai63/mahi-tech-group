@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
+import { createNotification } from './notificationService.js';
+import { pushToUser } from './wsService.js';
 
 /**
  * Calculate the exact 5-month boundary timestamp from a project's revenue_clock_start.
@@ -199,6 +201,25 @@ export function recordRevenueEvent({ projectId, amount, source = 'Direct Platfor
         'UPDATE users SET wallet_balance = wallet_balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [amount, userId]
       );
+
+      if (amount > 0) {
+        try {
+          createNotification({
+            userId,
+            eventType: 'revenue.credited',
+            message: `You earned ₹${amount.toFixed(2)} from "${project.title}" (${splitType === 'OWNER_ROYALTY' ? '50% Idea Royalty' : 'Contributor Cut'})`,
+            link: '/wallet'
+          });
+          pushToUser(userId, 'revenue.credited', {
+            amount,
+            splitType,
+            projectId: project.id,
+            projectTitle: project.title
+          });
+        } catch (e) {
+          // Non-blocking notification error
+        }
+      }
     }
   }
 

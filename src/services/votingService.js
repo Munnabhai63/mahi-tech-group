@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
 import { triggerProjectFanout } from './fanoutService.js';
+import { broadcastEvent } from './wsService.js';
+import { createNotification } from './notificationService.js';
 
 export function getVotingConfig() {
   const thresholdRow = queryOne("SELECT value FROM system_config WHERE key = 'vote_approval_threshold'");
@@ -151,6 +153,16 @@ export function castVote({
     [greenPercentage, ideaId]
   );
 
+  // Broadcast live green percentage update across all connected clients (Section 3.2 & Section 4.2)
+  broadcastEvent('org:global', 'vote.cast', {
+    ideaId,
+    voterId,
+    voteColor,
+    greenPercentage,
+    totalVotesCast: totalVotes,
+    greenVotes
+  });
+
   logAccess({
     userId: voterId,
     action: 'vote_cast',
@@ -238,6 +250,17 @@ export function evaluateVotingDecision(ideaId, simulatedDate = null) {
   let projectData = null;
   if (newStatus === 'APPROVED') {
     projectData = triggerProjectFanout(ideaId);
+    broadcastEvent('org:global', 'idea.approved', {
+      ideaId,
+      title: idea.title,
+      greenPercentage
+    });
+    createNotification({
+      userId: idea.owner_id,
+      eventType: 'idea.approved',
+      message: `Your idea "${idea.title}" was approved with ${greenPercentage}% green votes!`,
+      link: `/projects/${ideaId}`
+    });
   }
 
   return {

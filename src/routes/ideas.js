@@ -6,6 +6,8 @@ import { requirePermission } from '../middleware/rbac.js';
 import { consumeQuota } from '../services/quotaService.js';
 import { logAccess } from '../services/auditService.js';
 import { castVote, getIdeaVotingSummary } from '../services/votingService.js';
+import { broadcastEvent } from '../services/wsService.js';
+import { createNotification } from '../services/notificationService.js';
 
 const router = express.Router();
 
@@ -164,6 +166,15 @@ router.post('/:id/submit', authenticate, requirePermission('idea.submit'), (req,
 
   const submittedIdea = queryOne('SELECT * FROM ideas WHERE id = ?', [id]);
   const meeting = queryOne('SELECT * FROM review_meetings WHERE id = ?', [meetingId]);
+
+  // Broadcast new idea submission to all online team members
+  broadcastEvent('org:global', 'idea.submitted', {
+    id: submittedIdea.id,
+    title: submittedIdea.title,
+    owner_name: req.user.name,
+    submitted_at: submittedIdea.submitted_at,
+    voting_deadline: submittedIdea.voting_deadline
+  });
 
   return res.status(200).json({
     message: 'Idea submitted for review successfully',

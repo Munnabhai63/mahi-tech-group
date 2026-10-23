@@ -67,6 +67,26 @@ router.get('/my-tasks', authenticate, (req, res) => {
 });
 
 /**
+ * 2b. GET /api/projects/my (Authenticated)
+ * Returns projects where the current user is owner or an active member
+ */
+router.get('/my', authenticate, (req, res) => {
+  const projects = queryAll(`
+    SELECT DISTINCT p.*, u.name as owner_name, u.email as owner_email
+    FROM projects p
+    JOIN users u ON p.owner_id = u.id
+    LEFT JOIN project_members pm ON p.id = pm.project_id AND pm.user_id = ? AND pm.removed_at IS NULL
+    WHERE p.owner_id = ? OR pm.user_id = ?
+    ORDER BY p.created_at DESC
+  `, [req.user.id, req.user.id, req.user.id]);
+
+  return res.status(200).json({
+    count: projects.length,
+    projects
+  });
+});
+
+/**
  * 3. GET /api/projects/:id (Project Members + Admin)
  * Project detail + all members + all tasks
  */
