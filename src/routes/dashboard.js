@@ -50,7 +50,7 @@ router.get('/votes-feed', authenticate, (req, res) => {
  * 4. GET /api/notifications/my (Authenticated)
  * Chronological notifications list for current user
  */
-router.get('/notifications/my', authenticate, (req, res) => {
+router.get(['/notifications/my', '/notifications'], authenticate, (req, res) => {
   const { limit, unread_only } = req.query;
   const result = getUserNotifications(req.user.id, {
     limit: limit ? Number(limit) : 50,

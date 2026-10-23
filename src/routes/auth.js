@@ -25,10 +25,17 @@ router.post('/signup', async (req, res) => {
     });
   }
 
-  if (desired_sub_role && !['frontend', 'backend'].includes(desired_sub_role)) {
-    return res.status(400).json({
-      error: "Invalid desired_sub_role. Must be 'frontend', 'backend', or null"
-    });
+  if (desired_sub_role) {
+    if (desired_role !== 'developer') {
+      return res.status(400).json({
+        error: "desired_sub_role can only be specified when desired_role is 'developer'. Must be null for other roles."
+      });
+    }
+    if (!['frontend', 'backend'].includes(desired_sub_role)) {
+      return res.status(400).json({
+        error: "Invalid desired_sub_role. Must be 'frontend', 'backend', or null"
+      });
+    }
   }
 
   if (password.length < 8) {

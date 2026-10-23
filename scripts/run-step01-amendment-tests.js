@@ -230,7 +230,12 @@ async function runStep01AmendmentTests() {
     if (auditLogs.length === 0) throw new Error('No access_log entry recorded for application approval!');
     console.log(`   ✓ Audit log entry verified: "${auditLogs[0].resource}"`);
 
-    console.log('   ✓ TEST 4 PASSED: Admin approved with reassigned role; original desired_role permanently preserved\n');
+    // Verify notification row created in notifications table
+    const approvalNotif = queryOne('SELECT * FROM notifications WHERE user_id = ? AND event_type = ?', [dbApplicant.id, 'account.approved']);
+    if (!approvalNotif) throw new Error('No account.approved notification row created for applicant upon approval!');
+    console.log(`   ✓ In-app notification created: "${approvalNotif.message}" (read_status: ${approvalNotif.read_status})`);
+
+    console.log('   ✓ TEST 4 PASSED: Admin approved with reassigned role; original desired_role permanently preserved; notification created\n');
 
     // -------------------------------------------------------------------------
     // TEST 5: Newly Approved User Logs In -> Receives Developer Role JWT
@@ -267,7 +272,17 @@ async function runStep01AmendmentTests() {
     console.log(`   ✓ Active sessions in DB: ${activeSessions.length} (Must be 1)`);
     if (activeSessions.length !== 1) throw new Error('Expected 1 active session in DB');
 
-    console.log('   ✓ TEST 5 PASSED: Approved user logs in successfully, receives developer JWT, routes to Developer corner\n');
+    // Verify notifications API returns unread welcome notification
+    const notifsRes = await req('GET', '/api/notifications', issuedToken);
+    console.log(`   ✓ Notifications retrieved post-login: HTTP ${notifsRes.status}, unreadCount=${notifsRes.data.unreadCount}`);
+    if (notifsRes.status !== 200 || notifsRes.data.unreadCount < 1) {
+      throw new Error(`Expected at least 1 unread notification upon first login, got ${notifsRes.data?.unreadCount}`);
+    }
+    const welcomeNotif = notifsRes.data.notifications.find(n => n.event_type === 'account.approved');
+    if (!welcomeNotif) throw new Error('account.approved notification not found in user notification list!');
+    console.log(`   ✓ Found in notification feed: "${welcomeNotif.message}"`);
+
+    console.log('   ✓ TEST 5 PASSED: Approved user logs in successfully, receives developer JWT, routes to Developer corner, receives welcome notification\n');
 
     // -------------------------------------------------------------------------
     // TEST 6: New Signup -> Admin Rejects -> 403 "Application Denied"
@@ -313,6 +328,11 @@ async function runStep01AmendmentTests() {
     if (postRejectUser.desired_role !== 'producer') throw new Error(`desired_role must remain 'producer', got '${postRejectUser.desired_role}'`);
     if (!postRejectUser.rejected_at || postRejectUser.rejected_by !== adminUser.id) throw new Error('Rejection audit fields not properly set');
 
+    // Verify rejection audit notification row in DB
+    const rejNotif = queryOne('SELECT * FROM notifications WHERE user_id = ? AND event_type = ?', [rejUser.id, 'account.rejected']);
+    if (!rejNotif) throw new Error('Expected account.rejected notification row in DB');
+    console.log(`   ✓ Rejection audit notification row in DB: "${rejNotif.message}"`);
+
     // Rejected applicant attempts login
     const rejectedLoginRes = await req('POST', '/api/auth/login', null, {
       email: rejectedEmail,
@@ -335,12 +355,12 @@ async function runStep01AmendmentTests() {
     console.log(`   ✓ Active sessions in DB for rejected applicant: ${rejSessionCount} (Must be 0)`);
     if (rejSessionCount !== 0) throw new Error('Active session exists for rejected applicant in DB');
 
-    console.log('   ✓ TEST 6 PASSED: Rejected application correctly flagged; login returns HTTP 403 "Application Denied"\n');
+    console.log('   ✓ TEST 6 PASSED: Rejected application correctly flagged; login returns HTTP 403 "Application Denied"; audit notification logged\n');
 
     // -------------------------------------------------------------------------
     // TEST 7: Duplicate Email Signup & Validation Protections
     // -------------------------------------------------------------------------
-    console.log('[TEST 7] Duplicate email signup and validation tests...');
+    console.log('[TEST 7] Duplicate email signup, validation, and data integrity tests...');
 
     // Attempt signup with already registered email
     const duplicateRes = await req('POST', '/api/auth/signup', null, {
@@ -365,7 +385,7 @@ async function runStep01AmendmentTests() {
     });
     console.log(`   -> Weak password HTTP Status: ${weakPassRes.status}`);
     if (weakPassRes.status !== 400) {
-      throw new Error(`Expected HTTP 400 for password < 6 chars, got ${weakPassRes.status}`);
+      throw new Error(`Expected HTTP 400 for password < 8 chars, got ${weakPassRes.status}`);
     }
 
     // Invalid desired_role rejection
@@ -380,7 +400,67 @@ async function runStep01AmendmentTests() {
       throw new Error(`Expected HTTP 400 for invalid desired_role, got ${invalidRoleRes.status}`);
     }
 
-    console.log('   ✓ TEST 7 PASSED: Duplicate email blocked with HTTP 409; weak passwords and invalid roles rejected\n');
+    // Data Integrity: desired_sub_role constraint (ONLY developer may specify sub_role)
+    console.log('   -> Testing data integrity: desired_sub_role prohibited for non-developer roles...');
+    const badDesignerSubRole = await req('POST', '/api/auth/signup', null, {
+      name: 'Designer With SubRole',
+      email: `designer.sub.${Date.now()}@example.com`,
+      password: 'StrongPassword123!',
+      desired_role: 'designer',
+      desired_sub_role: 'backend'
+    });
+    console.log(`      * desired_role='designer' + desired_sub_role='backend': HTTP ${badDesignerSubRole.status} (Expected 400)`);
+    console.log(`        Error message: "${badDesignerSubRole.data.error}"`);
+    if (badDesignerSubRole.status !== 400) {
+      throw new Error(`DATA INTEGRITY ERROR: Expected HTTP 400 for designer with sub_role, got ${badDesignerSubRole.status}`);
+    }
+
+    const badResearcherSubRole = await req('POST', '/api/auth/signup', null, {
+      name: 'Researcher With SubRole',
+      email: `researcher.sub.${Date.now()}@example.com`,
+      password: 'StrongPassword123!',
+      desired_role: 'researcher',
+      desired_sub_role: 'frontend'
+    });
+    console.log(`      * desired_role='researcher' + desired_sub_role='frontend': HTTP ${badResearcherSubRole.status} (Expected 400)`);
+    if (badResearcherSubRole.status !== 400) {
+      throw new Error(`DATA INTEGRITY ERROR: Expected HTTP 400 for researcher with sub_role, got ${badResearcherSubRole.status}`);
+    }
+
+    const badProducerSubRole = await req('POST', '/api/auth/signup', null, {
+      name: 'Producer With SubRole',
+      email: `producer.sub.${Date.now()}@example.com`,
+      password: 'StrongPassword123!',
+      desired_role: 'producer',
+      desired_sub_role: 'backend'
+    });
+    console.log(`      * desired_role='producer' + desired_sub_role='backend': HTTP ${badProducerSubRole.status} (Expected 400)`);
+    if (badProducerSubRole.status !== 400) {
+      throw new Error(`DATA INTEGRITY ERROR: Expected HTTP 400 for producer with sub_role, got ${badProducerSubRole.status}`);
+    }
+
+    const validDevSubRole = await req('POST', '/api/auth/signup', null, {
+      name: 'Valid Developer Applicant',
+      email: `valid.dev.${Date.now()}@example.com`,
+      password: 'StrongPassword123!',
+      desired_role: 'developer',
+      desired_sub_role: 'backend'
+    });
+    console.log(`      * desired_role='developer' + desired_sub_role='backend': HTTP ${validDevSubRole.status} (Expected 201)`);
+    if (validDevSubRole.status !== 201) {
+      throw new Error(`Expected HTTP 201 for developer with sub_role, got ${validDevSubRole.status}`);
+    }
+
+    // Granular RBAC Verification: dedicated 'application.review' permission
+    console.log('   -> Testing granular RBAC permission "application.review"...');
+    const adminPerm = queryOne("SELECT allowed FROM roles_permissions WHERE role = 'admin' AND permission_key = 'application.review'");
+    const nonAdminPerm = queryOne("SELECT allowed FROM roles_permissions WHERE role = 'developer' AND permission_key = 'application.review'");
+    console.log(`      * Admin permission 'application.review': allowed = ${adminPerm?.allowed}`);
+    console.log(`      * Developer permission 'application.review': allowed = ${nonAdminPerm?.allowed}`);
+    if (!adminPerm || adminPerm.allowed !== 1) throw new Error("Admin must have 'application.review' = 1 in roles_permissions");
+    if (!nonAdminPerm || nonAdminPerm.allowed !== 0) throw new Error("Developer must have 'application.review' = 0 in roles_permissions");
+
+    console.log('   ✓ TEST 7 PASSED: Duplicate email blocked; sub_role integrity enforced for non-dev; dedicated application.review RBAC verified\n');
 
     // -------------------------------------------------------------------------
     // TEST 8: Preserved Admin Member Addition Flow Verification

@@ -25,6 +25,7 @@ import {
   approveWithdrawal,
   rejectWithdrawal
 } from '../services/payoutService.js';
+import { createNotification } from '../services/notificationService.js';
 
 const router = express.Router();
 
@@ -160,8 +161,8 @@ router.get('/members', authenticate, requirePermission('member.add'), (req, res)
   return res.status(200).json({ members });
 });
 
-// 7b. GET /api/admin/applications/pending (Admin only - RBAC: member.add)
-router.get('/applications/pending', authenticate, requirePermission('member.add'), (req, res) => {
+// 7b. GET /api/admin/applications/pending (Admin only - RBAC: application.review)
+router.get('/applications/pending', authenticate, requirePermission('application.review'), (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Forbidden: Only administrators can view pending applications' });
   }
@@ -180,8 +181,8 @@ router.get('/applications/pending', authenticate, requirePermission('member.add'
   });
 });
 
-// 7c. PATCH /api/admin/applications/:id/decide (Admin only - RBAC: member.add)
-router.patch('/applications/:id/decide', authenticate, requirePermission('member.add'), (req, res) => {
+// 7c. PATCH /api/admin/applications/:id/decide (Admin only - RBAC: application.review)
+router.patch('/applications/:id/decide', authenticate, requirePermission('application.review'), (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
   const { id } = req.params;
   const { decision, finalRole, finalSubRole } = req.body || {};
@@ -215,6 +216,12 @@ router.patch('/applications/:id/decide', authenticate, requirePermission('member
       });
     }
 
+    if (assignedRole !== 'developer' && finalSubRole) {
+      return res.status(400).json({
+        error: "finalSubRole can only be set when finalRole is 'developer'"
+      });
+    }
+
     let assignedSubRole = null;
     if (assignedRole === 'developer') {
       assignedSubRole = finalSubRole !== undefined ? finalSubRole : application.desired_sub_role;
@@ -240,6 +247,18 @@ router.patch('/applications/:id/decide', authenticate, requirePermission('member
       resource: `/api/admin/applications/${id}/decide (desired_role: ${application.desired_role}, assigned_role: ${assignedRole}, approved_by: ${req.user.id})`,
       ipAddress
     });
+
+    // Create welcoming in-app notification row for when candidate logs in
+    try {
+      createNotification({
+        userId: id,
+        eventType: 'account.approved',
+        message: `Welcome to Mahi Tech Group! Your membership application has been approved as ${assignedRole.toUpperCase()}${assignedSubRole ? ` (${assignedSubRole})` : ''}.`,
+        link: '/'
+      });
+    } catch (notifErr) {
+      console.warn('Failed to dispatch approval notification:', notifErr.message);
+    }
 
     const updated = queryOne(`
       SELECT id, name, email, phone_number, desired_role, desired_sub_role,
@@ -269,6 +288,18 @@ router.patch('/applications/:id/decide', authenticate, requirePermission('member
       resource: `/api/admin/applications/${id}/decide (desired_role: ${application.desired_role}, rejected_by: ${req.user.id})`,
       ipAddress
     });
+
+    // Record decision notification row in database for audit trail
+    try {
+      createNotification({
+        userId: id,
+        eventType: 'account.rejected',
+        message: 'Your membership application was reviewed and could not be approved at this time.',
+        link: null
+      });
+    } catch (notifErr) {
+      console.warn('Failed to dispatch rejection notification:', notifErr.message);
+    }
 
     const updated = queryOne(`
       SELECT id, name, email, phone_number, desired_role, desired_sub_role,

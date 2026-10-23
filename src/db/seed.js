@@ -12,6 +12,7 @@ export const PERMISSION_MATRIX = [
   { key: 'project.launch_approve', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
   { key: 'member.add', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
   { key: 'member.remove', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
+  { key: 'application.review', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
   { key: 'payout.approve', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
   { key: 'revenue.manual_entry', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
   { key: 'asset.export_download', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
@@ -24,7 +25,7 @@ export const ROLES = ['researcher', 'developer', 'producer', 'admin', 'designer'
 export async function runSeed() {
   console.log('>>> Running Database Seeding...');
 
-  // 1. Seed roles_permissions (all 12 keys across all 4 roles = 48 entries)
+  // 1. Seed roles_permissions (all 13 keys across all 5 roles = 65 entries)
   let permissionsInserted = 0;
   for (const item of PERMISSION_MATRIX) {
     for (const role of ROLES) {
