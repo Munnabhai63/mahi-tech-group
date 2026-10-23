@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { authenticate } from '../middleware/auth.js';
 import { logAccess } from '../services/auditService.js';
 import { getUserQuotaStatus } from '../services/quotaService.js';
+import { getUserWallet, getUserEarnings } from '../services/revenueService.js';
 
 const router = express.Router();
 
@@ -85,6 +86,24 @@ router.get('/me/quota-status', authenticate, (req, res) => {
   } catch (err) {
     return res.status(500).json({ error: 'Failed to retrieve quota status', message: err.message });
   }
+});
+
+// GET /api/users/me/wallet (Authenticated - Wallet balance + split history)
+router.get('/me/wallet', authenticate, (req, res) => {
+  const result = getUserWallet(req.user.id);
+  if (!result.success) {
+    return res.status(result.status || 404).json({ error: result.error });
+  }
+  return res.status(200).json(result.wallet);
+});
+
+// GET /api/users/me/earnings (Authenticated - Full earnings breakdown per project)
+router.get('/me/earnings', authenticate, (req, res) => {
+  const result = getUserEarnings(req.user.id);
+  if (!result.success) {
+    return res.status(result.status || 404).json({ error: result.error });
+  }
+  return res.status(200).json(result);
 });
 
 export default router;

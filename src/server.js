@@ -21,7 +21,7 @@ async function startServer() {
       console.log(`===================================================================`);
       console.log(`  MAHI TECH GROUP PLATFORM — BACKEND SERVER RUNNING`);
       console.log(`  Port: http://localhost:${config.PORT}`);
-      console.log(`  Step: 05_OFFBOARDING_KILLSWITCH`);
+      console.log(`  Step: 06_REVENUE_SPLIT_ENGINE`);
       console.log(`  Environment: local (node:sqlite WAL mode)`);
       console.log(`===================================================================`);
     });

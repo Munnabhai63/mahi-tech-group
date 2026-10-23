@@ -6,6 +6,7 @@ import usersRouter from './routes/users.js';
 import ideasRouter from './routes/ideas.js';
 import projectsRouter from './routes/projects.js';
 import tasksRouter from './routes/tasks.js';
+import withdrawalsRouter from './routes/withdrawals.js';
 
 export function createApp() {
   const app = express();
@@ -17,7 +18,7 @@ export function createApp() {
   app.get('/api/health', (req, res) => {
     res.status(200).json({
       status: 'ok',
-      service: 'Mahi Tech Group Platform - Step 04 Parallel Fan-Out Engine',
+      service: 'Mahi Tech Group Platform - Step 06 Revenue Split Engine',
       timestamp: new Date().toISOString()
     });
   });
@@ -29,6 +30,7 @@ export function createApp() {
   app.use('/api/ideas', ideasRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/tasks', tasksRouter);
+  app.use('/api/withdrawals', withdrawalsRouter);
 
   // 404 handler for unknown routes
   app.use((req, res) => {

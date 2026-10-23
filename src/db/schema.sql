@@ -243,3 +243,100 @@ CREATE INDEX IF NOT EXISTS idx_offboarding_status ON offboarding(status);
 CREATE INDEX IF NOT EXISTS idx_assets_project_id ON assets(project_id);
 CREATE INDEX IF NOT EXISTS idx_assets_uploaded_by ON assets(uploaded_by);
 CREATE INDEX IF NOT EXISTS idx_assets_type ON assets(type);
+
+-- ===================================================================
+-- STEP 06: Revenue Split Engine Tables & Immutable Ledger
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS revenue_events (
+    id              TEXT PRIMARY KEY,
+    project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+    amount          DECIMAL(12,2) NOT NULL CHECK (amount != 0),
+    source          VARCHAR(100),
+    entered_by      TEXT REFERENCES users(id) ON DELETE RESTRICT,
+    event_date      DATE NOT NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS revenue_splits (
+    id                  TEXT PRIMARY KEY,
+    revenue_event_id    TEXT NOT NULL REFERENCES revenue_events(id) ON DELETE RESTRICT,
+    user_id             TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    amount              DECIMAL(12,2) NOT NULL,
+    rule_applied        VARCHAR(30) NOT NULL CHECK (rule_applied IN ('OWNER_50_TEAM_50','TEAM_100')),
+    split_type          VARCHAR(30) DEFAULT 'TEAM_CONTRIBUTOR' CHECK (split_type IN ('OWNER_ROYALTY','TEAM_CONTRIBUTOR')),
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS withdrawals (
+    id                  TEXT PRIMARY KEY,
+    user_id             TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    amount              DECIMAL(12,2) NOT NULL CHECK (amount > 0),
+    status              VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED','PAID')),
+    requested_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    approved_by         TEXT REFERENCES users(id) ON DELETE RESTRICT,
+    approved_at         TIMESTAMP,
+    paid_at             TIMESTAMP,
+    gateway_txn_id      VARCHAR(150),
+    rejection_reason    TEXT
+);
+
+CREATE TABLE IF NOT EXISTS pending_settlements (
+    id                  TEXT PRIMARY KEY,
+    revenue_split_id    TEXT NOT NULL REFERENCES revenue_splits(id) ON DELETE RESTRICT,
+    user_id             TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    amount              DECIMAL(12,2) NOT NULL,
+    status              VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING','SETTLED','FORFEITED')),
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    settled_by          TEXT REFERENCES users(id) ON DELETE RESTRICT,
+    settled_at          TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_revenue_events_project_id ON revenue_events(project_id);
+CREATE INDEX IF NOT EXISTS idx_revenue_events_event_date ON revenue_events(event_date);
+
+CREATE INDEX IF NOT EXISTS idx_revenue_splits_event_id ON revenue_splits(revenue_event_id);
+CREATE INDEX IF NOT EXISTS idx_revenue_splits_user_id ON revenue_splits(user_id);
+CREATE INDEX IF NOT EXISTS idx_revenue_splits_rule ON revenue_splits(rule_applied);
+
+CREATE INDEX IF NOT EXISTS idx_withdrawals_user_id ON withdrawals(user_id);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_requested_at ON withdrawals(requested_at);
+
+CREATE INDEX IF NOT EXISTS idx_pending_settlements_user_id ON pending_settlements(user_id);
+CREATE INDEX IF NOT EXISTS idx_pending_settlements_status ON pending_settlements(status);
+
+-- ===================================================================
+-- Immutable Ledger Triggers: Prevent UPDATE and DELETE on historical records
+-- ===================================================================
+
+CREATE TRIGGER IF NOT EXISTS prevent_revenue_events_update
+BEFORE UPDATE ON revenue_events
+BEGIN
+    SELECT RAISE(FAIL, 'Immutable ledger: UPDATE not allowed on revenue_events');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_revenue_events_delete
+BEFORE DELETE ON revenue_events
+BEGIN
+    SELECT RAISE(FAIL, 'Immutable ledger: DELETE not allowed on revenue_events');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_revenue_splits_update
+BEFORE UPDATE ON revenue_splits
+BEGIN
+    SELECT RAISE(FAIL, 'Immutable ledger: UPDATE not allowed on revenue_splits');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_revenue_splits_delete
+BEFORE DELETE ON revenue_splits
+BEGIN
+    SELECT RAISE(FAIL, 'Immutable ledger: DELETE not allowed on revenue_splits');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_withdrawals_delete
+BEFORE DELETE ON withdrawals
+BEGIN
+    SELECT RAISE(FAIL, 'Immutable ledger: DELETE not allowed on withdrawals');
+END;
+

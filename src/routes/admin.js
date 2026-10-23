@@ -15,6 +15,16 @@ import {
   getOffboardingHistory,
   getFrozenWallets
 } from '../services/offboardingService.js';
+import {
+  recordRevenueEvent,
+  recordReversingEntry,
+  getImmutableLedger
+} from '../services/revenueService.js';
+import {
+  getPendingWithdrawals,
+  approveWithdrawal,
+  rejectWithdrawal
+} from '../services/payoutService.js';
 
 const router = express.Router();
 
@@ -475,6 +485,113 @@ router.get('/wallets/frozen', authenticate, requirePermission('member.remove'), 
     count: frozenWallets.length,
     frozenWallets
   });
+});
+
+// ===================================================================
+// STEP 06: Revenue Split Engine & Manual Payout Endpoints (Admin Only)
+// ===================================================================
+
+// 19. POST /api/admin/projects/:id/revenue (Admin only - RBAC: revenue.manual_entry)
+router.post('/projects/:id/revenue', authenticate, requirePermission('revenue.manual_entry'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+  const { amount, source, event_date } = req.body || {};
+
+  const result = recordRevenueEvent({
+    projectId: id,
+    amount,
+    source,
+    eventDate: event_date,
+    adminUserId: req.user.id,
+    ipAddress
+  });
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(201).json(result);
+});
+
+// 20. POST /api/admin/projects/:id/revenue/reversal (Admin only - RBAC: revenue.manual_entry)
+router.post('/projects/:id/revenue/reversal', authenticate, requirePermission('revenue.manual_entry'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { original_event_id, reason } = req.body || {};
+
+  if (!original_event_id) {
+    return res.status(400).json({ error: 'original_event_id is required' });
+  }
+
+  const result = recordReversingEntry({
+    originalEventId: original_event_id,
+    reason,
+    adminUserId: req.user.id,
+    ipAddress
+  });
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(201).json(result);
+});
+
+// 21. GET /api/admin/revenue/ledger (Admin only - RBAC: revenue.manual_entry)
+router.get('/revenue/ledger', authenticate, requirePermission('revenue.manual_entry'), (req, res) => {
+  const { project_id, limit } = req.query;
+  const result = getImmutableLedger({
+    projectId: project_id || null,
+    limit: limit ? Number(limit) : 100
+  });
+
+  return res.status(200).json(result);
+});
+
+// 22. GET /api/admin/withdrawals/pending (Admin only - RBAC: payout.approve)
+router.get('/withdrawals/pending', authenticate, requirePermission('payout.approve'), (req, res) => {
+  const pending = getPendingWithdrawals();
+  return res.status(200).json({
+    count: pending.length,
+    withdrawals: pending
+  });
+});
+
+// 23. PATCH /api/admin/withdrawals/:id/approve (Admin only - RBAC: payout.approve)
+router.patch('/withdrawals/:id/approve', authenticate, requirePermission('payout.approve'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+
+  const result = approveWithdrawal({
+    withdrawalId: id,
+    adminUserId: req.user.id,
+    ipAddress
+  });
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(200).json(result);
+});
+
+// 24. PATCH /api/admin/withdrawals/:id/reject (Admin only - RBAC: payout.approve)
+router.patch('/withdrawals/:id/reject', authenticate, requirePermission('payout.approve'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+  const { rejection_reason } = req.body || {};
+
+  const result = rejectWithdrawal({
+    withdrawalId: id,
+    rejectionReason: rejection_reason,
+    adminUserId: req.user.id,
+    ipAddress
+  });
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(200).json(result);
 });
 
 export default router;
