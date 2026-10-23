@@ -3,32 +3,13 @@
  * Elevated Privilege Layer (Deep Indigo Theme)
  */
 
-// 1. Role Guard with Auto-Login Fallback
-let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-let authToken = localStorage.getItem('token');
+// 1. Immediate Synchronous Role Guard (Step 14 Spec)
+const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+const authToken = localStorage.getItem('token');
 
-async function ensureSuperAdminAuth() {
-  if (!currentUser || currentUser.role !== 'admin' || !authToken) {
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'admin@mahitechgroup.com', password: 'AdminPassword@2026' })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        currentUser = data.user;
-        authToken = data.token;
-        localStorage.setItem('user', JSON.stringify(currentUser));
-        localStorage.setItem('token', authToken);
-        return true;
-      }
-    } catch (e) {}
-    alert('Access Denied — Insufficient Privileges');
-    window.location.href = '/';
-    return false;
-  }
-  return true;
+if (!authToken || !currentUser || currentUser.role !== 'admin') {
+  alert('Access Denied — Insufficient Privileges');
+  window.location.href = '/';
 }
 
 // 2. Formatting Utility: formatINR (reused from dashboard.js)
@@ -1453,9 +1434,7 @@ function initAdminInfo() {
 }
 
 // 11. Bootstrap on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', async () => {
-  const authed = await ensureSuperAdminAuth();
-  if (!authed) return;
+document.addEventListener('DOMContentLoaded', () => {
   initAdminInfo();
   initNavigation();
   initEventListeners();

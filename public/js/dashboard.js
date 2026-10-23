@@ -32,13 +32,12 @@ const state = {
   currentNotesData: null
 };
 
-// Seed credentials for authenticating real users per Step 01 RBAC
+// Seed credentials for authenticating real users per Step 01 RBAC (Corner Panels)
 const ROLE_ACCOUNTS = {
   researcher: { email: 'researcher@mahitechgroup.com', password: 'ResearcherPass123!', role: 'researcher' },
   designer: { email: 'designer@mahitechgroup.com', password: 'DesignerPass123!', role: 'designer' },
   producer: { email: 'producer@mahitechgroup.com', password: 'ProducerPass123!', role: 'producer' },
-  developer: { email: 'developer@mahitechgroup.com', password: 'DeveloperPass123!', role: 'developer' },
-  admin: { email: 'admin@mahitechgroup.com', password: 'AdminPassword@2026', role: 'admin' }
+  developer: { email: 'developer@mahitechgroup.com', password: 'DeveloperPass123!', role: 'developer' }
 };
 
 // Step 13: Unified Indian Rupee Currency Formatter

@@ -3,36 +3,17 @@
  * Comprehensive Single-Pane-of-Glass Governance Engine
  */
 
-(async function () {
+(function () {
   'use strict';
 
-  // 1. RBAC Check on Entry with Seamless Localhost Fallback
-  let token = localStorage.getItem('token');
-  let user = JSON.parse(localStorage.getItem('user') || '{}');
+  // 1. RBAC Check on Entry — Strict Guard (No auto-auth, no hardcoded credentials)
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   if (!token || user.role !== 'admin') {
-    try {
-      const loginRes = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'admin@mahitechgroup.com', password: 'AdminPassword@2026' })
-      });
-      if (loginRes.ok) {
-        const authData = await loginRes.json();
-        token = authData.token;
-        user = authData.user;
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-      } else {
-        alert('Access Denied: Administrator role required to access Governance Control Panel.');
-        window.location.href = '/';
-        return;
-      }
-    } catch (err) {
-      alert('Access Denied: Administrator role required to access Governance Control Panel.');
-      window.location.href = '/';
-      return;
-    }
+    alert('Access Denied: Administrator role required to access Governance Control Panel.');
+    window.location.href = '/';
+    return;
   }
 
   // Set Topbar Admin Name
@@ -1004,11 +985,25 @@
   });
 
   // Logout
-  document.getElementById('adminLogoutBtn')?.addEventListener('click', (e) => {
+  document.getElementById('adminLogoutBtn')?.addEventListener('click', async (e) => {
     e.preventDefault();
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/';
+    try {
+      if (token) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Backend logout notification failed:', err);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
   });
 
   function escapeHtml(str) {
