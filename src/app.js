@@ -9,6 +9,7 @@ import tasksRouter from './routes/tasks.js';
 import withdrawalsRouter from './routes/withdrawals.js';
 import coworkingRouter from './routes/coworking.js';
 import dashboardRouter from './routes/dashboard.js';
+import meetingsRouter from './routes/meetings.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -43,6 +44,7 @@ export function createApp() {
   app.use('/api/tasks', tasksRouter);
   app.use('/api/withdrawals', withdrawalsRouter);
   app.use('/api/coworking-rooms', coworkingRouter);
+  app.use('/api/meetings', meetingsRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api', dashboardRouter); // Covers /api/notifications/* and /api/activity/*
 

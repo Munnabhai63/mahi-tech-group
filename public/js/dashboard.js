@@ -23,7 +23,13 @@ const state = {
   canvasRoomId: null,
   canvasState: { objects: {}, tombstones: {}, metadata: {} },
   canvasParticipants: [],
-  canvasIsArchived: false
+  canvasIsArchived: false,
+  activeMeetingId: null,
+  activeJitsiApi: null,
+  meetingLiveTimerInterval: null,
+  currentLiveMeeting: null,
+  currentNotesMeetingId: null,
+  currentNotesData: null
 };
 
 // Seed credentials for authenticating real users per Step 01 RBAC
@@ -31,7 +37,8 @@ const ROLE_ACCOUNTS = {
   researcher: { email: 'researcher@mahitechgroup.com', password: 'ResearcherPass123!', role: 'researcher' },
   designer: { email: 'designer@mahitechgroup.com', password: 'DesignerPass123!', role: 'designer' },
   producer: { email: 'producer@mahitechgroup.com', password: 'ProducerPass123!', role: 'producer' },
-  developer: { email: 'developer@mahitechgroup.com', password: 'DeveloperPass123!', role: 'developer' }
+  developer: { email: 'developer@mahitechgroup.com', password: 'DeveloperPass123!', role: 'developer' },
+  admin: { email: 'admin@mahitechgroup.com', password: 'AdminPassword@2026', role: 'admin' }
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -67,6 +74,12 @@ async function switchAccount(roleKey) {
 
     updateUserBadge(data.user);
     highlightActiveCornerPanel(data.user.role);
+
+    // Update meeting admin buttons visibility
+    const btnSched = document.getElementById('btnScheduleMeetingModal');
+    const btnSchedList = document.getElementById('btnLaunchNewMeetingFromList');
+    if (btnSched) btnSched.style.display = (data.user.role === 'admin') ? 'inline-flex' : 'none';
+    if (btnSchedList) btnSchedList.style.display = (data.user.role === 'admin') ? 'inline-block' : 'none';
 
     // Initial Full Refresh
     await refreshAllData();
@@ -265,6 +278,31 @@ function handleWebSocketMessage(msg) {
 
     case 'canvas:error':
       alert(`Co-working Canvas: ${data.error || 'Operation failed'}`);
+      break;
+
+    // STEP 12: MEETING INTEGRATION REAL-TIME EVENTS
+    case 'meeting:scheduled':
+      handleMeetingScheduled(data);
+      break;
+
+    case 'meeting:started':
+      handleMeetingStarted(data);
+      break;
+
+    case 'meeting:user_joined':
+      handleMeetingUserJoined(data);
+      break;
+
+    case 'meeting:user_left':
+      handleMeetingUserLeft(data);
+      break;
+
+    case 'meeting:ended':
+      handleMeetingEnded(data);
+      break;
+
+    case 'meeting:notes_ready':
+      handleMeetingNotesReady(data);
       break;
 
     default:
@@ -1400,6 +1438,106 @@ function setupEventListeners() {
       }
     });
   }
+
+  // STEP 12: Meeting Integration Listeners
+  document.getElementById('btnOpenMeetingsModal')?.addEventListener('click', () => {
+    document.getElementById('meetingsListModalBackdrop').style.display = 'flex';
+    fetchMeetingsList();
+  });
+
+  document.getElementById('btnCloseMeetingsListModal')?.addEventListener('click', () => {
+    document.getElementById('meetingsListModalBackdrop').style.display = 'none';
+  });
+
+  const openSchedModal = async () => {
+    document.getElementById('scheduleMeetingModalBackdrop').style.display = 'flex';
+    // Populate pending ideas dropdown
+    const select = document.getElementById('schedLinkedIdea');
+    if (select) {
+      select.innerHTML = '<option value="">-- Select Pending Idea --</option>';
+      try {
+        const ideasRes = await apiFetch('/api/ideas/my');
+        // Also fetch pending votes feed
+        const votesData = await apiFetch('/api/dashboard/votes-feed');
+        const pending = votesData?.ideas || [];
+        pending.forEach(i => {
+          select.innerHTML += `<option value="${i.id}">${escapeHtml(i.title)}</option>`;
+        });
+      } catch (e) {}
+    }
+  };
+
+  document.getElementById('btnScheduleMeetingModal')?.addEventListener('click', openSchedModal);
+  document.getElementById('btnLaunchNewMeetingFromList')?.addEventListener('click', openSchedModal);
+
+  document.getElementById('btnCloseScheduleMeetingModal')?.addEventListener('click', () => {
+    document.getElementById('scheduleMeetingModalBackdrop').style.display = 'none';
+  });
+  document.getElementById('btnCancelScheduleMeeting')?.addEventListener('click', () => {
+    document.getElementById('scheduleMeetingModalBackdrop').style.display = 'none';
+  });
+
+  document.getElementById('schedMeetingType')?.addEventListener('change', (e) => {
+    const group = document.getElementById('schedLinkedIdeaGroup');
+    if (group) group.style.display = (e.target.value === 'idea_review') ? 'block' : 'none';
+  });
+
+  document.getElementById('scheduleMeetingForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('schedMeetingTitle').value.trim();
+    const meeting_type = document.getElementById('schedMeetingType').value;
+    const linked_idea_id = document.getElementById('schedLinkedIdea').value || null;
+    const scheduled_at = document.getElementById('schedMeetingDateTime').value || null;
+    const recording_enabled = document.getElementById('schedRecordingEnabled').checked;
+
+    try {
+      const res = await apiFetch('/api/meetings', {
+        method: 'POST',
+        body: JSON.stringify({
+          title,
+          meeting_type,
+          linked_idea_id,
+          scheduled_at: scheduled_at ? new Date(scheduled_at).toISOString() : null,
+          recording_enabled
+        })
+      });
+
+      if (res && res.meeting) {
+        document.getElementById('scheduleMeetingModalBackdrop').style.display = 'none';
+        document.getElementById('scheduleMeetingForm').reset();
+        addTickerItem(`Meeting scheduled: "${res.meeting.title}"`);
+        fetchMeetingsList();
+      } else {
+        alert(`Failed to schedule meeting: ${res?.error || 'Error'}`);
+      }
+    } catch (err) {
+      console.error('Error creating meeting:', err);
+    }
+  });
+
+  document.getElementById('btnLeaveMeeting')?.addEventListener('click', leaveCurrentMeeting);
+  document.getElementById('btnEndMeetingForAll')?.addEventListener('click', endCurrentMeeting);
+
+  document.getElementById('btnJoinLiveMeetingBanner')?.addEventListener('click', () => {
+    if (state.currentLiveMeeting?.id || state.currentLiveMeeting?.meeting_id) {
+      joinMeetingRoom(state.currentLiveMeeting.id || state.currentLiveMeeting.meeting_id);
+    }
+  });
+
+  document.getElementById('btnDismissLiveMeetingBanner')?.addEventListener('click', () => {
+    document.getElementById('liveMeetingBanner').style.display = 'none';
+  });
+
+  document.getElementById('btnCloseMeetingNotesModal')?.addEventListener('click', () => {
+    document.getElementById('meetingNotesModalBackdrop').style.display = 'none';
+  });
+
+  document.getElementById('btnNotesLangEn')?.addEventListener('click', () => switchNotesLang('en'));
+  document.getElementById('btnNotesLangHi')?.addEventListener('click', () => switchNotesLang('hi'));
+  document.getElementById('btnNotesLangRaw')?.addEventListener('click', () => switchNotesLang('raw'));
+
+  document.getElementById('btnSplitVoteGreen')?.addEventListener('click', () => submitSplitVote('green'));
+  document.getElementById('btnSplitVoteRed')?.addEventListener('click', () => submitSplitVote('red'));
 }
 
 function updateWsStatus(status, text) {
@@ -1830,5 +1968,380 @@ function handleCanvasObjectDelete(data) {
   renderCanvasElements();
 }
 
+// ===================================================================
+// STEP 12: MEETING INTEGRATION FUNCTIONS
+// ===================================================================
+
+async function fetchMeetingsList() {
+  const container = document.getElementById('meetingsListContainer');
+  if (!container) return;
+
+  try {
+    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #94a3b8;">Loading meetings...</div>';
+    const data = await apiFetch('/api/meetings');
+    const meetings = data?.meetings || [];
+
+    if (meetings.length === 0) {
+      container.innerHTML = '<div style="text-align: center; padding: 20px; color: #94a3b8;">No meetings found.</div>';
+      return;
+    }
+
+    container.innerHTML = meetings.map(m => {
+      const isLive = m.status === 'LIVE';
+      const isScheduled = m.status === 'SCHEDULED';
+      const isEnded = m.status === 'ENDED';
+      const isCancelled = m.status === 'CANCELLED';
+
+      let statusBadge = `<span class="badge ${isLive ? 'badge-green' : isScheduled ? 'badge-amber' : 'badge-outline'}">${m.status}</span>`;
+      let actionButtons = '';
+
+      if (isLive) {
+        actionButtons += `<button class="btn btn-green btn-xs" onclick="joinMeetingRoom('${m.id}')">Join Live Room</button>`;
+      } else if (isScheduled && state.user?.role === 'admin') {
+        actionButtons += `<button class="btn btn-primary btn-xs" onclick="startMeetingFromUI('${m.id}')">Start Meeting</button>`;
+      }
+
+      if (m.has_confirmed_notes > 0) {
+        actionButtons += `<button class="btn btn-secondary btn-xs" onclick="openMeetingNotes('${m.id}')">📝 View Notes</button>`;
+      }
+
+      return `
+        <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <strong style="color: #fff; font-size: 14px;">${escapeHtml(m.title)}</strong>
+              ${statusBadge}
+              <span class="badge" style="background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); font-size: 10px;">${escapeHtml(m.meeting_type)}</span>
+              ${m.recording_enabled ? '<span style="font-size: 11px;" title="Recording Enabled">🔴 Rec</span>' : ''}
+            </div>
+            <div style="font-size: 12px; color: #94a3b8;">
+              Host: ${escapeHtml(m.host_name || 'Admin')} • Scheduled: ${m.scheduled_at ? new Date(m.scheduled_at).toLocaleString() : 'Now'} • ${m.attendee_count || 0} attended
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            ${actionButtons}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Failed to fetch meetings list:', err);
+    container.innerHTML = '<div style="color: #ef4444; padding: 12px;">Failed to load meetings.</div>';
+  }
+}
+
+async function loadJitsiScript(jitsiDomain) {
+  if (window.JitsiMeetExternalAPI) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById('jitsiExternalApiScript');
+    if (existing) {
+      existing.onload = resolve;
+      existing.onerror = reject;
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'jitsiExternalApiScript';
+    script.src = `https://${jitsiDomain}/external_api.js`;
+    script.onload = () => {
+      console.log('[Jitsi] External API library loaded.');
+      resolve();
+    };
+    script.onerror = (e) => {
+      console.error('[Jitsi] Failed to load external API script:', e);
+      reject(e);
+    };
+    document.head.appendChild(script);
+  });
+}
+
+async function joinMeetingRoom(meetingId) {
+  try {
+    const res = await apiFetch(`/api/meetings/${meetingId}/join`, { method: 'POST' });
+    if (!res || !res.meeting) {
+      alert(`Could not join meeting: ${res?.error || 'Error'}`);
+      return;
+    }
+
+    const m = res.meeting;
+    state.activeMeetingId = m.id;
+
+    // Close meetings list modal if open
+    document.getElementById('meetingsListModalBackdrop').style.display = 'none';
+    document.getElementById('liveMeetingBanner').style.display = 'none';
+
+    // Populate Meeting Room UI
+    document.getElementById('meetingRoomTitle').textContent = m.title;
+    document.getElementById('meetingTypeBadge').textContent = m.meeting_type;
+    document.getElementById('meetingHostName').textContent = `Host: ${escapeHtml(m.host_name || 'Admin')}`;
+
+    // Admin Controls
+    const endBtn = document.getElementById('btnEndMeetingForAll');
+    if (endBtn) {
+      endBtn.style.display = (state.user?.role === 'admin') ? 'inline-block' : 'none';
+    }
+
+    // Split-Screen Voting Panel
+    const jitsiPane = document.getElementById('meetingJitsiPane');
+    const votingPane = document.getElementById('meetingVotingPane');
+
+    if (m.split_screen && m.linked_idea_id) {
+      jitsiPane.classList.add('split');
+      votingPane.style.display = 'flex';
+      renderSplitIdeaPanel(m.linked_idea_id);
+    } else {
+      jitsiPane.classList.remove('split');
+      votingPane.style.display = 'none';
+    }
+
+    // Show Meeting Room Modal Backdrop
+    document.getElementById('meetingRoomModalBackdrop').style.display = 'flex';
+
+    // Start Live Timer
+    let seconds = 0;
+    clearInterval(state.meetingLiveTimerInterval);
+    state.meetingLiveTimerInterval = setInterval(() => {
+      seconds++;
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      document.getElementById('meetingLiveTimer').textContent = `${m}:${s}`;
+    }, 1000);
+
+    // Mount Jitsi IFrame API
+    await loadJitsiScript(m.jitsi_domain);
+    const container = document.getElementById('jitsiMeetingContainer');
+    container.innerHTML = '';
+
+    const options = {
+      roomName: m.jitsi_room_name,
+      parentNode: container,
+      userInfo: {
+        displayName: state.user?.name || 'Mahi Tech Member',
+        email: state.user?.email || 'member@mahitechgroup.com'
+      },
+      configOverwrite: {
+        prejoinPageEnabled: false,
+        startWithAudioMuted: false,
+        startWithVideoMuted: false
+      },
+      interfaceConfigOverwrite: {
+        TOOLBAR_BUTTONS: [
+          'microphone', 'camera', 'desktop', 'chat', 'raisehand',
+          'tileview', 'settings', 'hangup'
+        ]
+      }
+    };
+
+    if (window.JitsiMeetExternalAPI) {
+      state.activeJitsiApi = new window.JitsiMeetExternalAPI(m.jitsi_domain, options);
+      if (m.jitsi_password) {
+        state.activeJitsiApi.addEventListener('videoConferenceJoined', () => {
+          state.activeJitsiApi.executeCommand('password', m.jitsi_password);
+        });
+      }
+      state.activeJitsiApi.addEventListener('readyToClose', () => {
+        leaveCurrentMeeting();
+      });
+    }
+  } catch (err) {
+    console.error('Error joining meeting room:', err);
+    alert('Failed to enter meeting room.');
+  }
+}
+
+async function renderSplitIdeaPanel(ideaId) {
+  try {
+    const data = await apiFetch(`/api/ideas/${ideaId}`);
+    if (!data || !data.idea) return;
+    const idea = data.idea;
+
+    document.getElementById('splitVoteIdeaTitle').textContent = idea.title;
+    document.getElementById('splitVoteIdeaDesc').textContent = idea.description || '';
+    document.getElementById('splitVoteIdeaOwner').textContent = idea.owner_name || 'Member';
+    document.getElementById('splitVoteDeadline').textContent = idea.voting_deadline ? new Date(idea.voting_deadline).toLocaleString() : 'Open';
+    document.getElementById('splitVoteStatusMsg').style.display = 'none';
+
+    // Store active idea id on the split panel
+    document.getElementById('meetingVotingPane').dataset.activeIdeaId = ideaId;
+  } catch (err) {
+    console.error('Failed to load linked idea for split screen:', err);
+  }
+}
+
+async function submitSplitVote(color) {
+  const ideaId = document.getElementById('meetingVotingPane').dataset.activeIdeaId;
+  const comment = document.getElementById('splitVoteComment').value.trim();
+  const statusMsg = document.getElementById('splitVoteStatusMsg');
+
+  if (!ideaId) return;
+
+  try {
+    const res = await apiFetch(`/api/ideas/${ideaId}/vote`, {
+      method: 'POST',
+      body: JSON.stringify({ vote_color: color, comment })
+    });
+
+    if (res && res.success) {
+      statusMsg.style.display = 'block';
+      statusMsg.style.color = color === 'green' ? '#4ade80' : '#f87171';
+      statusMsg.textContent = `✓ Vote ${color.toUpperCase()} recorded successfully!`;
+      addTickerItem(`Voted ${color.toUpperCase()} on "${document.getElementById('splitVoteIdeaTitle').textContent}"`);
+      await fetchSummary();
+      await fetchVotesFeed();
+    } else {
+      statusMsg.style.display = 'block';
+      statusMsg.style.color = '#ef4444';
+      statusMsg.textContent = `Vote failed: ${res?.error || 'Error'}`;
+    }
+  } catch (err) {
+    console.error('Failed to submit vote in split screen:', err);
+  }
+}
+
+async function leaveCurrentMeeting() {
+  if (state.activeJitsiApi) {
+    try { state.activeJitsiApi.dispose(); } catch (e) {}
+    state.activeJitsiApi = null;
+  }
+  clearInterval(state.meetingLiveTimerInterval);
+  document.getElementById('meetingRoomModalBackdrop').style.display = 'none';
+
+  if (state.activeMeetingId) {
+    try {
+      await apiFetch(`/api/meetings/${state.activeMeetingId}/leave`, { method: 'POST' });
+    } catch (e) {}
+    state.activeMeetingId = null;
+  }
+}
+
+async function endCurrentMeeting() {
+  if (!confirm('Are you sure you want to end this meeting for all participants?')) return;
+
+  if (state.activeMeetingId) {
+    try {
+      const res = await apiFetch(`/api/meetings/${state.activeMeetingId}/end`, { method: 'PATCH' });
+      if (res && res.message) {
+        addTickerItem(`Meeting ended by Host`);
+      }
+    } catch (e) {
+      console.error('Failed to end meeting:', e);
+    }
+  }
+
+  leaveCurrentMeeting();
+}
+
+async function startMeetingFromUI(meetingId) {
+  try {
+    const res = await apiFetch(`/api/meetings/${meetingId}/start`, { method: 'PATCH' });
+    if (res && res.meeting) {
+      addTickerItem(`Meeting "${res.meeting.title}" is now LIVE`);
+      fetchMeetingsList();
+      joinMeetingRoom(meetingId);
+    } else {
+      alert(`Failed to start meeting: ${res?.error || 'Error'}`);
+    }
+  } catch (err) {
+    console.error('Error starting meeting:', err);
+  }
+}
+
+async function openMeetingNotes(meetingId) {
+  try {
+    const data = await apiFetch(`/api/meetings/${meetingId}/notes`);
+    if (!data || !data.notes) {
+      alert('Meeting notes are not confirmed yet or you were not an attendee.');
+      return;
+    }
+
+    state.currentNotesMeetingId = meetingId;
+    state.currentNotesData = data.notes;
+
+    document.getElementById('notesMeetingTitle').textContent = `Meeting ID: ${meetingId.slice(0, 8)}...`;
+    document.getElementById('notesMetaModel').textContent = `Model: ${data.notes.ai_model_used || 'OpenAI Whisper + GPT-4o'}`;
+    document.getElementById('notesMetaConfirmed').textContent = data.notes.confirmed_at ? `✓ Confirmed ${new Date(data.notes.confirmed_at).toLocaleString()}` : 'Draft';
+
+    switchNotesLang('en');
+    document.getElementById('meetingNotesModalBackdrop').style.display = 'flex';
+  } catch (err) {
+    console.error('Error fetching notes:', err);
+    alert('Notes not available or access restricted.');
+  }
+}
+
+function switchNotesLang(lang) {
+  const display = document.getElementById('notesContentDisplay');
+  const btnEn = document.getElementById('btnNotesLangEn');
+  const btnHi = document.getElementById('btnNotesLangHi');
+  const btnRaw = document.getElementById('btnNotesLangRaw');
+
+  btnEn.classList.toggle('active', lang === 'en');
+  btnHi.classList.toggle('active', lang === 'hi');
+  btnRaw.classList.toggle('active', lang === 'raw');
+
+  if (!state.currentNotesData) return;
+
+  if (lang === 'en') {
+    display.textContent = state.currentNotesData.notes_english || 'No English notes generated.';
+  } else if (lang === 'hi') {
+    display.textContent = state.currentNotesData.notes_hindi || 'कोई हिंदी नोट्स उत्पन्न नहीं हुए।';
+  } else if (lang === 'raw') {
+    display.textContent = state.currentNotesData.transcript_raw || 'No raw transcript recorded.';
+  }
+}
+
+// WebSocket Event Handlers for Meetings
+function handleMeetingScheduled(data) {
+  addTickerItem(`📅 New Meeting Scheduled: "${data.title}"`);
+  fetchMeetingsList();
+}
+
+function handleMeetingStarted(data) {
+  state.currentLiveMeeting = data;
+  const banner = document.getElementById('liveMeetingBanner');
+  const text = document.getElementById('liveMeetingBannerText');
+  if (banner && text) {
+    text.textContent = `"${data.title}" is now LIVE — Join now`;
+    banner.style.display = 'flex';
+  }
+  addTickerItem(`🔴 Live Meeting: "${data.title}" has started`);
+  fetchMeetingsList();
+}
+
+function handleMeetingUserJoined(data) {
+  if (state.activeMeetingId === data.meeting_id) {
+    const pill = document.getElementById('meetingAttendeeCountPill');
+    if (pill) {
+      addTickerItem(`👤 ${data.user_name} joined the meeting`);
+    }
+  }
+}
+
+function handleMeetingUserLeft(data) {
+  if (state.activeMeetingId === data.meeting_id) {
+    addTickerItem(`User left the meeting`);
+  }
+}
+
+function handleMeetingEnded(data) {
+  const banner = document.getElementById('liveMeetingBanner');
+  if (banner) banner.style.display = 'none';
+
+  if (state.activeMeetingId === data.meeting_id) {
+    alert('The meeting has been ended by the Host.');
+    leaveCurrentMeeting();
+  }
+  fetchMeetingsList();
+}
+
+function handleMeetingNotesReady(data) {
+  addTickerItem(`📝 AI Meeting Notes published for "${data.title || 'Meeting'}"`);
+  fetchMeetingsList();
+}
+
 window.openCoworkingRoom = openCoworkingRoom;
+window.joinMeetingRoom = joinMeetingRoom;
+window.startMeetingFromUI = startMeetingFromUI;
+window.openMeetingNotes = openMeetingNotes;
+
 

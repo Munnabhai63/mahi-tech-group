@@ -116,7 +116,8 @@ export async function runSeed() {
     { key: 'vote_approval_threshold', value: '70' },
     { key: 'vote_quorum_percentage', value: '70' },
     { key: 'voting_window_hours', value: '48' },
-    { key: 'revenue_split_duration_months', value: '5' }
+    { key: 'revenue_split_duration_months', value: '5' },
+    { key: 'jitsi_domain', value: 'meet.jit.si' }
   ];
 
   for (const cfg of defaultConfigs) {

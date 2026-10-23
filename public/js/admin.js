@@ -62,6 +62,7 @@
     revenue: 'Revenue Entry & Disbursal Ledger',
     offboarding: 'Offboarding Center & Wallet Settlements',
     config: 'System Configuration Parameters',
+    meetings: 'Meeting Management & AI Governance',
     audit: 'Immutable Compliance & Audit Logs'
   };
 
@@ -82,6 +83,7 @@
     else if (viewName === 'revenue') loadRevenueView();
     else if (viewName === 'offboarding') loadOffboardingView();
     else if (viewName === 'config') loadConfigView();
+    else if (viewName === 'meetings') loadMeetingsView();
     else if (viewName === 'audit') loadAuditLogs();
   }
 
@@ -800,6 +802,186 @@
     document.getElementById('auditStartDateFilter').value = '';
     document.getElementById('auditEndDateFilter').value = '';
     loadAuditLogs();
+  });
+
+  // ---------------------------------------------------------------------------
+  // VIEW 8: MEETING MANAGEMENT & AI GOVERNANCE
+  // ---------------------------------------------------------------------------
+  async function loadMeetingsView() {
+    const res = await apiCall('GET', '/api/admin/meetings');
+    const tbody = document.getElementById('meetingsTableBody');
+    if (!tbody) return;
+
+    if (res.ok && res.data.meetings) {
+      const meetings = res.data.meetings;
+      if (meetings.length > 0) {
+        tbody.innerHTML = meetings.map(m => {
+          const isLive = m.status === 'LIVE';
+          const isScheduled = m.status === 'SCHEDULED';
+          const isEnded = m.status === 'ENDED';
+
+          let actions = '';
+          if (isScheduled) {
+            actions += `<button class="btn-action btn-start-meeting" data-id="${m.id}" style="color: #4ade80;">Start</button> `;
+            actions += `<button class="btn-action btn-cancel-meeting" data-id="${m.id}" style="color: #f87171;">Cancel</button> `;
+          } else if (isLive) {
+            actions += `<button class="btn-action btn-end-meeting" data-id="${m.id}" style="color: #f87171;">End</button> `;
+          }
+
+          if (isEnded && m.recording_enabled) {
+            if (!m.recording_file_path) {
+              actions += `<button class="btn-action btn-upload-recording" data-id="${m.id}" data-title="${escapeHtml(m.title)}">Upload Recording</button> `;
+            }
+          }
+
+          if (m.notes_id) {
+            const isConfirmed = Boolean(m.confirmed_at);
+            actions += `<button class="btn-action btn-review-notes" data-id="${m.id}" data-title="${escapeHtml(m.title)}" data-raw="${escapeHtml(m.transcript_raw || '')}" data-en="${escapeHtml(m.notes_english || '')}" data-hi="${escapeHtml(m.notes_hindi || '')}" style="${isConfirmed ? 'color:#4ade80;' : 'color:#facc15;'}">${isConfirmed ? '✓ Confirmed Notes' : '⚡ Review AI Draft'}</button>`;
+          }
+
+          return `
+            <tr>
+              <td><strong>${escapeHtml(m.title)}</strong></td>
+              <td><span class="badge" style="font-size:11px;">${m.meeting_type}</span></td>
+              <td><span class="status-badge ${isLive ? 'status-live' : isScheduled ? 'status-pending' : 'status-inactive'}">${m.status}</span></td>
+              <td>${escapeHtml(m.host_name || 'Admin')}</td>
+              <td>${m.attendee_count || 0}</td>
+              <td>${m.started_at ? m.started_at.slice(0, 16) : m.scheduled_at ? m.scheduled_at.slice(0, 16) : '-'}</td>
+              <td>${actions || '-'}</td>
+            </tr>
+          `;
+        }).join('');
+
+        // Wire event handlers
+        document.querySelectorAll('.btn-start-meeting').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const mId = btn.dataset.id;
+            const sRes = await apiCall('PATCH', `/api/meetings/${mId}/start`);
+            if (sRes.ok) {
+              showToast('Meeting started! Notification sent to all members.');
+              loadMeetingsView();
+            } else {
+              showToast(sRes.data.error || 'Failed to start meeting', true);
+            }
+          });
+        });
+
+        document.querySelectorAll('.btn-end-meeting').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            if (!confirm('End this meeting for all participants?')) return;
+            const mId = btn.dataset.id;
+            const eRes = await apiCall('PATCH', `/api/meetings/${mId}/end`);
+            if (eRes.ok) {
+              showToast('Meeting ended cleanly. Attendance locked.');
+              loadMeetingsView();
+            } else {
+              showToast(eRes.data.error || 'Failed to end meeting', true);
+            }
+          });
+        });
+
+        document.querySelectorAll('.btn-cancel-meeting').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const mId = btn.dataset.id;
+            const cRes = await apiCall('PATCH', `/api/meetings/${mId}/cancel`);
+            if (cRes.ok) {
+              showToast('Meeting cancelled.');
+              loadMeetingsView();
+            } else {
+              showToast(cRes.data.error || 'Failed to cancel meeting', true);
+            }
+          });
+        });
+
+        document.querySelectorAll('.btn-upload-recording').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.getElementById('uploadRecMeetingId').value = btn.dataset.id;
+            document.getElementById('uploadRecMeetingTitle').value = btn.dataset.title;
+            openModal('adminUploadRecordingModal');
+          });
+        });
+
+        document.querySelectorAll('.btn-review-notes').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.getElementById('reviewNotesMeetingId').value = btn.dataset.id;
+            document.getElementById('reviewNotesMeetingTitle').value = btn.dataset.title;
+            document.getElementById('reviewNotesRaw').value = btn.dataset.raw;
+            document.getElementById('reviewNotesEnglish').value = btn.dataset.en;
+            document.getElementById('reviewNotesHindi').value = btn.dataset.hi;
+            openModal('adminReviewNotesModal');
+          });
+        });
+
+      } else {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#94a3b8;">No meetings created yet.</td></tr>';
+      }
+    }
+  }
+
+  // Admin Launch Meeting Button
+  document.getElementById('btnAdminLaunchMeeting')?.addEventListener('click', () => {
+    window.location.href = '/#meeting-schedule';
+  });
+
+  // Admin Confirm Notes Form
+  document.getElementById('adminReviewNotesForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const mId = document.getElementById('reviewNotesMeetingId').value;
+    const raw = document.getElementById('reviewNotesRaw').value;
+    const en = document.getElementById('reviewNotesEnglish').value;
+    const hi = document.getElementById('reviewNotesHindi').value;
+
+    const res = await apiCall('PATCH', `/api/admin/meetings/${mId}/notes/confirm`, {
+      transcript_raw: raw,
+      notes_english: en,
+      notes_hindi: hi
+    });
+
+    if (res.ok) {
+      showToast('Meeting notes confirmed! Published to meeting participants.');
+      closeModal('adminReviewNotesModal');
+      loadMeetingsView();
+    } else {
+      showToast(res.data.error || 'Failed to confirm notes', true);
+    }
+  });
+
+  // Admin Upload Recording Form
+  document.getElementById('adminUploadRecordingForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const mId = document.getElementById('uploadRecMeetingId').value;
+    const fileInput = document.getElementById('uploadRecFile');
+    if (!fileInput.files || fileInput.files.length === 0) {
+      showToast('Please select an audio file', true);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('recording', fileInput.files[0]);
+
+    try {
+      showToast('Uploading recording file...');
+      const res = await fetch(`/api/meetings/${mId}/recording`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${state.token}`
+        },
+        body: formData
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Recording uploaded! AI Whisper transcription pipeline started.');
+        closeModal('adminUploadRecordingModal');
+        fileInput.value = '';
+        loadMeetingsView();
+      } else {
+        showToast(data.error || 'Failed to upload recording', true);
+      }
+    } catch (err) {
+      console.error('Recording upload error:', err);
+      showToast('Failed to upload recording file', true);
+    }
   });
 
   // Logout

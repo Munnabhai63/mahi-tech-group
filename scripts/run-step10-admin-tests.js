@@ -749,7 +749,9 @@ async function runStep10AdminTests() {
   }
 }
 
-runStep10AdminTests().catch(err => {
+runStep10AdminTests().then(() => {
+  process.exit(0);
+}).catch(err => {
   console.error('\n❌ STEP 10 ADMIN TEST SUITE FAILED:', err);
   process.exit(1);
 });

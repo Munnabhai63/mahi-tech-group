@@ -871,7 +871,9 @@ async function runStep11Tests() {
   }
 }
 
-runStep11Tests().catch(err => {
+runStep11Tests().then(() => {
+  process.exit(0);
+}).catch(err => {
   console.error('\n❌ STEP 11 TEST SUITE FAILED:', err);
   process.exit(1);
 });

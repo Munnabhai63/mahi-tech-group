@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
 import { disconnectUserSockets } from './wsService.js';
+import { ejectUserFromActiveMeetings } from './meetingService.js';
 
 export const DEFAULT_EXTERNAL_SERVICES_CHECKLIST = [
   { id: 'github_org', label: 'Remove from GitHub org', status: 'PENDING', type: 'manual_checklist', completed_at: null },
@@ -64,12 +65,14 @@ export function executeOffboardingKillswitch({ userId, adminUserId, reason, ipAd
   );
   // Sever any active WebSocket connections immediately
   disconnectUserSockets(userId, 'Account offboarded');
+  // Eject from any active meetings and lock left_at timestamp
+  ejectUserFromActiveMeetings(userId);
 
   executionTimestamps.step1 = step1Start;
   stepsExecuted.push({
     step: 1,
     action: 'invalidate_sessions',
-    details: 'All active sessions and WebSockets across all devices revoked immediately'
+    details: 'All active sessions, WebSockets, and meeting attendance records revoked/closed immediately'
   });
 
   // -----------------------------------------------------------------

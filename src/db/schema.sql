@@ -424,6 +424,73 @@ CREATE INDEX IF NOT EXISTS idx_coworking_rooms_status ON coworking_rooms(status)
 CREATE INDEX IF NOT EXISTS idx_room_participants_room_id ON room_participants(room_id);
 CREATE INDEX IF NOT EXISTS idx_room_participants_user_id ON room_participants(user_id);
 
+-- ===================================================================
+-- STEP 12: Meeting Integration & AI Governance Tables
+-- ===================================================================
 
+CREATE TABLE IF NOT EXISTS meetings (
+    id                  TEXT PRIMARY KEY,
+    title               VARCHAR(200) NOT NULL,
+    meeting_type        VARCHAR(30) NOT NULL CHECK (meeting_type IN ('ad_hoc', 'idea_review')),
+    linked_idea_id      TEXT REFERENCES ideas(id) ON DELETE SET NULL,
+    linked_project_id   TEXT REFERENCES projects(id) ON DELETE SET NULL,
+    hosted_by           TEXT NOT NULL REFERENCES users(id),
+    jitsi_room_name     VARCHAR(150) UNIQUE NOT NULL,
+    jitsi_password      VARCHAR(100),
+    recording_enabled   BOOLEAN DEFAULT 0,
+    recording_file_path TEXT,
+    scheduled_at        TIMESTAMP,
+    started_at          TIMESTAMP,
+    ended_at            TIMESTAMP,
+    status              VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED' CHECK (status IN ('SCHEDULED','LIVE','ENDED','CANCELLED')),
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
+CREATE TABLE IF NOT EXISTS meeting_attendance (
+    id              TEXT PRIMARY KEY,
+    meeting_id      TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+    user_id         TEXT NOT NULL REFERENCES users(id),
+    joined_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    left_at         TIMESTAMP
+);
 
+CREATE TABLE IF NOT EXISTS meeting_notes (
+    id              TEXT PRIMARY KEY,
+    meeting_id      TEXT UNIQUE NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+    transcript_raw  TEXT NOT NULL,
+    notes_hindi     TEXT NOT NULL,
+    notes_english   TEXT NOT NULL,
+    ai_model_used   VARCHAR(100) NOT NULL,
+    generated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    confirmed_by    TEXT REFERENCES users(id),
+    confirmed_at    TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_meetings_status ON meetings(status);
+CREATE INDEX IF NOT EXISTS idx_meetings_hosted_by ON meetings(hosted_by);
+CREATE INDEX IF NOT EXISTS idx_meetings_linked_idea ON meetings(linked_idea_id);
+CREATE INDEX IF NOT EXISTS idx_meetings_linked_project ON meetings(linked_project_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_attendance_meeting_id ON meeting_attendance(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_attendance_user_id ON meeting_attendance(user_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_notes_meeting_id ON meeting_notes(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_notes_confirmed_at ON meeting_notes(confirmed_at);
+
+-- Trigger 1: Unconditionally prevent DELETE on meeting_attendance
+CREATE TRIGGER IF NOT EXISTS prevent_meeting_attendance_delete
+BEFORE DELETE ON meeting_attendance
+BEGIN
+    SELECT RAISE(FAIL, 'Immutable log: DELETE not allowed on meeting_attendance');
+END;
+
+-- Trigger 2: Enforce append-only attendance: block changes to meeting_id, user_id, joined_at; permit setting left_at once when OLD.left_at IS NULL
+CREATE TRIGGER IF NOT EXISTS enforce_meeting_attendance_append_only
+BEFORE UPDATE ON meeting_attendance
+BEGIN
+    SELECT CASE
+        WHEN NEW.meeting_id != OLD.meeting_id OR NEW.user_id != OLD.user_id OR NEW.joined_at != OLD.joined_at THEN
+            RAISE(FAIL, 'Immutable: meeting_id/user_id/joined_at cannot be changed')
+        WHEN OLD.left_at IS NOT NULL THEN
+            RAISE(FAIL, 'Immutable log: Departure already recorded and locked')
+        ELSE NULL
+    END;
+END;

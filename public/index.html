@@ -59,6 +59,10 @@
       <!-- Public Sign Up Link -->
       <a href="/signup.html" class="view-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 0.4rem 0.75rem; font-size: 0.8rem;" title="Public Signup Form">📝 Sign Up</a>
 
+      <!-- Step 12 Meeting Buttons -->
+      <button class="view-btn" id="btnOpenMeetingsModal" title="Meetings List" style="display: inline-flex; align-items: center; gap: 4px;">📹 Meetings</button>
+      <button class="view-btn" id="btnScheduleMeetingModal" style="display: none; background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; align-items: center; gap: 4px;" title="Schedule / Launch Meeting">➕ Launch Meeting</button>
+
       <!-- Notifications Bell Dropdown -->
       <div class="notifications-dropdown-wrap">
         <button class="icon-button" id="notifBellBtn" title="Notifications">
@@ -86,6 +90,18 @@
       </a>
     </div>
   </header>
+
+  <!-- Step 12 Real-time Live Meeting Alert Banner -->
+  <div class="live-meeting-banner" id="liveMeetingBanner" style="display: none;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span class="status-indicator live"></span>
+      <span id="liveMeetingBannerText" style="font-weight: 600;">Meeting is now LIVE</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button class="btn btn-green btn-sm" id="btnJoinLiveMeetingBanner">Join Now →</button>
+      <button class="btn btn-secondary btn-sm" id="btnDismissLiveMeetingBanner" style="padding: 2px 8px; font-size: 11px;">✕</button>
+    </div>
+  </div>
 
   <!-- Main Workspace Canvas -->
   <main class="dashboard-main spatial-workspace-layout" id="workspaceMain">
@@ -796,6 +812,175 @@
         <div class="canvas-cursors-layer" id="canvasCursorsLayer"></div>
         <!-- Board elements container -->
         <div class="canvas-elements-layer" id="canvasElementsLayer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       STEP 12: In-App Meeting Room Modal (Jitsi + Split-Screen Voting)
+       =================================================================== -->
+  <div class="meeting-modal-backdrop" id="meetingRoomModalBackdrop" style="display: none;">
+    <div class="meeting-dialog">
+      <div class="meeting-header">
+        <div class="meeting-header-left">
+          <span style="font-size: 1.3rem;">📹</span>
+          <div>
+            <h3 id="meetingRoomTitle" style="margin: 0; font-size: 1.1rem; color: #fff;">Team Meeting</h3>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: #94a3b8; margin-top: 2px;">
+              <span class="badge" id="meetingTypeBadge">ad_hoc</span>
+              <span id="meetingHostName">Host: Admin</span>
+              <span>•</span>
+              <span id="meetingLiveTimer">00:00</span>
+              <span>•</span>
+              <span id="meetingAttendeeCountPill" class="badge badge-outline">1 attendee</span>
+            </div>
+          </div>
+        </div>
+        <div class="meeting-header-right">
+          <button class="btn btn-secondary btn-sm" id="btnLeaveMeeting">Leave Meeting</button>
+          <button class="btn btn-danger btn-sm" id="btnEndMeetingForAll" style="display: none;">End Meeting for All</button>
+        </div>
+      </div>
+
+      <div class="meeting-split-container" id="meetingSplitContainer">
+        <!-- Jitsi IFrame Container (60% on split, 100% on ad-hoc) -->
+        <div class="meeting-jitsi-pane" id="meetingJitsiPane">
+          <div id="jitsiMeetingContainer" style="width: 100%; height: 100%;"></div>
+        </div>
+
+        <!-- Step 03 Split-Screen Voting Panel (Only rendered for idea_review meetings) -->
+        <div class="meeting-voting-pane" id="meetingVotingPane" style="display: none;">
+          <div class="meeting-split-header">
+            <h3>🗳️ Idea Governance & Real-Time Voting</h3>
+            <p style="margin: 0; font-size: 12px; color: #94a3b8;">Review linked proposal and cast your vote inline</p>
+          </div>
+          
+          <div id="splitVoteIdeaCard" style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 16px; border: 1px solid rgba(255,255,255,0.08);">
+            <h4 id="splitVoteIdeaTitle" style="color: #60a5fa; margin-top: 0; margin-bottom: 8px;">Loading Idea...</h4>
+            <p id="splitVoteIdeaDesc" style="font-size: 13px; color: #cbd5e1; line-height: 1.5; margin-bottom: 12px; max-height: 180px; overflow-y: auto;"></p>
+            <div style="display: flex; gap: 10px; font-size: 11px; color: #94a3b8; margin-bottom: 12px;">
+              <span>Submitted by: <strong id="splitVoteIdeaOwner" style="color: #f1f5f9;">--</strong></span>
+              <span>•</span>
+              <span>Voting window: <strong id="splitVoteDeadline" style="color: #f59e0b;">--</strong></span>
+            </div>
+            
+            <div class="form-group mb-3">
+              <label style="font-size: 12px; color: #cbd5e1; display: block; margin-bottom: 6px;">Feedback Comment (Optional)</label>
+              <textarea id="splitVoteComment" class="form-input" rows="2" placeholder="Constructive feedback..." style="width: 100%; font-size: 12px;"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+              <button type="button" class="btn btn-green w-100" id="btnSplitVoteGreen" style="padding: 10px; font-weight: 600;">
+                👍 Vote Green (Approve)
+              </button>
+              <button type="button" class="btn btn-red w-100" id="btnSplitVoteRed" style="padding: 10px; font-weight: 600;">
+                👎 Vote Red (Reject)
+              </button>
+            </div>
+            <div id="splitVoteStatusMsg" style="font-size: 12px; text-align: center; margin-top: 10px; display: none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meetings List Modal -->
+  <div class="canvas-modal-backdrop" id="meetingsListModalBackdrop" style="display: none;">
+    <div class="canvas-dialog" style="max-width: 760px; height: auto; max-height: 85vh; padding: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="margin: 0; color: #fff; display: flex; align-items: center; gap: 8px;">
+          <span>📹</span> Team Meetings & Governance
+        </h3>
+        <button class="btn btn-secondary btn-sm" id="btnCloseMeetingsListModal">✕</button>
+      </div>
+
+      <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 12.5px; color: #94a3b8;">Scheduled, live, and historical meetings</span>
+        <button class="btn btn-primary btn-sm" id="btnLaunchNewMeetingFromList" style="display: none;">+ Schedule Meeting</button>
+      </div>
+
+      <div id="meetingsListContainer" style="overflow-y: auto; max-height: 60vh; display: flex; flex-direction: column; gap: 10px;">
+        <div style="text-align: center; padding: 20px; color: #94a3b8;">Loading meetings...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Meeting Scheduling Modal -->
+  <div class="canvas-modal-backdrop" id="scheduleMeetingModalBackdrop" style="display: none;">
+    <div class="canvas-dialog" style="max-width: 540px; height: auto; padding: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="margin: 0; color: #fff;">Schedule / Launch Meeting</h3>
+        <button class="btn btn-secondary btn-sm" id="btnCloseScheduleMeetingModal">✕</button>
+      </div>
+
+      <form id="scheduleMeetingForm">
+        <div class="form-group mb-3">
+          <label style="display: block; font-size: 12.5px; color: #cbd5e1; margin-bottom: 4px;">Meeting Title</label>
+          <input type="text" id="schedMeetingTitle" class="form-input" style="width: 100%;" required placeholder="e.g., Weekly Product Sync or Idea Governance Review" />
+        </div>
+
+        <div class="form-group mb-3">
+          <label style="display: block; font-size: 12.5px; color: #cbd5e1; margin-bottom: 4px;">Meeting Type</label>
+          <select id="schedMeetingType" class="form-input" style="width: 100%;">
+            <option value="ad_hoc">Ad-hoc Team Meeting</option>
+            <option value="idea_review">Idea Review (Split-Screen Voting Panel)</option>
+          </select>
+        </div>
+
+        <div class="form-group mb-3" id="schedLinkedIdeaGroup" style="display: none;">
+          <label style="display: block; font-size: 12.5px; color: #cbd5e1; margin-bottom: 4px;">Linked Idea (Step 03 Pipeline)</label>
+          <select id="schedLinkedIdea" class="form-input" style="width: 100%;">
+            <option value="">-- Select Pending Idea --</option>
+          </select>
+        </div>
+
+        <div class="form-group mb-3">
+          <label style="display: block; font-size: 12.5px; color: #cbd5e1; margin-bottom: 4px;">Scheduled Date & Time (Optional)</label>
+          <input type="datetime-local" id="schedMeetingDateTime" class="form-input" style="width: 100%;" />
+        </div>
+
+        <div class="form-group mb-4" style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="schedRecordingEnabled" style="width: 16px; height: 16px;" />
+          <label for="schedRecordingEnabled" style="font-size: 13px; color: #cbd5e1; cursor: pointer;">
+            Enable Meeting Recording & AI Notes Pipeline (Whisper + GPT-4o)
+          </label>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button type="button" class="btn btn-secondary w-100" id="btnCancelScheduleMeeting">Cancel</button>
+          <button type="submit" class="btn btn-primary w-100" id="btnSubmitScheduleMeeting">Create Meeting</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Meeting Notes Modal (Bilingual Hindi/English Viewer) -->
+  <div class="canvas-modal-backdrop" id="meetingNotesModalBackdrop" style="display: none;">
+    <div class="canvas-dialog" style="max-width: 800px; height: auto; max-height: 85vh; padding: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+          <h3 style="margin: 0; color: #fff; display: flex; align-items: center; gap: 8px;">
+            <span>📝</span> Meeting Notes & Key Decisions
+          </h3>
+          <span id="notesMeetingTitle" style="font-size: 12px; color: #94a3b8;">Meeting Title</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btnCloseMeetingNotesModal">✕</button>
+      </div>
+
+      <!-- Language Selector Tabs -->
+      <div class="lang-toggle-tabs">
+        <button class="lang-tab-btn active" id="btnNotesLangEn">🇬🇧 English Notes</button>
+        <button class="lang-tab-btn" id="btnNotesLangHi">🇮🇳 हिंदी नोट्स (Hindi)</button>
+        <button class="lang-tab-btn" id="btnNotesLangRaw" style="font-size: 11px;">📄 Raw Transcript</button>
+      </div>
+
+      <div class="notes-content-box" id="notesContentDisplay">
+        Loading notes...
+      </div>
+
+      <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #94a3b8;">
+        <span id="notesMetaModel">Generated by OpenAI Whisper + GPT-4o</span>
+        <span id="notesMetaConfirmed">✓ Confirmed by Admin</span>
       </div>
     </div>
   </div>

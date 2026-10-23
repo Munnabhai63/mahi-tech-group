@@ -26,6 +26,7 @@ import {
   rejectWithdrawal
 } from '../services/payoutService.js';
 import { createNotification } from '../services/notificationService.js';
+import { confirmMeetingNotes } from '../services/meetingService.js';
 
 const router = express.Router();
 
@@ -1216,7 +1217,8 @@ router.patch('/config/general', authenticate, (req, res) => {
     ideaQuotaWindowDays,
     votingWindowHours,
     voteApprovalThreshold,
-    voteQuorumPercentage
+    voteQuorumPercentage,
+    jitsiDomain
   } = req.body || {};
 
   const updatedKeys = [];
@@ -1291,6 +1293,18 @@ router.patch('/config/general', authenticate, (req, res) => {
       [val.toString(), req.user.id, 'vote_quorum_percentage']
     );
     updatedKeys.push(`vote_quorum_percentage: ${val}`);
+  }
+
+  if (jitsiDomain !== undefined) {
+    const val = String(jitsiDomain).trim();
+    if (!val) {
+      return res.status(400).json({ error: 'jitsiDomain cannot be empty' });
+    }
+    execute(
+      'INSERT INTO system_config (key, value, updated_by, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP',
+      ['jitsi_domain', val, req.user.id]
+    );
+    updatedKeys.push(`jitsi_domain: ${val}`);
   }
 
   if (updatedKeys.length > 0) {
@@ -1375,6 +1389,58 @@ router.get('/ideas/:id/history', authenticate, (req, res) => {
     reviewMeeting: meeting,
     decisionHistory: history
   });
+});
+
+/**
+ * 23. GET /api/admin/meetings (Admin only)
+ * Full meeting management view including draft notes and attendance lists
+ */
+router.get('/meetings', authenticate, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can access meeting management' });
+  }
+
+  const meetings = queryAll(`
+    SELECT m.*, u.name as host_name,
+      (SELECT COUNT(DISTINCT user_id) FROM meeting_attendance WHERE meeting_id = m.id) as attendee_count,
+      mn.id as notes_id,
+      mn.notes_hindi,
+      mn.notes_english,
+      mn.transcript_raw,
+      mn.ai_model_used,
+      mn.confirmed_at,
+      mn.confirmed_by
+    FROM meetings m
+    JOIN users u ON m.hosted_by = u.id
+    LEFT JOIN meeting_notes mn ON m.id = mn.meeting_id
+    ORDER BY m.created_at DESC
+  `);
+
+  return res.status(200).json({ meetings });
+});
+
+/**
+ * 24. PATCH /api/admin/meetings/:id/notes/confirm (Admin only)
+ * Confirm / Edit AI meeting notes and publish to participants
+ */
+router.patch('/meetings/:id/notes/confirm', authenticate, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can confirm meeting notes' });
+  }
+
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { notes_hindi, notes_english, transcript_raw } = req.body || {};
+
+  const result = confirmMeetingNotes({
+    meetingId: req.params.id,
+    adminUserId: req.user.id,
+    notesHindi: notes_hindi,
+    notesEnglish: notes_english,
+    transcriptRaw: transcript_raw,
+    ipAddress
+  });
+
+  return res.status(result.status).json(result.notes ? { message: result.message, notes: result.notes } : { error: result.error });
 });
 
 export default router;

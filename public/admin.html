@@ -492,6 +492,12 @@
           </button>
         </li>
         <li>
+          <button class="nav-btn" data-view="meetings" id="nav-meetings">
+            <span>📹</span> Meeting Management
+            <span class="nav-badge" id="badge-live-meetings" style="display:none;">LIVE</span>
+          </button>
+        </li>
+        <li>
           <button class="nav-btn" data-view="audit" id="nav-audit">
             <span>📜</span> Audit & Access Logs
           </button>
@@ -827,6 +833,33 @@
         </section>
 
         <!-- 8. AUDIT LOGS -->
+        <!-- 8. MEETING MANAGEMENT -->
+        <section id="view-meetings" class="view-section">
+          <div class="card">
+            <div class="card-header">
+              <h3>Team Meetings & AI Governance</h3>
+              <button class="btn-primary" id="btnAdminLaunchMeeting">+ Schedule Meeting</button>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Host</th>
+                  <th>Attendees</th>
+                  <th>Scheduled / Started</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="meetingsTableBody">
+                <tr><td colspan="7" style="text-align:center;">Loading meetings...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 9. IMMUTABLE AUDIT LOGS -->
         <section id="view-audit" class="view-section">
           <div class="card">
             <div class="card-header">
@@ -1032,6 +1065,64 @@
         <div class="modal-actions">
           <button type="button" class="btn-action close-modal">Cancel</button>
           <button type="submit" class="btn-primary">Confirm Settlement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Review AI Notes Modal -->
+  <div id="adminReviewNotesModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3>Review & Confirm AI Meeting Notes</h3>
+        <button class="btn-action close-modal">&times;</button>
+      </div>
+      <form id="adminReviewNotesForm">
+        <input type="hidden" id="reviewNotesMeetingId">
+        <div class="form-group">
+          <label>Meeting Title</label>
+          <input type="text" id="reviewNotesMeetingTitle" class="form-input" disabled>
+        </div>
+        <div class="form-group">
+          <label>Raw Transcript (Whisper Speech-to-Text)</label>
+          <textarea id="reviewNotesRaw" class="form-textarea" rows="4" style="font-size: 12px; font-family: monospace;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Structured English Notes (GPT-4o Synthesis)</label>
+          <textarea id="reviewNotesEnglish" class="form-textarea" rows="6" style="font-size: 13px;" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Structured Hindi Notes (Devanagari)</label>
+          <textarea id="reviewNotesHindi" class="form-textarea" rows="6" style="font-size: 13px;" required></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-action close-modal">Cancel</button>
+          <button type="submit" class="btn-primary" style="background: #10b981;">✓ Confirm & Publish to Participants</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Upload Recording Modal -->
+  <div id="adminUploadRecordingModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Upload Meeting Recording</h3>
+        <button class="btn-action close-modal">&times;</button>
+      </div>
+      <form id="adminUploadRecordingForm">
+        <input type="hidden" id="uploadRecMeetingId">
+        <div class="form-group">
+          <label>Meeting Title</label>
+          <input type="text" id="uploadRecMeetingTitle" class="form-input" disabled>
+        </div>
+        <div class="form-group">
+          <label>Audio/Video File (mp3, wav, m4a, webm, mp4)</label>
+          <input type="file" id="uploadRecFile" class="form-input" accept=".mp3,.wav,.m4a,.webm,.mp4" required>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-action close-modal">Cancel</button>
+          <button type="submit" class="btn-primary">Upload & Dispatch Whisper AI</button>
         </div>
       </form>
     </div>
