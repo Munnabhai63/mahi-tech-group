@@ -111,14 +111,16 @@ async function runStep09ProfileTests() {
     const peerDevSession = await loginUser(peerDevEmail, peerDevPass);
     console.log(`   ✓ Peer Developer authenticated: ${peerDevSession.user.name} (${peerDevSession.user.id})`);
 
-    // Create / authenticate Offboarded Former Member (Step 05 state)
-    const formerMemberEmail = `former.member.${Date.now()}@mahitechgroup.com`;
-    const formerMemberId = crypto.randomUUID();
+    // Create active user to be offboarded in real-time lifecycle test (Step 05 Integration)
+    const offboardTestEmail = `offboard.candidate.${Date.now()}@mahitechgroup.com`;
+    const offboardTestPass = 'OffboardCandidatePass123!';
+    const offboardTestHash = await bcrypt.hash(offboardTestPass, 10);
+    const offboardTestId = crypto.randomUUID();
     execute(`
-      INSERT INTO users (id, name, email, password_hash, role, status, deactivated_at, rating_avg, wallet_balance, wallet_frozen, bio)
-      VALUES (?, ?, ?, 'DUMMY_HASH', 'developer', 'inactive', '2026-10-15 14:00:00', 4.5, 4500.00, 1, 'Former backend engineer')
-    `, [formerMemberId, 'Julian Bashir', formerMemberEmail]);
-    console.log(`   ✓ Former Member record prepared in DB: Julian Bashir (${formerMemberId})\n`);
+      INSERT INTO users (id, name, email, password_hash, role, sub_role, status, rating_avg, wallet_balance, wallet_frozen, bio)
+      VALUES (?, 'Julian Bashir', ?, ?, 'developer', 'backend', 'active', 4.5, 4500.00, 0, 'Original active bio before offboarding')
+    `, [offboardTestId, offboardTestEmail, offboardTestHash]);
+    console.log(`   ✓ Active member prepared for offboarding lifecycle: Julian Bashir (${offboardTestId})\n`);
 
     // Seed test Ideas for Researcher
     const idea1Id = crypto.randomUUID();
@@ -302,16 +304,61 @@ async function runStep09ProfileTests() {
     console.log('   ✓ TEST 5 PASSED: Strict financial privacy enforced (Owner/Admin get full ledger; Peers blocked with 403 & receive aggregate summary only)\n');
 
     // -------------------------------------------------------------------------
-    // TEST 6: Former Member Handling (Step 05 Integration)
+    // TEST 6: Former Member Handling & Real-Time Session Revocation (Step 05 Integration)
     // -------------------------------------------------------------------------
-    console.log('[TEST 6] Former Member Handling (Step 05 Integration)...');
-    const formerProfileRes = await req('GET', `/api/users/${formerMemberId}/profile`, peerDevSession.token);
-    console.log(`   -> Former member profile fetch: HTTP ${formerProfileRes.status}`);
+    console.log('[TEST 6] Former Member Handling & Real-Time Session Revocation (Step 05 Integration)...');
 
+    // Step A: Active member logs in and acquires a fully valid JWT session
+    const validPreOffboardSession = await loginUser(offboardTestEmail, offboardTestPass);
+    console.log(`   -> Active login prior to offboard: HTTP 200 (Token obtained)`);
+
+    // Step B: Verify the token is fully active and functional prior to offboard
+    const preCheckRes = await req('GET', '/api/users/me', validPreOffboardSession.token);
+    if (preCheckRes.status !== 200) {
+      throw new Error(`Pre-offboard token verification failed: HTTP ${preCheckRes.status}`);
+    }
+    console.log(`   ✓ Active token pre-check: HTTP 200 (Verified active and working)`);
+
+    // Step C: Admin executes REAL Step 05 Offboarding Kill-Switch (POST /api/admin/members/:id/offboard)
+    const offboardRes = await req('POST', `/api/admin/members/${offboardTestId}/offboard`, adminSession.token, {
+      reason: 'Contract completion - Step 09 profile verification'
+    });
+    console.log(`   -> Admin triggers Step 05 killswitch: HTTP ${offboardRes.status}`);
+    if (offboardRes.status !== 200) {
+      throw new Error(`Offboarding killswitch failed: HTTP ${offboardRes.status} ${JSON.stringify(offboardRes.data)}`);
+    }
+
+    // Step D: Verify database state post-killswitch
+    const offboardedDbUser = queryOne('SELECT status, wallet_frozen, deactivated_at FROM users WHERE id = ?', [offboardTestId]);
+    console.log(`   ✓ DB state post-killswitch: status='${offboardedDbUser.status}', wallet_frozen=${offboardedDbUser.wallet_frozen}, deactivated_at='${offboardedDbUser.deactivated_at}'`);
+
+    // Step E: Attempt to use the EXACT PRE-OFFBOARDING TOKEN to call PATCH /api/users/me/profile
+    const editWithStaleTokenRes = await req('PATCH', '/api/users/me/profile', validPreOffboardSession.token, {
+      bio: 'Attempting to edit bio with revoked pre-offboarding token'
+    });
+    console.log(`   -> Attempt to edit profile with stale pre-offboarding token: HTTP ${editWithStaleTokenRes.status}`);
+    console.log(`     * Revocation error message: "${editWithStaleTokenRes.data.error}"`);
+    if (editWithStaleTokenRes.status !== 401) {
+      throw new Error(`Expected HTTP 401 Session Revoked, got ${editWithStaleTokenRes.status}`);
+    }
+
+    // Step F: Attempt fresh login as offboarded member
+    const freshLoginRes = await req('POST', '/api/auth/login', null, {
+      email: offboardTestEmail,
+      password: offboardTestPass
+    });
+    console.log(`   -> Attempt fresh login post-offboarding: HTTP ${freshLoginRes.status}`);
+    console.log(`     * Login rejection message: "${freshLoginRes.data.error}"`);
+    if (freshLoginRes.status !== 403) {
+      throw new Error(`Expected HTTP 403 Access Revoked on login, got ${freshLoginRes.status}`);
+    }
+
+    // Step G: Fetch former member profile from peer perspective (GET /api/users/:id/profile)
+    const formerProfileRes = await req('GET', `/api/users/${offboardTestId}/profile`, peerDevSession.token);
+    console.log(`   -> Peer fetches former member profile: HTTP ${formerProfileRes.status}`);
     if (formerProfileRes.status !== 200) {
       throw new Error(`Failed to fetch former member profile: HTTP ${formerProfileRes.status}`);
     }
-
     const formerUser = formerProfileRes.data.user;
     console.log(`     * isFormerMember: ${formerUser.isFormerMember} (Must be true)`);
     console.log(`     * deactivatedAt: ${formerUser.deactivatedAt}`);
@@ -321,30 +368,16 @@ async function runStep09ProfileTests() {
     if (!formerUser.isWalletFrozen) throw new Error('isWalletFrozen must be true for offboarded former member');
     if (!formerUser.deactivatedAt) throw new Error('deactivatedAt must be populated');
 
-    // Verify former member editing is blocked
-    // Simulate valid active session for inactive user to test role/status gating
-    const inactiveSessionId = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 3600000).toISOString();
-    execute(`
-      INSERT INTO sessions (id, user_id, token, is_revoked, expires_at)
-      VALUES (?, ?, 'dummy_token', 0, ?)
-    `, [inactiveSessionId, formerMemberId, expiresAt]);
+    // Step H: Verify earnings ledger access on former member (Admin allowed, Peer blocked)
+    const peerViewEarningsRes = await req('GET', `/api/users/${offboardTestId}/earnings`, peerDevSession.token);
+    console.log(`   -> Peer viewing former member earnings ledger: HTTP ${peerViewEarningsRes.status} (Expected 403)`);
+    if (peerViewEarningsRes.status !== 403) throw new Error('Peer should be blocked from former member earnings');
 
-    const inactiveToken = jwt.sign(
-      { userId: formerMemberId, sessionId: inactiveSessionId, role: 'developer', email: formerMemberEmail },
-      config.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
-    const editBlockedRes = await req('PATCH', '/api/users/me/profile', inactiveToken, {
-      bio: 'Attempting to edit former member bio'
-    });
-    console.log(`   -> Attempt to edit former member profile: HTTP ${editBlockedRes.status} (Blocked as expected)`);
-    console.log(`     * Block message: "${editBlockedRes.data.error}"`);
+    const adminViewEarningsRes = await req('GET', `/api/users/${offboardTestId}/earnings`, adminSession.token);
+    console.log(`   -> Admin viewing former member earnings ledger: HTTP ${adminViewEarningsRes.status} (Expected 200)`);
+    if (adminViewEarningsRes.status !== 200) throw new Error('Admin should be able to view former member earnings');
 
-    if (editBlockedRes.status !== 401 && editBlockedRes.status !== 403) {
-      throw new Error(`Expected HTTP 401 or 403 when editing former member profile, got ${editBlockedRes.status}`);
-    }
-    console.log('   ✓ TEST 6 PASSED: Former Member tag applied, wallet frozen, and read-only mode strictly enforced\n');
+    console.log('   ✓ TEST 6 PASSED: Real-time session invalidation, login lockout, wallet freeze, and profile read-only verified via live Step 05 killswitch\n');
 
     // -------------------------------------------------------------------------
     // TEST 7: Active User Profile Self-Editing (PATCH /api/users/me/profile)
