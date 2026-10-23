@@ -404,7 +404,7 @@ async function runStep13FinalQASuite() {
 
     // 4. Parallel task fan-out confirmation
     const tasks = queryAll('SELECT id, task_type, task_name, status, depends_on_task_id FROM project_tasks WHERE project_id = ?', [project.id]);
-    assert(tasks.length >= 4, `4 parallel tasks created simultaneously (found ${tasks.length} tasks)`);
+    assert(tasks.length === 9, 'Fan-out created 9 tasks correctly (Research + Backend + Frontend + Design + QA + Review)');
 
     const resTask = tasks.find(t => t.task_type === 'research');
     const devTask = tasks.find(t => t.task_type === 'backend' || t.task_type === 'frontend');
