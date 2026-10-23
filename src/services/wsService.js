@@ -73,6 +73,10 @@ export function initWebSocketServer(httpServer) {
     rooms.add('org:global');
     // 2. Join personal user channel
     rooms.add(`user:${user.id}`);
+    // 3. Join role-specific channel (e.g. role:developer, role:researcher, etc.)
+    if (user.role) {
+      rooms.add(`role:${user.role}`);
+    }
 
     // 3. Join channels for projects where user is owner or member
     const userProjects = queryAll(`

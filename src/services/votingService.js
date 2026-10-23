@@ -255,6 +255,21 @@ export function evaluateVotingDecision(ideaId, simulatedDate = null) {
       title: idea.title,
       greenPercentage
     });
+    broadcastEvent('role:researcher', 'banner.new', {
+      type: 'IDEA_APPROVED',
+      title: 'Idea Approved by Supermajority',
+      message: `"${idea.title}" was approved by team vote and has entered parallel fan-out!`,
+      ideaId: idea.id,
+      projectId: projectData?.project?.id
+    });
+    broadcastEvent('org:global', 'banner.new', {
+      targetRole: 'researcher',
+      type: 'IDEA_APPROVED',
+      title: 'Idea Approved by Supermajority',
+      message: `"${idea.title}" was approved by team vote and has entered parallel fan-out!`,
+      ideaId: idea.id,
+      projectId: projectData?.project?.id
+    });
     createNotification({
       userId: idea.owner_id,
       eventType: 'idea.approved',
@@ -308,6 +323,26 @@ export function adminOverrideDecision({ ideaId, adminUserId, decision, reason, i
   let projectData = null;
   if (decision === 'APPROVED') {
     projectData = triggerProjectFanout(ideaId);
+    broadcastEvent('org:global', 'idea.approved', {
+      ideaId,
+      title: idea.title,
+      greenPercentage: idea.green_percentage || 100.0
+    });
+    broadcastEvent('role:researcher', 'banner.new', {
+      type: 'IDEA_APPROVED',
+      title: 'Idea Approved by Supermajority',
+      message: `"${idea.title}" was approved by team vote and has entered parallel fan-out!`,
+      ideaId: idea.id,
+      projectId: projectData?.project?.id
+    });
+    broadcastEvent('org:global', 'banner.new', {
+      targetRole: 'researcher',
+      type: 'IDEA_APPROVED',
+      title: 'Idea Approved by Supermajority',
+      message: `"${idea.title}" was approved by team vote and has entered parallel fan-out!`,
+      ideaId: idea.id,
+      projectId: projectData?.project?.id
+    });
   }
 
   const updatedIdea = queryOne('SELECT * FROM ideas WHERE id = ?', [ideaId]);

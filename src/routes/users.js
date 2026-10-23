@@ -130,6 +130,8 @@ function handleProfileMini(userId, res) {
   const ideasCount = queryOne('SELECT COUNT(*) as count FROM ideas WHERE owner_id = ?', [userId])?.count || 0;
   const projectsCount = queryOne('SELECT COUNT(DISTINCT project_id) as count FROM project_members WHERE user_id = ? AND removed_at IS NULL', [userId])?.count || 0;
   const tasksCompleted = queryOne("SELECT COUNT(*) as count FROM project_tasks WHERE assigned_to = ? AND status = 'DONE'", [userId])?.count || 0;
+  const revSplitTotal = queryOne('SELECT COALESCE(SUM(amount), 0) as total FROM revenue_splits WHERE user_id = ?', [userId])?.total || 0;
+  const totalRevenue = Math.max(Number(revSplitTotal), Number(user.wallet_balance || 0));
 
   let quotaRemaining = 0;
   let quotaWeeklyLimit = 3;
@@ -152,6 +154,7 @@ function handleProfileMini(userId, res) {
     totalProjectsBuilt: Number(projectsCount),
     totalTasksCompleted: Number(tasksCompleted),
     walletBalance: Number(user.wallet_balance || 0).toFixed(2),
+    totalRevenueEarned: totalRevenue.toFixed(2),
     isWalletFrozen: user.wallet_frozen === 1,
     quotaRemaining,
     quotaWeeklyLimit

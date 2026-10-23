@@ -345,7 +345,7 @@ export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, i
   // When a task completes, evaluate all BLOCKED tasks in the project to see which can now unblock
   if (newStatus === 'DONE') {
     // Refresh task list with current update
-    const currentTasks = queryAll('SELECT id, task_name, status, assigned_to FROM project_tasks WHERE project_id = ?', [task.project_id]);
+    const currentTasks = queryAll('SELECT id, task_name, task_type, status, assigned_to FROM project_tasks WHERE project_id = ?', [task.project_id]);
     const blockedTasks = currentTasks.filter(t => t.status === 'BLOCKED');
 
     for (const bTask of blockedTasks) {
@@ -410,6 +410,66 @@ export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, i
     unblockedTasks,
     newStage
   });
+
+  // Cross-Role Real-Time Notification Banners (Step 08 Section 8)
+  const project = queryOne('SELECT title FROM projects WHERE id = ?', [task.project_id]);
+  const projectTitle = project ? project.title : 'Project';
+
+  // 1. Researcher completes research -> Developer gets RESEARCH_READY banner
+  if (task.task_type === 'research' && newStatus === 'DONE') {
+    broadcastEvent('role:developer', 'banner.new', {
+      type: 'RESEARCH_READY',
+      title: 'Research Ready',
+      message: `Research for "${projectTitle}" is ready — view research attachment`,
+      projectId: task.project_id,
+      taskId: task.id
+    });
+    broadcastEvent('org:global', 'banner.new', {
+      targetRole: 'developer',
+      type: 'RESEARCH_READY',
+      title: 'Research Ready',
+      message: `Research for "${projectTitle}" is ready — view research attachment`,
+      projectId: task.project_id,
+      taskId: task.id
+    });
+  }
+
+  // 2. Dev tasks complete & Testing unblocks -> Producer gets BUILD_READY banner
+  if (unblockedTasks.some(t => t.task_type === 'testing' || t.task_name === 'Full QA Testing')) {
+    const testingTask = unblockedTasks.find(t => t.task_type === 'testing' || t.task_name === 'Full QA Testing');
+    broadcastEvent('role:producer', 'banner.new', {
+      type: 'BUILD_READY',
+      title: 'Dev Build Ready',
+      message: `"${projectTitle}" build is ready for QA verification & testing`,
+      projectId: task.project_id,
+      taskId: testingTask.id
+    });
+    broadcastEvent('org:global', 'banner.new', {
+      targetRole: 'producer',
+      type: 'BUILD_READY',
+      title: 'Dev Build Ready',
+      message: `"${projectTitle}" build is ready for QA verification & testing`,
+      projectId: task.project_id,
+      taskId: testingTask.id
+    });
+  }
+
+  // 3. Testing completes and project stage becomes ADMIN_REVIEW -> Admin gets ADMIN_REVIEW_PENDING banner
+  if (newStage === 'ADMIN_REVIEW') {
+    broadcastEvent('role:admin', 'banner.new', {
+      type: 'ADMIN_REVIEW_PENDING',
+      title: 'Final Review Pending',
+      message: `"${projectTitle}" passed all QA testing and is awaiting Final Approval`,
+      projectId: task.project_id
+    });
+    broadcastEvent('org:global', 'banner.new', {
+      targetRole: 'admin',
+      type: 'ADMIN_REVIEW_PENDING',
+      title: 'Final Review Pending',
+      message: `"${projectTitle}" passed all QA testing and is awaiting Final Approval`,
+      projectId: task.project_id
+    });
+  }
 
   return {
     success: true,

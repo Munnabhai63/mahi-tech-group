@@ -502,51 +502,32 @@ async function fetchMiniProfiles() {
     const data = await apiFetch('/api/users/profile-mini');
     if (!data) return;
 
-    // Populate Researcher Mini-Card
-    const rAvatar = document.getElementById('researcherMiniAvatar');
-    if (rAvatar) {
-      if (data.role === 'researcher') {
-        rAvatar.textContent = data.avatar;
-        document.getElementById('researcherMiniName').textContent = data.name;
-        document.getElementById('researcherIdeasCount').textContent = data.totalIdeasSubmitted;
-        document.getElementById('researcherRatingAvg').textContent = `${data.ratingAverage} ★`;
-        document.getElementById('researcherQuotaRemaining').textContent = `${data.quotaRemaining}/${data.quotaWeeklyLimit}`;
-      }
+    // Helper to populate any role's mini-card with the universal 4 PRD metrics
+    function populateCard(prefix) {
+      const avatarEl = document.getElementById(`${prefix}MiniAvatar`);
+      if (avatarEl) avatarEl.textContent = data.avatar || data.name?.charAt(0) || 'U';
+      const nameEl = document.getElementById(`${prefix}MiniName`);
+      if (nameEl) nameEl.textContent = data.name;
+      const ideasEl = document.getElementById(`${prefix}IdeasCount`);
+      if (ideasEl) ideasEl.textContent = data.totalIdeasSubmitted;
+      const projEl = document.getElementById(`${prefix}ProjectsBuilt`);
+      if (projEl) projEl.textContent = data.totalProjectsBuilt;
+      const ratingEl = document.getElementById(`${prefix}RatingAvg`);
+      if (ratingEl) ratingEl.textContent = `${data.ratingAverage} ★`;
+      const walletEl = document.getElementById(`${prefix}Wallet`);
+      if (walletEl) walletEl.textContent = `₹${data.totalRevenueEarned || data.walletBalance || '0.00'}`;
     }
 
-    // Populate Developer Mini-Card
-    const dAvatar = document.getElementById('developerMiniAvatar');
-    if (dAvatar) {
-      if (data.role === 'developer') {
-        dAvatar.textContent = data.avatar;
-        document.getElementById('developerMiniName').textContent = data.name;
-        document.getElementById('developerProjectsBuilt').textContent = data.totalProjectsBuilt;
-        document.getElementById('developerRatingAvg').textContent = `${data.ratingAverage} ★`;
-        document.getElementById('developerWallet').textContent = `₹${data.walletBalance}`;
-        const subBadge = document.getElementById('developerSubRoleBadge');
-        if (subBadge) subBadge.textContent = data.subRole ? data.subRole.toUpperCase() : 'DEVELOPER';
-      }
-    }
-
-    // Populate Producer Mini-Card
-    const pAvatar = document.getElementById('producerMiniAvatar');
-    if (pAvatar) {
-      if (data.role === 'producer') {
-        pAvatar.textContent = data.avatar;
-        document.getElementById('producerMiniName').textContent = data.name;
-        document.getElementById('producerTasksTested').textContent = data.totalTasksCompleted;
-        document.getElementById('producerRatingAvg').textContent = `${data.ratingAverage} ★`;
-        document.getElementById('producerWallet').textContent = `₹${data.walletBalance}`;
-      }
-    }
-
-    // Populate Admin Mini-Card
-    const aAvatar = document.getElementById('adminMiniAvatar');
-    if (aAvatar) {
-      if (data.role === 'admin') {
-        aAvatar.textContent = data.avatar;
-        document.getElementById('adminMiniName').textContent = data.name;
-      }
+    if (data.role === 'researcher') {
+      populateCard('researcher');
+    } else if (data.role === 'developer') {
+      populateCard('developer');
+      const subBadge = document.getElementById('developerSubRoleBadge');
+      if (subBadge) subBadge.textContent = data.subRole ? data.subRole.toUpperCase() : 'DEVELOPER';
+    } else if (data.role === 'producer') {
+      populateCard('producer');
+    } else if (data.role === 'admin') {
+      populateCard('admin');
     }
   } catch (err) {
     console.error('Failed to fetch mini profile:', err);

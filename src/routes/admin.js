@@ -647,4 +647,92 @@ const handleRejectWithdrawal = (req, res) => {
 router.patch('/withdrawals/:id/reject', authenticate, requirePermission('payout.approve'), handleRejectWithdrawal);
 router.post('/withdrawals/:id/reject', authenticate, requirePermission('payout.approve'), handleRejectWithdrawal);
 
+// 25. GET /api/admin/corners-overview (Admin only - Combined oversight across all 4 corners)
+router.get('/corners-overview', authenticate, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can view corners overview' });
+  }
+
+  // 1. Researcher Corner data
+  const pendingIdeas = queryAll(`
+    SELECT i.id, i.title, i.green_percentage, i.voting_deadline, u.name as owner_name
+    FROM ideas i
+    JOIN users u ON i.owner_id = u.id
+    WHERE i.status = 'PENDING_REVIEW'
+    ORDER BY i.created_at DESC
+  `);
+  const activeResearchTasks = queryAll(`
+    SELECT pt.id, pt.task_name, pt.status, p.title as project_title, u.name as assigned_to_name
+    FROM project_tasks pt
+    JOIN projects p ON pt.project_id = p.id
+    LEFT JOIN users u ON pt.assigned_to = u.id
+    WHERE pt.task_type = 'research' AND pt.status IN ('TODO', 'IN_PROGRESS')
+    ORDER BY pt.created_at ASC
+  `);
+
+  // 2. Developer Corner data
+  const devTasks = queryAll(`
+    SELECT pt.id, pt.task_name, pt.task_type, pt.status, p.title as project_title,
+           u.name as assigned_to_name, dep.task_name as depends_on_task_name
+    FROM project_tasks pt
+    JOIN projects p ON pt.project_id = p.id
+    LEFT JOIN users u ON pt.assigned_to = u.id
+    LEFT JOIN project_tasks dep ON pt.depends_on_task_id = dep.id
+    WHERE pt.task_type IN ('backend', 'frontend') AND pt.status IN ('TODO', 'BLOCKED', 'IN_PROGRESS')
+    ORDER BY pt.created_at ASC
+  `);
+
+  // 3. Producer Corner data
+  const testingQueue = queryAll(`
+    SELECT pt.id, pt.task_name, pt.status, p.title as project_title, u.name as assigned_to_name
+    FROM project_tasks pt
+    JOIN projects p ON pt.project_id = p.id
+    LEFT JOIN users u ON pt.assigned_to = u.id
+    WHERE pt.task_type = 'testing' AND pt.status IN ('TODO', 'BLOCKED', 'IN_PROGRESS')
+    ORDER BY pt.created_at ASC
+  `);
+
+  // 4. Admin Corner data
+  const pendingWithdrawals = getPendingWithdrawals();
+  const pendingFinalReviews = queryAll(`
+    SELECT p.id, p.title, p.current_stage, p.status, u.name as owner_name
+    FROM projects p
+    LEFT JOIN users u ON p.owner_id = u.id
+    WHERE p.current_stage = 'ADMIN_REVIEW' AND p.status = 'ACTIVE'
+  `);
+  const activeMembersCount = queryOne("SELECT COUNT(*) as count FROM users WHERE status = 'active'")?.count || 0;
+  const liveProjectsCount = queryOne("SELECT COUNT(*) as count FROM projects WHERE current_stage = 'LIVE'")?.count || 0;
+  const avgTeamRating = queryOne("SELECT AVG(rating_avg) as avg_rating FROM users WHERE status = 'active'")?.avg_rating || 5.0;
+
+  return res.status(200).json({
+    timestamp: new Date().toISOString(),
+    adminUser: { id: req.user.id, name: req.user.name },
+    researcherCorner: {
+      pendingIdeasCount: pendingIdeas.length,
+      pendingIdeas,
+      activeResearchTasksCount: activeResearchTasks.length,
+      activeResearchTasks
+    },
+    developerCorner: {
+      activeDevTasksCount: devTasks.length,
+      devTasks
+    },
+    producerCorner: {
+      testingQueueCount: testingQueue.length,
+      testingQueue
+    },
+    adminCorner: {
+      pendingWithdrawalsCount: pendingWithdrawals.length,
+      pendingWithdrawals,
+      pendingFinalReviewsCount: pendingFinalReviews.length,
+      pendingFinalReviews,
+      teamHealth: {
+        activeMembers: activeMembersCount,
+        liveProjects: liveProjectsCount,
+        averageRating: Number(avgTeamRating).toFixed(1)
+      }
+    }
+  });
+});
+
 export default router;

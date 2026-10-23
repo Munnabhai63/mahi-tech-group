@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { queryAll, queryOne } from '../db/database.js';
 import {
   getDashboardSummary,
   getKanbanProjects,
