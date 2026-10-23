@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { createApp } from '../src/app.js';
 import { runMigration } from '../src/db/migrate.js';
 import { runSeed } from '../src/db/seed.js';
@@ -60,8 +61,53 @@ async function registerOrLogin(key, acc) {
   }
 
   const data = await res.json();
-  sessions[key] = { token: data.token, user: data.user };
+  sessions[key] = { token: data.token, user: data.user, jwtUserId: jwt.decode(data.token).userId };
   return sessions[key];
+}
+
+async function getSessionForUserId(userId) {
+  const user = queryOne('SELECT id, name, email, role, sub_role FROM users WHERE id = ?', [userId]);
+  if (!user) throw new Error(`User not found: ${userId}`);
+
+  const testPass = 'AuthVerifiedPass123!';
+  const hash = await bcrypt.hash(testPass, 10);
+  execute("UPDATE users SET password_hash = ?, status = 'active' WHERE id = ?", [hash, user.id]);
+
+  const res = await fetch(`${BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: user.email, password: testPass })
+  });
+
+  if (!res.ok) {
+    throw new Error(`Login failed for ${user.email}: ${res.status} ${await res.text()}`);
+  }
+
+  const data = await res.json();
+  const decoded = jwt.decode(data.token);
+  return {
+    token: data.token,
+    user: data.user,
+    jwtUserId: decoded.userId
+  };
+}
+
+async function getAlternateSessionForRole(role, excludeUserId) {
+  let otherUser = queryOne(
+    "SELECT id, name, email, role FROM users WHERE role = ? AND id != ? AND status = 'active' LIMIT 1",
+    [role, excludeUserId]
+  );
+  if (!otherUser) {
+    const newId = crypto.randomUUID();
+    const newEmail = `${role}.alternate.${Date.now()}@mahitechgroup.com`;
+    const hash = await bcrypt.hash('AuthVerifiedPass123!', 10);
+    execute(`
+      INSERT INTO users (id, name, email, password_hash, role, status, idea_quota_used, wallet_balance, rating_avg)
+      VALUES (?, ?, ?, ?, ?, 'active', 0, 1000.00, 5.0)
+    `, [newId, `Alternate ${role}`, newEmail, hash, role]);
+    otherUser = { id: newId, email: newEmail, role };
+  }
+  return await getSessionForUserId(otherUser.id);
 }
 
 function req(method, endpoint, token, body = null) {
@@ -322,7 +368,9 @@ async function runStep08RevisionTests() {
       name: t.task_name,
       type: t.task_type,
       status: t.status,
-      assigned_to: `${t.assigned_name || 'Unassigned'} (${t.assigned_role || 'None'})`
+      assigned_to: `${t.assigned_name || 'Unassigned'} (${t.assigned_role || 'None'})`,
+      assigned_user_id: t.assigned_to,
+      assigned_email: t.assigned_email || queryOne('SELECT email FROM users WHERE id = ?', [t.assigned_to])?.email || 'N/A'
     })));
 
     const researchTask = allTasks.find(t => t.task_type === 'research');
@@ -335,14 +383,6 @@ async function runStep08RevisionTests() {
       throw new Error('One or more foundational tasks missing from fanout!');
     }
 
-    // Ensure design task is assigned to Designer A and registered in project_members
-    execute('UPDATE project_tasks SET assigned_to = ? WHERE id = ?', [sessions.designerA.user.id, designTask.id]);
-    execute("INSERT INTO project_members (id, project_id, user_id, role_in_project, task_status, contribution_weight, joined_at) VALUES (?, ?, ?, 'designer', 'ASSIGNED', 0.0, CURRENT_TIMESTAMP)", [crypto.randomUUID(), project.id, sessions.designerA.user.id]);
-    execute('UPDATE project_tasks SET assigned_to = ? WHERE id = ?', [sessions.researcher.user.id, researchTask.id]);
-    execute('UPDATE project_tasks SET assigned_to = ? WHERE id = ?', [sessions.developer.user.id, backendTask.id]);
-    execute('UPDATE project_tasks SET assigned_to = ? WHERE id = ?', [sessions.developer.user.id, frontendTask.id]);
-    execute('UPDATE project_tasks SET assigned_to = ? WHERE id = ?', [sessions.producer.user.id, testingPrepTask.id]);
-
     // Initial check: Deep Research is TODO, the 4 child tasks are BLOCKED
     console.log(`\n  Initial Prerequisite State:`);
     console.log(`    - Deep Research             : ${researchTask.status} (Expected: TODO)`);
@@ -351,10 +391,11 @@ async function runStep08RevisionTests() {
     console.log(`    - Frontend UI Scaffolding   : ${frontendTask.status} (Expected: BLOCKED)`);
     console.log(`    - Test Plan Preparation     : ${testingPrepTask.status} (Expected: BLOCKED)`);
 
-    // Stage 3: Researcher Completes Research (using Researcher's OWN session)
+    // Stage 3: Researcher Completes Research (using Researcher's OWN authenticated session)
     console.log('\n  [STAGE 3 - RESEARCHER COMPLETION] Uploading research using Researcher session...');
+    const assignedResearcherSession = await getSessionForUserId(researchTask.assigned_to);
     const uploadResTimeBefore = Date.now();
-    const uploadResearchRes = await req('POST', `/api/tasks/${researchTask.id}/upload`, sessions.researcher.token, {
+    const uploadResearchRes = await req('POST', `/api/tasks/${researchTask.id}/upload`, assignedResearcherSession.token, {
       file_url: 'https://storage.mahitechgroup.com/research/spatial-mesh-v1.pdf',
       notes: 'Research complete. GPU pipeline validated.',
       mark_done: true,
@@ -387,57 +428,85 @@ async function runStep08RevisionTests() {
     }
     console.log('    ✓ PROVEN: Designer, Developer, and Tester tasks all flipped from BLOCKED to TODO simultaneously!');
 
+    // -----------------------------------------------------------------
+    // AUDIT LOG SETUP FOR STAGES 4, 5, AND 6 (SIDE-BY-SIDE VERIFICATION)
+    // -----------------------------------------------------------------
+    const assigneeAuditLog = [];
+
+    async function executeAndAudit({ task, actionType, payload, nonAssignedSession, assignedSession }) {
+      const currentTask = queryOne('SELECT * FROM project_tasks WHERE id = ?', [task.id]);
+      const assignedUser = queryOne('SELECT id, name, email FROM users WHERE id = ?', [currentTask.assigned_to]);
+      const endpoint = actionType === 'upload' ? `/api/tasks/${currentTask.id}/upload` : `/api/tasks/${currentTask.id}/status`;
+      const method = actionType === 'upload' ? 'POST' : 'PATCH';
+
+      // 1. Non-assigned attempt (Expect 403 Forbidden)
+      const nonAssignedRes = await req(method, endpoint, nonAssignedSession.token, payload);
+      assigneeAuditLog.push({
+        task_id: currentTask.id,
+        task_name: currentTask.task_name,
+        assigned_to_user_id: currentTask.assigned_to,
+        assigned_to_email: assignedUser.email,
+        calling_session_user_id: nonAssignedSession.jwtUserId,
+        calling_session_email: nonAssignedSession.user.email,
+        'HTTP result code': nonAssignedRes.status
+      });
+      if (nonAssignedRes.status !== 403) {
+        throw new Error(`Security breach! Non-assigned caller ${nonAssignedSession.user.email} received ${nonAssignedRes.status} on "${currentTask.task_name}"`);
+      }
+
+      // 2. Correctly assigned attempt (Expect 200 OK)
+      const assignedRes = await req(method, endpoint, assignedSession.token, payload);
+      assigneeAuditLog.push({
+        task_id: currentTask.id,
+        task_name: currentTask.task_name,
+        assigned_to_user_id: currentTask.assigned_to,
+        assigned_to_email: assignedUser.email,
+        calling_session_user_id: assignedSession.jwtUserId,
+        calling_session_email: assignedSession.user.email,
+        'HTTP result code': assignedRes.status
+      });
+      if (assignedRes.status !== 200) {
+        const errText = await assignedRes.text();
+        throw new Error(`Assigned caller ${assignedSession.user.email} rejected with ${assignedRes.status}: ${errText}`);
+      }
+
+      return await assignedRes.json();
+    }
+
     // Stage 4: Designer Assignee-Check & Work Completion
     console.log('\n  [STAGE 4 - DESIGNER CORNER & ASSIGNEE-CHECK]');
-    
-    // Subcheck 4A: Designer B (non-assigned) attempts to update Designer A's task -> 403 Forbidden
-    console.log(`    - Designer B attempting to start Designer A's task...`);
-    const desBUpdateRes = await req('PATCH', `/api/tasks/${designTask.id}/status`, sessions.designerB.token, { status: 'IN_PROGRESS' });
-    console.log(`      -> HTTP ${desBUpdateRes.status} (Expected: 403 Forbidden)`);
-    if (desBUpdateRes.status !== 403) {
-      throw new Error(`Security violation! Non-assigned Designer B was allowed to update Designer A's task! HTTP ${desBUpdateRes.status}`);
-    }
-    console.log('      ✓ [BLOCKED] HTTP 403 Forbidden confirmed for non-assigned designer.');
+    const assignedDesignerSession = await getSessionForUserId(designTask.assigned_to);
+    const nonAssignedDesignerSession = await getAlternateSessionForRole('designer', designTask.assigned_to);
 
-    // Subcheck 4B: Designer B attempts to upload deliverables to Designer A's task -> 403 Forbidden
-    console.log(`    - Designer B attempting to upload deliverables to Designer A's task...`);
-    const desBUploadRes = await req('POST', `/api/tasks/${designTask.id}/upload`, sessions.designerB.token, {
-      file_url: 'https://figma.com/file/unauthorized-mockup',
-      notes: 'Unauthorized attempt',
-      mark_done: true,
-      asset_type: 'design_file'
+    console.log(`    - Assigned Designer: ${assignedDesignerSession.user.name} (${assignedDesignerSession.user.email}) [ID: ${assignedDesignerSession.jwtUserId}]`);
+    console.log(`    - Non-Assigned Designer: ${nonAssignedDesignerSession.user.name} (${nonAssignedDesignerSession.user.email}) [ID: ${nonAssignedDesignerSession.jwtUserId}]`);
+
+    // 4A: Start Task (IN_PROGRESS)
+    await executeAndAudit({
+      task: designTask,
+      actionType: 'status',
+      payload: { status: 'IN_PROGRESS' },
+      nonAssignedSession: nonAssignedDesignerSession,
+      assignedSession: assignedDesignerSession
     });
-    console.log(`      -> HTTP ${desBUploadRes.status} (Expected: 403 Forbidden)`);
-    if (desBUploadRes.status !== 403) {
-      throw new Error(`Security violation! Non-assigned Designer B was allowed to upload to Designer A's task! HTTP ${desBUploadRes.status}`);
-    }
-    console.log('      ✓ [BLOCKED] HTTP 403 Forbidden confirmed for non-assigned upload.');
+    console.log('    ✓ Subcheck 4A: Task start verified (403 for non-assigned, 200 for assigned)');
 
-    // Subcheck 4C: Correctly assigned Designer A starts task -> 200 OK
-    console.log(`    - Correctly assigned Designer A starting task (IN_PROGRESS)...`);
-    const desAStartRes = await req('PATCH', `/api/tasks/${designTask.id}/status`, sessions.designerA.token, { status: 'IN_PROGRESS' });
-    console.log(`      -> HTTP ${desAStartRes.status} (Expected: 200 OK)`);
-    if (desAStartRes.status !== 200) {
-      throw new Error(`Correctly assigned Designer A was rejected! HTTP ${desAStartRes.status}`);
-    }
-
-    // Subcheck 4D: Correctly assigned Designer A uploads deliverables -> 200 OK
-    console.log(`    - Correctly assigned Designer A uploading design deliverables (Figma spec)...`);
-    const desAUploadRes = await req('POST', `/api/tasks/${designTask.id}/upload`, sessions.designerA.token, {
-      file_url: 'https://figma.com/file/spatial-mesh-design-system-v1',
-      notes: 'Figma tokens, high-fidelity wireframes, and atomic component library completed.',
-      mark_done: true,
-      asset_type: 'design_file'
+    // 4B: Upload Design Deliverable (DONE)
+    const desUploadJson = await executeAndAudit({
+      task: designTask,
+      actionType: 'upload',
+      payload: {
+        file_url: 'https://figma.com/file/spatial-mesh-design-system-v1',
+        notes: 'Figma tokens, high-fidelity wireframes, and atomic component library completed.',
+        mark_done: true,
+        asset_type: 'design_file'
+      },
+      nonAssignedSession: nonAssignedDesignerSession,
+      assignedSession: assignedDesignerSession
     });
-    const desAUploadJson = await desAUploadRes.json();
-    console.log(`      -> HTTP ${desAUploadRes.status} (Expected: 200 OK)`);
-    console.log(`      -> Task Status: ${desAUploadJson.task.status}`);
-    console.log(`      -> Registered Asset: ID=${desAUploadJson.asset?.id}, Type=${desAUploadJson.asset?.type}`);
-    if (desAUploadRes.status !== 200 || desAUploadJson.task.status !== 'DONE') {
-      throw new Error('Designer deliverable upload failed!');
-    }
+    console.log(`    ✓ Subcheck 4B: Deliverable upload verified (403 for non-assigned, 200 for assigned) -> Task Status: ${desUploadJson.task.status}`);
 
-    // Stage 5: Developer Works on Assigned Tasks (using Developer session)
+    // Stage 5: Developer Works on Assigned Tasks
     console.log('\n  [STAGE 5 - DEVELOPER CORNER WORKFLOW]');
     const devTasksToComplete = [
       'Backend Architecture Setup',
@@ -447,44 +516,82 @@ async function runStep08RevisionTests() {
     ];
 
     for (const taskName of devTasksToComplete) {
-      let task = queryOne('SELECT * FROM project_tasks WHERE project_id = ? AND task_name = ?', [project.id, taskName]);
-      execute('UPDATE project_tasks SET assigned_to = ? WHERE id = ?', [sessions.developer.user.id, task.id]);
-      task = queryOne('SELECT * FROM project_tasks WHERE id = ?', [task.id]);
+      const task = queryOne('SELECT * FROM project_tasks WHERE project_id = ? AND task_name = ?', [project.id, taskName]);
+      const assignedDevSession = await getSessionForUserId(task.assigned_to);
+      const nonAssignedDevSession = await getAlternateSessionForRole('developer', task.assigned_to);
 
-      // If blocked, check if dependencies need unlock
-      if (task.status === 'BLOCKED') {
-        throw new Error(`Dev task "${taskName}" is unexpectedly BLOCKED!`);
-      }
-
-      const patchDoneRes = await req('PATCH', `/api/tasks/${task.id}/status`, sessions.developer.token, { status: 'DONE' });
-      const patchDoneJson = await patchDoneRes.json();
-      console.log(`    ✓ Developer completed "${taskName}": HTTP ${patchDoneRes.status} (Status: ${patchDoneJson.task.status})`);
-      if (patchDoneRes.status !== 200) throw new Error(`Dev task "${taskName}" failed to complete!`);
+      await executeAndAudit({
+        task,
+        actionType: 'status',
+        payload: { status: 'DONE' },
+        nonAssignedSession: nonAssignedDevSession,
+        assignedSession: assignedDevSession
+      });
+      console.log(`    ✓ Developer task "${taskName}" completed (403 for non-assigned, 200 for assigned)`);
     }
 
-    // Stage 6: Producer Works on Testing Tasks (using Producer session)
+    // Stage 6: Producer Works on Testing Tasks
     console.log('\n  [STAGE 6 - PRODUCER / QA CORNER WORKFLOW]');
     
-    // Test Plan Preparation
+    // 6A: Test Plan Preparation
     const prepTask = queryOne("SELECT * FROM project_tasks WHERE project_id = ? AND task_name = 'Test Plan Preparation'", [project.id]);
-    execute('UPDATE project_tasks SET assigned_to = ? WHERE id = ?', [sessions.producer.user.id, prepTask.id]);
-    await req('PATCH', `/api/tasks/${prepTask.id}/status`, sessions.producer.token, { status: 'DONE' });
-    console.log(`    ✓ Producer completed "Test Plan Preparation": Status = DONE`);
+    const assignedPrepSession = await getSessionForUserId(prepTask.assigned_to);
+    const nonAssignedPrepSession = await getAlternateSessionForRole('producer', prepTask.assigned_to);
 
-    // Full QA Testing
-    const fullQaTask = queryOne("SELECT * FROM project_tasks WHERE project_id = ? AND task_name = 'Full QA Testing'", [project.id]);
-    execute('UPDATE project_tasks SET assigned_to = ? WHERE id = ?', [sessions.producer.user.id, fullQaTask.id]);
-    const qaReportRes = await req('POST', `/api/tasks/${fullQaTask.id}/upload`, sessions.producer.token, {
-      file_url: 'https://reports.mahitechgroup.com/qa/spatial-run-991.html',
-      notes: 'Full regression test passed with 100% assertions green.',
-      mark_done: true,
-      asset_type: 'pdf_doc'
+    await executeAndAudit({
+      task: prepTask,
+      actionType: 'status',
+      payload: { status: 'DONE' },
+      nonAssignedSession: nonAssignedPrepSession,
+      assignedSession: assignedPrepSession
     });
-    const qaReportJson = await qaReportRes.json();
-    console.log(`    ✓ Producer submitted QA Report: HTTP ${qaReportRes.status} (Project Stage: ${qaReportJson.currentStage})`);
-    if (qaReportJson.currentStage !== 'ADMIN_REVIEW') {
-      throw new Error(`Expected project to transition to ADMIN_REVIEW, got: ${qaReportJson.currentStage}`);
+    console.log('    ✓ Producer task "Test Plan Preparation" completed (403 for non-assigned, 200 for assigned)');
+
+    // 6B: Full QA Testing (Upload QA Report)
+    const fullQaTask = queryOne("SELECT * FROM project_tasks WHERE project_id = ? AND task_name = 'Full QA Testing'", [project.id]);
+    const assignedQaSession = await getSessionForUserId(fullQaTask.assigned_to);
+    const nonAssignedQaSession = await getAlternateSessionForRole('producer', fullQaTask.assigned_to);
+
+    const qaUploadJson = await executeAndAudit({
+      task: fullQaTask,
+      actionType: 'upload',
+      payload: {
+        file_url: 'https://reports.mahitechgroup.com/qa/spatial-run-991.html',
+        notes: 'Full regression test passed with 100% assertions green.',
+        mark_done: true,
+        asset_type: 'pdf_doc'
+      },
+      nonAssignedSession: nonAssignedQaSession,
+      assignedSession: assignedQaSession
+    });
+    console.log(`    ✓ Producer task "Full QA Testing" completed (403 for non-assigned, 200 for assigned) -> Stage: ${qaUploadJson.currentStage}`);
+    if (qaUploadJson.currentStage !== 'ADMIN_REVIEW') {
+      throw new Error(`Expected project to transition to ADMIN_REVIEW, got: ${qaUploadJson.currentStage}`);
     }
+
+    // -----------------------------------------------------------------
+    // PRINT THE EXACT SIDE-BY-SIDE ASSIGNEE AUDIT TABLE
+    // -----------------------------------------------------------------
+    console.log('\n========================================================================================================');
+    console.log('   STAGES 4, 5, 6 TASK ASSIGNEE-IDENTITY AUDIT TABLE (SIDE-BY-SIDE VERIFICATION)');
+    console.log('========================================================================================================');
+    console.table(assigneeAuditLog);
+
+    // Verify mathematical assertions
+    for (const row of assigneeAuditLog) {
+      if (row['HTTP result code'] === 200) {
+        if (row.assigned_to_user_id !== row.calling_session_user_id) {
+          throw new Error(`Integrity violation: 200 OK row has mismatched user_id: ${JSON.stringify(row)}`);
+        }
+      } else if (row['HTTP result code'] === 403) {
+        if (row.assigned_to_user_id === row.calling_session_user_id) {
+          throw new Error(`Integrity violation: 403 Forbidden row has matching user_id: ${JSON.stringify(row)}`);
+        }
+      }
+    }
+    console.log('   ✓ MATHEMATICAL PROOF CONFIRMED:');
+    console.log('     - Every HTTP 200 OK row has: assigned_to_user_id === calling_session_user_id');
+    console.log('     - Every HTTP 403 Forbidden row has: assigned_to_user_id !== calling_session_user_id');
 
     // Stage 7: Admin Final Review (plain API route, NO dashboard corner)
     console.log('\n  [STAGE 7 - ADMIN FINAL REVIEW (PLAIN API ROUTE)]');
@@ -501,7 +608,7 @@ async function runStep08RevisionTests() {
 
     // Stage 8: Center Dashboard Kanban Verification
     console.log('\n  [STAGE 8 - CENTER DASHBOARD KANBAN VERIFICATION]');
-    const kanbanRes = await req('GET', '/api/dashboard/kanban', sessions.designerA.token);
+    const kanbanRes = await req('GET', '/api/dashboard/kanban', assignedDesignerSession.token);
     const kanbanJson = await kanbanRes.json();
     const liveProjects = kanbanJson.columns?.LIVE?.items || kanbanJson.stages?.LIVE || [];
     const locatedProject = liveProjects.find(p => p.id === project.id);
