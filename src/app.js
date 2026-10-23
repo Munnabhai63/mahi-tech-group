@@ -7,10 +7,10 @@ import ideasRouter from './routes/ideas.js';
 import projectsRouter from './routes/projects.js';
 import tasksRouter from './routes/tasks.js';
 import withdrawalsRouter from './routes/withdrawals.js';
-
+import coworkingRouter from './routes/coworking.js';
+import dashboardRouter from './routes/dashboard.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import dashboardRouter from './routes/dashboard.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,6 +42,7 @@ export function createApp() {
   app.use('/api/projects', projectsRouter);
   app.use('/api/tasks', tasksRouter);
   app.use('/api/withdrawals', withdrawalsRouter);
+  app.use('/api/coworking-rooms', coworkingRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api', dashboardRouter); // Covers /api/notifications/* and /api/activity/*
 

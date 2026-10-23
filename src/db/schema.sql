@@ -396,5 +396,34 @@ BEGIN
     SELECT RAISE(FAIL, 'Immutable log: UPDATE not allowed on access_log');
 END;
 
+-- ===================================================================
+-- STEP 11: Co-working Canvas & Collaboration Tables
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS coworking_rooms (
+    id                  TEXT PRIMARY KEY,
+    project_id          TEXT NOT NULL UNIQUE REFERENCES projects(id) ON DELETE CASCADE,
+    room_type           VARCHAR(20) DEFAULT 'custom' CHECK (room_type IN ('embedded','custom')),
+    status              VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','archived')),
+    external_board_url  TEXT,
+    canvas_state_json   TEXT DEFAULT '{"objects":{},"tombstones":{},"metadata":{"version":1,"archived":false}}',
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_active_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS room_participants (
+    id              TEXT PRIMARY KEY,
+    room_id         TEXT NOT NULL REFERENCES coworking_rooms(id) ON DELETE CASCADE,
+    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    left_at         TIMESTAMP NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_coworking_rooms_project_id ON coworking_rooms(project_id);
+CREATE INDEX IF NOT EXISTS idx_coworking_rooms_status ON coworking_rooms(status);
+CREATE INDEX IF NOT EXISTS idx_room_participants_room_id ON room_participants(room_id);
+CREATE INDEX IF NOT EXISTS idx_room_participants_user_id ON room_participants(user_id);
+
+
 
 

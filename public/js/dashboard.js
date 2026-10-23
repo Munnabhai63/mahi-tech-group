@@ -17,7 +17,13 @@ const state = {
   notifications: [],
   devSubroleFilter: 'all',
   activeResearcherTab: 'res-tasks',
-  viewMode: 'spatial' // 'spatial' | 'focus'
+  viewMode: 'spatial', // 'spatial' | 'focus'
+  activeDetailProjectId: null,
+  canvasProjectId: null,
+  canvasRoomId: null,
+  canvasState: { objects: {}, tombstones: {}, metadata: {} },
+  canvasParticipants: [],
+  canvasIsArchived: false
 };
 
 // Seed credentials for authenticating real users per Step 01 RBAC
@@ -230,6 +236,35 @@ function handleWebSocketMessage(msg) {
 
     case 'activity.new':
       addTickerItem(data.message);
+      break;
+
+    // STEP 11: CO-WORKING CANVAS REAL-TIME EVENTS
+    case 'canvas:init':
+      handleCanvasInit(data);
+      break;
+
+    case 'canvas:user_joined':
+      handleCanvasUserJoined(data);
+      break;
+
+    case 'canvas:user_left':
+      handleCanvasUserLeft(data);
+      break;
+
+    case 'canvas:cursor_move':
+      handleCanvasCursorMove(data);
+      break;
+
+    case 'canvas:object_update':
+      handleCanvasObjectUpdate(data);
+      break;
+
+    case 'canvas:object_delete':
+      handleCanvasObjectDelete(data);
+      break;
+
+    case 'canvas:error':
+      alert(`Co-working Canvas: ${data.error || 'Operation failed'}`);
       break;
 
     default:
@@ -933,6 +968,7 @@ window.openTestReportModal = function(taskId, taskName) {
 
 window.openProjectDetail = async function(projectId) {
   try {
+    state.activeDetailProjectId = projectId;
     const res = await apiFetch(`/api/projects/${projectId}`);
     if (!res || !res.project) return;
 
@@ -1314,6 +1350,56 @@ function setupEventListeners() {
   // Vote Actions
   document.getElementById('btnVoteGreen').addEventListener('click', () => submitVote('green'));
   document.getElementById('btnVoteRed').addEventListener('click', () => submitVote('red'));
+
+  // STEP 11: Co-working Canvas Actions
+  const btnJoinFromModal = document.getElementById('btnJoinCoworkingFromModal');
+  if (btnJoinFromModal) {
+    btnJoinFromModal.addEventListener('click', () => {
+      if (state.activeDetailProjectId) {
+        document.getElementById('projectModalBackdrop').style.display = 'none';
+        openCoworkingRoom(state.activeDetailProjectId);
+      }
+    });
+  }
+
+  const btnExitCanvas = document.getElementById('btnExitCanvas');
+  if (btnExitCanvas) {
+    btnExitCanvas.addEventListener('click', exitCoworkingRoom);
+  }
+
+  // Toolbar sticky notes & shapes
+  document.getElementById('btnAddYellowSticky')?.addEventListener('click', () => addCanvasItem('sticky', '#fef08a'));
+  document.getElementById('btnAddBlueSticky')?.addEventListener('click', () => addCanvasItem('sticky', '#bae6fd'));
+  document.getElementById('btnAddGreenSticky')?.addEventListener('click', () => addCanvasItem('sticky', '#bbf7d0'));
+  document.getElementById('btnAddPinkSticky')?.addEventListener('click', () => addCanvasItem('sticky', '#fbcfe8'));
+  document.getElementById('btnAddSpecCard')?.addEventListener('click', () => addCanvasItem('card'));
+  document.getElementById('btnAddBoxShape')?.addEventListener('click', () => addCanvasItem('shape'));
+
+  // Canvas surface cursor movement tracking
+  let lastCursorSend = 0;
+  const canvasContainer = document.getElementById('canvasSurfaceContainer');
+  if (canvasContainer) {
+    canvasContainer.addEventListener('mousemove', (e) => {
+      if (!state.canvasProjectId || state.canvasIsArchived) return;
+
+      const rect = canvasContainer.getBoundingClientRect();
+      const x = Math.round(e.clientX - rect.left + canvasContainer.scrollLeft);
+      const y = Math.round(e.clientY - rect.top + canvasContainer.scrollTop);
+
+      const now = Date.now();
+      if (now - lastCursorSend >= 60) {
+        lastCursorSend = now;
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+          state.ws.send(JSON.stringify({
+            action: 'canvas:cursor_move',
+            projectId: state.canvasProjectId,
+            x,
+            y
+          }));
+        }
+      }
+    });
+  }
 }
 
 function updateWsStatus(status, text) {
@@ -1366,3 +1452,383 @@ function formatDate(dateStr) {
   const d = new Date(dateStr);
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + d.toLocaleDateString();
 }
+
+// ===================================================================
+// STEP 11: CO-WORKING CANVAS CONTROLLER
+// ===================================================================
+
+async function openCoworkingRoom(projectId) {
+  if (!projectId) return;
+
+  // RBAC check: Admin exclusion
+  if (state.user && state.user.role === 'admin') {
+    alert('Access Restricted: Administrator accounts are excluded from the creative peer co-working canvas. Governance oversight is conducted via the Admin Control Panel.');
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`/api/projects/${projectId}/coworking-room`);
+    if (!res || !res.room) {
+      alert(res?.error || 'Failed to access co-working room.');
+      return;
+    }
+
+    state.canvasProjectId = projectId;
+    state.canvasRoomId = res.room.id;
+    state.canvasState = res.canvasState || { objects: {}, tombstones: {}, metadata: {} };
+    state.canvasParticipants = res.participants || [];
+    state.canvasIsArchived = res.isArchived || false;
+
+    document.getElementById('canvasProjectTitleDisplay').textContent = `${res.projectTitle || 'Project'} — Co-working Canvas`;
+    document.getElementById('canvasStageBadge').textContent = res.isArchived ? 'LIVE (ARCHIVED)' : 'ACTIVE WORKSPACE';
+    const statusPill = document.getElementById('canvasSaveStatus');
+    if (res.isArchived) {
+      statusPill.textContent = '🔒 Read-Only / Archived';
+      statusPill.className = 'canvas-save-status archived';
+      document.getElementById('canvasToolbar').style.display = 'none';
+      document.getElementById('canvasSurfaceContainer').classList.add('read-only');
+    } else {
+      statusPill.textContent = '✓ Live Synced';
+      statusPill.className = 'canvas-save-status';
+      document.getElementById('canvasToolbar').style.display = 'flex';
+      document.getElementById('canvasSurfaceContainer').classList.remove('read-only');
+    }
+
+    renderCanvasPresence();
+    renderCanvasElements();
+
+    // Show modal
+    document.getElementById('coworkingModalBackdrop').style.display = 'flex';
+
+    // Join room on WebSocket
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+      state.ws.send(JSON.stringify({
+        action: 'canvas:join',
+        projectId
+      }));
+    }
+  } catch (err) {
+    console.error('Failed to open coworking room:', err);
+    alert('Failed to connect to co-working room');
+  }
+}
+
+function exitCoworkingRoom() {
+  if (state.canvasProjectId && state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify({
+      action: 'canvas:leave',
+      projectId: state.canvasProjectId
+    }));
+  }
+
+  document.getElementById('coworkingModalBackdrop').style.display = 'none';
+  state.canvasProjectId = null;
+  state.canvasRoomId = null;
+  state.canvasState = { objects: {}, tombstones: {}, metadata: {} };
+  state.canvasParticipants = [];
+  document.getElementById('canvasCursorsLayer').innerHTML = '';
+  document.getElementById('canvasElementsLayer').innerHTML = '';
+}
+
+function addCanvasItem(type, color = '#fef08a') {
+  if (state.canvasIsArchived) {
+    alert('Canvas is archived in read-only mode.');
+    return;
+  }
+  if (!state.canvasProjectId) return;
+
+  const count = Object.keys(state.canvasState.objects || {}).length;
+  if (count >= 500) {
+    alert('Canvas capacity reached: maximum 500 active objects.');
+    return;
+  }
+
+  const container = document.getElementById('canvasSurfaceContainer');
+  const scrollLeft = container ? container.scrollLeft : 0;
+  const scrollTop = container ? container.scrollTop : 0;
+
+  const offset = (count % 8) * 20;
+  const x = scrollLeft + 120 + offset;
+  const y = scrollTop + 80 + offset;
+  const id = 'elem_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+
+  let initialContent = '';
+  if (type === 'sticky') initialContent = 'Collaborative idea note...';
+  else if (type === 'card') initialContent = 'Feature / Architecture Specification';
+  else if (type === 'shape') initialContent = 'Architecture Block';
+
+  const element = {
+    id,
+    type,
+    color,
+    content: initialContent,
+    x,
+    y,
+    width: type === 'card' ? 260 : (type === 'shape' ? 160 : 200),
+    height: type === 'shape' ? 120 : 150
+  };
+
+  // Optimistic local update
+  state.canvasState.objects[id] = {
+    ...element,
+    createdBy: { userId: state.user.id, name: state.user.name, role: state.user.role },
+    lastModifiedBy: { userId: state.user.id, name: state.user.name, role: state.user.role }
+  };
+  renderCanvasElements();
+
+  if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify({
+      action: 'canvas:object_update',
+      projectId: state.canvasProjectId,
+      object: element
+    }));
+  }
+}
+
+function deleteCanvasItem(id) {
+  if (state.canvasIsArchived) return;
+  if (!state.canvasProjectId) return;
+
+  delete state.canvasState.objects[id];
+  renderCanvasElements();
+
+  if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify({
+      action: 'canvas:object_delete',
+      projectId: state.canvasProjectId,
+      objectId: id
+    }));
+  }
+}
+
+function updateCanvasItemContent(id, content) {
+  if (state.canvasIsArchived) return;
+  if (!state.canvasProjectId || !state.canvasState.objects[id]) return;
+
+  const elem = state.canvasState.objects[id];
+  elem.content = content;
+
+  if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify({
+      action: 'canvas:object_update',
+      projectId: state.canvasProjectId,
+      object: { ...elem, content }
+    }));
+  }
+}
+
+function makeElementDraggable(domEl, elem) {
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let initialLeft = 0;
+  let initialTop = 0;
+
+  domEl.addEventListener('mousedown', (e) => {
+    if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    initialLeft = parseInt(domEl.style.left || '0', 10);
+    initialTop = parseInt(domEl.style.top || '0', 10);
+    e.preventDefault();
+
+    const onMouseMove = (moveEvent) => {
+      if (!isDragging) return;
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+      const newX = Math.max(0, initialLeft + dx);
+      const newY = Math.max(0, initialTop + dy);
+      domEl.style.left = `${newX}px`;
+      domEl.style.top = `${newY}px`;
+    };
+
+    const onMouseUp = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+
+      const finalX = parseInt(domEl.style.left || '0', 10);
+      const finalY = parseInt(domEl.style.top || '0', 10);
+
+      if (finalX !== initialLeft || finalY !== initialTop) {
+        elem.x = finalX;
+        elem.y = finalY;
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+          state.ws.send(JSON.stringify({
+            action: 'canvas:object_update',
+            projectId: state.canvasProjectId,
+            object: elem
+          }));
+        }
+      }
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+}
+
+function renderCanvasElements() {
+  const layer = document.getElementById('canvasElementsLayer');
+  if (!layer) return;
+
+  const objects = state.canvasState.objects || {};
+  const count = Object.keys(objects).length;
+  const countEl = document.getElementById('canvasCapacityPill');
+  if (countEl) countEl.textContent = `${count} / 500 items`;
+
+  layer.innerHTML = '';
+  Object.values(objects).forEach(elem => {
+    if (elem.isDeleted) return;
+
+    const item = document.createElement('div');
+    item.id = `canvas-item-${elem.id}`;
+    item.className = `canvas-item canvas-item-${elem.type}`;
+    item.style.left = `${elem.x}px`;
+    item.style.top = `${elem.y}px`;
+    if (elem.color && elem.type === 'sticky') item.style.backgroundColor = elem.color;
+
+    const creatorName = elem.createdBy?.name || 'Contributor';
+    const modifierName = elem.lastModifiedBy?.name || creatorName;
+
+    item.innerHTML = `
+      <div class="canvas-item-header">
+        <span>${escapeHtml(creatorName)}</span>
+        ${!state.canvasIsArchived ? `<button class="canvas-item-del-btn" title="Delete element" data-id="${elem.id}">&times;</button>` : ''}
+      </div>
+      <textarea class="canvas-item-body" ${state.canvasIsArchived ? 'readonly' : ''} data-id="${elem.id}">${escapeHtml(elem.content || '')}</textarea>
+      <div class="canvas-item-footer">
+        v${elem.version || 1} • ${escapeHtml(modifierName)}
+      </div>
+    `;
+
+    if (!state.canvasIsArchived) {
+      makeElementDraggable(item, elem);
+    }
+
+    layer.appendChild(item);
+  });
+
+  layer.querySelectorAll('.canvas-item-del-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-id');
+      deleteCanvasItem(id);
+    });
+  });
+
+  layer.querySelectorAll('.canvas-item-body').forEach(textarea => {
+    let inputTimeout;
+    textarea.addEventListener('input', () => {
+      const id = textarea.getAttribute('data-id');
+      const newText = textarea.value;
+      clearTimeout(inputTimeout);
+      inputTimeout = setTimeout(() => {
+        updateCanvasItemContent(id, newText);
+      }, 500);
+    });
+  });
+}
+
+function renderCanvasPresence() {
+  const container = document.getElementById('canvasPresenceAvatars');
+  if (!container) return;
+
+  container.innerHTML = '';
+  const participants = state.canvasParticipants || [];
+  participants.forEach(p => {
+    const pill = document.createElement('div');
+    pill.className = 'presence-avatar-pill';
+    if (p.role === 'developer') pill.classList.add('dev');
+    else if (p.role === 'researcher') pill.classList.add('res');
+    else if (p.role === 'designer') pill.classList.add('des');
+    else if (p.role === 'producer') pill.classList.add('prod');
+
+    pill.textContent = (p.name || 'U').charAt(0).toUpperCase();
+    pill.title = `${p.name} (${p.role})`;
+    container.appendChild(pill);
+  });
+}
+
+function handleCanvasInit(data) {
+  state.canvasState = data.canvasState || { objects: {}, tombstones: {}, metadata: {} };
+  state.canvasParticipants = data.participants || [];
+  state.canvasIsArchived = data.isArchived || false;
+
+  renderCanvasPresence();
+  renderCanvasElements();
+}
+
+function handleCanvasUserJoined(data) {
+  if (data.participants) {
+    state.canvasParticipants = data.participants;
+    renderCanvasPresence();
+  }
+  if (data.user) {
+    addTickerItem(`🎨 ${data.user.name} (${data.user.role}) joined the Co-working Canvas`);
+  }
+}
+
+function handleCanvasUserLeft(data) {
+  if (data.participants) {
+    state.canvasParticipants = data.participants;
+    renderCanvasPresence();
+  }
+  if (data.user) {
+    const cursor = document.getElementById(`peer-cursor-${data.user.id}`);
+    if (cursor && cursor.parentNode) {
+      cursor.parentNode.removeChild(cursor);
+    }
+    addTickerItem(`🎨 ${data.user.name} left the Co-working Canvas`);
+  }
+}
+
+function handleCanvasCursorMove(data) {
+  if (!state.canvasProjectId) return;
+  const { userId, name, role, x, y } = data;
+  if (userId === state.user?.id) return;
+
+  const layer = document.getElementById('canvasCursorsLayer');
+  if (!layer) return;
+
+  let cursorEl = document.getElementById(`peer-cursor-${userId}`);
+  if (!cursorEl) {
+    cursorEl = document.createElement('div');
+    cursorEl.id = `peer-cursor-${userId}`;
+    cursorEl.className = 'live-cursor';
+
+    let roleColor = '#10b981';
+    if (role === 'researcher') roleColor = '#06b6d4';
+    else if (role === 'designer') roleColor = '#f43f5e';
+    else if (role === 'producer') roleColor = '#8b5cf6';
+
+    cursorEl.innerHTML = `
+      <svg class="live-cursor-pointer" viewBox="0 0 24 24" fill="${roleColor}">
+        <path d="M4 0l16 12-7 2-4 10z"/>
+      </svg>
+      <span class="live-cursor-label" style="background: ${roleColor};">${escapeHtml(name)} (${escapeHtml(role)})</span>
+    `;
+    layer.appendChild(cursorEl);
+  }
+
+  cursorEl.style.left = `${x}px`;
+  cursorEl.style.top = `${y}px`;
+}
+
+function handleCanvasObjectUpdate(data) {
+  if (!state.canvasProjectId || !data.element) return;
+  const elem = data.element;
+  state.canvasState.objects[elem.id] = elem;
+  renderCanvasElements();
+}
+
+function handleCanvasObjectDelete(data) {
+  if (!state.canvasProjectId || !data.objectId) return;
+  delete state.canvasState.objects[data.objectId];
+  renderCanvasElements();
+}
+
+window.openCoworkingRoom = openCoworkingRoom;
+

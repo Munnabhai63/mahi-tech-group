@@ -95,11 +95,12 @@ export async function cleanupTestData(verbose = true) {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, null, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       `, [uId, cm.name, cm.email, pHash, cm.role, cm.sub_role, cm.status, cm.rating, cm.balance, cm.frozen]);
     } else {
+      const pHash = await bcrypt.hash(cm.pass, config.BCRYPT_SALT_ROUNDS);
       execute(`
         UPDATE users
-        SET name = ?, role = ?, sub_role = ?, status = ?, rating_avg = ?, wallet_balance = ?, wallet_frozen = ?, updated_at = CURRENT_TIMESTAMP
+        SET name = ?, password_hash = ?, role = ?, sub_role = ?, status = ?, rating_avg = ?, wallet_balance = ?, wallet_frozen = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `, [cm.name, cm.role, cm.sub_role, cm.status, cm.rating, cm.balance, cm.frozen, existing.id]);
+      `, [cm.name, pHash, cm.role, cm.sub_role, cm.status, cm.rating, cm.balance, cm.frozen, existing.id]);
     }
   }
 

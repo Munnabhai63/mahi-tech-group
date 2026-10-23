@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getDatabase, execRaw, queryAll, queryOne } from './database.js';
+import { getDatabase, execRaw, queryAll, queryOne, execute } from './database.js';
+import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -174,7 +175,58 @@ export function runMigration() {
     console.log('>>> Successfully updated project_tasks table CHECK constraint.');
   }
 
+  // 4. Ensure Step 11 Co-working Rooms & Participants exist and backfill existing projects
+  execRaw(`
+    CREATE TABLE IF NOT EXISTS coworking_rooms (
+        id                  TEXT PRIMARY KEY,
+        project_id          TEXT NOT NULL UNIQUE REFERENCES projects(id) ON DELETE CASCADE,
+        room_type           VARCHAR(20) DEFAULT 'custom' CHECK (room_type IN ('embedded','custom')),
+        status              VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','archived')),
+        external_board_url  TEXT,
+        canvas_state_json   TEXT DEFAULT '{"objects":{},"tombstones":{},"metadata":{"version":1,"archived":false}}',
+        created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_active_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS room_participants (
+        id              TEXT PRIMARY KEY,
+        room_id         TEXT NOT NULL REFERENCES coworking_rooms(id) ON DELETE CASCADE,
+        user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        joined_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        left_at         TIMESTAMP NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_coworking_rooms_project_id ON coworking_rooms(project_id);
+    CREATE INDEX IF NOT EXISTS idx_coworking_rooms_status ON coworking_rooms(status);
+    CREATE INDEX IF NOT EXISTS idx_room_participants_room_id ON room_participants(room_id);
+    CREATE INDEX IF NOT EXISTS idx_room_participants_user_id ON room_participants(user_id);
+  `);
+
+  // Backfill any projects that don't have a room yet
+  const projectsWithoutRoom = queryAll(`
+    SELECT p.id, p.current_stage, p.status FROM projects p
+    LEFT JOIN coworking_rooms cr ON p.id = cr.project_id
+    WHERE cr.id IS NULL
+  `);
+  if (projectsWithoutRoom.length > 0) {
+    for (const p of projectsWithoutRoom) {
+      const isArchived = (p.current_stage === 'LIVE' || p.status === 'LIVE');
+      const rId = crypto.randomUUID();
+      const initState = JSON.stringify({
+        objects: {},
+        tombstones: {},
+        metadata: { version: 1, archived: isArchived }
+      });
+      execute(`
+        INSERT OR IGNORE INTO coworking_rooms (id, project_id, room_type, status, canvas_state_json, created_at, last_active_at)
+        VALUES (?, ?, 'custom', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `, [rId, p.id, isArchived ? 'archived' : 'active', initState]);
+    }
+    console.log(`>>> Backfilled coworking rooms for ${projectsWithoutRoom.length} existing projects.`);
+  }
+
   // Verification of tables
+
   const tables = queryAll("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;");
   console.log('>>> Migration executed successfully.');
   console.log('>>> Verified Tables in Database:', tables.map(t => t.name).join(', '));

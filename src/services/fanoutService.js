@@ -128,6 +128,20 @@ export function triggerProjectFanout(ideaId) {
       ) VALUES (?, ?, 'DEFAULT_ORG', ?, ?, CURRENT_TIMESTAMP, 'RESEARCH_DEV_PARALLEL', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `, [projectId, idea.id, idea.title, idea.owner_id]);
 
+    // A2. Deterministic Co-working Room Provisioning on Project Creation (Step 11)
+    const roomId = crypto.randomUUID();
+    const initCanvasState = JSON.stringify({
+      objects: {},
+      tombstones: {},
+      metadata: { version: 1, archived: false }
+    });
+    execute(`
+      INSERT INTO coworking_rooms (
+        id, project_id, room_type, status, canvas_state_json, created_at, last_active_at
+      ) VALUES (?, ?, 'custom', 'active', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `, [roomId, projectId, initCanvasState]);
+
+
     // B. Assign members across all 6 roles
     for (const a of assignments) {
       if (a.user) {
@@ -672,6 +686,13 @@ export function adminFinalReview({ projectId, adminUserId, approved, notes = nul
       UPDATE project_tasks
       SET status = 'DONE', completed_at = CURRENT_TIMESTAMP
       WHERE project_id = ? AND task_type = 'review'
+    `, [projectId]);
+
+    // Automatically transition Co-working Room to read-only archived state on LIVE launch (Step 11)
+    execute(`
+      UPDATE coworking_rooms
+      SET status = 'archived', last_active_at = CURRENT_TIMESTAMP
+      WHERE project_id = ?
     `, [projectId]);
   }
 

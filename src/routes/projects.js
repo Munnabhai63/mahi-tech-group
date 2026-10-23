@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth.js';
 import { triggerProjectFanout } from '../services/fanoutService.js';
 import { logAccess } from '../services/auditService.js';
 import { createAsset, getProjectAssets } from '../services/assetService.js';
+import { getRoomDetails, getOrCreateRoomForProject, isUserProjectContributor } from '../services/coworkingService.js';
 
 const router = express.Router();
 
@@ -263,4 +264,38 @@ router.get('/:id/assets', authenticate, (req, res) => {
   return res.status(200).json(result);
 });
 
+/**
+ * 7. GET /api/projects/:id/coworking-room
+ * Fetches room details, state snapshot, active participants, and read-only archive status
+ */
+router.get('/:id/coworking-room', authenticate, (req, res) => {
+  const { id } = req.params;
+  const result = getRoomDetails(id, req.user.id);
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(200).json(result);
+});
+
+/**
+ * 8. POST /api/projects/:id/coworking-room/create
+ * Ensures co-working room is provisioned for project
+ */
+router.post('/:id/coworking-room/create', authenticate, (req, res) => {
+  const { id } = req.params;
+  const authCheck = isUserProjectContributor(id, req.user.id);
+  if (!authCheck.allowed) {
+    return res.status(403).json({ error: authCheck.reason });
+  }
+
+  const room = getOrCreateRoomForProject(id);
+  return res.status(201).json({
+    message: 'Co-working room provisioned',
+    room
+  });
+});
+
 export default router;
+

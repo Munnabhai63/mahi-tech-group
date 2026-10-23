@@ -1610,3 +1610,315 @@ body.dark-theme {
   }
 }
 
+/* ===================================================================
+   STEP 11: CO-WORKING CANVAS STYLES
+   =================================================================== */
+
+.canvas-modal-backdrop {
+  z-index: 99999;
+  background: rgba(4, 7, 16, 0.88);
+  backdrop-filter: blur(16px);
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.canvas-dialog {
+  width: 96vw;
+  height: 92vh;
+  max-width: 1800px;
+  background: #090d16;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(59, 130, 246, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.canvas-header {
+  padding: 12px 20px;
+  background: #111827;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.canvas-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.canvas-save-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.canvas-save-status.archived {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.canvas-presence-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.presence-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.presence-avatars-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.presence-avatar-pill {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  border: 2px solid #111827;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  cursor: default;
+}
+
+.presence-avatar-pill.dev { background: #10b981; }
+.presence-avatar-pill.res { background: #06b6d4; }
+.presence-avatar-pill.des { background: #f43f5e; }
+.presence-avatar-pill.prod { background: #8b5cf6; }
+
+.canvas-toolbar {
+  padding: 8px 20px;
+  background: #0f172a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 6px;
+}
+
+.tool-btn {
+  padding: 5px 10px;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tool-btn:hover {
+  background: #334155;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.canvas-capacity-pill {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.canvas-surface-container {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  background-color: #080c15;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+  cursor: default;
+}
+
+.canvas-surface-container.read-only {
+  background-color: #060910;
+  cursor: not-allowed;
+}
+
+.canvas-elements-layer {
+  position: absolute;
+  inset: 0;
+  min-width: 2500px;
+  min-height: 1800px;
+}
+
+.canvas-cursors-layer {
+  position: absolute;
+  inset: 0;
+  min-width: 2500px;
+  min-height: 1800px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.live-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1001;
+  transition: left 0.05s linear, top 0.05s linear;
+  display: flex;
+  align-items: flex-start;
+}
+
+.live-cursor-pointer {
+  width: 14px;
+  height: 14px;
+  transform: rotate(-25deg);
+}
+
+.live-cursor-label {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  margin-left: 2px;
+  margin-top: 6px;
+}
+
+.canvas-item {
+  position: absolute;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  cursor: grab;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.15s ease;
+  z-index: 10;
+}
+
+.canvas-item:active {
+  cursor: grabbing;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+}
+
+.canvas-item-sticky {
+  width: 200px;
+  min-height: 150px;
+  color: #0f172a;
+}
+
+.canvas-item-card {
+  width: 260px;
+  min-height: 140px;
+  background: #1e293b;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #f8fafc;
+}
+
+.canvas-item-shape {
+  width: 160px;
+  height: 120px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 2px solid #3b82f6;
+  color: #60a5fa;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 600;
+}
+
+.canvas-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.8;
+  margin-bottom: 8px;
+}
+
+.canvas-item-del-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+  color: inherit;
+  opacity: 0.6;
+}
+
+.canvas-item-del-btn:hover {
+  opacity: 1;
+  color: #ef4444;
+}
+
+.canvas-item-body {
+  flex: 1;
+  outline: none;
+  font-size: 13px;
+  line-height: 1.45;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  resize: none;
+  width: 100%;
+}
+
+.canvas-item-footer {
+  font-size: 9px;
+  opacity: 0.7;
+  margin-top: 8px;
+  text-align: right;
+  font-style: italic;
+}
+
+

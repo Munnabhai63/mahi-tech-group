@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
+import { disconnectUserSockets } from './wsService.js';
 
 export const DEFAULT_EXTERNAL_SERVICES_CHECKLIST = [
   { id: 'github_org', label: 'Remove from GitHub org', status: 'PENDING', type: 'manual_checklist', completed_at: null },
@@ -61,11 +62,14 @@ export function executeOffboardingKillswitch({ userId, adminUserId, reason, ipAd
     'UPDATE sessions SET is_revoked = 1 WHERE user_id = ?',
     [userId]
   );
+  // Sever any active WebSocket connections immediately
+  disconnectUserSockets(userId, 'Account offboarded');
+
   executionTimestamps.step1 = step1Start;
   stepsExecuted.push({
     step: 1,
     action: 'invalidate_sessions',
-    details: 'All active sessions across all devices revoked immediately'
+    details: 'All active sessions and WebSockets across all devices revoked immediately'
   });
 
   // -----------------------------------------------------------------

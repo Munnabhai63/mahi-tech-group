@@ -2,6 +2,14 @@ import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 import { queryOne, queryAll } from '../db/database.js';
+import {
+  isUserProjectContributor,
+  getOrCreateRoomForProject,
+  joinRoom,
+  leaveRoom,
+  updateCanvasElement,
+  deleteCanvasElement
+} from './coworkingService.js';
 
 let wssInstance = null;
 // Map from ws client to client metadata
@@ -78,7 +86,7 @@ export function initWebSocketServer(httpServer) {
       rooms.add(`role:${user.role}`);
     }
 
-    // 3. Join channels for projects where user is owner or member
+    // 4. Join channels for projects where user is owner or member
     const userProjects = queryAll(`
       SELECT DISTINCT p.id as project_id
       FROM projects p
@@ -94,7 +102,8 @@ export function initWebSocketServer(httpServer) {
       name: user.name,
       role: user.role,
       rooms,
-      isAlive: true
+      isAlive: true,
+      lastCursorBroadcastTime: 0
     });
 
     if (!userSockets.has(user.id)) {
@@ -133,6 +142,168 @@ export function initWebSocketServer(httpServer) {
         const msg = JSON.parse(messageRaw.toString());
         if (msg.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
+          return;
+        }
+
+        const clientMeta = clients.get(ws);
+        if (!clientMeta) return;
+
+        // -------------------------------------------------------------
+        // STEP 11: CO-WORKING CANVAS WEBSOCKET MESSAGE DISPATCHER
+        // -------------------------------------------------------------
+        if (msg.action && msg.action.startsWith('canvas:')) {
+          const projectId = msg.projectId;
+          if (!projectId) {
+            ws.send(JSON.stringify({
+              channel: 'canvas:error',
+              event: 'canvas:error',
+              data: { error: 'projectId is required' }
+            }));
+            return;
+          }
+
+          // A. canvas:join
+          if (msg.action === 'canvas:join') {
+            const authCheck = isUserProjectContributor(projectId, user.id);
+            if (!authCheck.allowed) {
+              ws.send(JSON.stringify({
+                channel: `canvas:${projectId}`,
+                event: 'canvas:error',
+                data: { error: authCheck.reason, code: 403 }
+              }));
+              return;
+            }
+
+            const room = getOrCreateRoomForProject(projectId);
+            joinRoom(room.id, user.id);
+            clientMeta.rooms.add(`canvas:${projectId}`);
+
+            let canvasState = { objects: {}, tombstones: {}, metadata: { version: 1, archived: false } };
+            try {
+              if (room.canvas_state_json) canvasState = JSON.parse(room.canvas_state_json);
+            } catch (e) {}
+
+            const isArchived = (room.status === 'archived' || authCheck.project.current_stage === 'LIVE' || authCheck.project.status === 'LIVE');
+
+            const activeParticipants = queryAll(`
+              SELECT rp.id, rp.user_id, rp.joined_at, u.name, u.role
+              FROM room_participants rp
+              JOIN users u ON rp.user_id = u.id
+              WHERE rp.room_id = ? AND rp.left_at IS NULL
+              ORDER BY rp.joined_at ASC
+            `, [room.id]);
+
+            // Send initial state & room metadata to joining client
+            ws.send(JSON.stringify({
+              channel: `canvas:${projectId}`,
+              event: 'canvas:init',
+              data: {
+                roomId: room.id,
+                projectId,
+                isArchived,
+                canvasState,
+                participants: activeParticipants
+              },
+              timestamp: new Date().toISOString()
+            }));
+
+            // Broadcast join notification to room peers
+            broadcastEvent(`canvas:${projectId}`, 'canvas:user_joined', {
+              user: { id: user.id, name: user.name, role: user.role },
+              participants: activeParticipants
+            });
+            return;
+          }
+
+          // All subsequent canvas actions require the client to be joined in canvas room
+          if (!clientMeta.rooms.has(`canvas:${projectId}`)) {
+            ws.send(JSON.stringify({
+              channel: `canvas:${projectId}`,
+              event: 'canvas:error',
+              data: { error: 'Must join canvas room before sending canvas actions' }
+            }));
+            return;
+          }
+
+          const room = getOrCreateRoomForProject(projectId);
+
+          // B. canvas:cursor_move (Server-side 60ms rate-limited)
+          if (msg.action === 'canvas:cursor_move') {
+            const now = Date.now();
+            const THROTTLE_MS = 60; // Max ~16.6 updates/sec
+            if (now - (clientMeta.lastCursorBroadcastTime || 0) < THROTTLE_MS) {
+              return; // Server-side throttle: drop sub-throttle packet
+            }
+            clientMeta.lastCursorBroadcastTime = now;
+
+            broadcastEvent(`canvas:${projectId}`, 'canvas:cursor_move', {
+              userId: user.id,
+              name: user.name,
+              role: user.role,
+              x: Number(msg.x || 0),
+              y: Number(msg.y || 0)
+            }, ws); // Exclude sender
+            return;
+          }
+
+          // C. canvas:object_update (LWW with Attribution History)
+          if (msg.action === 'canvas:object_update') {
+            const result = updateCanvasElement(room.id, msg.object || {}, user);
+            if (!result.success) {
+              ws.send(JSON.stringify({
+                channel: `canvas:${projectId}`,
+                event: 'canvas:error',
+                data: { error: result.error }
+              }));
+              return;
+            }
+
+            broadcastEvent(`canvas:${projectId}`, 'canvas:object_update', {
+              element: result.element,
+              version: result.canvasState.metadata.version
+            });
+            return;
+          }
+
+          // D. canvas:object_delete (Attributed Soft-Delete Tombstones)
+          if (msg.action === 'canvas:object_delete') {
+            const result = deleteCanvasElement(room.id, msg.objectId, user);
+            if (!result.success) {
+              ws.send(JSON.stringify({
+                channel: `canvas:${projectId}`,
+                event: 'canvas:error',
+                data: { error: result.error }
+              }));
+              return;
+            }
+
+            broadcastEvent(`canvas:${projectId}`, 'canvas:object_delete', {
+              objectId: msg.objectId,
+              deletedBy: result.deletedBy,
+              version: result.canvasState.metadata.version
+            });
+            return;
+          }
+
+          // E. canvas:leave
+          if (msg.action === 'canvas:leave') {
+            clientMeta.rooms.delete(`canvas:${projectId}`);
+            leaveRoom(room.id, user.id);
+
+            const remainingParticipants = queryAll(`
+              SELECT rp.id, rp.user_id, rp.joined_at, u.name, u.role
+              FROM room_participants rp
+              JOIN users u ON rp.user_id = u.id
+              WHERE rp.room_id = ? AND rp.left_at IS NULL
+              ORDER BY rp.joined_at ASC
+            `, [room.id]);
+
+            broadcastEvent(`canvas:${projectId}`, 'canvas:user_left', {
+              user: { id: user.id, name: user.name },
+              participants: remainingParticipants
+            });
+            return;
+          }
         }
       } catch (err) {
         // Ignore unparseable client messages
@@ -140,6 +311,32 @@ export function initWebSocketServer(httpServer) {
     });
 
     ws.on('close', () => {
+      const clientMeta = clients.get(ws);
+      if (clientMeta) {
+        // Clean up any canvas rooms this client was participating in
+        for (const roomName of clientMeta.rooms) {
+          if (roomName.startsWith('canvas:')) {
+            const projectId = roomName.replace('canvas:', '');
+            const room = queryOne('SELECT id FROM coworking_rooms WHERE project_id = ?', [projectId]);
+            if (room) {
+              leaveRoom(room.id, user.id);
+              const remainingParticipants = queryAll(`
+                SELECT rp.id, rp.user_id, rp.joined_at, u.name, u.role
+                FROM room_participants rp
+                JOIN users u ON rp.user_id = u.id
+                WHERE rp.room_id = ? AND rp.left_at IS NULL
+                ORDER BY rp.joined_at ASC
+              `, [room.id]);
+
+              broadcastEvent(`canvas:${projectId}`, 'canvas:user_left', {
+                user: { id: user.id, name: user.name },
+                participants: remainingParticipants
+              });
+            }
+          }
+        }
+      }
+
       clients.delete(ws);
       if (userSockets.has(user.id)) {
         userSockets.get(user.id).delete(ws);
@@ -188,12 +385,33 @@ export function getOnlineUsersCount() {
 }
 
 /**
- * Broadcast an event to all clients subscribed to a specific channel
- * @param {string} channel - e.g. 'org:global', 'user:uuid', 'project:uuid'
- * @param {string} event - e.g. 'vote.cast', 'idea.submitted', 'task.unblocked'
- * @param {object} data - payload
+ * Disconnect all active WebSockets for a specific user (used by Step 05 offboarding killswitch)
  */
-export function broadcastEvent(channel, event, data) {
+export function disconnectUserSockets(userId, reason = 'Session revoked') {
+  if (userSockets.has(userId)) {
+    const sockets = Array.from(userSockets.get(userId));
+    for (const ws of sockets) {
+      try {
+        ws.send(JSON.stringify({
+          channel: 'system',
+          event: 'force_disconnect',
+          data: { reason }
+        }));
+        ws.close(4001, reason);
+      } catch (e) {}
+    }
+    userSockets.delete(userId);
+  }
+}
+
+/**
+ * Broadcast an event to all clients subscribed to a specific channel
+ * @param {string} channel - e.g. 'org:global', 'user:uuid', 'project:uuid', 'canvas:uuid'
+ * @param {string} event - e.g. 'vote.cast', 'idea.submitted', 'canvas:cursor_move'
+ * @param {object} data - payload
+ * @param {WebSocket} excludeWs - optional WebSocket client to exclude from broadcast (e.g. sender)
+ */
+export function broadcastEvent(channel, event, data, excludeWs = null) {
   if (!wssInstance) return;
 
   const payload = JSON.stringify({
@@ -204,7 +422,7 @@ export function broadcastEvent(channel, event, data) {
   });
 
   for (const [ws, meta] of clients.entries()) {
-    if (ws.readyState === WebSocket.OPEN && meta.rooms.has(channel)) {
+    if (ws !== excludeWs && ws.readyState === WebSocket.OPEN && meta.rooms.has(channel)) {
       try {
         ws.send(payload);
       } catch (err) {

@@ -662,6 +662,12 @@
           <div><strong>Overall Progress:</strong> <span id="modalProgressText">0%</span></div>
         </div>
 
+        <div style="margin: 16px 0; display: flex; justify-content: flex-end;">
+          <button class="btn btn-primary" id="btnJoinCoworkingFromModal" style="display: inline-flex; align-items: center; gap: 8px;">
+            🎨 Join Co-working Room
+          </button>
+        </div>
+
         <h4 class="mt-4 mb-2">Multi-Track Task List (8 Workflows)</h4>
         <div class="task-table-wrap">
           <table class="modal-table">
@@ -737,6 +743,59 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Co-working Canvas Modal (Step 11 Shared Live Workspace) -->
+  <div class="canvas-modal-backdrop" id="coworkingModalBackdrop" style="display: none;">
+    <div class="canvas-dialog">
+      <div class="canvas-header">
+        <div class="canvas-header-left">
+          <div class="brand-logo" style="margin: 0;">
+            <span class="logo-icon">🎨</span>
+            <span class="brand-name" id="canvasProjectTitleDisplay">Co-working Canvas</span>
+          </div>
+          <span class="badge" id="canvasStageBadge">STAGE</span>
+          <span class="canvas-save-status" id="canvasSaveStatus">✓ Live Synced</span>
+        </div>
+
+        <!-- Live Presence Bar: "Who's Here" Avatar Strip -->
+        <div class="canvas-presence-bar" id="canvasPresenceBar">
+          <span class="presence-label">Who's Here:</span>
+          <div class="presence-avatars-wrap" id="canvasPresenceAvatars"></div>
+        </div>
+
+        <div class="canvas-header-right">
+          <button class="btn btn-danger btn-sm" id="btnExitCanvas">✕ Exit Room</button>
+        </div>
+      </div>
+
+      <!-- Canvas Toolbar & Controls -->
+      <div class="canvas-toolbar" id="canvasToolbar">
+        <div class="toolbar-group">
+          <button class="tool-btn" data-tool="sticky" data-color="#fef08a" id="btnAddYellowSticky">📝 Yellow Note</button>
+          <button class="tool-btn" data-tool="sticky" data-color="#bae6fd" id="btnAddBlueSticky">📝 Blue Note</button>
+          <button class="tool-btn" data-tool="sticky" data-color="#bbf7d0" id="btnAddGreenSticky">📝 Green Note</button>
+          <button class="tool-btn" data-tool="sticky" data-color="#fbcfe8" id="btnAddPinkSticky">📝 Pink Note</button>
+        </div>
+        <div class="toolbar-separator"></div>
+        <div class="toolbar-group">
+          <button class="tool-btn" data-tool="card" id="btnAddSpecCard">🗂️ Spec Card</button>
+          <button class="tool-btn" data-tool="shape" id="btnAddBoxShape">⬜ Box Shape</button>
+        </div>
+        <div class="toolbar-separator"></div>
+        <div class="toolbar-group">
+          <span class="canvas-capacity-pill" id="canvasCapacityPill">0 / 500 items</span>
+        </div>
+      </div>
+
+      <!-- Live Canvas Surface -->
+      <div class="canvas-surface-container" id="canvasSurfaceContainer">
+        <!-- Peer cursors layer -->
+        <div class="canvas-cursors-layer" id="canvasCursorsLayer"></div>
+        <!-- Board elements container -->
+        <div class="canvas-elements-layer" id="canvasElementsLayer"></div>
       </div>
     </div>
   </div>
