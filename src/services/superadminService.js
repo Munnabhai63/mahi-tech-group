@@ -1,4 +1,6 @@
 import { queryOne, queryAll, execute } from '../db/database.js';
+import { broadcastEvent } from './wsService.js';
+import { logAccess } from './auditService.js';
 
 /**
  * Super Admin Service — Step 14
@@ -441,3 +443,281 @@ export function getPerformanceLeaderboard() {
     trend: item.trend
   }));
 }
+
+// ===================================================================
+// LAYER 3: Ideation Engine Command Center
+// ===================================================================
+
+/**
+ * List all ideas with vote counts, owner name, revenue clock start, fan-out summary
+ */
+export function listAllIdeasCommand() {
+  const ideas = queryAll(`
+    SELECT i.*, 
+           u.name as owner_name, 
+           u.email as owner_email,
+           p.revenue_clock_start,
+           p.id as project_id,
+           (SELECT COUNT(*) FROM votes WHERE idea_id = i.id) as vote_count,
+           (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id OR pt.idea_id = i.id) as tasks_total,
+           (SELECT COUNT(*) FROM project_tasks pt WHERE (pt.project_id = p.id OR pt.idea_id = i.id) AND pt.status IN ('DONE','completed')) as tasks_completed,
+           kb.name as killed_by_name
+    FROM ideas i
+    JOIN users u ON i.owner_id = u.id
+    LEFT JOIN projects p ON p.idea_id = i.id
+    LEFT JOIN users kb ON i.killed_by = kb.id
+    ORDER BY i.created_at DESC
+  `);
+
+  return ideas.map(idea => {
+    const total = Number(idea.tasks_total || 0);
+    const completed = Number(idea.tasks_completed || 0);
+    return {
+      ...idea,
+      vote_count: Number(idea.vote_count || 0),
+      tasks_total: total,
+      tasks_completed: completed,
+      fan_out_summary: `${completed}/${total > 0 ? total : 9} complete`
+    };
+  });
+}
+
+/**
+ * Get full idea detail including votes, all tasks, and revenue accrued
+ */
+export function getIdeaDetailCommand(ideaId) {
+  const idea = queryOne(`
+    SELECT i.*, 
+           u.name as owner_name, 
+           u.email as owner_email,
+           p.id as project_id,
+           p.title as project_title,
+           p.current_stage as project_stage,
+           p.revenue_clock_start,
+           kb.name as killed_by_name
+    FROM ideas i
+    JOIN users u ON i.owner_id = u.id
+    LEFT JOIN projects p ON p.idea_id = i.id
+    LEFT JOIN users kb ON i.killed_by = kb.id
+    WHERE i.id = ?
+  `, [ideaId]);
+
+  if (!idea) return null;
+
+  // Votes
+  const votes = queryAll(`
+    SELECT v.*, u.name as voter_name, u.role as voter_role
+    FROM votes v
+    JOIN users u ON v.voter_id = u.id
+    WHERE v.idea_id = ?
+    ORDER BY v.voted_at DESC
+  `, [ideaId]);
+
+  // Tasks
+  const tasks = queryAll(`
+    SELECT pt.*, u.name as assignee_name
+    FROM project_tasks pt
+    LEFT JOIN users u ON pt.assigned_to = u.id
+    WHERE pt.project_id = ? OR pt.idea_id = ?
+    ORDER BY pt.created_at ASC
+  `, [idea.project_id || '', ideaId]);
+
+  // Revenue accrued
+  const revRow = queryOne(`
+    SELECT COALESCE(SUM(amount), 0) as total
+    FROM revenue_events
+    WHERE project_id = ?
+  `, [idea.project_id || '']);
+
+  return {
+    ...idea,
+    votes,
+    tasks,
+    revenue_accrued: Number(revRow?.total || 0)
+  };
+}
+
+/**
+ * Idea Kill Switch
+ * Cancels pending tasks, updates status to 'killed', logs access, broadcasts WS
+ */
+export function killIdea(ideaId, reason, adminId) {
+  if (!reason || !reason.trim()) {
+    const err = new Error('Reason is required to kill an idea');
+    err.status = 400;
+    throw err;
+  }
+
+  const idea = queryOne("SELECT * FROM ideas WHERE id = ?", [ideaId]);
+  if (!idea) {
+    const err = new Error('Idea not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const currentStatus = (idea.status || '').toLowerCase();
+  if (currentStatus === 'killed' || currentStatus === 'archived') {
+    const err = new Error(`Cannot kill an idea that is already ${idea.status}`);
+    err.status = 409;
+    throw err;
+  }
+
+  const preKillStatus = idea.status;
+  const now = new Date().toISOString();
+
+  // Update idea
+  execute(`
+    UPDATE ideas
+    SET status = 'killed',
+        killed_reason = ?,
+        killed_at = datetime('now'),
+        killed_by = ?,
+        pre_kill_status = ?,
+        updated_at = datetime('now')
+    WHERE id = ?
+  `, [reason.trim(), adminId, preKillStatus, ideaId]);
+
+  // Cancel any non-completed tasks for this idea
+  execute(`
+    UPDATE project_tasks
+    SET status = 'cancelled'
+    WHERE (project_id IN (SELECT id FROM projects WHERE idea_id = ?) OR idea_id = ?)
+      AND status NOT IN ('DONE', 'completed')
+  `, [ideaId, ideaId]);
+
+  // Log access
+  logAccess({
+    userId: adminId,
+    action: 'superadmin_idea_kill',
+    resource: `/api/superadmin/ideas/${ideaId}/kill`,
+    targetId: ideaId
+  });
+
+  // Emit WebSocket event
+  broadcastEvent('org:global', 'idea_killed', {
+    ideaId,
+    reason: reason.trim(),
+    killedBy: adminId,
+    timestamp: now
+  });
+
+  return {
+    ideaId,
+    status: 'killed',
+    reason: reason.trim()
+  };
+}
+
+/**
+ * Restore a killed idea back to pre-kill status
+ */
+export function restoreIdea(ideaId, reason, adminId) {
+  if (!reason || !reason.trim()) {
+    const err = new Error('Reason is required to restore an idea');
+    err.status = 400;
+    throw err;
+  }
+
+  const idea = queryOne("SELECT * FROM ideas WHERE id = ?", [ideaId]);
+  if (!idea) {
+    const err = new Error('Idea not found');
+    err.status = 404;
+    throw err;
+  }
+
+  if ((idea.status || '').toLowerCase() !== 'killed') {
+    const err = new Error('Cannot restore an idea that was never killed');
+    err.status = 409;
+    throw err;
+  }
+
+  const targetStatus = idea.pre_kill_status || 'APPROVED';
+
+  execute(`
+    UPDATE ideas
+    SET status = ?,
+        killed_reason = NULL,
+        killed_at = NULL,
+        killed_by = NULL,
+        updated_at = datetime('now')
+    WHERE id = ?
+  `, [targetStatus, ideaId]);
+
+  // Log access
+  logAccess({
+    userId: adminId,
+    action: 'superadmin_idea_restore',
+    resource: `/api/superadmin/ideas/${ideaId}/restore`,
+    targetId: ideaId
+  });
+
+  return {
+    ideaId,
+    status: targetStatus,
+    reason: reason.trim()
+  };
+}
+
+/**
+ * Read current idea quota config
+ */
+export function getQuotaConfig() {
+  const limitRow = queryOne("SELECT value FROM system_config WHERE key = 'idea_quota_limit'");
+  const windowRow = queryOne("SELECT value FROM system_config WHERE key = 'idea_quota_window_days'");
+
+  return {
+    idea_quota_limit: Number(limitRow?.value || 4),
+    idea_quota_window_days: Number(windowRow?.value || 10)
+  };
+}
+
+/**
+ * Update idea quota config with strict validation
+ * limit >= 1, window_days >= 7 and <= 30
+ */
+export function updateQuotaConfig(updates = {}, adminId) {
+  const { idea_quota_limit, idea_quota_window_days } = updates;
+
+  if (idea_quota_limit !== undefined) {
+    const limitNum = Number(idea_quota_limit);
+    if (isNaN(limitNum) || limitNum < 1) {
+      const err = new Error('idea_quota_limit must be an integer >= 1');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  if (idea_quota_window_days !== undefined) {
+    const winNum = Number(idea_quota_window_days);
+    if (isNaN(winNum) || winNum < 7 || winNum > 30) {
+      const err = new Error('idea_quota_window_days must be between 7 and 30 days');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  if (idea_quota_limit !== undefined) {
+    execute(`
+      INSERT INTO system_config (key, value, updated_by, updated_at)
+      VALUES ('idea_quota_limit', ?, ?, datetime('now'))
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = datetime('now')
+    `, [String(idea_quota_limit), adminId]);
+  }
+
+  if (idea_quota_window_days !== undefined) {
+    execute(`
+      INSERT INTO system_config (key, value, updated_by, updated_at)
+      VALUES ('idea_quota_window_days', ?, ?, datetime('now'))
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = datetime('now')
+    `, [String(idea_quota_window_days), adminId]);
+  }
+
+  logAccess({
+    userId: adminId,
+    action: 'superadmin_quota_config_update',
+    resource: '/api/superadmin/quota/config'
+  });
+
+  return getQuotaConfig();
+}
+

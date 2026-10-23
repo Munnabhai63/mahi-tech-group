@@ -54,6 +54,151 @@ export function runMigration() {
     console.log('>>> Added created_at column to access_log table.');
   }
 
+  // Step 14 Layer 3: Support tickets and ticket messages
+  execRaw(`
+    CREATE TABLE IF NOT EXISTS support_tickets (
+      id            TEXT PRIMARY KEY,
+      ticket_number TEXT UNIQUE NOT NULL,
+      reporter_id   TEXT NOT NULL REFERENCES users(id),
+      assigned_to   TEXT REFERENCES users(id),
+      category      TEXT NOT NULL CHECK (category IN ('bug','feature_request','access_issue','billing','other')),
+      priority      TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low','normal','high','urgent')),
+      status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','in_progress','resolved','closed')),
+      subject       TEXT NOT NULL,
+      updated_at    TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+      created_at    TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (reporter_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ticket_messages (
+      id          TEXT PRIMARY KEY,
+      ticket_id   TEXT NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+      sender_id   TEXT NOT NULL REFERENCES users(id),
+      body        TEXT NOT NULL,
+      is_internal INTEGER NOT NULL DEFAULT 0,
+      created_at  TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (sender_id) REFERENCES users(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_reporter_id ON support_tickets(reporter_id);
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_ticket_number ON support_tickets(ticket_number);
+    CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket_id ON ticket_messages(ticket_id);
+  `);
+
+  // Step 14 Layer 3: Ideas Kill Switch columns
+  const ideaCols = queryAll('PRAGMA table_info(ideas);');
+  if (!ideaCols.some(c => c.name === 'killed_reason')) {
+    execRaw('ALTER TABLE ideas ADD COLUMN killed_reason TEXT NULL;');
+  }
+  if (!ideaCols.some(c => c.name === 'killed_at')) {
+    execRaw('ALTER TABLE ideas ADD COLUMN killed_at TIMESTAMP NULL;');
+  }
+  if (!ideaCols.some(c => c.name === 'killed_by')) {
+    execRaw('ALTER TABLE ideas ADD COLUMN killed_by TEXT NULL REFERENCES users(id);');
+  }
+  if (!ideaCols.some(c => c.name === 'pre_kill_status')) {
+    execRaw('ALTER TABLE ideas ADD COLUMN pre_kill_status TEXT NULL;');
+  }
+
+  // Update ideas status CHECK constraint to allow 'killed'
+  const ideasSql = queryOne("SELECT sql FROM sqlite_master WHERE type='table' AND name='ideas'")?.sql || '';
+  if (ideasSql && !ideasSql.includes("'killed'")) {
+    console.log('>>> Migrating ideas table to allow killed status in CHECK constraint...');
+    execRaw(`
+      PRAGMA foreign_keys=OFF;
+      BEGIN TRANSACTION;
+      CREATE TABLE ideas_dg_tmp (
+        id                  TEXT PRIMARY KEY,
+        owner_id            TEXT NOT NULL REFERENCES users(id),
+        title               VARCHAR(200) NOT NULL,
+        description         TEXT NOT NULL,
+        attachment_url      TEXT,
+        status              VARCHAR(30) NOT NULL DEFAULT 'DRAFT' CHECK (status IN
+                            ('DRAFT','PENDING_REVIEW','REVISE','APPROVED',
+                             'REJECTED','ARCHIVED','killed','KILLED','archived')),
+        submitted_at        TIMESTAMP,
+        voting_deadline     TIMESTAMP,
+        green_percentage    DECIMAL(5,2) DEFAULT 0.0,
+        killed_reason       TEXT NULL,
+        killed_at           TIMESTAMP NULL,
+        killed_by           TEXT NULL REFERENCES users(id),
+        pre_kill_status     TEXT NULL,
+        created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO ideas_dg_tmp SELECT id, owner_id, title, description, attachment_url, status, submitted_at, voting_deadline, green_percentage, killed_reason, killed_at, killed_by, pre_kill_status, created_at, updated_at FROM ideas;
+      DROP TABLE ideas;
+      ALTER TABLE ideas_dg_tmp RENAME TO ideas;
+      CREATE INDEX IF NOT EXISTS idx_ideas_owner_id ON ideas(owner_id);
+      CREATE INDEX IF NOT EXISTS idx_ideas_status ON ideas(status);
+      CREATE INDEX IF NOT EXISTS idx_ideas_created_at ON ideas(created_at);
+      COMMIT;
+      PRAGMA foreign_keys=ON;
+    `);
+    console.log('>>> Successfully updated ideas table CHECK constraint.');
+  }
+
+  // Update project_tasks status CHECK constraint to allow 'cancelled'
+  const ptSql = queryOne("SELECT sql FROM sqlite_master WHERE type='table' AND name='project_tasks'")?.sql || '';
+  if (ptSql && !ptSql.includes("'cancelled'")) {
+    console.log('>>> Migrating project_tasks table to allow cancelled status in CHECK constraint...');
+    execRaw(`
+      PRAGMA foreign_keys=OFF;
+      BEGIN TRANSACTION;
+      CREATE TABLE project_tasks_dg_tmp (
+        id                  TEXT PRIMARY KEY,
+        project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        idea_id             TEXT REFERENCES ideas(id),
+        assigned_to         TEXT REFERENCES users(id),
+        task_name           VARCHAR(150) NOT NULL,
+        task_type           VARCHAR(30) CHECK (task_type IN
+                            ('research','backend','frontend','testing','review','design')),
+        depends_on_task_id  TEXT REFERENCES project_tasks(id) NULL,
+        status              VARCHAR(20) DEFAULT 'TODO' CHECK (status IN
+                            ('TODO','BLOCKED','IN_PROGRESS','DONE','cancelled','completed')),
+        created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at        TIMESTAMP NULL
+      );
+      INSERT INTO project_tasks_dg_tmp (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at, completed_at)
+        SELECT id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at, completed_at FROM project_tasks;
+      DROP TABLE project_tasks;
+      ALTER TABLE project_tasks_dg_tmp RENAME TO project_tasks;
+      UPDATE project_tasks SET idea_id = (SELECT idea_id FROM projects WHERE projects.id = project_tasks.project_id);
+      COMMIT;
+      PRAGMA foreign_keys=ON;
+    `);
+    console.log('>>> Successfully updated project_tasks table CHECK constraint.');
+  }
+
+  // Check if access_log target_id has a foreign key to users
+  const accessLogFks = queryAll("PRAGMA foreign_key_list(access_log)");
+  const hasTargetIdFk = accessLogFks.some(fk => fk.from === 'target_id');
+  if (hasTargetIdFk) {
+    console.log('>>> Migrating access_log table to remove foreign key on target_id (supports tickets, ideas, disputes)...');
+    execRaw(`
+      PRAGMA foreign_keys=OFF;
+      BEGIN TRANSACTION;
+      CREATE TABLE access_log_dg_tmp (
+        id          TEXT PRIMARY KEY,
+        user_id     TEXT REFERENCES users(id),
+        target_id   TEXT,
+        action      VARCHAR(100) NOT NULL,
+        resource    VARCHAR(100),
+        ip_address  VARCHAR(45),
+        timestamp   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO access_log_dg_tmp (id, user_id, target_id, action, resource, ip_address, timestamp, created_at)
+        SELECT id, user_id, target_id, action, resource, ip_address, timestamp, created_at FROM access_log;
+      DROP TABLE access_log;
+      ALTER TABLE access_log_dg_tmp RENAME TO access_log;
+      COMMIT;
+      PRAGMA foreign_keys=ON;
+    `);
+    console.log('>>> Successfully updated access_log table.');
+  }
+
   // 1. Check if users table role CHECK constraint includes 'designer'
   const usersSql = queryOne("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")?.sql || '';
   if (usersSql && !usersSql.includes("'designer'")) {

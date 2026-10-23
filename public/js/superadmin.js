@@ -125,10 +125,15 @@ function initNavigation() {
       // Contextual refresh on pane activation
       if (targetPaneId === 'paneOverview') {
         loadOverviewMetrics();
-      } else if (targetPaneId === 'paneMembers') {
+      } else if (targetPaneId === 'paneDirectory' || targetPaneId === 'paneMembers') {
         loadMembersDirectory();
       } else if (targetPaneId === 'panePerformance') {
         loadPerformanceIntelligence();
+      } else if (targetPaneId === 'paneTickets') {
+        loadTickets();
+      } else if (targetPaneId === 'paneIdeation') {
+        loadIdeationCommand();
+        loadQuotaConfig();
       }
     });
   });
@@ -807,7 +812,612 @@ function initEventListeners() {
   if (saveWeightsBtn) {
     saveWeightsBtn.addEventListener('click', savePerformanceWeights);
   }
+
+  // --- Layer 3 Event Listeners ---
+  // Support Tickets
+  const openNewTicketBtn = document.getElementById('btnOpenNewTicketModal');
+  const cancelCreateTicketBtn = document.getElementById('btnCancelCreateTicket');
+  const submitCreateTicketBtn = document.getElementById('btnSubmitCreateTicket');
+  const ticketModal = document.getElementById('createTicketModalOverlay');
+
+  if (openNewTicketBtn) openNewTicketBtn.addEventListener('click', openCreateTicketModal);
+  if (cancelCreateTicketBtn) cancelCreateTicketBtn.addEventListener('click', () => {
+    if (ticketModal) ticketModal.style.display = 'none';
+  });
+  if (submitCreateTicketBtn) submitCreateTicketBtn.addEventListener('click', submitCreateTicket);
+
+  const closeTicketBtn = document.getElementById('closeTicketDrawerBtn');
+  const ticketOverlay = document.getElementById('ticketDrawerOverlay');
+  if (closeTicketBtn) closeTicketBtn.addEventListener('click', closeTicketDrawer);
+  if (ticketOverlay) ticketOverlay.addEventListener('click', closeTicketDrawer);
+
+  const sendReplyBtn = document.getElementById('btnSendThreadReply');
+  if (sendReplyBtn) sendReplyBtn.addEventListener('click', sendTicketReply);
+
+  const updateStatusBtn = document.getElementById('btnUpdateThreadStatus');
+  if (updateStatusBtn) updateStatusBtn.addEventListener('click', updateTicketStatus);
+
+  const escalateUrgentBtn = document.getElementById('btnEscalateThreadUrgent');
+  if (escalateUrgentBtn) escalateUrgentBtn.addEventListener('click', escalateTicketUrgent);
+
+  ['ticketStatusFilter', 'ticketPriorityFilter', 'ticketCategoryFilter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => loadTickets());
+  });
+
+  const searchTicketsInput = document.getElementById('ticketSearchInput');
+  let ticketSearchTimeout = null;
+  if (searchTicketsInput) {
+    searchTicketsInput.addEventListener('input', () => {
+      clearTimeout(ticketSearchTimeout);
+      ticketSearchTimeout = setTimeout(() => loadTickets(), 300);
+    });
+  }
+
+  // Ideation Engine Command
+  const cancelKillIdeaBtn = document.getElementById('btnCancelKillIdea');
+  const confirmKillIdeaBtn = document.getElementById('btnConfirmKillIdea');
+  const killIdeaModal = document.getElementById('killIdeaModalOverlay');
+  if (cancelKillIdeaBtn) cancelKillIdeaBtn.addEventListener('click', () => {
+    if (killIdeaModal) killIdeaModal.style.display = 'none';
+  });
+  if (confirmKillIdeaBtn) confirmKillIdeaBtn.addEventListener('click', confirmKillIdea);
+
+  const cancelRestoreIdeaBtn = document.getElementById('btnCancelRestoreIdea');
+  const confirmRestoreIdeaBtn = document.getElementById('btnConfirmRestoreIdea');
+  const restoreIdeaModal = document.getElementById('restoreIdeaModalOverlay');
+  if (cancelRestoreIdeaBtn) cancelRestoreIdeaBtn.addEventListener('click', () => {
+    if (restoreIdeaModal) restoreIdeaModal.style.display = 'none';
+  });
+  if (confirmRestoreIdeaBtn) confirmRestoreIdeaBtn.addEventListener('click', confirmRestoreIdea);
+
+  const saveQuotaBtn = document.getElementById('btnSaveQuota');
+  if (saveQuotaBtn) saveQuotaBtn.addEventListener('click', saveQuotaConfig);
 }
+
+// ===================================================================
+// LAYER 3: Section 4 — Support Ticket System Controller
+// ===================================================================
+let currentSelectedTicketId = null;
+
+async function loadTickets() {
+  const status = document.getElementById('ticketStatusFilter')?.value || '';
+  const priority = document.getElementById('ticketPriorityFilter')?.value || '';
+  const category = document.getElementById('ticketCategoryFilter')?.value || '';
+  const search = document.getElementById('ticketSearchInput')?.value || '';
+
+  const params = new URLSearchParams();
+  if (status) params.append('status', status);
+  if (priority) params.append('priority', priority);
+  if (category) params.append('category', category);
+  if (search) params.append('search', search);
+
+  const tbody = document.getElementById('ticketsTableBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="8" class="sa-loading-cell">Loading support tickets...</td></tr>';
+
+  try {
+    const res = await apiCall(`/api/superadmin/tickets?${params.toString()}`);
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to load tickets', 'error');
+      tbody.innerHTML = '<tr><td colspan="8" class="sa-empty-cell">Error loading support tickets.</td></tr>';
+      return;
+    }
+
+    const tickets = Array.isArray(res.data) ? res.data : [];
+    if (tickets.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:28px; color:var(--sa-text-muted);">No support tickets found matching current filters.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = tickets.map(t => {
+      const priorityClass = `sa-priority-${t.priority || 'normal'}`;
+      const statusClass = `sa-status-${t.status || 'open'}`;
+      const updatedFormatted = t.updated_at ? new Date(t.updated_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '--';
+
+      return `
+        <tr style="cursor:pointer;" onclick="openTicketThread('${t.id}')">
+          <td><strong style="color:#a5b4fc; font-family:monospace;">${t.ticket_number}</strong></td>
+          <td>
+            <div style="font-weight:600; color:#fff;">${t.subject || 'Untitled'}</div>
+            <span class="sa-cat-badge">${t.category || 'other'}</span>
+          </td>
+          <td>
+            <div style="color:#f1f5f9;">${t.reporter_name || 'Unknown'}</div>
+            <div style="font-size:11px; color:var(--sa-text-muted);">${t.reporter_email || ''}</div>
+          </td>
+          <td><span class="sa-priority-badge ${priorityClass}">${t.priority}</span></td>
+          <td><span class="sa-badge-status ${statusClass}">${t.status}</span></td>
+          <td>${t.assignee_name ? `<span style="color:#e2e8f0;">${t.assignee_name}</span>` : '<span style="color:var(--sa-text-muted); font-style:italic;">Unassigned</span>'}</td>
+          <td style="font-size:12px; color:var(--sa-text-dim);">${updatedFormatted}</td>
+          <td>
+            <button class="sa-btn-action sa-btn-action-view" onclick="event.stopPropagation(); openTicketThread('${t.id}')">
+              View Thread
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error loading tickets:', err);
+    tbody.innerHTML = '<tr><td colspan="8" class="sa-empty-cell">Network error while fetching tickets.</td></tr>';
+  }
+}
+
+async function openTicketThread(ticketId) {
+  currentSelectedTicketId = ticketId;
+  const drawer = document.getElementById('ticketDrawer');
+  const overlay = document.getElementById('ticketDrawerOverlay');
+  const msgsContainer = document.getElementById('ticketMessagesContainer');
+
+  if (msgsContainer) msgsContainer.innerHTML = '<div class="sa-loading-cell">Loading conversation thread...</div>';
+  if (drawer) drawer.classList.add('open');
+  if (overlay) overlay.classList.add('open');
+
+  try {
+    const res = await apiCall(`/api/superadmin/tickets/${ticketId}`);
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to load ticket details', 'error');
+      return;
+    }
+
+    const t = res.data;
+    const numEl = document.getElementById('drawerTicketNumber');
+    const statusEl = document.getElementById('drawerTicketStatus');
+    const prioEl = document.getElementById('drawerTicketPriority');
+    const subjEl = document.getElementById('drawerTicketSubject');
+    const repEl = document.getElementById('drawerTicketReporter');
+
+    if (numEl) numEl.textContent = t.ticket_number;
+    if (statusEl) {
+      statusEl.textContent = t.status;
+      statusEl.className = `sa-badge-status sa-status-${t.status}`;
+    }
+    if (prioEl) {
+      prioEl.textContent = t.priority;
+      prioEl.className = `sa-priority-badge sa-priority-${t.priority}`;
+    }
+    if (subjEl) subjEl.textContent = t.subject;
+    if (repEl) repEl.textContent = `Reporter: ${t.reporter_name} (${t.reporter_email})`;
+
+    // Configure status dropdown options (FSM forward only)
+    const statusSelect = document.getElementById('threadStatusSelect');
+    const updateBtn = document.getElementById('btnUpdateThreadStatus');
+    if (statusSelect) {
+      if (t.status === 'open') {
+        statusSelect.innerHTML = `
+          <option value="in_progress">Mark In Progress</option>
+          <option value="resolved">Mark Resolved</option>
+          <option value="closed">Mark Closed</option>
+        `;
+        statusSelect.disabled = false;
+        if (updateBtn) updateBtn.disabled = false;
+      } else if (t.status === 'in_progress') {
+        statusSelect.innerHTML = `
+          <option value="resolved">Mark Resolved</option>
+          <option value="closed">Mark Closed</option>
+        `;
+        statusSelect.disabled = false;
+        if (updateBtn) updateBtn.disabled = false;
+      } else if (t.status === 'resolved') {
+        statusSelect.innerHTML = `
+          <option value="closed">Mark Closed</option>
+        `;
+        statusSelect.disabled = false;
+        if (updateBtn) updateBtn.disabled = false;
+      } else {
+        statusSelect.innerHTML = `<option value="closed">Closed (Final)</option>`;
+        statusSelect.disabled = true;
+        if (updateBtn) updateBtn.disabled = true;
+      }
+    }
+
+    // Render messages
+    const messages = Array.isArray(t.messages) ? t.messages : [];
+    if (messages.length === 0) {
+      msgsContainer.innerHTML = '<div style="padding:24px; text-align:center; color:var(--sa-text-muted);">No messages in this ticket thread yet.</div>';
+    } else {
+      msgsContainer.innerHTML = messages.map(m => {
+        const isInternal = Boolean(m.is_internal);
+        const timeFormatted = m.created_at ? new Date(m.created_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        return `
+          <div class="ticket-msg ${isInternal ? 'internal' : ''}">
+            <div class="ticket-msg-header">
+              <span class="ticket-msg-sender">
+                ${m.sender_name || 'Member'} (${m.sender_role || 'user'})
+                ${isInternal ? '<span class="ticket-msg-badge-internal">INTERNAL NOTE</span>' : ''}
+              </span>
+              <span class="ticket-msg-time">${timeFormatted}</span>
+            </div>
+            <div class="ticket-msg-body">${m.body || ''}</div>
+          </div>
+        `;
+      }).join('');
+      msgsContainer.scrollTop = msgsContainer.scrollHeight;
+    }
+  } catch (err) {
+    console.error('Error opening ticket thread:', err);
+    toasts.show('Network error while opening ticket', 'error');
+  }
+}
+
+function closeTicketDrawer() {
+  const drawer = document.getElementById('ticketDrawer');
+  const overlay = document.getElementById('ticketDrawerOverlay');
+  if (drawer) drawer.classList.remove('open');
+  if (overlay) overlay.classList.remove('open');
+  currentSelectedTicketId = null;
+}
+
+async function sendTicketReply() {
+  if (!currentSelectedTicketId) return;
+  const replyInput = document.getElementById('ticketThreadReplyInput');
+  const isInternalCheck = document.getElementById('ticketThreadInternalCheck');
+  const body = replyInput?.value?.trim();
+  const is_internal = isInternalCheck?.checked ? 1 : 0;
+
+  if (!body) {
+    toasts.show('Please enter a message body before sending', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('btnSendThreadReply');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await apiCall(`/api/superadmin/tickets/${currentSelectedTicketId}/messages`, 'POST', {
+      body,
+      is_internal
+    });
+
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to send message', 'error');
+      return;
+    }
+
+    toasts.show(is_internal ? 'Internal note added to ticket' : 'Reply sent to ticket thread', 'success');
+    if (replyInput) replyInput.value = '';
+    if (isInternalCheck) isInternalCheck.checked = false;
+
+    await openTicketThread(currentSelectedTicketId);
+    await loadTickets();
+  } catch (err) {
+    console.error('Error sending ticket reply:', err);
+    toasts.show('Network error while sending message', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function updateTicketStatus() {
+  if (!currentSelectedTicketId) return;
+  const statusSelect = document.getElementById('threadStatusSelect');
+  const newStatus = statusSelect?.value;
+  if (!newStatus) return;
+
+  try {
+    const res = await apiCall(`/api/superadmin/tickets/${currentSelectedTicketId}`, 'PATCH', {
+      status: newStatus
+    });
+
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to update ticket status', 'error');
+      return;
+    }
+
+    toasts.show(`Ticket status updated to ${newStatus}`, 'success');
+    await openTicketThread(currentSelectedTicketId);
+    await loadTickets();
+  } catch (err) {
+    console.error('Error updating ticket status:', err);
+    toasts.show('Network error while updating ticket status', 'error');
+  }
+}
+
+async function escalateTicketUrgent() {
+  if (!currentSelectedTicketId) return;
+
+  try {
+    const res = await apiCall(`/api/superadmin/tickets/${currentSelectedTicketId}`, 'PATCH', {
+      priority: 'urgent'
+    });
+
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to escalate ticket', 'error');
+      return;
+    }
+
+    toasts.show('Ticket escalated to URGENT priority', 'success');
+    await openTicketThread(currentSelectedTicketId);
+    await loadTickets();
+  } catch (err) {
+    console.error('Error escalating ticket:', err);
+    toasts.show('Network error while escalating ticket', 'error');
+  }
+}
+
+async function openCreateTicketModal() {
+  const modal = document.getElementById('createTicketModalOverlay');
+  const reporterSelect = document.getElementById('newTicketReporterSelect');
+
+  if (reporterSelect) {
+    try {
+      const res = await apiCall('/api/superadmin/members?status=active');
+      if (res.ok && Array.isArray(res.data)) {
+        reporterSelect.innerHTML = res.data.map(u => `
+          <option value="${u.id}">${u.name} (${u.role} - ${u.email})</option>
+        `).join('');
+      } else {
+        reporterSelect.innerHTML = `<option value="${currentUser.id}">${currentUser.name || 'Admin'} (Admin)</option>`;
+      }
+    } catch (e) {
+      reporterSelect.innerHTML = `<option value="${currentUser.id}">${currentUser.name || 'Admin'} (Admin)</option>`;
+    }
+  }
+
+  if (modal) modal.style.display = 'flex';
+}
+
+async function submitCreateTicket() {
+  const reporter_id = document.getElementById('newTicketReporterSelect')?.value;
+  const category = document.getElementById('newTicketCategorySelect')?.value;
+  const priority = document.getElementById('newTicketPrioritySelect')?.value;
+  const subject = document.getElementById('newTicketSubjectInput')?.value?.trim();
+  const body = document.getElementById('newTicketBodyInput')?.value?.trim();
+
+  if (!subject) {
+    toasts.show('Subject is required', 'warning');
+    return;
+  }
+
+  try {
+    const res = await apiCall('/api/superadmin/tickets', 'POST', {
+      reporter_id,
+      category,
+      priority,
+      subject,
+      body
+    });
+
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to create ticket', 'error');
+      return;
+    }
+
+    toasts.show(`Ticket ${res.data.ticket_number} created successfully`, 'success');
+    const modal = document.getElementById('createTicketModalOverlay');
+    if (modal) modal.style.display = 'none';
+
+    const subjInput = document.getElementById('newTicketSubjectInput');
+    const bodyInput = document.getElementById('newTicketBodyInput');
+    if (subjInput) subjInput.value = '';
+    if (bodyInput) bodyInput.value = '';
+
+    await loadTickets();
+  } catch (err) {
+    console.error('Error creating ticket:', err);
+    toasts.show('Network error while creating ticket', 'error');
+  }
+}
+
+// ===================================================================
+// LAYER 3: Section 5 — Ideation Engine Command Center Controller
+// ===================================================================
+let currentKillIdeaId = null;
+let currentRestoreIdeaId = null;
+
+async function loadIdeationCommand() {
+  const tbody = document.getElementById('ideationTableBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="7" class="sa-loading-cell">Loading ideas command roster...</td></tr>';
+
+  try {
+    const res = await apiCall('/api/superadmin/ideas');
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to load ideation command data', 'error');
+      tbody.innerHTML = '<tr><td colspan="7" class="sa-empty-cell">Error loading ideas.</td></tr>';
+      return;
+    }
+
+    const ideas = Array.isArray(res.data) ? res.data : [];
+    if (ideas.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:28px; color:var(--sa-text-muted);">No submitted ideas in the system.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = ideas.map(idea => {
+      const isKilled = (idea.status || '').toLowerCase() === 'killed';
+      const statusClass = isKilled ? 'sa-status-killed' : `sa-status-${(idea.status || '').toLowerCase()}`;
+      const revClockFormatted = idea.revenue_clock_start ? new Date(idea.revenue_clock_start).toLocaleDateString('en-IN') : '<span style="color:var(--sa-text-muted);">Not Started</span>';
+
+      let actionBtn = '';
+      if (isKilled) {
+        actionBtn = `
+          <button class="sa-btn-action sa-btn-action-restore" onclick="openRestoreIdeaModal('${idea.id}', '${(idea.title || '').replace(/'/g, "\\'")}')">
+            Restore Idea
+          </button>
+        `;
+      } else {
+        actionBtn = `
+          <button class="sa-btn-action sa-btn-action-kill" onclick="openKillIdeaModal('${idea.id}', '${(idea.title || '').replace(/'/g, "\\'")}')">
+            Kill Switch
+          </button>
+        `;
+      }
+
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:600; color:#fff;">${idea.title || 'Untitled'}</div>
+            <div style="font-size:11px; color:var(--sa-text-muted); font-family:monospace;">${idea.id}</div>
+            ${isKilled && idea.killed_reason ? `<div style="font-size:11px; color:#fca5a5; margin-top:2px;">Reason: ${idea.killed_reason}</div>` : ''}
+          </td>
+          <td>
+            <div style="color:#f1f5f9;">${idea.owner_name || 'Unknown'}</div>
+            <div style="font-size:11px; color:var(--sa-text-muted);">${idea.owner_email || ''}</div>
+          </td>
+          <td><span class="sa-badge-status ${statusClass}">${idea.status}</span></td>
+          <td><strong style="color:#a5b4fc;">${idea.vote_count}</strong> votes</td>
+          <td><span class="sa-fanout-pill">${idea.fan_out_summary || '0/9 complete'}</span></td>
+          <td style="font-size:12px;">${revClockFormatted}</td>
+          <td>${actionBtn}</td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error loading ideation command:', err);
+    tbody.innerHTML = '<tr><td colspan="7" class="sa-empty-cell">Network error while fetching ideas.</td></tr>';
+  }
+}
+
+function openKillIdeaModal(ideaId, ideaTitle) {
+  currentKillIdeaId = ideaId;
+  const modal = document.getElementById('killIdeaModalOverlay');
+  const titleEl = document.getElementById('killIdeaTargetTitle');
+  const inputEl = document.getElementById('killIdeaReasonInput');
+
+  if (titleEl) titleEl.textContent = `Killing: "${ideaTitle}"`;
+  if (inputEl) inputEl.value = '';
+  if (modal) modal.style.display = 'flex';
+}
+
+async function confirmKillIdea() {
+  if (!currentKillIdeaId) return;
+  const reason = document.getElementById('killIdeaReasonInput')?.value?.trim();
+
+  if (!reason) {
+    toasts.show('Justification reason is required to activate kill switch', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('btnConfirmKillIdea');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await apiCall(`/api/superadmin/ideas/${currentKillIdeaId}/kill`, 'POST', { reason });
+
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to kill idea', 'error');
+      return;
+    }
+
+    toasts.show('Idea killed and pending tasks cancelled', 'success');
+    const modal = document.getElementById('killIdeaModalOverlay');
+    if (modal) modal.style.display = 'none';
+
+    await loadIdeationCommand();
+  } catch (err) {
+    console.error('Error killing idea:', err);
+    toasts.show('Network error while executing kill switch', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function openRestoreIdeaModal(ideaId, ideaTitle) {
+  currentRestoreIdeaId = ideaId;
+  const modal = document.getElementById('restoreIdeaModalOverlay');
+  const titleEl = document.getElementById('restoreIdeaTargetTitle');
+  const inputEl = document.getElementById('restoreIdeaReasonInput');
+
+  if (titleEl) titleEl.textContent = `Restoring: "${ideaTitle}"`;
+  if (inputEl) inputEl.value = '';
+  if (modal) modal.style.display = 'flex';
+}
+
+async function confirmRestoreIdea() {
+  if (!currentRestoreIdeaId) return;
+  const reason = document.getElementById('restoreIdeaReasonInput')?.value?.trim();
+
+  if (!reason) {
+    toasts.show('Restoration reason is required', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('btnConfirmRestoreIdea');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await apiCall(`/api/superadmin/ideas/${currentRestoreIdeaId}/restore`, 'POST', { reason });
+
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to restore idea', 'error');
+      return;
+    }
+
+    toasts.show('Idea successfully restored to previous active state', 'success');
+    const modal = document.getElementById('restoreIdeaModalOverlay');
+    if (modal) modal.style.display = 'none';
+
+    await loadIdeationCommand();
+  } catch (err) {
+    console.error('Error restoring idea:', err);
+    toasts.show('Network error while restoring idea', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function loadQuotaConfig() {
+  try {
+    const res = await apiCall('/api/superadmin/quota/config');
+    if (res.ok && res.data) {
+      const limitInput = document.getElementById('quotaLimitInput');
+      const windowInput = document.getElementById('quotaWindowInput');
+      if (limitInput) limitInput.value = res.data.idea_quota_limit || 4;
+      if (windowInput) windowInput.value = res.data.idea_quota_window_days || 10;
+    }
+  } catch (err) {
+    console.error('Error loading quota config:', err);
+  }
+}
+
+async function saveQuotaConfig() {
+  const limitInput = document.getElementById('quotaLimitInput');
+  const windowInput = document.getElementById('quotaWindowInput');
+
+  const idea_quota_limit = Number(limitInput?.value);
+  const idea_quota_window_days = Number(windowInput?.value);
+
+  if (isNaN(idea_quota_limit) || idea_quota_limit < 1) {
+    toasts.show('Idea limit must be an integer >= 1', 'warning');
+    return;
+  }
+
+  if (isNaN(idea_quota_window_days) || idea_quota_window_days < 7 || idea_quota_window_days > 30) {
+    toasts.show('Window days must be between 7 and 30 days', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('btnSaveQuota');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await apiCall('/api/superadmin/quota/config', 'PATCH', {
+      idea_quota_limit,
+      idea_quota_window_days
+    });
+
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to update quota configuration', 'error');
+      return;
+    }
+
+    toasts.show('Idea quota configuration updated successfully', 'success');
+  } catch (err) {
+    console.error('Error saving quota config:', err);
+    toasts.show('Network error while saving quota configuration', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Global window exposure for inline onclick handlers in generated table markup
+window.openTicketThread = openTicketThread;
+window.openKillIdeaModal = openKillIdeaModal;
+window.openRestoreIdeaModal = openRestoreIdeaModal;
 
 // 10. Initialize Admin Profile info in sidebar
 function initAdminInfo() {
@@ -838,3 +1448,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+

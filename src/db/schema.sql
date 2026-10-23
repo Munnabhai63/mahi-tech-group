@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS roles_permissions (
 CREATE TABLE IF NOT EXISTS access_log (
     id          TEXT PRIMARY KEY,
     user_id     TEXT REFERENCES users(id),
-    target_id   TEXT REFERENCES users(id),
+    target_id   TEXT,
     action      VARCHAR(100) NOT NULL,
     resource    VARCHAR(100),
     ip_address  VARCHAR(45),
@@ -73,10 +73,14 @@ CREATE TABLE IF NOT EXISTS ideas (
     attachment_url      TEXT,
     status              VARCHAR(30) NOT NULL DEFAULT 'DRAFT' CHECK (status IN
                         ('DRAFT','PENDING_REVIEW','REVISE','APPROVED',
-                         'REJECTED','ARCHIVED')),
+                         'REJECTED','ARCHIVED','killed','KILLED','archived')),
     submitted_at        TIMESTAMP,
     voting_deadline     TIMESTAMP,
     green_percentage    DECIMAL(5,2) DEFAULT 0.0,
+    killed_reason       TEXT NULL,
+    killed_at           TIMESTAMP NULL,
+    killed_by           TEXT NULL REFERENCES users(id),
+    pre_kill_status     TEXT NULL,
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -169,7 +173,7 @@ CREATE TABLE IF NOT EXISTS project_tasks (
                         ('research','backend','frontend','testing','review','design')),
     depends_on_task_id  TEXT REFERENCES project_tasks(id) NULL,
     status              VARCHAR(20) DEFAULT 'TODO' CHECK (status IN
-                        ('TODO','BLOCKED','IN_PROGRESS','DONE')),
+                        ('TODO','BLOCKED','IN_PROGRESS','DONE','cancelled','completed')),
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at        TIMESTAMP NULL
 );
@@ -498,3 +502,36 @@ BEGIN
         ELSE NULL
     END;
 END;
+
+-- ===================================================================
+-- STEP 14 LAYER 3: Support Ticket System Tables
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS support_tickets (
+    id            TEXT PRIMARY KEY,
+    ticket_number TEXT UNIQUE NOT NULL,
+    reporter_id   TEXT NOT NULL REFERENCES users(id),
+    assigned_to   TEXT REFERENCES users(id),
+    category      TEXT NOT NULL CHECK (category IN ('bug','feature_request','access_issue','billing','other')),
+    priority      TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low','normal','high','urgent')),
+    status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','in_progress','resolved','closed')),
+    subject       TEXT NOT NULL,
+    updated_at    TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    created_at    TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (reporter_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS ticket_messages (
+    id          TEXT PRIMARY KEY,
+    ticket_id   TEXT NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+    sender_id   TEXT NOT NULL REFERENCES users(id),
+    body        TEXT NOT NULL,
+    is_internal INTEGER NOT NULL DEFAULT 0,
+    created_at  TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (sender_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_reporter_id ON support_tickets(reporter_id);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_ticket_number ON support_tickets(ticket_number);
+CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket_id ON ticket_messages(ticket_id);

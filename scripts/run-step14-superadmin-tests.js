@@ -12,8 +12,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
+import { execSync } from 'node:child_process';
+import { WebSocket } from 'ws';
 import { createApp } from '../src/app.js';
 import { queryOne, queryAll, execute } from '../src/db/database.js';
+import { initWebSocketServer } from '../src/services/wsService.js';
 import { cleanupTestData } from './cleanup-test-data.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -52,7 +56,7 @@ async function req(method, urlPath, token = null, body = null) {
 async function runStep14Layer1Tests() {
   console.log('\n===================================================================');
   console.log('   MAHI TECH GROUP — STEP 14 SUPER ADMIN PANEL (QA SUITE)');
-  console.log('   Layer 1 & Layer 2 Verification');
+  console.log('   Layer 1, Layer 2 & Layer 3 Verification');
   console.log('===================================================================\n');
 
   // Step A: Restore clean canonical team roster
@@ -61,6 +65,7 @@ async function runStep14Layer1Tests() {
   // Step B: Boot isolated Test Server on Port 4997
   const app = createApp();
   const server = app.listen(PORT);
+  const wss = initWebSocketServer(server);
 
   await new Promise((resolve) => {
     server.on('listening', () => {
@@ -400,25 +405,325 @@ async function runStep14Layer1Tests() {
     );
     assert(Boolean(exportLog), "access_log contains action='superadmin_member_export' entry");
 
+    // =============================================================
+    // TEST 12: TICKET CREATION & NUMBER FORMAT
+    // =============================================================
+    console.log('\n--- TEST 12: Ticket Creation & Number Format (TKT-0001, UUID, open) ---');
+    
+    const ticketPayload = {
+      reporter_id: researcherUser.id,
+      category: 'bug',
+      priority: 'high',
+      subject: 'Login page button misaligned on mobile',
+      body: 'The login submit button extends beyond the card viewport on iOS Safari.'
+    };
+    const resCreateTicket = await req('POST', '/api/superadmin/tickets', adminToken, ticketPayload);
+    assert(resCreateTicket.status === 201, 'POST /api/superadmin/tickets returns HTTP 201');
+
+    const createdTicket = resCreateTicket.data;
+    const ticketNumberRegex = /^TKT-\d{4,}$/;
+    assert(
+      Boolean(createdTicket && ticketNumberRegex.test(createdTicket.ticket_number)),
+      `Ticket number format matches /^TKT-\\d{4,}$/ (received: "${createdTicket?.ticket_number}")`
+    );
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    assert(
+      Boolean(createdTicket && uuidRegex.test(createdTicket.id)),
+      `Ticket ID is a valid UUID (received: "${createdTicket?.id}")`
+    );
+
+    const dbTicket12 = queryOne('SELECT * FROM support_tickets WHERE id = ?', [createdTicket.id]);
+    assert(
+      Boolean(dbTicket12 && dbTicket12.status === 'open'),
+      'Database row created with status="open"'
+    );
+    assert(
+      Boolean(dbTicket12 && dbTicket12.updated_at && !isNaN(new Date(dbTicket12.updated_at).getTime())),
+      `Database row has valid updated_at timestamp ("${dbTicket12?.updated_at}")`
+    );
+
+    // =============================================================
+    // TEST 13: TICKET FSM — FORWARD TRANSITIONS ONLY
+    // =============================================================
+    console.log('\n--- TEST 13: Ticket FSM — Forward Transitions Only ---');
+    const fsmTicketId = createdTicket.id;
+
+    // Transition 1: open -> in_progress
+    await new Promise(r => setTimeout(r, 1100)); // Sleep > 1s for SQLite timestamp resolution
+    const resToInProgress = await req('PATCH', `/api/superadmin/tickets/${fsmTicketId}`, adminToken, { status: 'in_progress' });
+    assert(resToInProgress.status === 200, 'Admin PATCH /api/superadmin/tickets/:id -> status="in_progress" returns HTTP 200');
+    const dbTktProg = queryOne('SELECT * FROM support_tickets WHERE id = ?', [fsmTicketId]);
+    assert(dbTktProg?.status === 'in_progress', 'DB ticket status updated to "in_progress"');
+    assert(
+      new Date(dbTktProg.updated_at).getTime() >= new Date(dbTicket12.updated_at).getTime(),
+      `updated_at updated after in_progress transition (${dbTktProg.updated_at})`
+    );
+
+    // Transition 2: in_progress -> resolved
+    await new Promise(r => setTimeout(r, 1100));
+    const resToResolved = await req('PATCH', `/api/superadmin/tickets/${fsmTicketId}`, adminToken, { status: 'resolved' });
+    assert(resToResolved.status === 200, 'Admin PATCH /api/superadmin/tickets/:id -> status="resolved" returns HTTP 200');
+    const dbTktRes = queryOne('SELECT * FROM support_tickets WHERE id = ?', [fsmTicketId]);
+    assert(dbTktRes?.status === 'resolved', 'DB ticket status updated to "resolved"');
+    assert(
+      new Date(dbTktRes.updated_at).getTime() >= new Date(dbTktProg.updated_at).getTime(),
+      `updated_at updated after resolved transition (${dbTktRes.updated_at})`
+    );
+
+    // Transition 3: resolved -> closed
+    await new Promise(r => setTimeout(r, 1100));
+    const resToClosed = await req('PATCH', `/api/superadmin/tickets/${fsmTicketId}`, adminToken, { status: 'closed' });
+    assert(resToClosed.status === 200, 'Admin PATCH /api/superadmin/tickets/:id -> status="closed" returns HTTP 200');
+    const dbTktClosed = queryOne('SELECT * FROM support_tickets WHERE id = ?', [fsmTicketId]);
+    assert(dbTktClosed?.status === 'closed', 'DB ticket status updated to "closed"');
+    assert(
+      new Date(dbTktClosed.updated_at).getTime() >= new Date(dbTktRes.updated_at).getTime(),
+      `updated_at updated after closed transition (${dbTktClosed.updated_at})`
+    );
+
+    // Backward transition attempt: closed -> open (MUST FAIL)
+    const resIllegalReopen = await req('PATCH', `/api/superadmin/tickets/${fsmTicketId}`, adminToken, { status: 'open' });
+    assert(
+      resIllegalReopen.status === 400 || resIllegalReopen.status === 409,
+      `Attempt to reopen closed ticket rejected with HTTP 400/409 (received: ${resIllegalReopen.status})`
+    );
+    const dbTktAfterIllegal = queryOne('SELECT status FROM support_tickets WHERE id = ?', [fsmTicketId]);
+    assert(dbTktAfterIllegal?.status === 'closed', 'DB ticket status remains strictly "closed"');
+
+    // =============================================================
+    // TEST 14: INTERNAL NOTE STEALTH GUARANTEE
+    // =============================================================
+    console.log('\n--- TEST 14: Internal Note Stealth Guarantee ---');
+    // Create new ticket for member
+    const resStealthTicket = await req('POST', '/api/superadmin/tickets', adminToken, {
+      reporter_id: researcherUser.id,
+      category: 'access_issue',
+      priority: 'normal',
+      subject: 'VPN Credential Provisioning',
+      body: 'Requesting access to production telemetry gateway.'
+    });
+    assert(resStealthTicket.status === 201, 'Stealth ticket initialized (HTTP 201)');
+    const stealthTicketId = resStealthTicket.data.id;
+
+    // Admin posts internal note
+    const SECRET_KEYWORD = 'INTERNAL NOTE CLASSIFIED #99281: Verification in progress';
+    const resAddInternal = await req('POST', `/api/superadmin/tickets/${stealthTicketId}/messages`, adminToken, {
+      body: SECRET_KEYWORD,
+      is_internal: 1
+    });
+    assert(resAddInternal.status === 201, 'Admin POST /api/superadmin/tickets/:id/messages with is_internal=1 returns HTTP 201');
+
+    // Reporter member fetches ticket thread
+    const resMemberView = await req('GET', `/api/users/tickets/${stealthTicketId}`, researcherToken);
+    assert(resMemberView.status === 200, 'Member GET /api/users/tickets/:id returns HTTP 200');
+
+    const memberViewBody = JSON.stringify(resMemberView.data);
+    const secretLeaked = memberViewBody.includes('CLASSIFIED #99281');
+    assert(!secretLeaked, 'Stealth Guarantee Confirmed: is_internal=1 note completely absent from member response');
+
+    const internalMsgsInMember = (resMemberView.data?.messages || []).filter(m => m.is_internal === 1);
+    assert(internalMsgsInMember.length === 0, 'Member message array contains exactly zero internal notes');
+
+    // Admin view DOES include internal note
+    const resAdminView = await req('GET', `/api/superadmin/tickets/${stealthTicketId}`, adminToken);
+    const adminViewHasSecret = JSON.stringify(resAdminView.data).includes('CLASSIFIED #99281');
+    assert(adminViewHasSecret, 'Admin GET /api/superadmin/tickets/:id includes internal note');
+
+    // =============================================================
+    // TEST 15: TICKET AUDIT LOG
+    // =============================================================
+    console.log('\n--- TEST 15: Ticket Audit Log ---');
+    const ticketUpdateAudit = queryOne(
+      "SELECT * FROM access_log WHERE action = 'superadmin_ticket_update' AND target_id = ? ORDER BY id DESC LIMIT 1",
+      [fsmTicketId]
+    );
+    assert(Boolean(ticketUpdateAudit), `access_log contains action='superadmin_ticket_update' with target_id=${fsmTicketId}`);
+
+    const internalNoteAudit = queryOne(
+      "SELECT * FROM access_log WHERE action = 'superadmin_ticket_internal_note' AND target_id = ? ORDER BY id DESC LIMIT 1",
+      [stealthTicketId]
+    );
+    assert(Boolean(internalNoteAudit), `access_log contains action='superadmin_ticket_internal_note' with target_id=${stealthTicketId}`);
+
+    // =============================================================
+    // TEST 16: IDEA KILL SWITCH — FULL LIFECYCLE
+    // =============================================================
+    console.log('\n--- TEST 16: Idea Kill Switch — Full Lifecycle & Fan-Out Task Cancellation ---');
+    
+    // Create dedicated test idea and project
+    const testIdeaId = crypto.randomUUID();
+    const testProjectId = crypto.randomUUID();
+    execute(`
+      INSERT INTO ideas (id, title, description, owner_id, status, created_at, updated_at)
+      VALUES (?, 'Decentralized Edge Orchestration Swarm', 'Distributed mesh compute cluster', ?, 'APPROVED', datetime('now'), datetime('now'))
+    `, [testIdeaId, researcherUser.id]);
+
+    execute(`
+      INSERT INTO projects (id, idea_id, org_id, title, owner_id, status, created_at, updated_at)
+      VALUES (?, ?, 'DEFAULT_ORG', 'Decentralized Edge Orchestration Swarm', ?, 'ACTIVE', datetime('now'), datetime('now'))
+    `, [testProjectId, testIdeaId, researcherUser.id]);
+
+    // Create 1 pending task and 1 completed task
+    const taskPendingId = crypto.randomUUID();
+    const taskCompletedId = crypto.randomUUID();
+    execute(`
+      INSERT INTO project_tasks (id, project_id, idea_id, task_name, task_type, status, assigned_to, created_at)
+      VALUES (?, ?, ?, 'Deploy Edge Gateway Daemon', 'backend', 'TODO', ?, datetime('now'))
+    `, [taskPendingId, testProjectId, testIdeaId, authDev.data.user.id]);
+    execute(`
+      INSERT INTO project_tasks (id, project_id, idea_id, task_name, task_type, status, assigned_to, created_at)
+      VALUES (?, ?, ?, 'Security Benchmark Spec', 'research', 'completed', ?, datetime('now'))
+    `, [taskCompletedId, testProjectId, testIdeaId, researcherUser.id]);
+
+    // Connect WebSocket client to receive idea_killed event
+    let wsReceivedIdeaKilled = null;
+    const wsClient = new WebSocket(`ws://127.0.0.1:${PORT}/ws?token=${adminToken}`);
+    await new Promise((resolve, reject) => {
+      wsClient.on('open', () => resolve());
+      wsClient.on('error', (err) => reject(err));
+    });
+    wsClient.on('message', (raw) => {
+      try {
+        const parsed = JSON.parse(raw.toString());
+        if (parsed.event === 'idea_killed') {
+          wsReceivedIdeaKilled = parsed;
+        }
+      } catch (e) {}
+    });
+
+    const killReasonText = 'Regulatory and architectural security non-compliance';
+    const resKill = await req('POST', `/api/superadmin/ideas/${testIdeaId}/kill`, adminToken, { reason: killReasonText });
+    assert(resKill.status === 200, 'POST /api/superadmin/ideas/:id/kill returns HTTP 200');
+
+    // DB idea status verification
+    const dbKilledIdea = queryOne('SELECT * FROM ideas WHERE id = ?', [testIdeaId]);
+    assert(dbKilledIdea?.status === 'killed', 'Idea status in DB updated to "killed"');
+    assert(dbKilledIdea?.killed_reason === killReasonText, `killed_reason recorded in DB ("${dbKilledIdea?.killed_reason}")`);
+    assert(dbKilledIdea?.killed_by === authAdmin.data.user.id, 'killed_by set to admin user ID');
+    assert(Boolean(dbKilledIdea?.killed_at), `killed_at timestamp set ("${dbKilledIdea?.killed_at}")`);
+
+    // Task cancellation verification
+    const dbTaskPending = queryOne('SELECT status FROM project_tasks WHERE id = ?', [taskPendingId]);
+    const dbTaskCompleted = queryOne('SELECT status FROM project_tasks WHERE id = ?', [taskCompletedId]);
+    assert(dbTaskPending?.status === 'cancelled', 'Pending fan-out task status updated to "cancelled"');
+    assert(dbTaskCompleted?.status === 'completed', 'Completed task status remains untouched ("completed")');
+
+    // Access log verification
+    const killLog = queryOne(
+      "SELECT * FROM access_log WHERE action = 'superadmin_idea_kill' AND target_id = ? ORDER BY id DESC LIMIT 1",
+      [testIdeaId]
+    );
+    assert(Boolean(killLog), `access_log contains action='superadmin_idea_kill' with target_id=${testIdeaId}`);
+
+    // Wait for WS event
+    let wsWaitMs = 0;
+    while (!wsReceivedIdeaKilled && wsWaitMs < 1000) {
+      await new Promise(r => setTimeout(r, 50));
+      wsWaitMs += 50;
+    }
+    assert(
+      Boolean(wsReceivedIdeaKilled && wsReceivedIdeaKilled.data?.ideaId === testIdeaId && wsReceivedIdeaKilled.data?.reason === killReasonText),
+      'WebSocket event "idea_killed" received by connected client with matching ideaId and reason'
+    );
+    wsClient.close();
+
+    // =============================================================
+    // TEST 17: KILL SWITCH IDEMPOTENCY GUARD
+    // =============================================================
+    console.log('\n--- TEST 17: Kill Switch Idempotency Guard ---');
+    const resDuplicateKill = await req('POST', `/api/superadmin/ideas/${testIdeaId}/kill`, adminToken, { reason: 'Second kill attempt' });
+    assert(resDuplicateKill.status === 409, `Killing an already-killed idea returns HTTP 409 (received: ${resDuplicateKill.status})`);
+    assert(
+      Boolean(resDuplicateKill.data?.error && resDuplicateKill.data.error.includes('already')),
+      `Error response states idea is already killed ("${resDuplicateKill.data?.error}")`
+    );
+
+    // =============================================================
+    // TEST 18: IDEA RESTORE
+    // =============================================================
+    console.log('\n--- TEST 18: Idea Restore ---');
+    const restoreReasonText = 'Security clearance granted following forensic re-evaluation';
+    const resRestore = await req('POST', `/api/superadmin/ideas/${testIdeaId}/restore`, adminToken, { reason: restoreReasonText });
+    assert(resRestore.status === 200, 'POST /api/superadmin/ideas/:id/restore returns HTTP 200');
+
+    const dbRestoredIdea = queryOne('SELECT * FROM ideas WHERE id = ?', [testIdeaId]);
+    assert(dbRestoredIdea?.status === 'APPROVED', `Idea restored to previous status "APPROVED" (received: "${dbRestoredIdea?.status}")`);
+    assert(dbRestoredIdea?.killed_reason === null, 'killed_reason reset to NULL');
+    assert(dbRestoredIdea?.killed_at === null, 'killed_at reset to NULL');
+    assert(dbRestoredIdea?.killed_by === null, 'killed_by reset to NULL');
+
+    const restoreLog = queryOne(
+      "SELECT * FROM access_log WHERE action = 'superadmin_idea_restore' AND target_id = ? ORDER BY id DESC LIMIT 1",
+      [testIdeaId]
+    );
+    assert(Boolean(restoreLog), `access_log contains action='superadmin_idea_restore' with target_id=${testIdeaId}`);
+
+    // Attempt restore on idea that was never killed
+    const resRestoreActive = await req('POST', `/api/superadmin/ideas/${testIdeaId}/restore`, adminToken, { reason: 'Redundant restore' });
+    assert(resRestoreActive.status === 409, `Restoring an active/non-killed idea returns HTTP 409 (received: ${resRestoreActive.status})`);
+
+    // =============================================================
+    // TEST 19: QUOTA CONFIG OVERRIDE & VALIDATION
+    // =============================================================
+    console.log('\n--- TEST 19: Quota Config Override & Validation ---');
+    const resQuotaPatch = await req('PATCH', '/api/superadmin/quota/config', adminToken, {
+      idea_quota_limit: 3,
+      idea_quota_window_days: 14
+    });
+    assert(resQuotaPatch.status === 200, 'PATCH /api/superadmin/quota/config returns HTTP 200');
+    assert(resQuotaPatch.data?.idea_quota_limit === 3, 'Response includes updated idea_quota_limit (3)');
+    assert(resQuotaPatch.data?.idea_quota_window_days === 14, 'Response includes updated idea_quota_window_days (14)');
+
+    const dbLimitRow = queryOne("SELECT value FROM system_config WHERE key = 'idea_quota_limit'");
+    const dbWindowRow = queryOne("SELECT value FROM system_config WHERE key = 'idea_quota_window_days'");
+    assert(dbLimitRow?.value === '3', 'system_config idea_quota_limit updated to "3"');
+    assert(dbWindowRow?.value === '14', 'system_config idea_quota_window_days updated to "14"');
+
+    // Validation: window < 7 rejected
+    const resWinTooLow = await req('PATCH', '/api/superadmin/quota/config', adminToken, { idea_quota_window_days: 5 });
+    assert(resWinTooLow.status === 400, `PATCH with idea_quota_window_days=5 returns HTTP 400 (received: ${resWinTooLow.status})`);
+
+    // Validation: limit < 1 rejected
+    const resLimitZero = await req('PATCH', '/api/superadmin/quota/config', adminToken, { idea_quota_limit: 0 });
+    assert(resLimitZero.status === 400, `PATCH with idea_quota_limit=0 returns HTTP 400 (received: ${resLimitZero.status})`);
+
+    // =============================================================
+    // TEST 20: FULL REGRESSION (ALL PRIOR TESTS STILL PASS)
+    // =============================================================
+    console.log('\n--- TEST 20: Full Regression (Platform Test Suite Verification) ---');
+    let npmTestClean = false;
+    try {
+      const npmOutput = execSync('npm test', { encoding: 'utf8' });
+      npmTestClean = npmOutput.includes('13 passing') || npmOutput.includes('ALL 13 TEST SUITES PASSED');
+    } catch (e) {
+      console.error('Regression npm test failure:', e.stdout || e.message);
+    }
+    assert(npmTestClean, 'npm test (13/13 suites) executed and verified zero regression');
+
   } catch (err) {
     console.error('\n[FATAL SUITE ERROR]:', err);
     assert(false, 'Suite Execution Without Fatal Crash', err.message);
   } finally {
+    if (wss) {
+      try { wss.close(); } catch (e) {}
+    }
     server.close();
     console.log('\n[TEARDOWN] Step 14 Test Server closed cleanly.');
   }
 
   console.log('\n===================================================================');
-  console.log(`   LAYER 1 & 2 QA SUMMARY: ${results.filter(r => r.status === 'PASS').length} PASSED / ${results.length} TOTAL`);
+  console.log(`   LAYER 1, 2 & 3 QA SUMMARY: ${results.filter(r => r.status === 'PASS').length} PASSED / ${results.length} TOTAL`);
   console.log('===================================================================\n');
 
   if (!allPassed) {
     console.error('Some tests failed in Step 14 QA Suite.');
     process.exit(1);
   } else {
-    console.log('🎉 ALL STEP 14 LAYER 1 & 2 TESTS (TESTS 01-11) PASSED WITH ZERO ERRORS!');
+    console.log('🎉 ALL STEP 14 LAYER 1, 2 & 3 TESTS (TESTS 01-20) PASSED WITH ZERO ERRORS!');
     process.exit(0);
   }
 }
 
 runStep14Layer1Tests();
+

@@ -6,6 +6,12 @@ import { authenticate } from '../middleware/auth.js';
 import { logAccess } from '../services/auditService.js';
 import { getUserQuotaStatus } from '../services/quotaService.js';
 import { getUserWallet, getUserEarnings } from '../services/revenueService.js';
+import {
+  createTicket,
+  listTickets,
+  getTicketById,
+  addTicketMessage
+} from '../services/ticketService.js';
 
 const router = express.Router();
 
@@ -443,4 +449,89 @@ router.get('/:id/earnings-summary', authenticate, (req, res) => {
   });
 });
 
+// ===================================================================
+// STEP 14 LAYER 3: Member Ticket Endpoints (Dual-mode, internal notes isolated)
+// ===================================================================
+
+/**
+ * GET /api/users/tickets
+ * Authenticated member fetches their own support tickets
+ */
+router.get('/tickets', authenticate, (req, res) => {
+  try {
+    const tickets = listTickets({ reporter_id: req.user.id });
+    return res.status(200).json(tickets);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/users/tickets
+ * Authenticated member submits a new support ticket
+ */
+router.post('/tickets', authenticate, (req, res) => {
+  try {
+    const { category, priority, subject, body } = req.body || {};
+    const ticket = createTicket({
+      reporter_id: req.user.id,
+      category,
+      priority,
+      subject,
+      body
+    });
+    return res.status(201).json(ticket);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/users/tickets/:id
+ * Member views own ticket thread (STRICT: is_internal=0 only)
+ */
+router.get('/tickets/:id', authenticate, (req, res) => {
+  try {
+    const ticket = getTicketById(req.params.id, {
+      isAdmin: req.user.role === 'admin',
+      userId: req.user.id
+    });
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    return res.status(200).json(ticket);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/users/tickets/:id/messages
+ * Member replies to their own ticket (is_internal is forced to 0)
+ */
+router.post('/tickets/:id/messages', authenticate, (req, res) => {
+  try {
+    const { body } = req.body || {};
+    // Verify ownership first
+    const ticket = getTicketById(req.params.id, {
+      isAdmin: req.user.role === 'admin',
+      userId: req.user.id
+    });
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    const msg = addTicketMessage(req.params.id, {
+      sender_id: req.user.id,
+      body,
+      is_internal: 0,
+      isAdmin: false
+    });
+    return res.status(201).json(msg);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 export default router;
+

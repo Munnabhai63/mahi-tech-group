@@ -9,8 +9,21 @@ import {
   updatePerformanceConfig,
   getUserPerformance,
   getAllPerformance,
-  getPerformanceLeaderboard
+  getPerformanceLeaderboard,
+  listAllIdeasCommand,
+  getIdeaDetailCommand,
+  killIdea,
+  restoreIdea,
+  getQuotaConfig,
+  updateQuotaConfig
 } from '../services/superadminService.js';
+import {
+  createTicket,
+  listTickets,
+  getTicketById,
+  updateTicket,
+  addTicketMessage
+} from '../services/ticketService.js';
 import { logAccess } from '../services/auditService.js';
 
 const router = express.Router();
@@ -223,4 +236,208 @@ router.get('/performance', (req, res) => {
   }
 });
 
+// ===================================================================
+// LAYER 3: Module A — Support Ticket System (Admin Endpoints)
+// STRICT ROUTE ORDER: collection & sub-actions BEFORE parameterized :id
+// ===================================================================
+
+/**
+ * 1. POST /api/superadmin/tickets
+ * Admin creates ticket (on behalf of member or self)
+ */
+router.post('/tickets', (req, res) => {
+  try {
+    const { reporter_id, category, priority, subject, body, assigned_to } = req.body || {};
+    const ticket = createTicket({
+      reporter_id: reporter_id || req.user.id,
+      category,
+      priority,
+      subject,
+      body,
+      assigned_to
+    });
+    return res.status(201).json(ticket);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+/**
+ * 2. GET /api/superadmin/tickets
+ * List all tickets with optional filters
+ */
+router.get('/tickets', (req, res) => {
+  try {
+    const { status, priority, category, search } = req.query;
+    const tickets = listTickets({ status, priority, category, search });
+    return res.status(200).json(tickets);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * 3. POST /api/superadmin/tickets/:id/messages
+ * Add message or internal note to ticket thread
+ * Must be registered BEFORE GET /tickets/:id
+ */
+router.post('/tickets/:id/messages', (req, res) => {
+  try {
+    const ticketId = req.params.id;
+    const { body, is_internal } = req.body || {};
+    const msg = addTicketMessage(ticketId, {
+      sender_id: req.user.id,
+      body,
+      is_internal,
+      isAdmin: true
+    });
+
+    if (is_internal) {
+      logAccess({
+        userId: req.user.id,
+        action: 'superadmin_ticket_internal_note',
+        resource: `/api/superadmin/tickets/${ticketId}/messages`,
+        targetId: ticketId,
+        ipAddress: req.ip || req.socket.remoteAddress
+      });
+    }
+
+    return res.status(201).json(msg);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+/**
+ * 4. PATCH /api/superadmin/tickets/:id
+ * Update status, priority, assigned_to, category (enforces forward-only FSM)
+ */
+router.patch('/tickets/:id', (req, res) => {
+  try {
+    const ticketId = req.params.id;
+    const updated = updateTicket(ticketId, req.body || {});
+
+    logAccess({
+      userId: req.user.id,
+      action: 'superadmin_ticket_update',
+      resource: `/api/superadmin/tickets/${ticketId}`,
+      targetId: ticketId,
+      ipAddress: req.ip || req.socket.remoteAddress
+    });
+
+    return res.status(200).json(updated);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+/**
+ * 5. GET /api/superadmin/tickets/:id
+ * Single ticket with full message thread (including is_internal=1 notes for Admin)
+ */
+router.get('/tickets/:id', (req, res) => {
+  try {
+    const ticket = getTicketById(req.params.id, { isAdmin: true });
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    return res.status(200).json(ticket);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// ===================================================================
+// LAYER 3: Module B — Ideation Engine Command Center
+// STRICT ROUTE ORDER: list / sub-actions BEFORE parameterized :id
+// ===================================================================
+
+/**
+ * 1. GET /api/superadmin/ideas
+ * List all ideas with vote counts, fan-out summary, revenue clock
+ */
+router.get('/ideas', (req, res) => {
+  try {
+    const ideas = listAllIdeasCommand();
+    return res.status(200).json(ideas);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * 2. POST /api/superadmin/ideas/:id/kill
+ * Kill Switch: cancels pending tasks, broadcasts WebSocket, logs audit
+ * Registered BEFORE GET /ideas/:id
+ */
+router.post('/ideas/:id/kill', (req, res) => {
+  try {
+    const ideaId = req.params.id;
+    const { reason } = req.body || {};
+    const result = killIdea(ideaId, reason, req.user.id);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+/**
+ * 3. POST /api/superadmin/ideas/:id/restore
+ * Restores killed idea to pre-kill state
+ * Registered BEFORE GET /ideas/:id
+ */
+router.post('/ideas/:id/restore', (req, res) => {
+  try {
+    const ideaId = req.params.id;
+    const { reason } = req.body || {};
+    const result = restoreIdea(ideaId, reason, req.user.id);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+/**
+ * 4. GET /api/superadmin/ideas/:id
+ * Full idea detail with votes, all tasks, and revenue accrued
+ */
+router.get('/ideas/:id', (req, res) => {
+  try {
+    const idea = getIdeaDetailCommand(req.params.id);
+    if (!idea) {
+      return res.status(404).json({ error: 'Idea not found' });
+    }
+    return res.status(200).json(idea);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * 5. GET /api/superadmin/quota/config
+ * Read current idea quota config
+ */
+router.get('/quota/config', (req, res) => {
+  try {
+    const cfg = getQuotaConfig();
+    return res.status(200).json(cfg);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * 6. PATCH /api/superadmin/quota/config
+ * Override idea quota config with strict boundary validation
+ */
+router.patch('/quota/config', (req, res) => {
+  try {
+    const updated = updateQuotaConfig(req.body || {}, req.user.id);
+    return res.status(200).json(updated);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 export default router;
+

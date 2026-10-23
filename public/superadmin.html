@@ -56,24 +56,29 @@
         <span>4. Support Ticket Inbox</span>
       </a>
 
-      <a class="sa-nav-item" data-pane="paneDisputes">
+      <a class="sa-nav-item" data-pane="paneIdeation">
         <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        <span>5. Dispute Resolution</span>
+        <span>5. Ideation Engine Command</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneDisputes">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>6. Dispute Resolution</span>
       </a>
 
       <a class="sa-nav-item" data-pane="paneGateway">
         <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-        <span>6. Payment Gateway</span>
+        <span>7. Payment Gateway</span>
       </a>
 
       <a class="sa-nav-item" data-pane="paneGovernance">
         <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        <span>7. Full Data Governance</span>
+        <span>8. Full Data Governance</span>
       </a>
 
       <a class="sa-nav-item" data-pane="paneAudit">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>8. Unified Audit Stream</span>
+        <span>9. Unified Audit Stream</span>
       </a>
     </nav>
 
@@ -424,18 +429,123 @@
       </div>
     </section>
 
-    <!-- Section 4: Support Ticket Inbox Placeholder (Layer 3) -->
+    <!-- Section 4: Support Ticket Command Center (Layer 3) -->
     <section class="sa-pane" id="paneTickets">
       <div class="sa-header">
         <div class="sa-header-title">
-          <h2>Support Ticket Inbox</h2>
-          <p>Staff support desk with SLA tracking and dual-mode internal notes.</p>
+          <h2>Support Ticket Command Center</h2>
+          <p>SLA monitoring, two-way resolution threads, and stealth internal notes.</p>
+        </div>
+        <div class="sa-header-actions">
+          <button class="sa-btn-primary" id="btnOpenNewTicketModal">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create Ticket
+          </button>
         </div>
       </div>
-      <div class="sa-placeholder-card">
-        <h3>Section 4: Support Ticket Inbox</h3>
-        <p>48-hour SLA aging alerts, dual-mode internal notes, and dispute promotion.</p>
-        <span class="sa-layer-tag">Scheduled for Layer 3 Implementation</span>
+
+      <!-- Ticket Filters Toolbar -->
+      <div class="sa-toolbar">
+        <div class="sa-search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="ticketSearchInput" placeholder="Search ticket #, subject, reporter...">
+        </div>
+        <div class="sa-filters">
+          <select id="ticketStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+          <select id="ticketPriorityFilter">
+            <option value="">All Priorities</option>
+            <option value="urgent">Urgent</option>
+            <option value="high">High</option>
+            <option value="normal">Normal</option>
+            <option value="low">Low</option>
+          </select>
+          <select id="ticketCategoryFilter">
+            <option value="">All Categories</option>
+            <option value="bug">Bug</option>
+            <option value="feature_request">Feature Request</option>
+            <option value="access_issue">Access Issue</option>
+            <option value="billing">Billing</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tickets Main Container -->
+      <div class="sa-card-table-wrap">
+        <table class="sa-table">
+          <thead>
+            <tr>
+              <th>Ticket #</th>
+              <th>Subject</th>
+              <th>Reporter</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Assigned To</th>
+              <th>Updated</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="ticketsTableBody">
+            <tr><td colspan="8" class="sa-loading-cell">Loading support tickets...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 5: Ideation Engine Command Center (Layer 3) -->
+    <section class="sa-pane" id="paneIdeation">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Ideation Engine Command Center</h2>
+          <p>Governance control, submission quota management, and admin kill switches.</p>
+        </div>
+      </div>
+
+      <!-- Quota Configuration Card -->
+      <div style="background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-lg); margin-bottom: 24px; padding: 22px;">
+        <h3 style="font-size: 16px; margin-bottom: 6px; color:#fff;">Idea Submission Quota Controls</h3>
+        <p style="font-size: 13px; color: var(--sa-text-muted); margin-bottom: 16px;">
+          Global constraints governing idea creation frequency per member.
+        </p>
+        <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+          <div class="sa-modal-field" style="margin-bottom:0; min-width:160px;">
+            <label for="quotaLimitInput">Ideas Limit per Cycle</label>
+            <input type="number" id="quotaLimitInput" min="1" value="4">
+          </div>
+          <div class="sa-modal-field" style="margin-bottom:0; min-width:180px;">
+            <label for="quotaWindowInput">Window Days (7 to 30)</label>
+            <input type="number" id="quotaWindowInput" min="7" max="30" value="10">
+          </div>
+          <button class="sa-btn-primary" id="btnSaveQuota" style="padding:9px 18px;">
+            Save Quota Config
+          </button>
+        </div>
+      </div>
+
+      <!-- Ideas Table Card -->
+      <div class="sa-card-table-wrap">
+        <table class="sa-table">
+          <thead>
+            <tr>
+              <th>Idea Title</th>
+              <th>Owner</th>
+              <th>Status</th>
+              <th>Votes</th>
+              <th>Fan-Out Progress</th>
+              <th>Revenue Clock</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ideationTableBody">
+            <tr><td colspan="7" class="sa-loading-cell">Loading ideas command roster...</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -634,6 +744,141 @@
     </div>
   </div>
 </div>
+
+<!-- Support Ticket Thread Slide-Out Drawer -->
+<div class="sa-drawer-overlay" id="ticketDrawerOverlay"></div>
+<aside class="sa-drawer" id="ticketDrawer" aria-hidden="true" style="width: 580px;">
+  <div class="sa-drawer-header">
+    <div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+        <span class="sa-badge-role" id="drawerTicketNumber">TKT-0000</span>
+        <span class="sa-badge-status" id="drawerTicketStatus">open</span>
+        <span class="sa-trend-pill" id="drawerTicketPriority">normal</span>
+      </div>
+      <h3 id="drawerTicketSubject" style="font-size: 16px; margin: 0;">Ticket Subject</h3>
+      <span class="sa-drawer-email" id="drawerTicketReporter">Reporter: Name (email@domain.com)</span>
+    </div>
+    <button class="sa-drawer-close-btn" id="closeTicketDrawerBtn" aria-label="Close ticket drawer">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- Ticket Status & Escalation Controls -->
+  <div class="sa-drawer-quick-actions" style="justify-content: space-between; align-items:center;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <select id="threadStatusSelect" style="padding:6px 10px; font-size:12px; background:var(--sa-card-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+        <option value="in_progress">Mark In Progress</option>
+        <option value="resolved">Mark Resolved</option>
+        <option value="closed">Mark Closed</option>
+      </select>
+      <button class="sa-btn-primary" id="btnUpdateThreadStatus" style="padding:6px 12px; font-size:12px;">Update</button>
+    </div>
+    <button class="sa-btn-outline sa-btn-danger" id="btnEscalateThreadUrgent" style="padding:6px 12px; font-size:12px;">
+      Escalate to Urgent
+    </button>
+  </div>
+
+  <!-- Messages Timeline -->
+  <div class="sa-drawer-body" id="ticketMessagesContainer" style="display:flex; flex-direction:column; gap:14px;">
+    <div class="sa-loading-cell">Loading conversation thread...</div>
+  </div>
+
+  <!-- Admin Reply Form -->
+  <div style="padding:16px 20px; background:#131c31; border-top:1px solid var(--sa-card-border);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <label style="font-size:12px; font-weight:600; color:var(--sa-text-dim);">ADMIN RESPONSE</label>
+      <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--sa-warning); cursor:pointer;">
+        <input type="checkbox" id="ticketThreadInternalCheck">
+        <span>Mark as Internal Note</span>
+      </label>
+    </div>
+    <textarea id="ticketThreadReplyInput" rows="3" placeholder="Type response or internal staff note..." style="width:100%; padding:10px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); color:#fff; font-size:13px; outline:none; resize:vertical;"></textarea>
+    <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+      <button class="sa-btn-primary" id="btnSendThreadReply">Send Message</button>
+    </div>
+  </div>
+</aside>
+
+<!-- Kill Idea Confirmation Modal -->
+<div class="sa-modal-overlay" id="killIdeaModalOverlay" style="display:none;">
+  <div class="sa-modal">
+    <h3 style="color:var(--sa-danger);">Confirm Idea Kill Switch</h3>
+    <p id="killIdeaTargetTitle" style="margin-bottom:12px; font-weight:600; color:#fff;">Killing idea...</p>
+    <div style="padding:10px 14px; background:rgba(239,68,68,0.12); border-left:3px solid var(--sa-danger); border-radius:4px; font-size:12px; color:#fca5a5; margin-bottom:16px;">
+      Warning: Killing this idea will permanently stop ideation governance and cancel all pending &amp; active fan-out tasks.
+    </div>
+    <div class="sa-modal-field">
+      <label for="killIdeaReasonInput">Reason for Kill Switch (Required)</label>
+      <textarea id="killIdeaReasonInput" rows="3" placeholder="Provide justification (e.g. Policy violation, Unfeasible roadmap)" style="padding:8px 12px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); color:#fff; font-size:13px;"></textarea>
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn-outline" id="btnCancelKillIdea">Cancel</button>
+      <button class="sa-btn-primary sa-btn-danger" id="btnConfirmKillIdea" style="background:var(--sa-danger); border-color:var(--sa-danger);">Confirm Kill Switch</button>
+    </div>
+  </div>
+</div>
+
+<!-- Restore Idea Confirmation Modal -->
+<div class="sa-modal-overlay" id="restoreIdeaModalOverlay" style="display:none;">
+  <div class="sa-modal">
+    <h3 style="color:var(--sa-success);">Restore Killed Idea</h3>
+    <p id="restoreIdeaTargetTitle" style="margin-bottom:12px; font-weight:600; color:#fff;">Restoring idea...</p>
+    <div class="sa-modal-field">
+      <label for="restoreIdeaReasonInput">Reason for Restoration (Required)</label>
+      <textarea id="restoreIdeaReasonInput" rows="3" placeholder="Explain why idea is being restored..." style="padding:8px 12px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); color:#fff; font-size:13px;"></textarea>
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn-outline" id="btnCancelRestoreIdea">Cancel</button>
+      <button class="sa-btn-primary" id="btnConfirmRestoreIdea">Confirm Restore</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Support Ticket Modal -->
+<div class="sa-modal-overlay" id="createTicketModalOverlay" style="display:none;">
+  <div class="sa-modal" style="width: 480px;">
+    <h3>Open Support Ticket</h3>
+    <p style="margin-bottom:16px;">Submit a new ticket on behalf of a team member or system request.</p>
+    <div class="sa-modal-field">
+      <label for="newTicketReporterSelect">Reporter</label>
+      <select id="newTicketReporterSelect"></select>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+      <div class="sa-modal-field">
+        <label for="newTicketCategorySelect">Category</label>
+        <select id="newTicketCategorySelect">
+          <option value="bug">Bug</option>
+          <option value="feature_request">Feature Request</option>
+          <option value="access_issue">Access Issue</option>
+          <option value="billing">Billing</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="sa-modal-field">
+        <label for="newTicketPrioritySelect">Priority</label>
+        <select id="newTicketPrioritySelect">
+          <option value="low">Low</option>
+          <option value="normal" selected>Normal</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+    </div>
+    <div class="sa-modal-field">
+      <label for="newTicketSubjectInput">Subject</label>
+      <input type="text" id="newTicketSubjectInput" placeholder="Brief issue summary...">
+    </div>
+    <div class="sa-modal-field">
+      <label for="newTicketBodyInput">Description / Message</label>
+      <textarea id="newTicketBodyInput" rows="3" placeholder="Detailed description of the issue..." style="padding:8px 12px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); color:#fff; font-size:13px;"></textarea>
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn-outline" id="btnCancelCreateTicket">Cancel</button>
+      <button class="sa-btn-primary" id="btnSubmitCreateTicket">Create Ticket</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- FIFO Toast Notifications Container -->
 <div id="toastContainer"></div>
