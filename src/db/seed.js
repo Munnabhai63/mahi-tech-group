@@ -115,7 +115,8 @@ export async function runSeed() {
     { key: 'idea_quota_window_days', value: '7' },
     { key: 'vote_approval_threshold', value: '70' },
     { key: 'vote_quorum_percentage', value: '70' },
-    { key: 'voting_window_hours', value: '48' }
+    { key: 'voting_window_hours', value: '48' },
+    { key: 'revenue_split_duration_months', value: '5' }
   ];
 
   for (const cfg of defaultConfigs) {

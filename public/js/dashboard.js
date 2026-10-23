@@ -1327,6 +1327,29 @@ function updateUserBadge(user) {
   document.getElementById('userNameDisplay').textContent = user.name;
   document.getElementById('userRoleDisplay').textContent = user.role.toUpperCase();
   document.getElementById('userAvatar').textContent = user.name.charAt(0);
+
+  // Requirement #2: Conditional DOM rendering of Admin Control Panel button
+  let adminNavBtn = document.getElementById('adminPanelNavBtn');
+  if (user.role === 'admin') {
+    if (!adminNavBtn) {
+      adminNavBtn = document.createElement('a');
+      adminNavBtn.id = 'adminPanelNavBtn';
+      adminNavBtn.href = '/admin.html';
+      adminNavBtn.className = 'view-btn';
+      adminNavBtn.style.cssText = 'text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 0.4rem 0.75rem; font-size: 0.8rem; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);';
+      adminNavBtn.title = 'Open Full Admin Governance Control Panel';
+      adminNavBtn.innerHTML = '⚙️ Admin Panel';
+      const userProfileBadge = document.querySelector('.user-profile-badge');
+      if (userProfileBadge && userProfileBadge.parentNode) {
+        userProfileBadge.parentNode.insertBefore(adminNavBtn, userProfileBadge);
+      }
+    }
+  } else {
+    // If not admin, ensure element is completely absent from DOM
+    if (adminNavBtn && adminNavBtn.parentNode) {
+      adminNavBtn.parentNode.removeChild(adminNavBtn);
+    }
+  }
 }
 
 function escapeHtml(str) {

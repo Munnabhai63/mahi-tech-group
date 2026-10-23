@@ -906,4 +906,326 @@ router.get('/corners-overview', authenticate, (req, res) => {
   });
 });
 
+// 26. GET /api/admin/dashboard/overview (Admin only - Dashboard Overview)
+router.get('/dashboard/overview', authenticate, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can access admin dashboard overview' });
+  }
+
+  // Active members count breakdown by role
+  const roleRows = queryAll(`
+    SELECT role, COUNT(*) as cnt
+    FROM users
+    WHERE status = 'active'
+    GROUP BY role
+  `);
+  const byRole = { researcher: 0, developer: 0, designer: 0, producer: 0, admin: 0 };
+  let totalActiveMembers = 0;
+  for (const r of roleRows) {
+    if (r.role && byRole[r.role] !== undefined) {
+      byRole[r.role] = Number(r.cnt);
+      totalActiveMembers += Number(r.cnt);
+    }
+  }
+
+  const totalInactiveMembers = queryOne("SELECT COUNT(*) as count FROM users WHERE status = 'inactive'")?.count || 0;
+
+  // Active projects count breakdown by stage
+  const stageRows = queryAll(`
+    SELECT current_stage, COUNT(*) as cnt
+    FROM projects
+    WHERE status = 'ACTIVE' OR current_stage = 'LIVE'
+    GROUP BY current_stage
+  `);
+  const byStage = {
+    RESEARCH_DEV_PARALLEL: 0,
+    INTEGRATION: 0,
+    TESTING: 0,
+    ADMIN_REVIEW: 0,
+    LIVE: 0
+  };
+  let totalProjects = 0;
+  for (const s of stageRows) {
+    if (s.current_stage && byStage[s.current_stage] !== undefined) {
+      byStage[s.current_stage] = Number(s.cnt);
+      totalProjects += Number(s.cnt);
+    }
+  }
+
+  // Pending Approvals
+  const pendingApplications = queryOne("SELECT COUNT(*) as count FROM users WHERE status = 'pending'")?.count || 0;
+  const pendingIdeaVotes = queryOne("SELECT COUNT(*) as count FROM ideas WHERE status = 'PENDING_REVIEW'")?.count || 0;
+  const pendingWithdrawalsCount = queryOne("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'PENDING'")?.count || 0;
+  const pendingFinalReviewsCount = queryOne("SELECT COUNT(*) as count FROM projects WHERE current_stage = 'ADMIN_REVIEW'")?.count || 0;
+  const totalPending = pendingApplications + pendingIdeaVotes + pendingWithdrawalsCount + pendingFinalReviewsCount;
+
+  // Financials
+  const revEventsTotal = queryOne('SELECT COALESCE(SUM(amount), 0) as total FROM revenue_events')?.total || 0;
+  const paidWithdrawalsTotal = queryOne("SELECT COALESCE(SUM(amount), 0) as total FROM withdrawals WHERE status = 'PAID'")?.total || 0;
+  const pendingWithdrawalsAmount = queryOne("SELECT COALESCE(SUM(amount), 0) as total FROM withdrawals WHERE status = 'PENDING'")?.total || 0;
+  const frozenWalletsCount = queryOne('SELECT COUNT(*) as count FROM users WHERE wallet_frozen = 1')?.count || 0;
+
+  // Recent offboarding events (last 5)
+  const recentOffboarding = queryAll(`
+    SELECT o.id, o.user_id, o.initiated_at, o.completed_at, o.status, o.wallet_frozen_amount, o.reason,
+           u.name as user_name, u.email as user_email
+    FROM offboarding o
+    LEFT JOIN users u ON o.user_id = u.id
+    ORDER BY o.initiated_at DESC
+    LIMIT 5
+  `);
+
+  return res.status(200).json({
+    members: {
+      totalActive: totalActiveMembers,
+      totalInactive: totalInactiveMembers,
+      byRole
+    },
+    projects: {
+      totalProjects,
+      byStage
+    },
+    pendingApprovals: {
+      pendingApplications,
+      pendingIdeaVotes,
+      pendingWithdrawals: pendingWithdrawalsCount,
+      pendingFinalReviews: pendingFinalReviewsCount,
+      totalPending
+    },
+    financials: {
+      totalRevenueGenerated: Number(revEventsTotal).toFixed(2),
+      totalWithdrawalsPaid: Number(paidWithdrawalsTotal).toFixed(2),
+      pendingWithdrawalsAmount: Number(pendingWithdrawalsAmount).toFixed(2),
+      frozenWalletsCount
+    },
+    recentOffboarding
+  });
+});
+
+// 27. PATCH /api/admin/members/:id (Admin only - Edit Member Role/Sub-role)
+router.patch('/members/:id', authenticate, (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can modify member roles' });
+  }
+
+  const { id } = req.params;
+
+  // Rule 6: Self-Role-Edit Guard
+  if (req.user.id === id) {
+    return res.status(400).json({ error: 'Cannot modify your own administrative role' });
+  }
+
+  const targetUser = queryOne('SELECT id, name, email, role, sub_role, status FROM users WHERE id = ?', [id]);
+  if (!targetUser) {
+    return res.status(404).json({ error: 'Member not found' });
+  }
+
+  const { role, sub_role } = req.body || {};
+  if (!role && sub_role === undefined) {
+    return res.status(400).json({ error: 'At least one of role or sub_role must be provided' });
+  }
+
+  const validRoles = ['researcher', 'developer', 'designer', 'producer', 'admin'];
+  const newRole = role || targetUser.role;
+  if (!validRoles.includes(newRole)) {
+    return res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+  }
+
+  let newSubRole = targetUser.sub_role;
+  if (newRole !== 'developer') {
+    if (sub_role) {
+      return res.status(400).json({ error: "sub_role is only allowed for the 'developer' role" });
+    }
+    newSubRole = null;
+  } else {
+    if (sub_role !== undefined) newSubRole = sub_role;
+    if (newSubRole && !['frontend', 'backend'].includes(newSubRole)) {
+      return res.status(400).json({ error: "sub_role must be 'frontend' or 'backend'" });
+    }
+  }
+
+  execute(
+    'UPDATE users SET role = ?, sub_role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [newRole, newSubRole, id]
+  );
+
+  // Explicit before/after logging in access_log
+  logAccess({
+    userId: req.user.id,
+    action: 'member_role_changed',
+    resource: `/api/admin/members/${id} (target: ${targetUser.name}, before: {role: "${targetUser.role}", sub_role: "${targetUser.sub_role || 'none'}"}, after: {role: "${newRole}", sub_role: "${newSubRole || 'none'}"}, changed_by: ${req.user.id})`,
+    ipAddress
+  });
+
+  const updatedUser = queryOne('SELECT id, name, email, role, sub_role, status, updated_at FROM users WHERE id = ?', [id]);
+  return res.status(200).json({
+    message: 'Member role updated successfully',
+    user: updatedUser
+  });
+});
+
+// 28. POST /api/admin/wallets/:user_id/settle (Admin only - Manual Frozen Wallet Settlement)
+router.post('/wallets/:user_id/settle', authenticate, (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can execute manual wallet settlements' });
+  }
+
+  const { user_id } = req.params;
+  const { notes, settlement_type } = req.body || {};
+
+  const user = queryOne('SELECT id, name, email, wallet_balance, wallet_frozen, status FROM users WHERE id = ?', [user_id]);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const frozenAmount = Number(user.wallet_balance || 0);
+
+  // Integrity Check: revenue_splits and withdrawals are NEVER modified or deleted
+  const settlementId = crypto.randomUUID();
+  execute(`
+    INSERT INTO wallet_settlements (id, user_id, amount, status, settled_by, settlement_type, notes, settled_at)
+    VALUES (?, ?, ?, 'SETTLED', ?, ?, ?, CURRENT_TIMESTAMP)
+  `, [settlementId, user_id, frozenAmount, req.user.id, settlement_type || 'MANUAL_DISBURSEMENT', notes || 'Admin manual settlement']);
+
+  // Update pending_settlements if any
+  execute(`
+    UPDATE pending_settlements
+    SET status = 'SETTLED', settled_by = ?, settled_at = CURRENT_TIMESTAMP
+    WHERE user_id = ? AND status = 'PENDING'
+  `, [req.user.id, user_id]);
+
+  // Zero-out wallet balance and unfreeze
+  execute(`
+    UPDATE users
+    SET wallet_balance = 0.00, wallet_frozen = 0, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `, [user_id]);
+
+  logAccess({
+    userId: req.user.id,
+    action: 'wallet_settlement_manual',
+    resource: `/api/admin/wallets/${user_id}/settle (amount: ₹${frozenAmount.toFixed(2)}, settled_by: ${req.user.id}, settlement_id: ${settlementId})`,
+    ipAddress
+  });
+
+  return res.status(200).json({
+    message: 'Frozen wallet balance settled successfully',
+    settlement: {
+      id: settlementId,
+      userId: user_id,
+      settledAmount: frozenAmount.toFixed(2),
+      status: 'SETTLED',
+      settledBy: req.user.id,
+      notes: notes || 'Admin manual settlement'
+    }
+  });
+});
+
+// 29. GET /api/admin/access-logs (Admin only - Filterable Audit Logs)
+router.get('/access-logs', authenticate, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can view audit access logs' });
+  }
+
+  const { user_id, action, startDate, endDate, limit = 50, offset = 0 } = req.query;
+
+  let baseSql = `
+    FROM access_log al
+    LEFT JOIN users u ON al.user_id = u.id
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (user_id) {
+    baseSql += ' AND al.user_id = ?';
+    params.push(user_id);
+  }
+  if (action) {
+    baseSql += ' AND al.action LIKE ?';
+    params.push(`%${action}%`);
+  }
+  if (startDate) {
+    baseSql += ' AND al.timestamp >= ?';
+    params.push(startDate);
+  }
+  if (endDate) {
+    baseSql += ' AND al.timestamp <= ?';
+    params.push(endDate);
+  }
+
+  const countRow = queryOne(`SELECT COUNT(*) as count ${baseSql}`, params);
+  const totalCount = countRow ? Number(countRow.count) : 0;
+
+  const dataSql = `
+    SELECT al.id, al.user_id, al.action, al.resource, al.ip_address, al.timestamp,
+           u.name as user_name, u.email as user_email, u.role as user_role
+    ${baseSql}
+    ORDER BY al.timestamp DESC
+    LIMIT ? OFFSET ?
+  `;
+  const dataParams = [...params, Number(limit) || 50, Number(offset) || 0];
+  const logs = queryAll(dataSql, dataParams);
+
+  return res.status(200).json({
+    count: logs.length,
+    totalCount,
+    limit: Number(limit) || 50,
+    offset: Number(offset) || 0,
+    logs
+  });
+});
+
+// 30. GET /api/admin/config (Admin only - System Config Viewer)
+router.get('/config', authenticate, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can view system configuration' });
+  }
+  const configs = queryAll('SELECT key, value, updated_at FROM system_config');
+  const configMap = {};
+  for (const c of configs) {
+    configMap[c.key] = c.value;
+  }
+  return res.status(200).json({ configs: configMap });
+});
+
+// 31. PATCH /api/admin/config/general (Admin only - Revenue Split Duration & General Config)
+router.patch('/config/general', authenticate, (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can update system configuration' });
+  }
+
+  const { revenueSplitDurationMonths } = req.body || {};
+  if (revenueSplitDurationMonths !== undefined) {
+    const val = parseInt(revenueSplitDurationMonths, 10);
+    if (isNaN(val) || val < 1 || val > 36) {
+      return res.status(400).json({ error: 'revenueSplitDurationMonths must be an integer between 1 and 36' });
+    }
+    execute(
+      'UPDATE system_config SET value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+      [val.toString(), req.user.id, 'revenue_split_duration_months']
+    );
+    logAccess({
+      userId: req.user.id,
+      action: 'general_config_updated',
+      resource: `/api/admin/config/general (revenue_split_duration_months: ${val})`,
+      ipAddress
+    });
+  }
+
+  const configs = queryAll('SELECT key, value, updated_at FROM system_config');
+  const configMap = {};
+  for (const c of configs) {
+    configMap[c.key] = c.value;
+  }
+  return res.status(200).json({
+    message: 'Configuration updated successfully',
+    configs: configMap
+  });
+});
+
 export default router;

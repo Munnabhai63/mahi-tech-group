@@ -366,4 +366,35 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read_status);
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
 
+-- ===================================================================
+-- STEP 10: Admin Control Panel & Immutability Enforcement
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS wallet_settlements (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    amount          DECIMAL(12,2) NOT NULL CHECK (amount >= 0),
+    status          VARCHAR(20) DEFAULT 'SETTLED' CHECK (status IN ('SETTLED','FORFEITED')),
+    settled_by      TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    settlement_type VARCHAR(50) DEFAULT 'MANUAL_DISBURSEMENT',
+    notes           TEXT,
+    settled_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_wallet_settlements_user_id ON wallet_settlements(user_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_settlements_settled_at ON wallet_settlements(settled_at);
+
+CREATE TRIGGER IF NOT EXISTS prevent_access_log_delete
+BEFORE DELETE ON access_log
+BEGIN
+    SELECT RAISE(FAIL, 'Immutable log: DELETE not allowed on access_log');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_access_log_update
+BEFORE UPDATE ON access_log
+BEGIN
+    SELECT RAISE(FAIL, 'Immutable log: UPDATE not allowed on access_log');
+END;
+
+
 
