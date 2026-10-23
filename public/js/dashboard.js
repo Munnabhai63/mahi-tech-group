@@ -1,6 +1,7 @@
 /**
- * MAHI TECH GROUP — CENTER DASHBOARD FRONTEND ENGINE
- * Real-Time WebSocket state synchronization, Kanban Pipeline, and Live Voting Feeds.
+ * MAHI TECH GROUP — 4 CORNER PANELS & CENTER DASHBOARD ENGINE
+ * Step 08: Researcher (TL), Developer (TR), Admin (BL), Producer (BR)
+ * Flanking the Shared Real-Time Consensus & Revenue Center Dashboard.
  */
 
 // Application State
@@ -13,10 +14,13 @@ const state = {
   pollingInterval: null,
   activeProjects: [],
   pendingIdeas: [],
-  notifications: []
+  notifications: [],
+  devSubroleFilter: 'all',
+  activeResearcherTab: 'res-tasks',
+  viewMode: 'spatial' // 'spatial' | 'focus'
 };
 
-// Test credentials for role switching during evaluation
+// Seed credentials for authenticating real users per Step 01 RBAC
 const ROLE_ACCOUNTS = {
   admin: { email: 'admin@mahitechgroup.com', password: 'AdminPassword@2026', role: 'admin' },
   researcher: { email: 'researcher@mahitechgroup.com', password: 'ResearcherPass123!', role: 'researcher' },
@@ -26,12 +30,12 @@ const ROLE_ACCOUNTS = {
 
 document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
-  // Initialize with Admin account by default
+  // Start with Admin session by default
   await switchAccount('admin');
 });
 
 /**
- * Switch active test session & reconnect WebSocket
+ * Switch active session & reconnect WebSocket
  */
 async function switchAccount(roleKey) {
   const credentials = ROLE_ACCOUNTS[roleKey];
@@ -46,7 +50,7 @@ async function switchAccount(roleKey) {
     });
 
     if (!res.ok) {
-      console.warn(`Could not login with default ${roleKey} account, checking existing token...`);
+      console.warn(`Could not login with default ${roleKey} account.`);
       return;
     }
 
@@ -56,6 +60,7 @@ async function switchAccount(roleKey) {
     localStorage.setItem('token', state.token);
 
     updateUserBadge(data.user);
+    highlightActiveCornerPanel(data.user.role);
 
     // Initial Full Refresh
     await refreshAllData();
@@ -69,13 +74,26 @@ async function switchAccount(roleKey) {
 }
 
 /**
+ * Highlight and focus the corner panel corresponding to the user's role
+ */
+function highlightActiveCornerPanel(role) {
+  document.querySelectorAll('.corner-panel').forEach(panel => {
+    panel.classList.remove('panel-active');
+  });
+
+  const targetPanelId = `${role}CornerPanel`;
+  const targetPanel = document.getElementById(targetPanelId);
+  if (targetPanel) {
+    targetPanel.classList.add('panel-active');
+  }
+}
+
+/**
  * Connect to WebSocket Server with JWT Token
  */
 function connectWebSocket() {
   if (state.ws) {
-    try {
-      state.ws.close();
-    } catch (e) {}
+    try { state.ws.close(); } catch (e) {}
   }
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -89,7 +107,6 @@ function connectWebSocket() {
     state.reconnectAttempts = 0;
     updateWsStatus('live', 'Live Connected');
 
-    // Clear fallback polling if active
     if (state.pollingInterval) {
       clearInterval(state.pollingInterval);
       state.pollingInterval = null;
@@ -112,7 +129,7 @@ function connectWebSocket() {
     scheduleReconnect();
   };
 
-  state.ws.onerror = (err) => {
+  state.ws.onerror = () => {
     state.wsConnected = false;
     updateWsStatus('disconnected', 'WS Error (Polling active)');
   };
@@ -132,7 +149,7 @@ function scheduleReconnect() {
 }
 
 /**
- * Fallback Polling (Every 10 seconds if WS drops per PRD Section 4.3)
+ * Fallback Polling (Every 10 seconds if WS drops)
  */
 function startPollingFallback() {
   if (state.pollingInterval) return;
@@ -143,14 +160,13 @@ function startPollingFallback() {
 }
 
 /**
- * Dispatcher for incoming WebSocket events (PRD Section 4.2)
+ * Dispatcher for incoming WebSocket events
  */
 function handleWebSocketMessage(msg) {
-  const { channel, event, data, timestamp } = msg;
+  const { channel, event, data } = msg;
 
   switch (event) {
     case 'connected':
-      console.log('WS Handshake:', data.message);
       if (data.onlineCount) {
         document.getElementById('statTeamOnline').textContent = data.onlineCount;
       }
@@ -166,7 +182,6 @@ function handleWebSocketMessage(msg) {
       break;
 
     case 'vote.cast':
-      // Live update without refresh (PRD Section 3.2 Non-Negotiable)
       handleLiveVoteUpdate(data);
       addTickerItem(`New vote cast on idea #${data.ideaId.substring(0, 8)} (${data.greenPercentage}% Green)`);
       break;
@@ -174,6 +189,7 @@ function handleWebSocketMessage(msg) {
     case 'idea.submitted':
       fetchSummary();
       fetchVotesFeed();
+      fetchResearcherIdeas();
       addTickerItem(`New Idea Submitted: "${data.title}" by ${data.owner_name}`);
       break;
 
@@ -181,18 +197,25 @@ function handleWebSocketMessage(msg) {
       fetchSummary();
       fetchVotesFeed();
       fetchKanban();
+      fetchDeveloperTasks();
+      fetchResearcherIdeas();
       addTickerItem(`🎉 Idea Approved: "${data.title}" (${data.greenPercentage}% Green) — Parallel fanout initiated`);
       break;
 
     case 'task.unblocked':
+    case 'task.updated':
       fetchKanban();
       fetchSummary();
-      addTickerItem(`Task "${data.taskName}" unblocked for active work`);
+      fetchRoleBanners();
+      refreshCornerTasks();
+      addTickerItem(`Task "${data.task?.task_name || data.taskName || 'Update'}" updated`);
       break;
 
     case 'project.stage_changed':
       fetchKanban();
       fetchSummary();
+      fetchRoleBanners();
+      fetchAdminApprovals();
       addTickerItem(`Project transitioned to stage: ${data.newStage}`);
       break;
 
@@ -202,6 +225,7 @@ function handleWebSocketMessage(msg) {
 
     case 'revenue.credited':
       fetchSummary();
+      fetchAdminStats();
       addTickerItem(`💰 Revenue Credited: ₹${data.amount} on "${data.projectTitle}"`);
       break;
 
@@ -210,12 +234,12 @@ function handleWebSocketMessage(msg) {
       break;
 
     default:
-      console.log('Unhandled WS Event:', event, data);
+      console.log('WS Event:', event, data);
   }
 }
 
 /**
- * Live Vote Progress Bar Update without page reload
+ * Live Vote Progress Bar Update
  */
 function handleLiveVoteUpdate(data) {
   const { ideaId, greenPercentage, totalVotesCast, greenVotes } = data;
@@ -231,13 +255,11 @@ function handleLiveVoteUpdate(data) {
       votesCountText.textContent = `${totalVotesCast} votes cast (${greenVotes} green)`;
     }
 
-    // Flash green glow on live update
     barFill.parentElement.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.6)';
     setTimeout(() => {
       barFill.parentElement.style.boxShadow = 'none';
     }, 1200);
   } else {
-    // Idea card not in DOM, refresh feed
     fetchVotesFeed();
   }
 
@@ -258,47 +280,75 @@ function handleNewNotification(notif) {
   badge.textContent = currentCount;
   badge.style.display = 'inline-block';
   if (sideCount) sideCount.textContent = `${currentCount} Unread`;
-
-  // Visual pulse on bell
-  const bell = document.getElementById('notifBellBtn');
-  bell.classList.add('pulse-alert');
-  setTimeout(() => bell.classList.remove('pulse-alert'), 1000);
 }
 
 /**
- * Refresh All Dashboard Data Components
+ * Ticker Bar Update
+ */
+function addTickerItem(text) {
+  const container = document.getElementById('tickerContent');
+  if (!container) return;
+
+  const span = document.createElement('span');
+  span.className = 'ticker-item';
+  span.textContent = `• ${text}`;
+  container.prepend(span);
+
+  while (container.children.length > 5) {
+    container.removeChild(container.lastChild);
+  }
+}
+
+/**
+ * Comprehensive Data Refresh
  */
 async function refreshAllData() {
-  await Promise.all([
+  await Promise.allSettled([
     fetchSummary(),
     fetchKanban(),
     fetchVotesFeed(),
     fetchNotifications(),
-    fetchActivity()
+    fetchMiniProfiles(),
+    fetchRoleBanners(),
+    refreshCornerTasks(),
+    fetchAdminApprovals(),
+    fetchAdminStats()
   ]);
 }
 
 /**
- * 1. Fetch Quick Stats Bar Data
+ * Refresh task queues across corner panels
+ */
+async function refreshCornerTasks() {
+  await Promise.allSettled([
+    fetchResearcherTasks(),
+    fetchResearcherIdeas(),
+    fetchDeveloperTasks(),
+    fetchProducerTasks()
+  ]);
+}
+
+/**
+ * 1. Fetch Summary Stats (Center Dashboard)
  */
 async function fetchSummary() {
   try {
-    const res = await apiFetch('/api/dashboard/summary');
-    if (!res) return;
+    const data = await apiFetch('/api/dashboard/summary');
+    if (!data) return;
 
-    document.getElementById('statActiveProjects').textContent = res.activeProjectsCount;
-    document.getElementById('statPendingVotes').textContent = res.pendingVotesCount;
-    document.getElementById('statQuotaRemaining').textContent = `${res.myQuotaRemaining} / ${res.myQuotaWeeklyLimit}`;
-    document.getElementById('statTeamOnline').textContent = res.teamOnlineCount;
-    document.getElementById('statWalletBalance').textContent = `₹${res.walletBalance.toFixed(2)}`;
+    document.getElementById('statActiveProjects').textContent = data.activeProjectsCount || 0;
+    document.getElementById('statPendingVotes').textContent = data.pendingVotesCount || 0;
 
-    const walletSubtext = document.getElementById('statWalletSubtext');
-    if (res.isWalletFrozen) {
-      walletSubtext.textContent = '⚠️ Wallet Frozen (Offboarded/Settlement)';
-      walletSubtext.style.color = 'var(--rose)';
-    } else {
-      walletSubtext.textContent = 'Available for withdrawal';
-      walletSubtext.style.color = 'var(--text-muted)';
+    const quota = data.quotaStatus;
+    if (quota) {
+      document.getElementById('statQuotaRemaining').textContent = `${quota.remaining} / ${quota.weeklyLimit}`;
+      const badge = document.getElementById('researcherQuotaBadge');
+      if (badge) badge.textContent = `${quota.remaining}/${quota.weeklyLimit}`;
+    }
+
+    if (data.walletSummary) {
+      const balance = Number(data.walletSummary.balance || 0).toFixed(2);
+      document.getElementById('statWalletBalance').textContent = `₹${balance}`;
     }
   } catch (err) {
     console.error('Failed to fetch dashboard summary:', err);
@@ -306,162 +356,138 @@ async function fetchSummary() {
 }
 
 /**
- * 2. Fetch Active Projects Kanban Board
+ * 2. Fetch Active Projects Pipeline (Kanban Board)
  */
 async function fetchKanban() {
   try {
-    const res = await apiFetch('/api/dashboard/kanban');
-    if (!res) return;
+    const data = await apiFetch('/api/dashboard/kanban');
+    if (!data) return;
+
+    const columns = data.columns || data.stages || {};
+    state.activeProjects = columns;
 
     const stages = ['RESEARCH_DEV_PARALLEL', 'INTEGRATION', 'TESTING', 'ADMIN_REVIEW', 'LIVE'];
 
     stages.forEach(stageKey => {
-      const col = res.columns[stageKey];
+      const colEl = document.getElementById(`col-${stageKey}`);
       const countEl = document.getElementById(`count-${stageKey}`);
-      const bodyEl = document.getElementById(`col-${stageKey}`);
+      if (!colEl) return;
 
-      if (countEl && col) countEl.textContent = col.items.length;
-      if (bodyEl && col) {
-        bodyEl.innerHTML = '';
-        if (col.items.length === 0) {
-          bodyEl.innerHTML = '<div class="empty-state">No projects in this stage</div>';
-          return;
-        }
+      colEl.innerHTML = '';
+      const colObj = columns[stageKey];
+      const projects = Array.isArray(colObj) ? colObj : (colObj?.items || []);
+      if (countEl) countEl.textContent = projects.length;
 
-        col.items.forEach(proj => {
-          bodyEl.appendChild(createProjectCard(proj));
-        });
+      if (projects.length === 0) {
+        colEl.innerHTML = '<div class="empty-column-state">No active projects</div>';
+        return;
       }
+
+      projects.forEach(project => {
+        const card = document.createElement('div');
+        card.className = 'project-card';
+        card.id = `project-card-${project.id}`;
+
+        const completed = project.completed_tasks_count || 0;
+        const total = project.total_tasks_count || 8;
+        const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        card.innerHTML = `
+          <div class="project-header">
+            <span class="project-title">${escapeHtml(project.title)}</span>
+            <span class="badge ${project.status === 'ACTIVE' ? 'badge-green' : 'badge-amber'}">${escapeHtml(project.status)}</span>
+          </div>
+          <div class="project-desc">${escapeHtml(project.description || 'No description provided')}</div>
+          
+          <div class="task-progress-wrap">
+            <div class="task-progress-label">
+              <span>Task Progress</span>
+              <span class="progress-pct">${completed}/${total} (${progressPct}%)</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar-fill" style="width: ${progressPct}%"></div>
+            </div>
+          </div>
+
+          <div class="project-footer">
+            <div class="project-meta">
+              <span>👤 ${escapeHtml(project.owner_name || 'Owner')}</span>
+            </div>
+            <button class="btn btn-secondary btn-xs" onclick="openProjectDetail('${project.id}')">View Workflows</button>
+          </div>
+        `;
+
+        colEl.appendChild(card);
+      });
     });
   } catch (err) {
-    console.error('Failed to fetch Kanban board:', err);
+    console.error('Failed to fetch kanban data:', err);
   }
 }
 
 /**
- * Create a Kanban Project Card DOM Element
- */
-function createProjectCard(proj) {
-  const card = document.createElement('div');
-  card.className = 'project-card';
-  card.dataset.id = proj.id;
-
-  const stageClassMap = {
-    RESEARCH_DEV_PARALLEL: 'badge-parallel',
-    INTEGRATION: 'badge-integration',
-    TESTING: 'badge-testing',
-    ADMIN_REVIEW: 'badge-review',
-    LIVE: 'badge-live'
-  };
-
-  const stageLabels = {
-    RESEARCH_DEV_PARALLEL: 'Parallel Research/Dev',
-    INTEGRATION: 'Integration',
-    TESTING: 'QA Testing',
-    ADMIN_REVIEW: 'Admin Review',
-    LIVE: 'Live & Monetizing'
-  };
-
-  const stageBadgeClass = stageClassMap[proj.current_stage] || 'badge-parallel';
-  const stageLabel = stageLabels[proj.current_stage] || proj.current_stage;
-
-  // Member avatars preview
-  const memberAvatarsHtml = (proj.members || [])
-    .slice(0, 4)
-    .map(m => `<div class="member-avatar-mini" title="${escapeHtml(m.name)} (${m.role_in_project})">${m.name ? m.name.charAt(0) : 'U'}</div>`)
-    .join('');
-
-  const extraCount = (proj.members || []).length > 4 ? `<div class="member-avatar-mini">+${proj.members.length - 4}</div>` : '';
-
-  card.innerHTML = `
-    <div class="card-title-row">
-      <h4 class="project-card-title">${escapeHtml(proj.title)}</h4>
-      <span class="stage-badge ${stageBadgeClass}">${stageLabel}</span>
-    </div>
-
-    <div class="progress-container">
-      <div class="progress-label-row">
-        <span>Progress</span>
-        <span>${proj.taskSummary.completedTasks} / ${proj.taskSummary.totalTasks} Tasks (${proj.taskSummary.percentComplete}%)</span>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" style="width: ${proj.taskSummary.percentComplete}%"></div>
-      </div>
-    </div>
-
-    <div class="card-footer">
-      <div class="owner-chip" title="Idea Owner">
-        <span>👤 ${escapeHtml(proj.owner_name)}</span>
-      </div>
-      <div class="member-avatars-row">
-        ${memberAvatarsHtml}
-        ${extraCount}
-      </div>
-    </div>
-  `;
-
-  card.addEventListener('click', () => openProjectModal(proj.id));
-  return card;
-}
-
-/**
- * 3. Fetch Pending Votes Feed (PRD Section 3.2)
+ * 3. Fetch Pending Votes Feed (Center Dashboard)
  */
 async function fetchVotesFeed() {
   try {
-    const res = await apiFetch('/api/dashboard/votes-feed');
-    if (!res) return;
+    const data = await apiFetch('/api/dashboard/votes-feed');
+    if (!data || !data.ideas) return;
 
+    state.pendingIdeas = data.ideas;
     const listEl = document.getElementById('votesFeedList');
     const badgeEl = document.getElementById('votesBadge');
 
-    badgeEl.textContent = `${res.count} Awaiting`;
-    listEl.innerHTML = '';
+    if (!listEl) return;
+    badgeEl.textContent = `${data.totalPending || data.ideas.length} Awaiting`;
 
-    if (!res.ideas || res.ideas.length === 0) {
-      listEl.innerHTML = '<div class="empty-state">No ideas currently awaiting votes</div>';
+    if (data.ideas.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No ideas currently awaiting team votes</div>';
       return;
     }
 
-    res.ideas.forEach(idea => {
-      const item = document.createElement('div');
-      item.className = 'vote-item-card';
-      item.id = `vote-card-${idea.id}`;
+    listEl.innerHTML = '';
+    data.ideas.forEach(idea => {
+      const card = document.createElement('div');
+      card.className = 'vote-card';
+      card.id = `vote-card-${idea.id}`;
 
-      let actionHtml = '';
-      if (idea.isOwner) {
-        actionHtml = `<span class="badge" title="Owner cannot vote per PRD Step 3">🔒 Idea Owner</span>`;
-      } else if (idea.hasVoted) {
-        actionHtml = `<span class="badge ${idea.userVoteColor === 'green' ? 'badge-pulse' : ''}">Voted ${idea.userVoteColor.toUpperCase()}</span>`;
-      } else {
-        actionHtml = `
-          <button class="btn btn-green btn-sm" onclick="openVoteModal('${idea.id}', '${escapeHtml(idea.title)}', '${escapeHtml(idea.description)}')">
-            Vote Now
-          </button>
-        `;
-      }
+      const greenPct = idea.greenPercentage || 0;
+      const canVote = idea.canVote !== false && state.user && state.user.id !== idea.owner_id;
 
-      item.innerHTML = `
-        <div class="vote-item-header">
+      card.innerHTML = `
+        <div class="vote-card-header">
           <div>
-            <div class="vote-item-title">${escapeHtml(idea.title)}</div>
-            <div class="vote-owner-tag">By ${escapeHtml(idea.owner_name)}</div>
+            <span class="vote-card-title">${escapeHtml(idea.title)}</span>
+            <div class="vote-card-owner">By ${escapeHtml(idea.owner_name)} • Closes ${formatDate(idea.voting_deadline)}</div>
           </div>
-          <div>${actionHtml}</div>
+          <span class="badge badge-purple">${escapeHtml(idea.category || 'General')}</span>
         </div>
 
-        <div class="vote-bar-wrap">
-          <div class="vote-bar-labels">
-            <span class="vote-percentage-text" id="vote-pct-${idea.id}">${idea.greenPercentage}% Green</span>
-            <span class="text-muted" id="vote-count-${idea.id}">${idea.totalVotes} votes cast</span>
+        <div class="vote-progress-wrap">
+          <div class="vote-progress-labels">
+            <span class="label-green">Approval Threshold: 70% Supermajority</span>
+            <span class="vote-pct-text" id="vote-pct-${idea.id}">${greenPct}% Green</span>
           </div>
-          <div class="vote-bar-track">
-            <div class="vote-bar-fill" id="vote-fill-${idea.id}" style="width: ${idea.greenPercentage}%"></div>
+          <div class="progress-track-lg">
+            <div class="progress-bar-fill-green" id="vote-fill-${idea.id}" style="width: ${greenPct}%"></div>
           </div>
+          <div class="vote-tally-line" id="vote-count-${idea.id}">
+            ${idea.totalVotesCast || 0} votes cast (${idea.greenVotes || 0} green)
+          </div>
+        </div>
+
+        <div class="vote-card-actions">
+          ${canVote ? `
+            <button class="btn btn-primary btn-sm w-100" onclick="openVoteModal('${idea.id}', '${escapeHtml(idea.title)}', '${escapeHtml(idea.description)}')">
+              🗳️ Cast Vote
+            </button>
+          ` : `
+            <span class="text-muted text-xs">${idea.owner_id === state.user?.id ? 'Own Idea (Cannot Vote)' : 'Voted'}</span>
+          `}
         </div>
       `;
 
-      listEl.appendChild(item);
+      listEl.appendChild(card);
     });
   } catch (err) {
     console.error('Failed to fetch votes feed:', err);
@@ -469,102 +495,507 @@ async function fetchVotesFeed() {
 }
 
 /**
- * 4. Fetch User Notifications (PRD Section 3.3)
+ * 4. Fetch Profile Summary Mini-Cards (Section 7)
  */
-async function fetchNotifications() {
+async function fetchMiniProfiles() {
   try {
-    const res = await apiFetch('/api/notifications/my?limit=25');
-    if (!res) return;
+    const data = await apiFetch('/api/users/profile-mini');
+    if (!data) return;
 
-    state.notifications = res.notifications || [];
-    const unreadCount = res.unreadCount || 0;
-
-    const notifBadge = document.getElementById('notifBadge');
-    const sideCount = document.getElementById('sideNotifCount');
-
-    if (unreadCount > 0) {
-      notifBadge.textContent = unreadCount;
-      notifBadge.style.display = 'inline-block';
-      if (sideCount) sideCount.textContent = `${unreadCount} Unread`;
-    } else {
-      notifBadge.style.display = 'none';
-      if (sideCount) sideCount.textContent = '0 Unread';
+    // Populate Researcher Mini-Card
+    const rAvatar = document.getElementById('researcherMiniAvatar');
+    if (rAvatar) {
+      if (data.role === 'researcher') {
+        rAvatar.textContent = data.avatar;
+        document.getElementById('researcherMiniName').textContent = data.name;
+        document.getElementById('researcherIdeasCount').textContent = data.totalIdeasSubmitted;
+        document.getElementById('researcherRatingAvg').textContent = `${data.ratingAverage} ★`;
+        document.getElementById('researcherQuotaRemaining').textContent = `${data.quotaRemaining}/${data.quotaWeeklyLimit}`;
+      }
     }
 
-    renderNotificationsList();
+    // Populate Developer Mini-Card
+    const dAvatar = document.getElementById('developerMiniAvatar');
+    if (dAvatar) {
+      if (data.role === 'developer') {
+        dAvatar.textContent = data.avatar;
+        document.getElementById('developerMiniName').textContent = data.name;
+        document.getElementById('developerProjectsBuilt').textContent = data.totalProjectsBuilt;
+        document.getElementById('developerRatingAvg').textContent = `${data.ratingAverage} ★`;
+        document.getElementById('developerWallet').textContent = `₹${data.walletBalance}`;
+        const subBadge = document.getElementById('developerSubRoleBadge');
+        if (subBadge) subBadge.textContent = data.subRole ? data.subRole.toUpperCase() : 'DEVELOPER';
+      }
+    }
+
+    // Populate Producer Mini-Card
+    const pAvatar = document.getElementById('producerMiniAvatar');
+    if (pAvatar) {
+      if (data.role === 'producer') {
+        pAvatar.textContent = data.avatar;
+        document.getElementById('producerMiniName').textContent = data.name;
+        document.getElementById('producerTasksTested').textContent = data.totalTasksCompleted;
+        document.getElementById('producerRatingAvg').textContent = `${data.ratingAverage} ★`;
+        document.getElementById('producerWallet').textContent = `₹${data.walletBalance}`;
+      }
+    }
+
+    // Populate Admin Mini-Card
+    const aAvatar = document.getElementById('adminMiniAvatar');
+    if (aAvatar) {
+      if (data.role === 'admin') {
+        aAvatar.textContent = data.avatar;
+        document.getElementById('adminMiniName').textContent = data.name;
+      }
+    }
   } catch (err) {
-    console.error('Failed to fetch notifications:', err);
+    console.error('Failed to fetch mini profile:', err);
   }
 }
 
 /**
- * Render Notifications in Dropdown & Side Feed
+ * 5. Fetch Role-Specific Alert Banners (Section 8)
  */
-function renderNotificationsList() {
-  const dropdownList = document.getElementById('notifList');
-  const sideList = document.getElementById('sideNotifList');
+async function fetchRoleBanners() {
+  try {
+    const res = await apiFetch('/api/banners/active');
+    if (!res || !res.banners) return;
 
-  const contentHtml = state.notifications.length === 0
-    ? '<div class="empty-state">No notifications recorded</div>'
-    : state.notifications.map(n => `
-        <div class="notif-item ${n.read_status === 0 ? 'unread' : ''}" onclick="markAsRead('${n.id}')">
-          ${n.read_status === 0 ? '<span class="notif-dot"></span>' : ''}
-          <div class="notif-body">
-            <div class="notif-msg">${escapeHtml(n.message)}</div>
-            <div class="notif-time">${formatDate(n.created_at)}</div>
-          </div>
+    const banners = res.banners;
+
+    // Researcher Banners
+    const rBox = document.getElementById('researcherBannersList');
+    if (rBox) {
+      rBox.innerHTML = '';
+      banners.filter(b => b.type === 'IDEA_APPROVED').forEach(b => {
+        rBox.appendChild(createBannerEl(b, 'idea-approved'));
+      });
+    }
+
+    // Developer Banners ("Research Ready")
+    const dBox = document.getElementById('developerBannersList');
+    if (dBox) {
+      dBox.innerHTML = '';
+      banners.filter(b => b.type === 'RESEARCH_READY').forEach(b => {
+        dBox.appendChild(createBannerEl(b, 'research-ready'));
+      });
+    }
+
+    // Producer Banners ("Dev Build Ready")
+    const pBox = document.getElementById('producerBannersList');
+    if (pBox) {
+      pBox.innerHTML = '';
+      banners.filter(b => b.type === 'BUILD_READY').forEach(b => {
+        pBox.appendChild(createBannerEl(b, 'build-ready'));
+      });
+    }
+
+    // Admin Banners ("Final Review Pending", "Withdrawals Pending")
+    const aBox = document.getElementById('adminBannersList');
+    if (aBox) {
+      aBox.innerHTML = '';
+      banners.filter(b => b.type === 'ADMIN_REVIEW_PENDING' || b.type === 'WITHDRAWALS_PENDING').forEach(b => {
+        aBox.appendChild(createBannerEl(b, 'review-ready'));
+      });
+    }
+  } catch (err) {
+    console.error('Failed to fetch role banners:', err);
+  }
+}
+
+function createBannerEl(b, typeClass) {
+  const el = document.createElement('div');
+  el.className = `corner-alert-banner ${typeClass}`;
+  el.innerHTML = `
+    <div class="banner-content">
+      <span class="banner-title">${escapeHtml(b.title)}</span>
+      <span class="banner-msg">${escapeHtml(b.message)}</span>
+    </div>
+  `;
+  return el;
+}
+
+/**
+ * 6. Researcher Panel Data & Flows
+ */
+async function fetchResearcherTasks() {
+  const listEl = document.getElementById('researcherTasksList');
+  if (!listEl) return;
+
+  try {
+    const res = await apiFetch('/api/projects/my-tasks?role=researcher');
+    if (!res || !res.tasks) {
+      listEl.innerHTML = '<div class="empty-state">No research tasks assigned</div>';
+      return;
+    }
+
+    if (res.tasks.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No research tasks currently active</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    res.tasks.forEach(task => {
+      const card = document.createElement('div');
+      card.className = 'corner-task-card';
+      const isDone = task.status === 'DONE';
+
+      card.innerHTML = `
+        <div class="task-card-header">
+          <span class="task-project-name">${escapeHtml(task.project_title || 'Project')}</span>
+          <span class="task-status-pill ${task.status}">${task.status}</span>
         </div>
-      `).join('');
-
-  if (dropdownList) dropdownList.innerHTML = contentHtml;
-  if (sideList) sideList.innerHTML = contentHtml;
+        <div class="task-card-name">${escapeHtml(task.task_name)}</div>
+        <div class="task-card-actions">
+          ${!isDone ? `
+            <button class="btn btn-cyan btn-xs" onclick="openUploadResearchModal('${task.id}', '${escapeHtml(task.task_name)}')">
+              📄 Upload Research (Mark Done)
+            </button>
+          ` : `
+            <span class="text-muted text-xs">✓ Research Document Uploaded</span>
+          `}
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
+  } catch (err) {
+    listEl.innerHTML = '<div class="empty-state text-muted">Tasks unavailable for this role</div>';
+  }
 }
 
-/**
- * Mark notification as read
- */
-async function markAsRead(notifId) {
+async function fetchResearcherIdeas() {
+  const listEl = document.getElementById('researcherMyIdeasList');
+  if (!listEl) return;
+
   try {
-    await apiFetch(`/api/notifications/${notifId}/read`, { method: 'PATCH' });
-    const target = state.notifications.find(n => n.id === notifId);
-    if (target) target.read_status = 1;
-    renderNotificationsList();
-    fetchSummary();
+    const res = await apiFetch('/api/ideas/my');
+    if (!res || !res.ideas) {
+      listEl.innerHTML = '<div class="empty-state">No ideas submitted yet</div>';
+      return;
+    }
+
+    if (res.ideas.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No ideas in your submission log</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    res.ideas.forEach(idea => {
+      const card = document.createElement('div');
+      card.className = 'corner-task-card';
+      let statusClass = 'badge-purple';
+      if (idea.status === 'APPROVED') statusClass = 'badge-green';
+      if (idea.status === 'REJECTED') statusClass = 'badge-rose';
+
+      card.innerHTML = `
+        <div class="task-card-header">
+          <span class="task-card-name">${escapeHtml(idea.title)}</span>
+          <span class="badge ${statusClass}">${escapeHtml(idea.status)}</span>
+        </div>
+        <div class="task-card-meta">
+          <span class="text-muted text-xs">Category: ${escapeHtml(idea.category || 'General')}</span>
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
   } catch (err) {
-    console.error('Failed to mark notification as read:', err);
+    listEl.innerHTML = '<div class="empty-state text-muted">Ideas log restricted</div>';
   }
 }
 
 /**
- * 5. Fetch Recent Team Activity Ticker
+ * 7. Developer Panel Data & Tasks
  */
-async function fetchActivity() {
-  try {
-    const res = await apiFetch('/api/activity/recent?limit=15');
-    if (!res || !res.activities || res.activities.length === 0) return;
+async function fetchDeveloperTasks() {
+  const listEl = document.getElementById('developerTasksList');
+  const countEl = document.getElementById('devTaskCount');
+  if (!listEl) return;
 
-    const tickerContent = document.getElementById('tickerContent');
-    const items = res.activities.map(a => `<span class="ticker-item">${escapeHtml(a.message)}</span>`);
-    tickerContent.innerHTML = items.join(' &nbsp; • &nbsp; ');
+  try {
+    let url = '/api/projects/my-tasks?role=developer';
+    if (state.devSubroleFilter !== 'all') {
+      url += `&task_type=${state.devSubroleFilter}`;
+    }
+
+    const res = await apiFetch(url);
+    if (!res || !res.tasks) {
+      listEl.innerHTML = '<div class="empty-state">No dev tasks assigned</div>';
+      return;
+    }
+
+    if (countEl) countEl.textContent = `${res.tasks.length} active`;
+
+    if (res.tasks.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No development tasks in queue</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    res.tasks.forEach(task => {
+      const card = document.createElement('div');
+      card.className = 'corner-task-card';
+
+      const isBlocked = task.status === 'BLOCKED';
+      const isTodo = task.status === 'TODO';
+      const isInProgress = task.status === 'IN_PROGRESS';
+      const isDone = task.status === 'DONE';
+
+      card.innerHTML = `
+        <div class="task-card-header">
+          <span class="task-project-name">${escapeHtml(task.project_title || 'Project')}</span>
+          <span class="task-status-pill ${task.status}">${task.status}</span>
+        </div>
+        <div class="task-card-name">${escapeHtml(task.task_name)}</div>
+        <div class="task-card-meta">
+          <span class="badge badge-role ${task.task_type === 'frontend' ? 'cyan' : 'emerald'}">${task.task_type.toUpperCase()}</span>
+          ${isBlocked ? `
+            <span class="task-dep-pill" title="Waiting on prerequisite task">
+              🔒 Waiting on: ${escapeHtml(task.depends_on_task_name || 'Prerequisite')}
+            </span>
+          ` : ''}
+        </div>
+        <div class="task-card-actions">
+          ${isTodo ? `
+            <button class="btn btn-secondary btn-xs" onclick="updateTaskState('${task.id}', 'IN_PROGRESS')">
+              ▶ Start Task
+            </button>
+          ` : ''}
+          ${isInProgress ? `
+            <button class="btn btn-green btn-xs" onclick="updateTaskState('${task.id}', 'DONE')">
+              🚀 Mark Complete (Push to Center)
+            </button>
+          ` : ''}
+          ${isDone ? `
+            <span class="text-muted text-xs">✓ Work completed & pushed</span>
+          ` : ''}
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
   } catch (err) {
-    console.error('Failed to fetch activity ticker:', err);
+    listEl.innerHTML = '<div class="empty-state text-muted">Dev tasks unavailable for this role</div>';
   }
 }
 
 /**
- * Add a single item to the live ticker banner
+ * 8. Producer / QA Panel Data & Tasks
  */
-function addTickerItem(message) {
-  const tickerContent = document.getElementById('tickerContent');
-  if (!tickerContent) return;
-  const newItem = `<span class="ticker-item" style="color: #60a5fa; font-weight: 600;">⚡ ${escapeHtml(message)}</span>`;
-  tickerContent.innerHTML = `${newItem} &nbsp; • &nbsp; ${tickerContent.innerHTML}`;
+async function fetchProducerTasks() {
+  const listEl = document.getElementById('producerTasksList');
+  const countEl = document.getElementById('producerTaskCount');
+  if (!listEl) return;
+
+  try {
+    const res = await apiFetch('/api/projects/my-tasks?role=producer');
+    if (!res || !res.tasks) {
+      listEl.innerHTML = '<div class="empty-state">No QA tasks assigned</div>';
+      return;
+    }
+
+    if (countEl) countEl.textContent = `${res.tasks.length} active`;
+
+    if (res.tasks.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No QA tasks currently in testing queue</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    res.tasks.forEach(task => {
+      const card = document.createElement('div');
+      card.className = 'corner-task-card';
+
+      const isBlocked = task.status === 'BLOCKED';
+      const isDone = task.status === 'DONE';
+
+      card.innerHTML = `
+        <div class="task-card-header">
+          <span class="task-project-name">${escapeHtml(task.project_title || 'Project')}</span>
+          <span class="task-status-pill ${task.status}">${task.status}</span>
+        </div>
+        <div class="task-card-name">${escapeHtml(task.task_name)}</div>
+        <div class="task-card-meta">
+          ${isBlocked ? `
+            <span class="task-dep-pill" title="Waiting on dev completion">
+              🔒 Waiting on Dev Build: ${escapeHtml(task.depends_on_task_name || 'Dev Task')}
+            </span>
+          ` : ''}
+        </div>
+        <div class="task-card-actions">
+          ${!isDone && !isBlocked ? `
+            <button class="btn btn-green btn-xs" onclick="openTestReportModal('${task.id}', '${escapeHtml(task.task_name)}')">
+              🧪 Submit Test Report (Mark Done)
+            </button>
+          ` : ''}
+          ${isDone ? `
+            <span class="text-muted text-xs">✓ Testing verified & passed</span>
+          ` : ''}
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
+  } catch (err) {
+    listEl.innerHTML = '<div class="empty-state text-muted">Testing tasks restricted</div>';
+  }
 }
 
 /**
- * Project Detail Modal
+ * 9. Admin Approvals Queue & Team Health Stats
  */
-async function openProjectModal(projectId) {
+async function fetchAdminApprovals() {
+  const listEl = document.getElementById('adminApprovalsList');
+  const countEl = document.getElementById('adminPendingCount');
+  if (!listEl) return;
+
+  if (state.user?.role !== 'admin') {
+    listEl.innerHTML = '<div class="empty-state text-muted">Approvals restricted to Admin</div>';
+    return;
+  }
+
+  try {
+    const [withdrawalsRes, projectsRes] = await Promise.all([
+      apiFetch('/api/admin/withdrawals/pending'),
+      apiFetch('/api/admin/projects/all')
+    ]);
+
+    const withdrawals = withdrawalsRes?.withdrawals || [];
+    const reviewProjects = (projectsRes?.projects || []).filter(p => p.current_stage === 'ADMIN_REVIEW');
+
+    const totalPending = withdrawals.length + reviewProjects.length;
+    if (countEl) countEl.textContent = `${totalPending} pending`;
+
+    if (totalPending === 0) {
+      listEl.innerHTML = '<div class="empty-state">No pending approvals required</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+
+    // Render Pending Withdrawals
+    withdrawals.forEach(w => {
+      const item = document.createElement('div');
+      item.className = 'approval-item';
+      item.innerHTML = `
+        <div class="approval-meta">
+          <span class="approval-title">Payout: ₹${w.amount}</span>
+          <span class="approval-sub">Requester: ${escapeHtml(w.user_name || 'Member')}</span>
+        </div>
+        <button class="btn btn-green btn-xs" onclick="approveWithdrawalQuick('${w.id}')">Approve</button>
+      `;
+      listEl.appendChild(item);
+    });
+
+    // Render Projects Awaiting Final Review
+    reviewProjects.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'approval-item';
+      item.innerHTML = `
+        <div class="approval-meta">
+          <span class="approval-title">Launch Review: ${escapeHtml(p.title)}</span>
+          <span class="approval-sub">QA Verified • Ready for LIVE</span>
+        </div>
+        <button class="btn btn-primary btn-xs" onclick="approveProjectFinal('${p.id}')">Approve Launch</button>
+      `;
+      listEl.appendChild(item);
+    });
+  } catch (err) {
+    console.error('Failed to fetch admin approvals:', err);
+  }
+}
+
+async function fetchAdminStats() {
+  if (state.user?.role !== 'admin') return;
+
+  try {
+    const [membersRes, projectsRes] = await Promise.all([
+      apiFetch('/api/admin/members'),
+      apiFetch('/api/admin/projects/all')
+    ]);
+
+    const activeMembers = (membersRes?.members || []).filter(m => m.status === 'active').length;
+    const liveProjects = (projectsRes?.projects || []).filter(p => p.current_stage === 'LIVE').length;
+
+    const mEl = document.getElementById('adminMembersCount');
+    const pEl = document.getElementById('adminLiveProjects');
+    if (mEl) mEl.textContent = activeMembers;
+    if (pEl) pEl.textContent = liveProjects;
+  } catch (err) {
+    console.error('Failed to fetch admin stats:', err);
+  }
+}
+
+/**
+ * Task State Actions
+ */
+window.updateTaskState = async function(taskId, newStatus) {
+  try {
+    const res = await apiFetch(`/api/tasks/${taskId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: newStatus })
+    });
+
+    if (res && res.message) {
+      addTickerItem(res.message);
+      await refreshAllData();
+    } else if (res && res.error) {
+      alert(`Action rejected: ${res.error}`);
+    }
+  } catch (err) {
+    console.error('Error updating task state:', err);
+  }
+};
+
+/**
+ * Quick Admin Approvals
+ */
+window.approveWithdrawalQuick = async function(wId) {
+  try {
+    const res = await apiFetch(`/api/admin/withdrawals/${wId}/approve`, { method: 'POST' });
+    if (res && res.message) {
+      addTickerItem(res.message);
+      await fetchAdminApprovals();
+      await fetchSummary();
+    } else if (res && res.error) {
+      alert(`Approval error: ${res.error}`);
+    }
+  } catch (err) {
+    console.error('Error approving payout:', err);
+  }
+};
+
+window.approveProjectFinal = async function(projectId) {
+  try {
+    const res = await apiFetch(`/api/admin/projects/${projectId}/final-review`, {
+      method: 'PATCH',
+      body: JSON.stringify({ approved: true, notes: 'Approved via Admin Quick-Access Corner' })
+    });
+
+    if (res && res.message) {
+      addTickerItem(res.message);
+      await refreshAllData();
+    } else if (res && res.error) {
+      alert(`Review rejection: ${res.error}`);
+    }
+  } catch (err) {
+    console.error('Error approving project final review:', err);
+  }
+};
+
+/**
+ * Modal Openers
+ */
+window.openUploadResearchModal = function(taskId, taskName) {
+  document.getElementById('researchTaskId').value = taskId;
+  document.getElementById('researchTaskNameDisplay').textContent = taskName;
+  document.getElementById('uploadResearchModal').style.display = 'flex';
+};
+
+window.openTestReportModal = function(taskId, taskName) {
+  document.getElementById('qaTaskId').value = taskId;
+  document.getElementById('qaTaskNameDisplay').textContent = taskName;
+  document.getElementById('testReportModal').style.display = 'flex';
+};
+
+window.openProjectDetail = async function(projectId) {
   try {
     const res = await apiFetch(`/api/projects/${projectId}`);
     if (!res || !res.project) return;
@@ -572,31 +1003,35 @@ async function openProjectModal(projectId) {
     const p = res.project;
     document.getElementById('modalProjectTitle').textContent = p.title;
     document.getElementById('modalProjectStage').textContent = p.current_stage;
-    document.getElementById('modalOwnerName').textContent = p.owner_name;
+    document.getElementById('modalOwnerName').textContent = p.owner_name || 'Owner';
     document.getElementById('modalProjectStatus').textContent = p.status;
-    document.getElementById('modalClockStart').textContent = p.revenue_clock_start || 'N/A';
+    document.getElementById('modalClockStart').textContent = formatDate(p.created_at);
 
-    // Tasks Table
-    const tasksBody = document.getElementById('modalTasksTableBody');
-    tasksBody.innerHTML = (res.tasks || []).map(t => `
-      <tr>
+    const tbody = document.getElementById('modalTasksTableBody');
+    tbody.innerHTML = '';
+    (res.tasks || []).forEach(t => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
         <td><strong>${escapeHtml(t.task_name)}</strong></td>
-        <td>${t.task_type}</td>
-        <td>${t.assigned_to_name ? escapeHtml(t.assigned_to_name) : '<em>Unassigned</em>'}</td>
-        <td>${t.depends_on_task_name ? escapeHtml(t.depends_on_task_name) : '<em>None (Initial Parallel)</em>'}</td>
-        <td><span class="badge ${t.status === 'DONE' ? 'badge-pulse' : ''}">${t.status}</span></td>
-      </tr>
-    `).join('');
+        <td><span class="badge ${t.task_type === 'testing' ? 'purple' : 'cyan'}">${t.task_type}</span></td>
+        <td>${escapeHtml(t.assigned_to_name || 'Unassigned')}</td>
+        <td>${escapeHtml(t.depends_on_task_name || 'None')}</td>
+        <td><span class="task-status-pill ${t.status}">${t.status}</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
 
-    // Members Table
-    const membersBody = document.getElementById('modalMembersTableBody');
-    membersBody.innerHTML = (res.members || []).map(m => `
-      <tr>
-        <td>${escapeHtml(m.name)}</td>
-        <td>${m.role_in_project}</td>
+    const mBody = document.getElementById('modalMembersTableBody');
+    mBody.innerHTML = '';
+    (res.members || []).forEach(m => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(m.user_name)}</td>
+        <td>${escapeHtml(m.role_in_project)}</td>
         <td><strong>${m.contribution_weight}%</strong></td>
-      </tr>
-    `).join('');
+      `;
+      mBody.appendChild(tr);
+    });
 
     const completed = (res.tasks || []).filter(t => t.status === 'DONE').length;
     const total = (res.tasks || []).length;
@@ -607,11 +1042,8 @@ async function openProjectModal(projectId) {
   } catch (err) {
     console.error('Failed to open project detail modal:', err);
   }
-}
+};
 
-/**
- * Open Vote Modal
- */
 window.openVoteModal = function(ideaId, title, desc) {
   document.getElementById('voteIdeaId').value = ideaId;
   document.getElementById('voteModalIdeaTitle').textContent = `Vote on: ${title}`;
@@ -654,7 +1086,50 @@ async function submitVote(voteColor) {
 }
 
 /**
- * Helper: API fetch wrapper with Auth Bearer token
+ * Notifications
+ */
+async function fetchNotifications() {
+  try {
+    const res = await apiFetch('/api/notifications');
+    if (!res || !res.notifications) return;
+
+    state.notifications = res.notifications;
+    renderNotificationsList();
+
+    const badge = document.getElementById('notifBadge');
+    const sideCount = document.getElementById('sideNotifCount');
+    const unread = res.unreadCount || 0;
+
+    badge.textContent = unread;
+    badge.style.display = unread > 0 ? 'inline-block' : 'none';
+    if (sideCount) sideCount.textContent = `${unread} Unread`;
+  } catch (err) {
+    console.error('Failed to fetch notifications:', err);
+  }
+}
+
+function renderNotificationsList() {
+  const notifList = document.getElementById('notifList');
+  const sideList = document.getElementById('sideNotifList');
+
+  const content = state.notifications.length === 0
+    ? '<div class="empty-state">No notifications recorded</div>'
+    : state.notifications.map(n => `
+      <div class="notification-item ${n.is_read ? 'read' : 'unread'}">
+        <div class="notif-header">
+          <span class="notif-type">${escapeHtml(n.type)}</span>
+          <span class="notif-time">${formatDate(n.created_at)}</span>
+        </div>
+        <div class="notif-message">${escapeHtml(n.message)}</div>
+      </div>
+    `).join('');
+
+  if (notifList) notifList.innerHTML = content;
+  if (sideList) sideList.innerHTML = content;
+}
+
+/**
+ * Helper: API fetch wrapper
  */
 async function apiFetch(endpoint, options = {}) {
   const headers = {
@@ -682,8 +1157,303 @@ function setupEventListeners() {
   const roleSelect = document.getElementById('roleSelect');
   roleSelect.addEventListener('change', (e) => switchAccount(e.target.value));
 
+  // Layout View Mode Switcher
+  const btnSpatial = document.getElementById('btnSpatialView');
+  const btnFocus = document.getElementById('btnFocusView');
+  const workspaceMain = document.getElementById('workspaceMain');
+
+  if (btnSpatial && btnFocus && workspaceMain) {
+    btnSpatial.addEventListener('click', () => {
+      btnSpatial.classList.add('active');
+      btnFocus.classList.remove('active');
+      workspaceMain.classList.remove('focus-mode');
+    });
+
+    btnFocus.addEventListener('click', () => {
+      btnFocus.classList.add('active');
+      btnSpatial.classList.remove('active');
+      workspaceMain.classList.add('focus-mode');
+    });
+  }
+
   // Refresh Board Button
   document.getElementById('refreshKanbanBtn').addEventListener('click', () => refreshAllData());
+
+  // Researcher Tabs
+  document.querySelectorAll('.corner-tab').forEach(tabBtn => {
+    tabBtn.addEventListener('click', () => {
+      document.querySelectorAll('.corner-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.corner-tab-pane').forEach(p => p.classList.remove('active'));
+      tabBtn.classList.add('active');
+      const paneId = `pane-${tabBtn.dataset.tab}`;
+      const pane = document.getElementById(paneId);
+      if (pane) pane.classList.add('active');
+    });
+  });
+
+  // Developer Sub-role Filter
+  document.querySelectorAll('.subrole-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.subrole-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.devSubroleFilter = btn.dataset.filter;
+      fetchDeveloperTasks();
+    });
+  });
+
+  // Open Submit Idea Modal
+  document.getElementById('btnOpenSubmitIdeaModal').addEventListener('click', () => {
+    document.getElementById('submitIdeaModal').style.display = 'flex';
+  });
+
+  document.getElementById('btnCancelSubmitIdea').addEventListener('click', () => {
+    document.getElementById('submitIdeaModal').style.display = 'none';
+  });
+  document.getElementById('closeSubmitIdeaModalBtn').addEventListener('click', () => {
+    document.getElementById('submitIdeaModal').style.display = 'none';
+  });
+
+  // Handle Idea Submission Form
+  document.getElementById('submitIdeaForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('newIdeaTitle').value;
+    const category = document.getElementById('newIdeaCategory').value;
+    const attachmentUrl = document.getElementById('newIdeaAttachment').value;
+    const desc = document.getElementById('newIdeaDesc').value;
+
+    try {
+      // 1. Create draft
+      const draftRes = await apiFetch('/api/ideas/draft', {
+        method: 'POST',
+        body: JSON.stringify({ title, description: desc, category, attachment_url: attachmentUrl })
+      });
+
+      if (!draftRes || !draftRes.idea) {
+        alert(draftRes?.error || 'Failed to save draft');
+        return;
+      }
+
+      // 2. Submit draft (triggers quota check & review meeting)
+      const submitRes = await apiFetch(`/api/ideas/${draftRes.idea.id}/submit`, {
+        method: 'POST'
+      });
+
+      if (submitRes && submitRes.idea) {
+        document.getElementById('submitIdeaModal').style.display = 'none';
+        document.getElementById('submitIdeaForm').reset();
+        addTickerItem(`Idea submitted: "${title}"`);
+        await refreshAllData();
+      } else {
+        alert(`Quota or submission error: ${submitRes?.error || 'Rejected'}`);
+      }
+    } catch (err) {
+      console.error('Error submitting idea:', err);
+    }
+  });
+
+  // Handle Upload Research Form
+  document.getElementById('uploadResearchForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const taskId = document.getElementById('researchTaskId').value;
+    const fileUrl = document.getElementById('researchFileUrl').value;
+    const notes = document.getElementById('researchNotes').value;
+
+    try {
+      const res = await apiFetch(`/api/tasks/${taskId}/upload`, {
+        method: 'POST',
+        body: JSON.stringify({ file_url: fileUrl, notes, mark_done: true, asset_type: 'pdf_doc' })
+      });
+
+      if (res && res.task) {
+        document.getElementById('uploadResearchModal').style.display = 'none';
+        document.getElementById('uploadResearchForm').reset();
+        addTickerItem(`Research uploaded for task "${res.task.task_name}" — Dev unblocked`);
+        await refreshAllData();
+      } else {
+        alert(`Upload failed: ${res?.error || 'Error'}`);
+      }
+    } catch (err) {
+      console.error('Error uploading research:', err);
+    }
+  });
+
+  document.getElementById('btnCancelUploadResearch').addEventListener('click', () => {
+    document.getElementById('uploadResearchModal').style.display = 'none';
+  });
+  document.getElementById('closeUploadResearchModalBtn').addEventListener('click', () => {
+    document.getElementById('uploadResearchModal').style.display = 'none';
+  });
+
+  // Handle Test Report Form
+  document.getElementById('testReportForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const taskId = document.getElementById('qaTaskId').value;
+    const reportUrl = document.getElementById('qaReportUrl').value;
+    const notes = document.getElementById('qaNotes').value;
+
+    try {
+      const res = await apiFetch(`/api/tasks/${taskId}/upload`, {
+        method: 'POST',
+        body: JSON.stringify({ file_url: reportUrl, notes, mark_done: true, asset_type: 'pdf_doc' })
+      });
+
+      if (res && res.task) {
+        document.getElementById('testReportModal').style.display = 'none';
+        document.getElementById('testReportForm').reset();
+        addTickerItem(`QA verified for task "${res.task.task_name}" — Advanced to Admin Review`);
+        await refreshAllData();
+      } else {
+        alert(`QA report submission failed: ${res?.error || 'Error'}`);
+      }
+    } catch (err) {
+      console.error('Error submitting test report:', err);
+    }
+  });
+
+  document.getElementById('btnCancelTestReport').addEventListener('click', () => {
+    document.getElementById('testReportModal').style.display = 'none';
+  });
+  document.getElementById('closeTestReportModalBtn').addEventListener('click', () => {
+    document.getElementById('testReportModal').style.display = 'none';
+  });
+
+  // Admin Quick Action: Add Member Modal
+  document.getElementById('btnAdminAddMember').addEventListener('click', () => {
+    document.getElementById('adminAddMemberModal').style.display = 'flex';
+  });
+  document.getElementById('btnCancelAddMember').addEventListener('click', () => {
+    document.getElementById('adminAddMemberModal').style.display = 'none';
+  });
+  document.getElementById('closeAddMemberModalBtn').addEventListener('click', () => {
+    document.getElementById('adminAddMemberModal').style.display = 'none';
+  });
+
+  document.getElementById('adminAddMemberForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('newMemberName').value;
+    const email = document.getElementById('newMemberEmail').value;
+    const role = document.getElementById('newMemberRole').value;
+    const subRole = document.getElementById('newMemberSubRole').value || null;
+    const password = document.getElementById('newMemberPassword').value;
+
+    try {
+      const res = await apiFetch('/api/admin/members/add', {
+        method: 'POST',
+        body: JSON.stringify({ name, email, role, sub_role: subRole, temporary_password: password })
+      });
+
+      if (res && res.user) {
+        document.getElementById('adminAddMemberModal').style.display = 'none';
+        document.getElementById('adminAddMemberForm').reset();
+        addTickerItem(`New member added: ${name} (${role})`);
+        await fetchAdminStats();
+      } else {
+        alert(`Add member error: ${res?.error || 'Failed'}`);
+      }
+    } catch (err) {
+      console.error('Error adding member:', err);
+    }
+  });
+
+  // Admin Quick Action: Killswitch Offboard Modal
+  document.getElementById('btnAdminKillswitch').addEventListener('click', async () => {
+    const selectEl = document.getElementById('offboardMemberSelect');
+    selectEl.innerHTML = '<option value="">Loading members...</option>';
+    document.getElementById('adminOffboardModal').style.display = 'flex';
+
+    try {
+      const res = await apiFetch('/api/admin/members');
+      if (res && res.members) {
+        selectEl.innerHTML = res.members
+          .filter(m => m.status === 'active' && m.id !== state.user?.id)
+          .map(m => `<option value="${m.id}">${escapeHtml(m.name)} (${m.role} - ${m.email})</option>`)
+          .join('');
+      }
+    } catch (e) {}
+  });
+
+  document.getElementById('btnCancelOffboard').addEventListener('click', () => {
+    document.getElementById('adminOffboardModal').style.display = 'none';
+  });
+  document.getElementById('closeOffboardModalBtn').addEventListener('click', () => {
+    document.getElementById('adminOffboardModal').style.display = 'none';
+  });
+
+  document.getElementById('adminOffboardForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const memberId = document.getElementById('offboardMemberSelect').value;
+    const reason = document.getElementById('offboardReason').value;
+
+    if (!memberId) return alert('Please select a member');
+
+    try {
+      const res = await apiFetch(`/api/admin/members/${memberId}/offboard`, {
+        method: 'POST',
+        body: JSON.stringify({ reason })
+      });
+
+      if (res && res.offboarding) {
+        document.getElementById('adminOffboardModal').style.display = 'none';
+        document.getElementById('adminOffboardForm').reset();
+        addTickerItem(`⚠️ Offboarding killswitch executed for member`);
+        await refreshAllData();
+      } else {
+        alert(`Offboarding error: ${res?.error || 'Failed'}`);
+      }
+    } catch (err) {
+      console.error('Error offboarding member:', err);
+    }
+  });
+
+  // Admin Quick Action: Record Revenue Modal
+  document.getElementById('btnAdminRevenue').addEventListener('click', async () => {
+    const selectEl = document.getElementById('revProjectSelect');
+    selectEl.innerHTML = '<option value="">Loading live projects...</option>';
+    document.getElementById('adminRevenueModal').style.display = 'flex';
+
+    try {
+      const res = await apiFetch('/api/admin/projects/all');
+      if (res && res.projects) {
+        selectEl.innerHTML = res.projects
+          .map(p => `<option value="${p.id}">${escapeHtml(p.title)} (${p.current_stage})</option>`)
+          .join('');
+      }
+    } catch (e) {}
+  });
+
+  document.getElementById('btnCancelRevenue').addEventListener('click', () => {
+    document.getElementById('adminRevenueModal').style.display = 'none';
+  });
+  document.getElementById('closeRevenueModalBtn').addEventListener('click', () => {
+    document.getElementById('adminRevenueModal').style.display = 'none';
+  });
+
+  document.getElementById('adminRevenueForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const projectId = document.getElementById('revProjectSelect').value;
+    const amount = parseFloat(document.getElementById('revAmount').value);
+    const source = document.getElementById('revSource').value;
+
+    if (!projectId) return alert('Please select a project');
+
+    try {
+      const res = await apiFetch(`/api/admin/projects/${projectId}/revenue`, {
+        method: 'POST',
+        body: JSON.stringify({ amount, source })
+      });
+
+      if (res && res.revenueEvent) {
+        document.getElementById('adminRevenueModal').style.display = 'none';
+        document.getElementById('adminRevenueForm').reset();
+        addTickerItem(`Gross revenue recorded: ₹${amount}`);
+        await refreshAllData();
+      } else {
+        alert(`Revenue recording error: ${res?.error || 'Failed'}`);
+      }
+    } catch (err) {
+      console.error('Error recording revenue:', err);
+    }
+  });
 
   // Notifications Bell
   const bellBtn = document.getElementById('notifBellBtn');
@@ -701,7 +1471,7 @@ function setupEventListeners() {
     await fetchNotifications();
   });
 
-  // Modal Closers
+  // Modal Closers for Project Detail & Voting
   document.getElementById('closeProjectModalBtn').addEventListener('click', () => {
     document.getElementById('projectModalBackdrop').style.display = 'none';
   });
@@ -718,8 +1488,8 @@ function setupEventListeners() {
 function updateWsStatus(status, text) {
   const indicator = document.getElementById('wsIndicator');
   const statusText = document.getElementById('wsStatusText');
-  indicator.className = `status-indicator ${status}`;
-  statusText.textContent = text;
+  if (indicator) indicator.className = `status-indicator ${status}`;
+  if (statusText) statusText.textContent = text;
 }
 
 function updateUserBadge(user) {

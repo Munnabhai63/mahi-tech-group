@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mahi Tech Group — Center Dashboard</title>
+  <title>Mahi Tech Group — 4 Corner Panels & Center Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
       <div class="brand-logo">
         <span class="logo-icon">⚡</span>
         <span class="brand-name">MAHI TECH GROUP</span>
-        <span class="center-badge">CENTER DASHBOARD</span>
+        <span class="center-badge">WORKSPACE HUB</span>
       </div>
     </div>
 
@@ -27,26 +27,32 @@
       </div>
       <div class="ticker-container" id="tickerContainer">
         <div class="ticker-content" id="tickerContent">
-          <span class="ticker-item">System operational — Real-time event engine active</span>
+          <span class="ticker-item">System operational — 4 Corner Panels + Center Real-time Engine Active</span>
         </div>
       </div>
     </div>
 
     <div class="header-right">
+      <!-- Layout Mode Selector -->
+      <div class="view-mode-toggle" title="Switch workspace layout">
+        <button class="view-btn active" id="btnSpatialView" title="4-Corner Spatial Grid">📐 4-Corners Grid</button>
+        <button class="view-btn" id="btnFocusView" title="Focus My Active Corner">🎯 Role Focus</button>
+      </div>
+
       <!-- WebSocket Connection Status Pill -->
       <div class="ws-status-pill" id="wsStatusPill">
         <span class="status-indicator live" id="wsIndicator"></span>
         <span class="status-text" id="wsStatusText">Live Connected</span>
       </div>
 
-      <!-- Quick Role Switcher (for QA / pair-testing) -->
+      <!-- Quick Role Switcher (Authenticates Real Seed Users) -->
       <div class="role-selector-wrap">
         <label for="roleSelect" class="sr-only">Switch User Role</label>
         <select id="roleSelect" class="role-select" title="Switch active test identity">
-          <option value="admin">System Admin</option>
-          <option value="researcher">Researcher</option>
-          <option value="developer">Developer</option>
-          <option value="producer">Producer</option>
+          <option value="admin">System Admin (All Panels)</option>
+          <option value="researcher">Researcher (Top-Left)</option>
+          <option value="developer">Developer (Top-Right)</option>
+          <option value="producer">Producer/Tester (Bottom-Right)</option>
         </select>
       </div>
 
@@ -78,148 +84,628 @@
     </div>
   </header>
 
-  <!-- Main Dashboard Container -->
-  <main class="dashboard-main">
-    <!-- 1. Quick Stats Bar -->
-    <section class="quick-stats-bar">
-      <div class="stat-card">
-        <div class="stat-icon-wrap blue">📂</div>
-        <div class="stat-body">
-          <div class="stat-label">Active Projects</div>
-          <div class="stat-value" id="statActiveProjects">0</div>
-        </div>
-        <div class="stat-subtext">Across 5 lifecycle stages</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon-wrap emerald">🗳️</div>
-        <div class="stat-body">
-          <div class="stat-label">Pending Votes</div>
-          <div class="stat-value" id="statPendingVotes">0</div>
-        </div>
-        <div class="stat-subtext">Awaiting your evaluation</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon-wrap purple">🎯</div>
-        <div class="stat-body">
-          <div class="stat-label">Weekly Quota</div>
-          <div class="stat-value" id="statQuotaRemaining">0 / 0</div>
-        </div>
-        <div class="stat-subtext">Submissions left this cycle</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon-wrap amber">👥</div>
-        <div class="stat-body">
-          <div class="stat-label">Team Online</div>
-          <div class="stat-value" id="statTeamOnline">1</div>
-        </div>
-        <div class="stat-subtext">Active WebSocket presence</div>
-      </div>
-
-      <div class="stat-card highlight">
-        <div class="stat-icon-wrap gold">💰</div>
-        <div class="stat-body">
-          <div class="stat-label">My Wallet Balance</div>
-          <div class="stat-value" id="statWalletBalance">₹0.00</div>
-        </div>
-        <div class="stat-subtext" id="statWalletSubtext">Available for withdrawal</div>
-      </div>
-    </section>
-
-    <!-- 2. Main Two-Column Layout (Kanban Board + Right Panels) -->
-    <div class="dashboard-grid">
-      <!-- LEFT: Active Projects Kanban Board (PRD Section 3.1) -->
-      <section class="kanban-section">
-        <div class="section-header">
-          <div class="header-titles">
-            <h2 class="section-title">Active Projects Pipeline</h2>
-            <p class="section-subtitle">Real-time multi-track parallel fanout across all 5 stages</p>
+  <!-- Main Workspace Canvas -->
+  <main class="dashboard-main spatial-workspace-layout" id="workspaceMain">
+    
+    <!-- ===================================================================
+         TOP CORNERS ROW (Researcher Top-Left & Developer Top-Right)
+         =================================================================== -->
+    <div class="corners-row top-corners">
+      
+      <!-- 2.1 RESEARCHER CORNER PANEL (Top-Left) -->
+      <section class="corner-panel researcher-corner" id="researcherCornerPanel" data-role="researcher">
+        <div class="corner-panel-header">
+          <div class="panel-tag cyan">
+            <span class="tag-icon">🔬</span>
+            <span class="tag-title">RESEARCHER CORNER</span>
+            <span class="spatial-badge">TOP-LEFT</span>
           </div>
-          <div class="header-actions">
-            <button class="btn btn-secondary btn-sm" id="refreshKanbanBtn">🔄 Refresh Board</button>
+          <div class="panel-header-actions">
+            <button class="btn btn-primary btn-xs" id="btnOpenSubmitIdeaModal" title="Submit idea respecting weekly quota">
+              + Submit Idea <span class="badge badge-quota" id="researcherQuotaBadge">0/3</span>
+            </button>
           </div>
         </div>
 
-        <div class="kanban-board-container" id="kanbanBoard">
-          <!-- 5 Stages Generated Dynamically -->
-          <div class="kanban-column" data-stage="RESEARCH_DEV_PARALLEL">
-            <div class="column-header">
-              <span class="column-title">1. Research & Dev Parallel</span>
-              <span class="column-count" id="count-RESEARCH_DEV_PARALLEL">0</span>
+        <!-- Role Alert Banners Container -->
+        <div class="corner-banners-container" id="researcherBannersList"></div>
+
+        <!-- Shared Component: Profile Summary Mini-Card (Section 7) -->
+        <div class="profile-mini-card" id="researcherProfileCard">
+          <div class="profile-mini-header">
+            <div class="avatar-sm cyan-glow" id="researcherMiniAvatar">R</div>
+            <div class="profile-mini-meta">
+              <h4 class="profile-mini-name" id="researcherMiniName">Researcher</h4>
+              <span class="badge badge-role cyan">RESEARCHER</span>
             </div>
-            <div class="column-body" id="col-RESEARCH_DEV_PARALLEL"></div>
+          </div>
+          <div class="profile-mini-metrics">
+            <div class="mini-metric">
+              <span class="metric-val" id="researcherIdeasCount">0</span>
+              <span class="metric-lbl">Ideas Submitted</span>
+            </div>
+            <div class="mini-metric">
+              <span class="metric-val" id="researcherRatingAvg">5.0 ★</span>
+              <span class="metric-lbl">Avg Rating</span>
+            </div>
+            <div class="mini-metric">
+              <span class="metric-val" id="researcherQuotaRemaining">3/3</span>
+              <span class="metric-lbl">Quota Left</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Researcher Workspace Tabs & Lists -->
+        <div class="corner-tabs-wrap">
+          <div class="corner-tab-buttons">
+            <button class="corner-tab active" data-tab="res-tasks">My Research Tasks</button>
+            <button class="corner-tab" data-tab="res-ideas">My Ideas Status</button>
           </div>
 
-          <div class="kanban-column" data-stage="INTEGRATION">
-            <div class="column-header">
-              <span class="column-title">2. Integration</span>
-              <span class="column-count" id="count-INTEGRATION">0</span>
+          <!-- Tab A: Research Tasks (Upload Research -> marks DONE -> unblocks Dev) -->
+          <div class="corner-tab-pane active" id="pane-res-tasks">
+            <div class="task-items-list" id="researcherTasksList">
+              <div class="loading-state">Loading assigned research tasks...</div>
             </div>
-            <div class="column-body" id="col-INTEGRATION"></div>
           </div>
 
-          <div class="kanban-column" data-stage="TESTING">
-            <div class="column-header">
-              <span class="column-title">3. Testing & QA</span>
-              <span class="column-count" id="count-TESTING">0</span>
+          <!-- Tab B: My Ideas List (Draft/Pending/Approved/Rejected tags) -->
+          <div class="corner-tab-pane" id="pane-res-ideas">
+            <div class="ideas-items-list" id="researcherMyIdeasList">
+              <div class="loading-state">Loading your submitted ideas...</div>
             </div>
-            <div class="column-body" id="col-TESTING"></div>
-          </div>
-
-          <div class="kanban-column" data-stage="ADMIN_REVIEW">
-            <div class="column-header">
-              <span class="column-title">4. Admin Final Review</span>
-              <span class="column-count" id="count-ADMIN_REVIEW">0</span>
-            </div>
-            <div class="column-body" id="col-ADMIN_REVIEW"></div>
-          </div>
-
-          <div class="kanban-column" data-stage="LIVE">
-            <div class="column-header">
-              <span class="column-title">5. Live & Monetizing</span>
-              <span class="column-count" id="count-LIVE">0</span>
-            </div>
-            <div class="column-body" id="col-LIVE"></div>
           </div>
         </div>
       </section>
 
-      <!-- RIGHT: Side Feeds (Pending Votes + Live Notifications) -->
-      <aside class="side-feeds-section">
-        <!-- A. Pending Votes / Ideas Feed (PRD Section 3.2) -->
-        <div class="card feed-card">
-          <div class="card-header">
-            <div>
-              <h3 class="card-title">Pending Votes Feed</h3>
-              <p class="card-subtitle">Live green supermajority tracker</p>
-            </div>
-            <span class="badge badge-pulse" id="votesBadge">0 Awaiting</span>
+      <!-- 2.2 DEVELOPER CORNER PANEL (Top-Right) -->
+      <section class="corner-panel developer-corner" id="developerCornerPanel" data-role="developer">
+        <div class="corner-panel-header">
+          <div class="panel-tag emerald">
+            <span class="tag-icon">💻</span>
+            <span class="tag-title">DEVELOPER CORNER</span>
+            <span class="spatial-badge">TOP-RIGHT</span>
           </div>
-          <div class="card-body feed-body" id="votesFeedList">
-            <div class="empty-state">No ideas currently awaiting votes</div>
+          <div class="panel-header-actions">
+            <!-- Sub-role filter tabs -->
+            <div class="subrole-toggle-group" id="devSubroleFilter">
+              <button class="subrole-btn active" data-filter="all">All</button>
+              <button class="subrole-btn" data-filter="frontend">Frontend</button>
+              <button class="subrole-btn" data-filter="backend">Backend</button>
+            </div>
           </div>
         </div>
 
-        <!-- B. Real-Time Notifications Feed (PRD Section 3.3) -->
-        <div class="card feed-card">
-          <div class="card-header">
-            <div>
-              <h3 class="card-title">Live Notifications</h3>
-              <p class="card-subtitle">Direct push stream for tasks, votes & earnings</p>
+        <!-- Cross-Role Real-Time Banner: "Research Ready" alert -->
+        <div class="corner-banners-container" id="developerBannersList"></div>
+
+        <!-- Shared Component: Profile Summary Mini-Card (Section 7) -->
+        <div class="profile-mini-card" id="developerProfileCard">
+          <div class="profile-mini-header">
+            <div class="avatar-sm emerald-glow" id="developerMiniAvatar">D</div>
+            <div class="profile-mini-meta">
+              <h4 class="profile-mini-name" id="developerMiniName">Developer</h4>
+              <span class="badge badge-role emerald" id="developerSubRoleBadge">DEVELOPER</span>
             </div>
-            <span class="badge" id="sideNotifCount">0 Unread</span>
           </div>
-          <div class="card-body feed-body" id="sideNotifList">
-            <div class="empty-state">No notifications recorded</div>
+          <div class="profile-mini-metrics">
+            <div class="mini-metric">
+              <span class="metric-val" id="developerProjectsBuilt">0</span>
+              <span class="metric-lbl">Projects Built</span>
+            </div>
+            <div class="mini-metric">
+              <span class="metric-val" id="developerRatingAvg">5.0 ★</span>
+              <span class="metric-lbl">Avg Rating</span>
+            </div>
+            <div class="mini-metric">
+              <span class="metric-val" id="developerWallet">₹0.00</span>
+              <span class="metric-lbl">Earnings (Wallet)</span>
+            </div>
           </div>
         </div>
-      </aside>
+
+        <!-- Developer Task Queue (TODO / Blocked / In Progress / Done) -->
+        <div class="corner-task-queue">
+          <div class="queue-header">
+            <h4 class="queue-title">My Development Tasks</h4>
+            <span class="queue-count" id="devTaskCount">0 active</span>
+          </div>
+          <div class="task-items-list" id="developerTasksList">
+            <div class="loading-state">Loading assigned development tasks...</div>
+          </div>
+        </div>
+      </section>
+
     </div>
+
+    <!-- ===================================================================
+         CENTER DASHBOARD (Step 07 Pipeline, Voting Feeds & Stats)
+         =================================================================== -->
+    <div class="center-dashboard-container" id="centerDashboardContainer">
+      <div class="center-watermark-bar">
+        <span class="center-title">⚡ SHARED CONSENSUS & REVENUE ENGINE (CENTER DASHBOARD)</span>
+        <span class="center-hint">Real-time WebSocket Live Stream</span>
+      </div>
+
+      <!-- Quick Stats Bar -->
+      <section class="quick-stats-bar">
+        <div class="stat-card">
+          <div class="stat-icon-wrap blue">📂</div>
+          <div class="stat-body">
+            <div class="stat-label">Active Projects</div>
+            <div class="stat-value" id="statActiveProjects">0</div>
+          </div>
+          <div class="stat-subtext">Across 5 lifecycle stages</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon-wrap emerald">🗳️</div>
+          <div class="stat-body">
+            <div class="stat-label">Pending Votes</div>
+            <div class="stat-value" id="statPendingVotes">0</div>
+          </div>
+          <div class="stat-subtext">Awaiting evaluation</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon-wrap purple">🎯</div>
+          <div class="stat-body">
+            <div class="stat-label">Weekly Quota</div>
+            <div class="stat-value" id="statQuotaRemaining">0 / 0</div>
+          </div>
+          <div class="stat-subtext">Submissions left this cycle</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon-wrap amber">👥</div>
+          <div class="stat-body">
+            <div class="stat-label">Team Online</div>
+            <div class="stat-value" id="statTeamOnline">1</div>
+          </div>
+          <div class="stat-subtext">Active WebSocket presence</div>
+        </div>
+
+        <div class="stat-card highlight">
+          <div class="stat-icon-wrap gold">💰</div>
+          <div class="stat-body">
+            <div class="stat-label">My Wallet Balance</div>
+            <div class="stat-value" id="statWalletBalance">₹0.00</div>
+          </div>
+          <div class="stat-subtext" id="statWalletSubtext">Available for withdrawal</div>
+        </div>
+      </section>
+
+      <!-- Center Dashboard Grid (Kanban Board + Feeds) -->
+      <div class="dashboard-grid">
+        <!-- LEFT: Active Projects Kanban Board (PRD Section 3.1) -->
+        <section class="kanban-section">
+          <div class="section-header">
+            <div class="header-titles">
+              <h2 class="section-title">Active Projects Pipeline</h2>
+              <p class="section-subtitle">Real-time multi-track parallel fanout across all 5 stages</p>
+            </div>
+            <div class="header-actions">
+              <button class="btn btn-secondary btn-sm" id="refreshKanbanBtn">🔄 Refresh Board</button>
+            </div>
+          </div>
+
+          <div class="kanban-board-container" id="kanbanBoard">
+            <!-- 5 Stages Generated Dynamically -->
+            <div class="kanban-column" data-stage="RESEARCH_DEV_PARALLEL">
+              <div class="column-header">
+                <span class="column-title">1. Research & Dev</span>
+                <span class="column-count" id="count-RESEARCH_DEV_PARALLEL">0</span>
+              </div>
+              <div class="column-body" id="col-RESEARCH_DEV_PARALLEL"></div>
+            </div>
+
+            <div class="kanban-column" data-stage="INTEGRATION">
+              <div class="column-header">
+                <span class="column-title">2. Integration</span>
+                <span class="column-count" id="count-INTEGRATION">0</span>
+              </div>
+              <div class="column-body" id="col-INTEGRATION"></div>
+            </div>
+
+            <div class="kanban-column" data-stage="TESTING">
+              <div class="column-header">
+                <span class="column-title">3. Testing & QA</span>
+                <span class="column-count" id="count-TESTING">0</span>
+              </div>
+              <div class="column-body" id="col-TESTING"></div>
+            </div>
+
+            <div class="kanban-column" data-stage="ADMIN_REVIEW">
+              <div class="column-header">
+                <span class="column-title">4. Admin Review</span>
+                <span class="column-count" id="count-ADMIN_REVIEW">0</span>
+              </div>
+              <div class="column-body" id="col-ADMIN_REVIEW"></div>
+            </div>
+
+            <div class="kanban-column" data-stage="LIVE">
+              <div class="column-header">
+                <span class="column-title">5. Live & Monetizing</span>
+                <span class="column-count" id="count-LIVE">0</span>
+              </div>
+              <div class="column-body" id="col-LIVE"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RIGHT: Side Feeds (Pending Votes + Live Notifications) -->
+        <aside class="side-feeds-section">
+          <!-- A. Pending Votes / Ideas Feed (PRD Section 3.2) -->
+          <div class="card feed-card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Pending Votes Feed</h3>
+                <p class="card-subtitle">Live green supermajority tracker</p>
+              </div>
+              <span class="badge badge-pulse" id="votesBadge">0 Awaiting</span>
+            </div>
+            <div class="card-body feed-body" id="votesFeedList">
+              <div class="empty-state">No ideas currently awaiting votes</div>
+            </div>
+          </div>
+
+          <!-- B. Real-Time Notifications Feed (PRD Section 3.3) -->
+          <div class="card feed-card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Live Notifications</h3>
+                <p class="card-subtitle">Direct push stream for tasks, votes & earnings</p>
+              </div>
+              <span class="badge" id="sideNotifCount">0 Unread</span>
+            </div>
+            <div class="card-body feed-body" id="sideNotifList">
+              <div class="empty-state">No notifications recorded</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         BOTTOM CORNERS ROW (Admin Bottom-Left & Producer Bottom-Right)
+         =================================================================== -->
+    <div class="corners-row bottom-corners">
+      
+      <!-- 2.3 ADMIN CORNER PANEL (Bottom-Left - Quick Access Version) -->
+      <section class="corner-panel admin-corner" id="adminCornerPanel" data-role="admin">
+        <div class="corner-panel-header">
+          <div class="panel-tag amber">
+            <span class="tag-icon">👑</span>
+            <span class="tag-title">ADMIN CORNER</span>
+            <span class="spatial-badge">BOTTOM-LEFT</span>
+          </div>
+          <div class="panel-header-actions">
+            <span class="badge badge-role amber">QUICK-ACCESS WORKSPACE</span>
+          </div>
+        </div>
+
+        <!-- Role Alert Banners Container -->
+        <div class="corner-banners-container" id="adminBannersList"></div>
+
+        <!-- Shared Component: Profile Summary Mini-Card (Section 7) -->
+        <div class="profile-mini-card" id="adminProfileCard">
+          <div class="profile-mini-header">
+            <div class="avatar-sm amber-glow" id="adminMiniAvatar">A</div>
+            <div class="profile-mini-meta">
+              <h4 class="profile-mini-name" id="adminMiniName">System Admin</h4>
+              <span class="badge badge-role amber">ADMINISTRATOR</span>
+            </div>
+          </div>
+          <div class="profile-mini-metrics">
+            <div class="mini-metric">
+              <span class="metric-val" id="adminMembersCount">0</span>
+              <span class="metric-lbl">Active Members</span>
+            </div>
+            <div class="mini-metric">
+              <span class="metric-val" id="adminLiveProjects">0</span>
+              <span class="metric-lbl">Projects Live</span>
+            </div>
+            <div class="mini-metric">
+              <span class="metric-val" id="adminTeamRating">5.0 ★</span>
+              <span class="metric-lbl">Team Rating</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions Toolbar -->
+        <div class="admin-quick-actions">
+          <button class="btn btn-primary btn-xs" id="btnAdminAddMember">+ Add Member</button>
+          <button class="btn btn-rose btn-xs" id="btnAdminKillswitch">Killswitch</button>
+          <button class="btn btn-green btn-xs" id="btnAdminRevenue">+ Revenue</button>
+        </div>
+
+        <!-- Pending Approvals Quick Queue -->
+        <div class="corner-approvals-queue">
+          <div class="queue-header">
+            <h4 class="queue-title">Pending Approvals</h4>
+            <span class="queue-count" id="adminPendingCount">0 pending</span>
+          </div>
+          <div class="approvals-items-list" id="adminApprovalsList">
+            <div class="loading-state">Loading pending approvals...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2.4 PRODUCER/TESTER CORNER PANEL (Bottom-Right) -->
+      <section class="corner-panel producer-corner" id="producerCornerPanel" data-role="producer">
+        <div class="corner-panel-header">
+          <div class="panel-tag purple">
+            <span class="tag-icon">🧪</span>
+            <span class="tag-title">PRODUCER / QA CORNER</span>
+            <span class="spatial-badge">BOTTOM-RIGHT</span>
+          </div>
+          <div class="panel-header-actions">
+            <span class="badge badge-role purple">TESTING QUEUE</span>
+          </div>
+        </div>
+
+        <!-- Cross-Role Real-Time Banner: "Dev Build Ready" alert -->
+        <div class="corner-banners-container" id="producerBannersList"></div>
+
+        <!-- Shared Component: Profile Summary Mini-Card (Section 7) -->
+        <div class="profile-mini-card" id="producerProfileCard">
+          <div class="profile-mini-header">
+            <div class="avatar-sm purple-glow" id="producerMiniAvatar">P</div>
+            <div class="profile-mini-meta">
+              <h4 class="profile-mini-name" id="producerMiniName">Producer</h4>
+              <span class="badge badge-role purple">PRODUCER / TESTER</span>
+            </div>
+          </div>
+          <div class="profile-mini-metrics">
+            <div class="mini-metric">
+              <span class="metric-val" id="producerTasksTested">0</span>
+              <span class="metric-lbl">Tested Tasks</span>
+            </div>
+            <div class="mini-metric">
+              <span class="metric-val" id="producerRatingAvg">5.0 ★</span>
+              <span class="metric-lbl">Avg Rating</span>
+            </div>
+            <div class="mini-metric">
+              <span class="metric-val" id="producerWallet">₹0.00</span>
+              <span class="metric-lbl">Earnings</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Testing Task Queue (TODO / Blocked / In Progress / Done) -->
+        <div class="corner-task-queue">
+          <div class="queue-header">
+            <h4 class="queue-title">My Testing Tasks</h4>
+            <span class="queue-count" id="producerTaskCount">0 active</span>
+          </div>
+          <div class="task-items-list" id="producerTasksList">
+            <div class="loading-state">Loading assigned testing tasks...</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
   </main>
 
-  <!-- Project Detail Modal -->
+  <!-- ===================================================================
+       MODALS SECTION
+       =================================================================== -->
+
+  <!-- 1. Submit Idea Modal (Researcher Corner) -->
+  <div class="modal-backdrop" id="submitIdeaModal" style="display: none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <h3 class="modal-title">Submit New Project Idea</h3>
+        <button class="modal-close-btn" id="closeSubmitIdeaModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted text-sm mb-3">Ideas require green supermajority approval before parallel fanout activates.</p>
+        <form id="submitIdeaForm">
+          <div class="form-group mb-3">
+            <label for="newIdeaTitle">Idea Title *</label>
+            <input type="text" id="newIdeaTitle" class="form-input" placeholder="e.g. Real-Time Telemetry SDK" required>
+          </div>
+          <div class="form-group mb-3">
+            <label for="newIdeaCategory">Category</label>
+            <input type="text" id="newIdeaCategory" class="form-input" placeholder="Developer Tools, AI, Fintech">
+          </div>
+          <div class="form-group mb-3">
+            <label for="newIdeaAttachment">Research Attachment URL (PDF/Doc)</label>
+            <input type="url" id="newIdeaAttachment" class="form-input" placeholder="https://storage.mahitechgroup.com/docs/spec.pdf">
+          </div>
+          <div class="form-group mb-4">
+            <label for="newIdeaDesc">Comprehensive Description *</label>
+            <textarea id="newIdeaDesc" class="form-input" rows="3" placeholder="Explain the problem, technical architecture, and value proposition..." required></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="btnCancelSubmitIdea">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btnSaveSubmitIdea">Submit for Team Vote</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Upload Research Modal (Researcher Corner) -->
+  <div class="modal-backdrop" id="uploadResearchModal" style="display: none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <h3 class="modal-title">Upload Research Documentation</h3>
+        <button class="modal-close-btn" id="closeUploadResearchModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted text-sm mb-3">Completing research unblocks dependent Developer tasks and triggers real-time notification.</p>
+        <form id="uploadResearchForm">
+          <input type="hidden" id="researchTaskId">
+          <div class="form-group mb-3">
+            <label>Task</label>
+            <div class="form-read-only" id="researchTaskNameDisplay">Task Name</div>
+          </div>
+          <div class="form-group mb-3">
+            <label for="researchFileUrl">Research Document / Spec URL (PDF/Doc) *</label>
+            <input type="url" id="researchFileUrl" class="form-input" placeholder="https://storage.mahitechgroup.com/research/arch-spec.pdf" required>
+          </div>
+          <div class="form-group mb-4">
+            <label for="researchNotes">Research Findings & Implementation Notes</label>
+            <textarea id="researchNotes" class="form-input" rows="3" placeholder="Key architecture decisions, API specs, schemas..."></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="btnCancelUploadResearch">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btnConfirmUploadResearch">Upload & Push to Dev (Mark Done)</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Submit Test Report Modal (Producer Corner) -->
+  <div class="modal-backdrop" id="testReportModal" style="display: none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <h3 class="modal-title">Submit QA Test Report</h3>
+        <button class="modal-close-btn" id="closeTestReportModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted text-sm mb-3">Passing QA completes testing and advances project to Admin Final Review.</p>
+        <form id="testReportForm">
+          <input type="hidden" id="qaTaskId">
+          <div class="form-group mb-3">
+            <label>Testing Task</label>
+            <div class="form-read-only" id="qaTaskNameDisplay">Task Name</div>
+          </div>
+          <div class="form-group mb-3">
+            <label>Test Result Evaluation *</label>
+            <div class="radio-group-horizontal">
+              <label class="radio-label">
+                <input type="radio" name="qaVerdict" value="PASS" checked>
+                <span class="radio-text green">✅ All Tests Passed (Ready for Review)</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group mb-3">
+            <label for="qaReportUrl">QA Test Run / Coverage Report URL</label>
+            <input type="url" id="qaReportUrl" class="form-input" placeholder="https://reports.mahitechgroup.com/qa/run-1092.html">
+          </div>
+          <div class="form-group mb-4">
+            <label for="qaNotes">Test Checklist & Notes *</label>
+            <textarea id="qaNotes" class="form-input" rows="3" placeholder="Integration test suites: 100% pass. Performance under load: 12ms avg latency..." required></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="btnCancelTestReport">Cancel</button>
+            <button type="submit" class="btn btn-green" id="btnConfirmTestReport">Submit QA & Advance Project</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Admin Add Member Modal -->
+  <div class="modal-backdrop" id="adminAddMemberModal" style="display: none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <h3 class="modal-title">Add Workspace Member</h3>
+        <button class="modal-close-btn" id="closeAddMemberModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="adminAddMemberForm">
+          <div class="form-group mb-3">
+            <label for="newMemberName">Full Name *</label>
+            <input type="text" id="newMemberName" class="form-input" placeholder="Jane Doe" required>
+          </div>
+          <div class="form-group mb-3">
+            <label for="newMemberEmail">Email Address *</label>
+            <input type="email" id="newMemberEmail" class="form-input" placeholder="jane@mahitechgroup.com" required>
+          </div>
+          <div class="form-group mb-3">
+            <label for="newMemberRole">Primary Role *</label>
+            <select id="newMemberRole" class="form-input" required>
+              <option value="developer">Developer</option>
+              <option value="researcher">Researcher</option>
+              <option value="producer">Producer</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="form-group mb-3">
+            <label for="newMemberSubRole">Developer Sub-Role (Optional)</label>
+            <select id="newMemberSubRole" class="form-input">
+              <option value="">None / Not Applicable</option>
+              <option value="frontend">Frontend Specialist</option>
+              <option value="backend">Backend Specialist</option>
+            </select>
+          </div>
+          <div class="form-group mb-4">
+            <label for="newMemberPassword">Initial Temporary Password</label>
+            <input type="password" id="newMemberPassword" class="form-input" value="WelcomeMTG@2026">
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="btnCancelAddMember">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btnConfirmAddMember">Create Member</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Admin Killswitch Offboard Modal -->
+  <div class="modal-backdrop" id="adminOffboardModal" style="display: none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <h3 class="modal-title text-rose">⚠️ Member Offboarding Killswitch</h3>
+        <button class="modal-close-btn" id="closeOffboardModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-secondary mb-3">Executes 7-step atomic offboarding: revokes sessions, freezes wallet, reassigns tasks, locks repo access, and preserves historical IP attribution.</p>
+        <form id="adminOffboardForm">
+          <div class="form-group mb-3">
+            <label for="offboardMemberSelect">Select Member *</label>
+            <select id="offboardMemberSelect" class="form-input" required></select>
+          </div>
+          <div class="form-group mb-4">
+            <label for="offboardReason">Documented Reason *</label>
+            <textarea id="offboardReason" class="form-input" rows="2" placeholder="Contract expiration / IP governance policy compliance..." required></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="btnCancelOffboard">Cancel</button>
+            <button type="submit" class="btn btn-rose" id="btnConfirmOffboard">Execute Killswitch</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Admin Record Revenue Modal -->
+  <div class="modal-backdrop" id="adminRevenueModal" style="display: none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <h3 class="modal-title">Record Project Revenue</h3>
+        <button class="modal-close-btn" id="closeRevenueModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-secondary mb-3">Splits gross revenue across active contributors per 50% time-boxed rule and immutable append-only ledger.</p>
+        <form id="adminRevenueForm">
+          <div class="form-group mb-3">
+            <label for="revProjectSelect">Select Live Project *</label>
+            <select id="revProjectSelect" class="form-input" required></select>
+          </div>
+          <div class="form-group mb-3">
+            <label for="revAmount">Gross Revenue Amount (₹) *</label>
+            <input type="number" id="revAmount" class="form-input" min="1" step="0.01" placeholder="10000.00" required>
+          </div>
+          <div class="form-group mb-4">
+            <label for="revSource">Revenue Source *</label>
+            <input type="text" id="revSource" class="form-input" placeholder="Enterprise License / SaaS Subscription" required>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="btnCancelRevenue">Cancel</button>
+            <button type="submit" class="btn btn-green" id="btnConfirmRevenue">Distribute & Record</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Project Detail Modal (Center Dashboard Step 07) -->
   <div class="modal-backdrop" id="projectModalBackdrop" style="display: none;">
     <div class="modal-dialog">
       <div class="modal-header">
@@ -270,7 +756,7 @@
     </div>
   </div>
 
-  <!-- Voting Modal -->
+  <!-- 8. Voting Modal (Center Dashboard Step 07) -->
   <div class="modal-backdrop" id="voteModalBackdrop" style="display: none;">
     <div class="modal-dialog modal-sm">
       <div class="modal-header">

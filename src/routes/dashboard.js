@@ -115,4 +115,123 @@ router.post('/notifications/send', authenticate, (req, res) => {
   });
 });
 
+/**
+ * 9. GET /api/banners/active (Authenticated)
+ * Cross-role notification banners for the active role per PRD Section 8
+ */
+router.get('/banners/active', authenticate, (req, res) => {
+  const user = req.user;
+  const banners = [];
+
+  if (user.role === 'developer') {
+    // Developer: "Research Ready" banner when research task is DONE
+    const readyDevTasks = queryAll(`
+      SELECT pt.id as task_id, pt.task_name, p.id as project_id, p.title as project_title,
+             (SELECT url FROM assets WHERE project_id = p.id AND type = 'pdf_doc' ORDER BY created_at DESC LIMIT 1) as attachment_url
+      FROM project_tasks pt
+      JOIN projects p ON pt.project_id = p.id
+      WHERE pt.assigned_to = ?
+        AND pt.task_type IN ('backend', 'frontend')
+        AND pt.status IN ('TODO', 'IN_PROGRESS')
+        AND EXISTS (
+          SELECT 1 FROM project_tasks r
+          WHERE r.project_id = p.id AND r.task_type = 'research' AND r.status = 'DONE'
+        )
+    `, [user.id]);
+
+    for (const t of readyDevTasks) {
+      banners.push({
+        id: `banner_research_${t.project_id}_${t.task_id}`,
+        type: 'RESEARCH_READY',
+        title: 'Research Ready',
+        message: `Research for "${t.project_title}" is ready — view research attachment`,
+        projectId: t.project_id,
+        taskId: t.task_id,
+        attachmentUrl: t.attachment_url || '#'
+      });
+    }
+  }
+
+  if (user.role === 'producer') {
+    // Producer: "Dev Build Ready" banner when development is DONE and QA is TODO
+    const readyQATasks = queryAll(`
+      SELECT pt.id as task_id, pt.task_name, p.id as project_id, p.title as project_title
+      FROM project_tasks pt
+      JOIN projects p ON pt.project_id = p.id
+      WHERE pt.assigned_to = ?
+        AND pt.task_type = 'testing'
+        AND pt.status IN ('TODO', 'IN_PROGRESS')
+    `, [user.id]);
+
+    for (const t of readyQATasks) {
+      banners.push({
+        id: `banner_build_${t.project_id}_${t.task_id}`,
+        type: 'BUILD_READY',
+        title: 'Dev Build Ready',
+        message: `"${t.project_title}" build is ready for QA verification & testing`,
+        projectId: t.project_id,
+        taskId: t.task_id
+      });
+    }
+  }
+
+  if (user.role === 'admin') {
+    // Admin: "Final Review Pending" banner for projects in ADMIN_REVIEW
+    const reviewProjects = queryAll(`
+      SELECT p.id as project_id, p.title as project_title
+      FROM projects p
+      WHERE p.current_stage = 'ADMIN_REVIEW' AND p.status = 'ACTIVE'
+    `);
+
+    for (const p of reviewProjects) {
+      banners.push({
+        id: `banner_review_${p.project_id}`,
+        type: 'ADMIN_REVIEW_PENDING',
+        title: 'Final Review Pending',
+        message: `"${p.project_title}" passed all QA testing and is awaiting Final Approval`,
+        projectId: p.project_id
+      });
+    }
+
+    const pendingWithdrawalsCount = queryOne("SELECT COUNT(*) as count FROM withdrawals WHERE status = 'PENDING'")?.count || 0;
+    if (pendingWithdrawalsCount > 0) {
+      banners.push({
+        id: 'banner_withdrawals_pending',
+        type: 'WITHDRAWALS_PENDING',
+        title: 'Pending Payouts',
+        message: `${pendingWithdrawalsCount} withdrawal request(s) awaiting your manual disbursement review`,
+        count: pendingWithdrawalsCount
+      });
+    }
+  }
+
+  if (user.role === 'researcher') {
+    // Researcher: "Idea Approved" updates
+    const approvedIdeas = queryAll(`
+      SELECT i.id, i.title, p.id as project_id
+      FROM ideas i
+      LEFT JOIN projects p ON i.id = p.idea_id
+      WHERE i.owner_id = ? AND i.status = 'APPROVED'
+      ORDER BY i.updated_at DESC LIMIT 3
+    `, [user.id]);
+
+    for (const idea of approvedIdeas) {
+      banners.push({
+        id: `banner_idea_approved_${idea.id}`,
+        type: 'IDEA_APPROVED',
+        title: 'Idea Approved by Supermajority',
+        message: `"${idea.title}" was approved by team vote and has entered parallel fan-out!`,
+        ideaId: idea.id,
+        projectId: idea.project_id
+      });
+    }
+  }
+
+  return res.status(200).json({
+    count: banners.length,
+    banners
+  });
+});
+
 export default router;
+

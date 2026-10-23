@@ -49,15 +49,37 @@ router.post('/auto-create', authenticate, (req, res) => {
  * Must be mounted before /:id so 'my-tasks' isn't treated as an ID
  */
 router.get('/my-tasks', authenticate, (req, res) => {
-  const tasks = queryAll(`
+  const { role, task_type, status } = req.query;
+
+  let query = `
     SELECT pt.*, p.title as project_title, p.current_stage as project_stage,
            dep.task_name as depends_on_task_name, dep.status as depends_on_task_status
     FROM project_tasks pt
     JOIN projects p ON pt.project_id = p.id
     LEFT JOIN project_tasks dep ON pt.depends_on_task_id = dep.id
     WHERE pt.assigned_to = ?
-    ORDER BY pt.created_at ASC
-  `, [req.user.id]);
+  `;
+  const params = [req.user.id];
+
+  if (task_type) {
+    query += ' AND pt.task_type = ?';
+    params.push(task_type);
+  } else if (role === 'researcher') {
+    query += " AND pt.task_type = 'research'";
+  } else if (role === 'developer') {
+    query += " AND pt.task_type IN ('backend', 'frontend')";
+  } else if (role === 'producer') {
+    query += " AND pt.task_type = 'testing'";
+  }
+
+  if (status) {
+    query += ' AND pt.status = ?';
+    params.push(status);
+  }
+
+  query += ' ORDER BY pt.created_at ASC';
+
+  const tasks = queryAll(query, params);
 
   return res.status(200).json({
     userId: req.user.id,

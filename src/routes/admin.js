@@ -351,6 +351,20 @@ router.patch('/projects/:id/members/:memberId/weight', authenticate, requirePerm
     return res.status(404).json({ error: 'Active project member not found' });
   }
 
+  // Minor follow-up from Step 06: Validate that total weights cannot exceed 100%
+  const otherMembers = queryAll(
+    'SELECT SUM(contribution_weight) as total FROM project_members WHERE project_id = ? AND id != ? AND removed_at IS NULL',
+    [projectId, memberId]
+  );
+  const otherTotal = otherMembers[0]?.total ? parseFloat(otherMembers[0].total) : 0;
+  const newTotal = Number((otherTotal + numWeight).toFixed(2));
+
+  if (newTotal > 100.0) {
+    return res.status(400).json({
+      error: `Total contribution weights across active project members cannot exceed 100.00%. Current sum with this update would be ${newTotal.toFixed(2)}% (other active members sum to ${otherTotal.toFixed(2)}%).`
+    });
+  }
+
   execute(
     'UPDATE project_members SET contribution_weight = ? WHERE id = ?',
     [numWeight, memberId]
@@ -591,8 +605,8 @@ router.get('/withdrawals/pending', authenticate, requirePermission('payout.appro
   });
 });
 
-// 23. PATCH /api/admin/withdrawals/:id/approve (Admin only - RBAC: payout.approve)
-router.patch('/withdrawals/:id/approve', authenticate, requirePermission('payout.approve'), (req, res) => {
+// 23. POST / PATCH /api/admin/withdrawals/:id/approve (Admin only - RBAC: payout.approve)
+const handleApproveWithdrawal = (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
   const { id } = req.params;
 
@@ -607,10 +621,12 @@ router.patch('/withdrawals/:id/approve', authenticate, requirePermission('payout
   }
 
   return res.status(200).json(result);
-});
+};
+router.patch('/withdrawals/:id/approve', authenticate, requirePermission('payout.approve'), handleApproveWithdrawal);
+router.post('/withdrawals/:id/approve', authenticate, requirePermission('payout.approve'), handleApproveWithdrawal);
 
-// 24. PATCH /api/admin/withdrawals/:id/reject (Admin only - RBAC: payout.approve)
-router.patch('/withdrawals/:id/reject', authenticate, requirePermission('payout.approve'), (req, res) => {
+// 24. POST / PATCH /api/admin/withdrawals/:id/reject (Admin only - RBAC: payout.approve)
+const handleRejectWithdrawal = (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
   const { id } = req.params;
   const { rejection_reason } = req.body || {};
@@ -627,6 +643,8 @@ router.patch('/withdrawals/:id/reject', authenticate, requirePermission('payout.
   }
 
   return res.status(200).json(result);
-});
+};
+router.patch('/withdrawals/:id/reject', authenticate, requirePermission('payout.approve'), handleRejectWithdrawal);
+router.post('/withdrawals/:id/reject', authenticate, requirePermission('payout.approve'), handleRejectWithdrawal);
 
 export default router;

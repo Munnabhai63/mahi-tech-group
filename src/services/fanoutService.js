@@ -405,6 +405,12 @@ export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, i
 
   const updatedTask = queryOne('SELECT * FROM project_tasks WHERE id = ?', [taskId]);
 
+  broadcastEvent('org:global', 'task.updated', {
+    task: updatedTask,
+    unblockedTasks,
+    newStage
+  });
+
   return {
     success: true,
     task: updatedTask,

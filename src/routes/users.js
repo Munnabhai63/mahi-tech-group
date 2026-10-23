@@ -106,4 +106,56 @@ router.get('/me/earnings', authenticate, (req, res) => {
   return res.status(200).json(result);
 });
 
+// GET /api/users/profile-mini (Current user profile summary mini-card data)
+router.get('/profile-mini', authenticate, (req, res) => {
+  return handleProfileMini(req.user.id, res);
+});
+
+// GET /api/users/:id/profile-mini (Profile summary mini-card data by ID)
+router.get('/:id/profile-mini', authenticate, (req, res) => {
+  return handleProfileMini(req.params.id, res);
+});
+
+function handleProfileMini(userId, res) {
+  const user = queryOne(`
+    SELECT id, name, email, role, sub_role, status, rating_avg,
+           wallet_balance, wallet_frozen, profile_photo_url
+    FROM users WHERE id = ?
+  `, [userId]);
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const ideasCount = queryOne('SELECT COUNT(*) as count FROM ideas WHERE owner_id = ?', [userId])?.count || 0;
+  const projectsCount = queryOne('SELECT COUNT(DISTINCT project_id) as count FROM project_members WHERE user_id = ? AND removed_at IS NULL', [userId])?.count || 0;
+  const tasksCompleted = queryOne("SELECT COUNT(*) as count FROM project_tasks WHERE assigned_to = ? AND status = 'DONE'", [userId])?.count || 0;
+
+  let quotaRemaining = 0;
+  let quotaWeeklyLimit = 3;
+  try {
+    const q = getUserQuotaStatus(userId);
+    quotaRemaining = q.remaining;
+    quotaWeeklyLimit = q.weeklyLimit;
+  } catch (e) {}
+
+  return res.status(200).json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    subRole: user.sub_role,
+    avatar: user.name.charAt(0).toUpperCase(),
+    profilePhotoUrl: user.profile_photo_url,
+    ratingAverage: Number(user.rating_avg || 5.0).toFixed(1),
+    totalIdeasSubmitted: Number(ideasCount),
+    totalProjectsBuilt: Number(projectsCount),
+    totalTasksCompleted: Number(tasksCompleted),
+    walletBalance: Number(user.wallet_balance || 0).toFixed(2),
+    isWalletFrozen: user.wallet_frozen === 1,
+    quotaRemaining,
+    quotaWeeklyLimit
+  });
+}
+
 export default router;
