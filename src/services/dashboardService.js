@@ -78,9 +78,9 @@ export function getKanbanProjects(user) {
   const isAdmin = user.role === 'admin';
 
   let projectsQuery = `
-    SELECT p.*, u.name as owner_name, u.email as owner_email
+    SELECT p.*, COALESCE(u.name, 'Unknown Owner') as owner_name, COALESCE(u.email, '') as owner_email
     FROM projects p
-    JOIN users u ON p.owner_id = u.id
+    LEFT JOIN users u ON p.owner_id = u.id
     WHERE p.status IN ('ACTIVE', 'LIVE')
   `;
   const params = [];

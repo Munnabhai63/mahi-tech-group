@@ -320,18 +320,53 @@ router.get('/projects/all', authenticate, (req, res) => {
   }
 
   const projects = queryAll(`
-    SELECT p.*, u.name as owner_name, u.email as owner_email,
+    SELECT p.*, COALESCE(u.name, 'Unknown Owner') as owner_name, COALESCE(u.email, '') as owner_email,
            (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.removed_at IS NULL) as member_count,
            (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id) as total_tasks,
            (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id AND pt.status = 'DONE') as done_tasks
     FROM projects p
-    JOIN users u ON p.owner_id = u.id
+    LEFT JOIN users u ON p.owner_id = u.id
     ORDER BY p.created_at DESC
   `);
 
   return res.status(200).json({
     count: projects.length,
     projects
+  });
+});
+
+// 11b. PATCH /api/admin/projects/:id/members/:memberId/weight (Admin only - RBAC: project.launch_approve)
+router.patch('/projects/:id/members/:memberId/weight', authenticate, requirePermission('project.launch_approve'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id: projectId, memberId } = req.params;
+  const { contribution_weight } = req.body || {};
+
+  const numWeight = parseFloat(contribution_weight);
+  if (isNaN(numWeight) || numWeight < 0 || numWeight > 100) {
+    return res.status(400).json({ error: 'contribution_weight must be a valid number between 0 and 100' });
+  }
+
+  const member = queryOne('SELECT * FROM project_members WHERE id = ? AND project_id = ? AND removed_at IS NULL', [memberId, projectId]);
+  if (!member) {
+    return res.status(404).json({ error: 'Active project member not found' });
+  }
+
+  execute(
+    'UPDATE project_members SET contribution_weight = ? WHERE id = ?',
+    [numWeight, memberId]
+  );
+
+  logAccess({
+    userId: req.user.id,
+    action: 'project_member_weight_updated',
+    resource: `/api/admin/projects/${projectId}/members/${memberId}/weight (new_weight: ${numWeight}%)`,
+    ipAddress
+  });
+
+  const updated = queryOne('SELECT * FROM project_members WHERE id = ?', [memberId]);
+  return res.status(200).json({
+    message: `Contribution weight updated to ${numWeight}% successfully`,
+    member: updated
   });
 });
 
