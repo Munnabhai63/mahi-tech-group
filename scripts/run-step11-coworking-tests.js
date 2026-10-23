@@ -570,13 +570,296 @@ async function runStep11Tests() {
     }
     console.log('   ✓ TEST 11 PASSED: Step 05 killswitch instantly terminates active canvas WebSockets and blocks re-entry\n');
 
+    // -------------------------------------------------------------------------
+    // TEST 12: Reconnection Full-State Resync Test
+    // -------------------------------------------------------------------------
+    console.log('[TEST 12] Reconnection Full-State Resync Verification...');
+    // Ensure Devon and Diya are members of liveProject and join room
+    execute(`
+      INSERT OR IGNORE INTO project_members (id, project_id, user_id, role_in_project, task_status, contribution_weight)
+      VALUES (?, ?, ?, 'backend_dev', 'ASSIGNED', 10.0)
+    `, [crypto.randomUUID(), liveProject.id, devUser.id]);
+    execute(`
+      INSERT OR IGNORE INTO project_members (id, project_id, user_id, role_in_project, task_status, contribution_weight)
+      VALUES (?, ?, ?, 'designer', 'ASSIGNED', 10.0)
+    `, [crypto.randomUUID(), liveProject.id, desUser.id]);
+
+    wsDev.send(JSON.stringify({ action: 'canvas:join', projectId: liveProject.id }));
+    await waitForWsMessage(wsDev, 'canvas:init');
+    wsRes.send(JSON.stringify({ action: 'canvas:join', projectId: liveProject.id }));
+    await waitForWsMessage(wsRes, 'canvas:init');
+    wsDes.send(JSON.stringify({ action: 'canvas:join', projectId: liveProject.id }));
+    await waitForWsMessage(wsDes, 'canvas:init');
+    console.log('   ✓ Devon, Elena, and Diya joined active canvas session');
+
+    // Elena adds a sticky note and edits it to create history in liveProject
+    const stickyResync = {
+      id: 'resync_sticky_alpha',
+      type: 'sticky',
+      color: '#fef08a',
+      content: 'Original spec state before drop',
+      x: 120,
+      y: 150
+    };
+    wsRes.send(JSON.stringify({
+      action: 'canvas:object_update',
+      projectId: liveProject.id,
+      object: stickyResync
+    }));
+    await waitForWsMessage(wsDev, 'canvas:object_update');
+
+    // Diya/Maya edits it to produce version 2 + editHistory
+    wsDes.send(JSON.stringify({
+      action: 'canvas:object_update',
+      projectId: liveProject.id,
+      object: { ...stickyResync, content: 'Updated spec state before drop' }
+    }));
+    await waitForWsMessage(wsDev, 'canvas:object_update');
+
+    // Diya creates and deletes an item to produce a tombstone
+    const doomedItem = { id: 'doomed_elem_1', type: 'card', title: 'Temporary Item', x: 0, y: 0 };
+    wsDes.send(JSON.stringify({
+      action: 'canvas:object_update',
+      projectId: liveProject.id,
+      object: doomedItem
+    }));
+    await waitForWsMessage(wsDev, 'canvas:object_update');
+
+    wsDes.send(JSON.stringify({
+      action: 'canvas:object_delete',
+      projectId: liveProject.id,
+      objectId: 'doomed_elem_1'
+    }));
+    await waitForWsMessage(wsDev, 'canvas:object_delete');
+
+    // Simulate abrupt network drop for Devon without clean exit
+    console.log('   -> Simulating abrupt network severance for Devon (ws.terminate)...');
+    wsDev.terminate();
+    await new Promise(r => setTimeout(r, 150));
+
+    // Devon reconnects with fresh WebSocket
+    console.log('   -> Devon reconnects to canvas room with new WebSocket...');
+    const wsDevReconnected = await connectWs(devToken);
+    const reconnectInitPromise = waitForWsMessage(wsDevReconnected, 'canvas:init');
+    wsDevReconnected.send(JSON.stringify({
+      action: 'canvas:join',
+      projectId: liveProject.id
+    }));
+    const reconnectInit = await reconnectInitPromise;
+
+    console.log('   ✓ Reconnected client received canvas:init state');
+    const rState = reconnectInit.data.canvasState;
+    const syncedSticky = rState.objects['resync_sticky_alpha'];
+    const syncedTombstone = rState.tombstones['doomed_elem_1'];
+
+    if (!syncedSticky || syncedSticky.content !== 'Updated spec state before drop') {
+      throw new Error('Reconnection failed to deliver updated active object state');
+    }
+    if (syncedSticky.version !== 2 || !syncedSticky.editHistory || syncedSticky.editHistory.length < 2) {
+      throw new Error('Reconnection did not preserve full edit history');
+    }
+    if (!syncedTombstone || !syncedTombstone.isDeleted) {
+      throw new Error('Reconnection did not preserve tombstone records');
+    }
+    console.log(`     * Active object synced: id=${syncedSticky.id}, version=${syncedSticky.version}, editHistory count=${syncedSticky.editHistory.length}`);
+    console.log(`     * Tombstone synced: id=${syncedTombstone.id}, deletedBy=${syncedTombstone.deletedBy.name}`);
+    console.log('   ✓ TEST 12 PASSED: Reconnection delivers full-state resync including editHistory and tombstones\n');
+
+    // -------------------------------------------------------------------------
+    // TEST 13: Room Isolation Test (Project A vs Project B)
+    // -------------------------------------------------------------------------
+    console.log('[TEST 13] Room Isolation Between Concurrent Projects...');
+    // Create Project B
+    const projBRes = await req('POST', '/api/ideas/draft', resToken, {
+      title: 'Project B Isolated Domain',
+      description: 'Idea for testing concurrent room isolation'
+    });
+    await req('POST', `/api/ideas/${projBRes.data.idea.id}/submit`, resToken);
+    await req('PATCH', `/api/admin/ideas/${projBRes.data.idea.id}/override`, adminToken, {
+      decision: 'APPROVED',
+      reason: 'Approved for room isolation test'
+    });
+    const projectB = queryOne('SELECT id FROM projects WHERE idea_id = ?', [projBRes.data.idea.id]);
+    console.log(`   ✓ Project B created: id=${projectB.id}`);
+
+    // Elena joins Project B canvas on a dedicated WebSocket
+    const wsProjectBClient = await connectWs(resToken);
+    wsProjectBClient.send(JSON.stringify({ action: 'canvas:join', projectId: projectB.id }));
+    await waitForWsMessage(wsProjectBClient, 'canvas:init');
+    console.log('   ✓ Dedicated client joined Project B canvas room');
+
+    // Attach spy on Project B client to listen for any leaked packets from Project A (liveProject)
+    let leakedPacketsCount = 0;
+    const packetSpy = (raw) => {
+      try {
+        const parsed = JSON.parse(raw.toString());
+        if (parsed.channel === `canvas:${liveProject.id}` || parsed.data?.projectId === liveProject.id) {
+          leakedPacketsCount++;
+        }
+      } catch (e) {}
+    };
+    wsProjectBClient.on('message', packetSpy);
+
+    // Broadcast heavy traffic on Project A (liveProject)
+    console.log('   -> Broadcasting cursor movements and object updates on Project A...');
+    wsDevReconnected.send(JSON.stringify({
+      action: 'canvas:cursor_move',
+      projectId: liveProject.id,
+      x: 777,
+      y: 888
+    }));
+    wsDevReconnected.send(JSON.stringify({
+      action: 'canvas:object_update',
+      projectId: liveProject.id,
+      object: { id: 'private_project_a_note', type: 'sticky', content: 'Top Secret Project A data', x: 10, y: 10 }
+    }));
+
+    await new Promise(r => setTimeout(r, 250));
+    wsProjectBClient.off('message', packetSpy);
+
+    console.log(`   -> Project B received ${leakedPacketsCount} packets from Project A (Expected exactly 0)`);
+    if (leakedPacketsCount !== 0) {
+      throw new Error(`Room isolation violated: Project B received ${leakedPacketsCount} messages from Project A`);
+    }
+    console.log('   ✓ TEST 13 PASSED: Cross-room communication strictly isolated; zero leakage\n');
+
+    // -------------------------------------------------------------------------
+    // TEST 14: Capacity Limit Enforcement (500 Objects Cap + 200 Tombstones FIFO)
+    // -------------------------------------------------------------------------
+    console.log('[TEST 14] Capacity Limit Enforcement & Tombstones FIFO Eviction...');
+    const roomB = queryOne('SELECT id FROM coworking_rooms WHERE project_id = ?', [projectB.id]);
+    
+    // Test 500 active objects cap
+    console.log('   -> Populating canvas room to exact capacity of 500 objects...');
+    const testState = {
+      objects: {},
+      tombstones: {},
+      metadata: { version: 1, archived: false }
+    };
+    for (let i = 1; i <= 500; i++) {
+      testState.objects[`bulk_obj_${i}`] = {
+        id: `bulk_obj_${i}`,
+        type: 'shape',
+        x: i,
+        y: i,
+        version: 1,
+        createdBy: { userId: resUser.id, name: resUser.name, role: resUser.role, timestamp: new Date().toISOString() },
+        lastModifiedBy: { userId: resUser.id, name: resUser.name, role: resUser.role, timestamp: new Date().toISOString() }
+      };
+    }
+    // Save 500 items into room
+    const { saveCanvasStateSync, updateCanvasElement, deleteCanvasElement } = await import('../src/services/coworkingService.js');
+    saveCanvasStateSync(roomB.id, testState);
+
+    // Attempt to add 501st object
+    console.log('   -> Attempting to add 501st object beyond capacity cap...');
+    const overflowResult = updateCanvasElement(roomB.id, {
+      id: 'bulk_obj_501',
+      type: 'sticky',
+      content: 'This should overflow'
+    }, resUser);
+
+    console.log(`   -> 501st object update response: success=${overflowResult.success}, error="${overflowResult.error}"`);
+    if (overflowResult.success || !overflowResult.error.includes('maximum 500 active objects')) {
+      throw new Error('Failed to reject 501st object beyond capacity cap');
+    }
+    console.log('   ✓ 500 active object cap strictly enforced');
+
+    // Test 200 Tombstones Cap with FIFO Eviction
+    console.log('   -> Populating room with exactly 200 tombstones...');
+    testState.objects = {};
+    for (let i = 1; i <= 200; i++) {
+      testState.tombstones[`tomb_${i}`] = {
+        id: `tomb_${i}`,
+        isDeleted: true,
+        deletedBy: { userId: resUser.id, name: resUser.name, role: resUser.role, timestamp: new Date().toISOString() }
+      };
+    }
+    testState.objects['victim_obj_201'] = {
+      id: 'victim_obj_201',
+      type: 'sticky',
+      content: 'Item to be deleted as 201st tombstone',
+      x: 0,
+      y: 0
+    };
+    saveCanvasStateSync(roomB.id, testState);
+
+    // Delete 201st object -> Should evict tomb_1 (FIFO) and keep exactly 200 tombstones
+    console.log('   -> Deleting 201st object to trigger FIFO tombstone eviction...');
+    const delete201Result = deleteCanvasElement(roomB.id, 'victim_obj_201', resUser);
+    const updatedRoomBState = JSON.parse(queryOne('SELECT canvas_state_json FROM coworking_rooms WHERE id = ?', [roomB.id]).canvas_state_json);
+    const tombstoneKeys = Object.keys(updatedRoomBState.tombstones);
+
+    console.log(`   ✓ Total tombstones count in SQLite: ${tombstoneKeys.length} (Expected exactly 200)`);
+    console.log(`   ✓ Oldest tombstone 'tomb_1' exists: ${updatedRoomBState.tombstones['tomb_1'] !== undefined} (Expected false - evicted)`);
+    console.log(`   ✓ Newest tombstone 'victim_obj_201' exists: ${updatedRoomBState.tombstones['victim_obj_201'] !== undefined} (Expected true)`);
+
+    if (tombstoneKeys.length !== 200) {
+      throw new Error(`Expected exactly 200 tombstones, got ${tombstoneKeys.length}`);
+    }
+    if (updatedRoomBState.tombstones['tomb_1'] !== undefined) {
+      throw new Error('Oldest tombstone was NOT evicted via FIFO');
+    }
+    if (!updatedRoomBState.tombstones['victim_obj_201']) {
+      throw new Error('Newest tombstone was not preserved');
+    }
+    console.log('   ✓ TEST 14 PASSED: Capacity limits enforced (500 objects cap + 200 tombstones FIFO eviction)\n');
+
+    // -------------------------------------------------------------------------
+    // TEST 15: Immediate Persist on Last-Peer-Exit (<500ms Check)
+    // -------------------------------------------------------------------------
+    console.log('[TEST 15] Immediate Persist on Last-Peer-Exit (<500ms Timing Verification)...');
+    // Project B currently has 1 active participant (wsProjectBClient)
+    // Send a final modification
+    const finalNote = {
+      id: 'final_persist_note',
+      type: 'sticky',
+      content: 'Final note before last peer disconnects',
+      x: 50,
+      y: 50
+    };
+    wsProjectBClient.send(JSON.stringify({
+      action: 'canvas:object_update',
+      projectId: projectB.id,
+      object: finalNote
+    }));
+    await waitForWsMessage(wsProjectBClient, 'canvas:object_update');
+
+    // Disconnect the last peer
+    const exitStartTime = Date.now();
+    wsProjectBClient.send(JSON.stringify({
+      action: 'canvas:leave',
+      projectId: projectB.id
+    }));
+    wsProjectBClient.close();
+
+    // Query SQLite immediately (within 60ms, well below 500ms ceiling)
+    await new Promise(r => setTimeout(r, 60));
+    const elapsedMs = Date.now() - exitStartTime;
+    
+    const dbSnapshotRow = queryOne('SELECT canvas_state_json FROM coworking_rooms WHERE id = ?', [roomB.id]);
+    const persistedState = JSON.parse(dbSnapshotRow.canvas_state_json);
+    const activeParticipantsRemaining = queryAll('SELECT id FROM room_participants WHERE room_id = ? AND left_at IS NULL', [roomB.id]);
+
+    console.log(`   -> SQLite query executed in ${elapsedMs}ms after last peer exit (<500ms required)`);
+    console.log(`   ✓ Persisted object found in SQLite: id=${persistedState.objects['final_persist_note']?.id}`);
+    console.log(`   ✓ Active participants remaining: ${activeParticipantsRemaining.length} (Expected 0)`);
+
+    if (!persistedState.objects['final_persist_note']) {
+      throw new Error('Final canvas state was not immediately persisted on last peer exit');
+    }
+    if (activeParticipantsRemaining.length !== 0) {
+      throw new Error('Active participants count should be 0 after last peer exit');
+    }
+    console.log('   ✓ TEST 15 PASSED: Snapshot immediately persisted to SQLite upon last-peer exit\n');
+
     // Close connections
-    wsDev.close();
+    wsDevReconnected.close();
     wsRes.close();
     wsDes.close();
 
     console.log('===================================================================');
-    console.log('   ALL 11 CHECKS OF STEP 11 (CO-WORKING CANVAS) FULLY VERIFIED & PASSED');
+    console.log('   ALL 15 CHECKS OF STEP 11 (CO-WORKING CANVAS) FULLY VERIFIED & PASSED');
     console.log('===================================================================\n');
 
   } finally {
