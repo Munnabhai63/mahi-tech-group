@@ -701,6 +701,360 @@ async function runStep14Layer1Tests() {
     }
     assert(npmTestClean, 'npm test (13/13 suites) executed and verified zero regression');
 
+    // =============================================================
+    // TEST 21: DISPUTE CREATION & DSP-0001 NUMBERING
+    // =============================================================
+    console.log('\n--- TEST 21: Dispute Creation & DSP-0001 Numbering ---');
+
+    // Clean dispute ledger before starting Layer 4 test sequence to guarantee DSP-0001 baseline
+    execute('PRAGMA foreign_keys = OFF');
+    execute('DROP TRIGGER IF EXISTS prevent_dispute_signature_delete');
+    execute('DROP TRIGGER IF EXISTS prevent_dispute_signature_update');
+    execute('DROP TRIGGER IF EXISTS prevent_waiver_signature_delete');
+    execute('DROP TRIGGER IF EXISTS prevent_waiver_signature_update');
+    execute('DELETE FROM dispute_signatures');
+    execute('DELETE FROM dispute_agreements');
+    execute('DELETE FROM dispute_parties');
+    execute('DELETE FROM disputes');
+    execute('DELETE FROM waiver_signatures');
+    execute('DELETE FROM liability_waivers');
+    execute(`
+      CREATE TRIGGER IF NOT EXISTS prevent_dispute_signature_delete
+      BEFORE DELETE ON dispute_signatures
+      BEGIN
+          SELECT RAISE(FAIL, 'dispute_signatures are append-only: DELETE forbidden');
+      END;
+    `);
+    execute(`
+      CREATE TRIGGER IF NOT EXISTS prevent_dispute_signature_update
+      BEFORE UPDATE ON dispute_signatures
+      WHEN OLD.signed_at IS NOT NULL
+      BEGIN
+          SELECT RAISE(FAIL, 'dispute_signatures are append-only: signed records cannot be updated');
+      END;
+    `);
+    execute(`
+      CREATE TRIGGER IF NOT EXISTS prevent_waiver_signature_delete
+      BEFORE DELETE ON waiver_signatures
+      BEGIN
+          SELECT RAISE(FAIL, 'waiver_signatures are append-only: DELETE forbidden');
+      END;
+    `);
+    execute(`
+      CREATE TRIGGER IF NOT EXISTS prevent_waiver_signature_update
+      BEFORE UPDATE ON waiver_signatures
+      WHEN OLD.status = 'signed'
+      BEGIN
+          SELECT RAISE(FAIL, 'waiver_signatures are append-only: signed records cannot be updated');
+      END;
+    `);
+    execute('PRAGMA foreign_keys = ON');
+
+    const resCreateDispute = await req('POST', '/api/superadmin/disputes', adminToken, {
+      dispute_type: 'financial_settlement',
+      raised_by: authResearcher.data.user.id,
+      against_party: authDev.data.user.id,
+      description: 'Dispute regarding milestone 2 revenue allocation'
+    });
+    assert(resCreateDispute.status === 201, `POST /api/superadmin/disputes returns HTTP 201 (received: ${resCreateDispute.status})`);
+    const dispute1 = resCreateDispute.data;
+    assert(dispute1?.dispute_number === 'DSP-0001', `Dispute sequential numbering starts at "DSP-0001" (received: "${dispute1?.dispute_number}")`);
+    assert(dispute1?.status === 'open', `Dispute initial status is "open" (received: "${dispute1?.status}")`);
+    assert(dispute1?.parties?.length === 2, `Complainant and respondent automatically added as parties (count: ${dispute1?.parties?.length})`);
+
+    const dbDispute = queryOne('SELECT * FROM disputes WHERE id = ?', [dispute1.id]);
+    assert(Boolean(dbDispute), 'Dispute recorded in database');
+    assert(dbDispute?.updated_at !== null, 'updated_at timestamp populated');
+
+    const disputeLog = queryOne("SELECT * FROM access_log WHERE action = 'superadmin_dispute_create' AND target_id = ? ORDER BY id DESC LIMIT 1", [dispute1.id]);
+    assert(Boolean(disputeLog), 'Access log recorded with action "superadmin_dispute_create"');
+
+    // Self-action rejection
+    const resSelfDispute = await req('POST', '/api/superadmin/disputes', adminToken, {
+      dispute_type: 'financial_settlement',
+      raised_by: authAdmin.data.user.id,
+      against_party: authAdmin.data.user.id,
+      description: 'Admin cannot dispute themselves'
+    });
+    assert(resSelfDispute.status === 400, `Admin self-dispute returns HTTP 400 (received: ${resSelfDispute.status})`);
+
+    // =============================================================
+    // TEST 22: FORWARD-ONLY FSM STATUS TRANSITIONS
+    // =============================================================
+    console.log('\n--- TEST 22: Forward-Only FSM Status Transitions ---');
+    const resUnderReview = await req('PATCH', `/api/superadmin/disputes/${dispute1.id}/status`, adminToken, { status: 'under_review' });
+    assert(resUnderReview.status === 200, 'Transition "open" -> "under_review" returns HTTP 200');
+    assert(resUnderReview.data?.status === 'under_review', 'Dispute status updated to "under_review"');
+
+    const resNegotiation = await req('PATCH', `/api/superadmin/disputes/${dispute1.id}/status`, adminToken, { status: 'negotiation' });
+    assert(resNegotiation.status === 200, 'Transition "under_review" -> "negotiation" returns HTTP 200');
+
+    // Backward transition attempt (illegal in forward-only FSM)
+    const resInvalidBack = await req('PATCH', `/api/superadmin/disputes/${dispute1.id}/status`, adminToken, { status: 'open' });
+    assert(resInvalidBack.status === 400, `Illegal backward transition "negotiation" -> "open" returns HTTP 400 (received: ${resInvalidBack.status})`);
+
+    // Closed terminal dispute test
+    const resCreateDispute2 = await req('POST', '/api/superadmin/disputes', adminToken, {
+      dispute_type: 'formal_complaint',
+      raised_by: authDesigner.data.user.id,
+      description: 'Dispute to test terminal closed state'
+    });
+    const dispute2 = resCreateDispute2.data;
+    const resCloseDispute2 = await req('PATCH', `/api/superadmin/disputes/${dispute2.id}/status`, adminToken, { status: 'closed' });
+    assert(resCloseDispute2.status === 200, 'Dispute transitioned to "closed"');
+
+    const resReopenClosed = await req('PATCH', `/api/superadmin/disputes/${dispute2.id}/status`, adminToken, { status: 'under_review' });
+    assert(resReopenClosed.status === 400, `Reopening closed dispute returns HTTP 400 (received: ${resReopenClosed.status})`);
+
+    // =============================================================
+    // TEST 23: ADDING DISPUTE PARTIES
+    // =============================================================
+    console.log('\n--- TEST 23: Adding Dispute Parties ---');
+    const resAddParty = await req('POST', `/api/superadmin/disputes/${dispute1.id}/parties`, adminToken, {
+      user_id: authProducer.data.user.id,
+      party_name: 'Priya Producer',
+      party_type: 'witness'
+    });
+    assert(resAddParty.status === 201, 'POST /api/superadmin/disputes/:id/parties returns HTTP 201');
+    assert(resAddParty.data?.party_type === 'witness', 'Added party type is "witness"');
+
+    const partyRows = queryAll('SELECT * FROM dispute_parties WHERE dispute_id = ?', [dispute1.id]);
+    assert(partyRows.length === 3, `Dispute has 3 parties recorded (found: ${partyRows.length})`);
+
+    // Invalid party_type rejected
+    const resInvalidParty = await req('POST', `/api/superadmin/disputes/${dispute1.id}/parties`, adminToken, {
+      party_name: 'Unknown',
+      party_type: 'arbitrary_invalid_type'
+    });
+    assert(resInvalidParty.status === 400, `Invalid party_type returns HTTP 400 (received: ${resInvalidParty.status})`);
+
+    // Missing party_name rejected
+    const resMissingName = await req('POST', `/api/superadmin/disputes/${dispute1.id}/parties`, adminToken, {
+      party_type: 'witness'
+    });
+    assert(resMissingName.status === 400, `Missing party_name returns HTTP 400 (received: ${resMissingName.status})`);
+
+    // =============================================================
+    // TEST 24: DRAFT AGREEMENT & DIGITAL SIGNATURE DISPATCH
+    // =============================================================
+    console.log('\n--- TEST 24: Draft Agreement & Digital Signature Dispatch ---');
+    const resAgreement = await req('POST', `/api/superadmin/disputes/${dispute1.id}/agreement`, adminToken, {
+      agreement_text: 'Milestone 2 payout shall be split 60/40 between Researcher and Developer.'
+    });
+    assert(resAgreement.status === 201, 'POST /api/superadmin/disputes/:id/agreement returns HTTP 201');
+    assert(resAgreement.data?.agreement?.version === 1, 'Agreement version is 1');
+    assert(resAgreement.data?.signatures?.length >= 2, `Signatures requested for parties with accounts (count: ${resAgreement.data?.signatures?.length})`);
+
+    const dbAgreement = queryOne('SELECT * FROM dispute_agreements WHERE id = ?', [resAgreement.data?.agreement?.id]);
+    assert(Boolean(dbAgreement), 'Agreement stored in dispute_agreements');
+
+    const dbUpdatedDispute = queryOne('SELECT status FROM disputes WHERE id = ?', [dispute1.id]);
+    assert(dbUpdatedDispute?.status === 'pending_signatures', `Dispute automatically transitioned to "pending_signatures" (received: "${dbUpdatedDispute?.status}")`);
+
+    const sigTokens = queryAll('SELECT * FROM dispute_signatures WHERE agreement_id = ?', [dbAgreement.id]);
+    assert(sigTokens.length >= 2, 'Signatures created in dispute_signatures');
+    assert(sigTokens.every(s => s.signature_token && s.signature_token.length === 64), 'Signature tokens are 64-char hex strings (32 cryptographic bytes)');
+    assert(sigTokens.every(s => s.status === 'pending' && s.signed_at === null), 'Initial signature status is "pending" with signed_at NULL');
+
+    // Retrieve Researcher signature token, Dev signature token, and Producer signature token
+    const researcherSig = sigTokens.find(s => s.signed_by === authResearcher.data.user.id);
+    const devSig = sigTokens.find(s => s.signed_by === authDev.data.user.id);
+    const producerSig = sigTokens.find(s => s.signed_by === authProducer.data.user.id);
+    assert(Boolean(researcherSig), 'Researcher signature token found');
+    assert(Boolean(devSig), 'Dev signature token found');
+
+    // =============================================================
+    // TEST 25: VALID MEMBER SIGNING CEREMONY
+    // =============================================================
+    console.log('\n--- TEST 25: Valid Member Signing Ceremony ---');
+    // GET signing document review
+    const resGetDoc = await req('GET', `/api/sign/disputes/${dispute1.id}/${researcherSig.signature_token}`, researcherToken);
+    assert(resGetDoc.status === 200, 'GET /api/sign/disputes/:id/:token returns HTTP 200');
+    assert(resGetDoc.data?.agreement_text?.includes('Milestone 2 payout'), 'Review document includes agreement text');
+    assert(resGetDoc.data?.status === 'pending', 'Review document status is "pending"');
+
+    // POST sign agreement
+    const resSignDoc = await req('POST', `/api/sign/disputes/${dispute1.id}`, researcherToken, {
+      token: researcherSig.signature_token,
+      agreed: true
+    });
+    assert(resSignDoc.status === 200, 'POST /api/sign/disputes/:id returns HTTP 200');
+    assert(resSignDoc.data?.agreed === true, 'Response confirms agreed: true');
+    assert(resSignDoc.data?.status === 'signed', 'Response confirms status: "signed"');
+
+    const dbResearcherSig = queryOne('SELECT * FROM dispute_signatures WHERE id = ?', [researcherSig.id]);
+    assert(dbResearcherSig?.signed_at !== null, 'dispute_signatures signed_at timestamp populated');
+    assert(dbResearcherSig?.ip_address !== null, 'dispute_signatures ip_address captured');
+    assert(dbResearcherSig?.agreed === 1, 'dispute_signatures agreed set to 1');
+    assert(dbResearcherSig?.status === 'signed', 'dispute_signatures status set to "signed"');
+
+    // =============================================================
+    // TEST 26: SIGNATURE SECURITY GUARDS (403, 404, 409, 410)
+    // =============================================================
+    console.log('\n--- TEST 26: Signature Security Guards ---');
+    // Guard 1: Wrong user (Dev tries to sign Researcher token) -> 403
+    const resWrongUser = await req('POST', `/api/sign/disputes/${dispute1.id}`, devToken, {
+      token: researcherSig.signature_token,
+      agreed: true
+    });
+    assert(resWrongUser.status === 403, `Wrong user attempt returns HTTP 403 (received: ${resWrongUser.status})`);
+
+    const resWrongUserGet = await req('GET', `/api/sign/disputes/${dispute1.id}/${researcherSig.signature_token}`, devToken);
+    assert(resWrongUserGet.status === 403, `Wrong user GET review returns HTTP 403 (received: ${resWrongUserGet.status})`);
+
+    // Guard 2: Already signed -> 409
+    const resAlreadySigned = await req('POST', `/api/sign/disputes/${dispute1.id}`, researcherToken, {
+      token: researcherSig.signature_token,
+      agreed: true
+    });
+    assert(resAlreadySigned.status === 409, `Re-signing already signed document returns HTTP 409 (received: ${resAlreadySigned.status})`);
+
+    // Guard 3: Non-existent / invalid token -> 404
+    const resInvalidToken = await req('GET', `/api/sign/disputes/${dispute1.id}/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, devToken);
+    assert(resInvalidToken.status === 404, `Invalid token returns HTTP 404 (received: ${resInvalidToken.status})`);
+
+    // Guard 4: Expired token -> 410
+    // Temporarily expire dev's token in DB
+    execute("UPDATE dispute_signatures SET expires_at = datetime('now', '-1 day') WHERE id = ?", [devSig.id]);
+    const resExpired = await req('GET', `/api/sign/disputes/${dispute1.id}/${devSig.signature_token}`, devToken);
+    assert(resExpired.status === 410, `Expired token returns HTTP 410 (received: ${resExpired.status})`);
+    // Restore dev token expiration for later test
+    execute("UPDATE dispute_signatures SET expires_at = datetime('now', '+14 days') WHERE id = ?", [devSig.id]);
+
+    // =============================================================
+    // TEST 27: APPEND-ONLY TRIGGERS ENFORCEMENT (SQLITE LEVEL)
+    // =============================================================
+    console.log('\n--- TEST 27: Append-Only Triggers Enforcement ---');
+    let deletePrevented = false;
+    try {
+      execute('DELETE FROM dispute_signatures WHERE id = ?', [researcherSig.id]);
+    } catch (e) {
+      deletePrevented = e.message.includes('append-only') || e.message.includes('DELETE forbidden');
+    }
+    assert(deletePrevented, 'Trigger prevent_dispute_signature_delete blocks row deletion');
+
+    let updatePrevented = false;
+    try {
+      execute("UPDATE dispute_signatures SET ip_address = '1.1.1.1' WHERE id = ?", [researcherSig.id]);
+    } catch (e) {
+      updatePrevented = e.message.includes('append-only') || e.message.includes('cannot be updated');
+    }
+    assert(updatePrevented, 'Trigger prevent_dispute_signature_update blocks mutation of signed row');
+
+    // =============================================================
+    // TEST 28: LIABILITY WAIVER CREATION & SCOPES
+    // =============================================================
+    console.log('\n--- TEST 28: Liability Waiver Creation & Scopes ---');
+    const resWaiver = await req('POST', `/api/superadmin/disputes/${dispute1.id}/waiver`, adminToken, {
+      waiver_text: 'Mutual release of all claims arising from Project Alpha milestone 2.',
+      waiver_type: 'full_release',
+      scope: 'project'
+    });
+    assert(resWaiver.status === 201, `POST /api/superadmin/disputes/:id/waiver returns HTTP 201 (received: ${resWaiver.status})`);
+    assert(resWaiver.data?.waiver?.scope === 'project', 'Waiver scope is "project"');
+    assert(resWaiver.data?.waiver?.waiver_type === 'full_release', 'Waiver type is "full_release"');
+
+    const waiverId = resWaiver.data?.waiver?.id;
+    const dbWaiver = queryOne('SELECT * FROM liability_waivers WHERE id = ?', [waiverId]);
+    assert(Boolean(dbWaiver), 'Waiver recorded in liability_waivers table');
+
+    // Invalid scope validation
+    const resBadScope = await req('POST', `/api/superadmin/disputes/${dispute1.id}/waiver`, adminToken, {
+      waiver_text: 'Invalid scope test',
+      waiver_type: 'full_release',
+      scope: 'unsupported_scope'
+    });
+    assert(resBadScope.status === 400, `Unsupported waiver scope returns HTTP 400 (received: ${resBadScope.status})`);
+
+    // =============================================================
+    // TEST 29: WAIVER MEMBER SIGNING CEREMONY
+    // =============================================================
+    console.log('\n--- TEST 29: Waiver Member Signing Ceremony ---');
+    const waiverSignatures = queryAll('SELECT * FROM waiver_signatures WHERE waiver_id = ?', [waiverId]);
+    assert(waiverSignatures.length >= 1, 'Waiver signatures created in waiver_signatures');
+    assert(waiverSignatures[0].signature_token.length === 64, 'Waiver signature token is 64-char hex');
+
+    const devWaiverSig = waiverSignatures.find(ws => ws.signed_by === authDev.data.user.id) || waiverSignatures[0];
+    const targetToken = (devWaiverSig.signed_by === authDev.data.user.id) ? devToken : researcherToken;
+
+    // GET review
+    const resGetWaiver = await req('GET', `/api/sign/waivers/${waiverId}/${devWaiverSig.signature_token}`, targetToken);
+    assert(resGetWaiver.status === 200, 'GET /api/sign/waivers/:id/:token returns HTTP 200');
+    assert(resGetWaiver.data?.waiver_type === 'full_release', 'Review waiver returns correct type');
+
+    // POST sign
+    const resSignWaiver = await req('POST', `/api/sign/waivers/${waiverId}`, targetToken, {
+      token: devWaiverSig.signature_token,
+      agreed: true
+    });
+    assert(resSignWaiver.status === 200, 'POST /api/sign/waivers/:id returns HTTP 200');
+    assert(resSignWaiver.data?.status === 'signed', 'Waiver status is "signed"');
+
+    // Trigger check for waiver append-only
+    let deleteWaiverPrevented = false;
+    try {
+      execute('DELETE FROM waiver_signatures WHERE id = ?', [devWaiverSig.id]);
+    } catch (e) {
+      deleteWaiverPrevented = e.message.includes('append-only') || e.message.includes('DELETE forbidden');
+    }
+    assert(deleteWaiverPrevented, 'Trigger prevent_waiver_signature_delete blocks deletion of signed waiver signature');
+
+    let updateWaiverPrevented = false;
+    try {
+      execute("UPDATE waiver_signatures SET ip_address = '1.1.1.1' WHERE id = ?", [devWaiverSig.id]);
+    } catch (e) {
+      updateWaiverPrevented = e.message.includes('append-only') || e.message.includes('cannot be updated');
+    }
+    assert(updateWaiverPrevented, 'Trigger prevent_waiver_signature_update blocks mutation of signed waiver signature');
+
+    // =============================================================
+    // TEST 30: AUTO-TRANSITION TO SETTLED & FINANCIAL SETTLEMENT EXECUTION
+    // =============================================================
+    console.log('\n--- TEST 30: Auto-Transition to Settled & Financial Settlement Execution ---');
+    // If Producer also has a signature on this agreement, sign Producer first
+    if (producerSig) {
+      const resProducerSign = await req('POST', `/api/sign/disputes/${dispute1.id}`, producerToken, {
+        token: producerSig.signature_token,
+        agreed: true
+      });
+      assert(resProducerSign.status === 200, 'Producer signs agreement successfully');
+    }
+
+    // Developer signs the agreement, completing all signatures
+    const resDevSignAgreement = await req('POST', `/api/sign/disputes/${dispute1.id}`, devToken, {
+      token: devSig.signature_token,
+      agreed: true
+    });
+    assert(resDevSignAgreement.status === 200, 'Dev signs agreement successfully');
+    assert(resDevSignAgreement.data?.dispute_status === 'settled', `When all parties sign, dispute auto-transitions to "settled" (received: "${resDevSignAgreement.data?.dispute_status}")`);
+
+    const disputeAfterAllSign = queryOne('SELECT status FROM disputes WHERE id = ?', [dispute1.id]);
+    assert(disputeAfterAllSign?.status === 'settled', 'Dispute database status is "settled"');
+
+    // Financial Settlement Execution
+    const researcherBefore = queryOne('SELECT wallet_balance FROM users WHERE id = ?', [authResearcher.data.user.id]);
+    const initBal = researcherBefore?.wallet_balance || 0;
+
+    const resSettle = await req('POST', `/api/superadmin/disputes/${dispute1.id}/settle`, adminToken, {
+      action: 'wallet_credit',
+      amount: 5000,
+      currency: 'INR',
+      target_user_id: authResearcher.data.user.id,
+      notes: 'Final settlement payout per agreement v1'
+    });
+    assert(resSettle.status === 200, 'POST /api/superadmin/disputes/:id/settle returns HTTP 200');
+    assert(resSettle.data?.settlement_amount === 5000, 'Dispute settlement_amount is 5000');
+    assert(resSettle.data?.status === 'settled', 'Dispute status remains "settled"');
+
+    const researcherAfter = queryOne('SELECT wallet_balance FROM users WHERE id = ?', [authResearcher.data.user.id]);
+    assert(researcherAfter?.wallet_balance === initBal + 5000, `Researcher wallet credited by ₹5000 (from ${initBal} to ${researcherAfter?.wallet_balance})`);
+
+    const revEvent = queryOne("SELECT * FROM revenue_events WHERE source = 'settlement' ORDER BY id DESC LIMIT 1");
+    assert(Boolean(revEvent) && revEvent.amount === 5000, 'Revenue event of ₹5000 recorded with source="settlement"');
+
+    const settleLog = queryOne("SELECT * FROM access_log WHERE action = 'superadmin_dispute_settle' AND target_id = ? ORDER BY id DESC LIMIT 1", [dispute1.id]);
+    assert(Boolean(settleLog), 'Access log recorded with action "superadmin_dispute_settle"');
+
   } catch (err) {
     console.error('\n[FATAL SUITE ERROR]:', err);
     assert(false, 'Suite Execution Without Fatal Crash', err.message);
@@ -713,17 +1067,18 @@ async function runStep14Layer1Tests() {
   }
 
   console.log('\n===================================================================');
-  console.log(`   LAYER 1, 2 & 3 QA SUMMARY: ${results.filter(r => r.status === 'PASS').length} PASSED / ${results.length} TOTAL`);
+  console.log(`   LAYER 1, 2, 3 & 4 QA SUMMARY: ${results.filter(r => r.status === 'PASS').length} PASSED / ${results.length} TOTAL`);
   console.log('===================================================================\n');
 
   if (!allPassed) {
     console.error('Some tests failed in Step 14 QA Suite.');
     process.exit(1);
   } else {
-    console.log('🎉 ALL STEP 14 LAYER 1, 2 & 3 TESTS (TESTS 01-20) PASSED WITH ZERO ERRORS!');
+    console.log('🎉 ALL STEP 14 LAYER 1, 2, 3 & 4 TESTS (TESTS 01-30) PASSED WITH ZERO ERRORS!');
     process.exit(0);
   }
 }
 
 runStep14Layer1Tests();
+
 

@@ -134,6 +134,8 @@ function initNavigation() {
       } else if (targetPaneId === 'paneIdeation') {
         loadIdeationCommand();
         loadQuotaConfig();
+      } else if (targetPaneId === 'paneDisputes') {
+        loadDisputes();
       }
     });
   });
@@ -739,7 +741,10 @@ function initEventListeners() {
 
   if (openDisputeBtn) {
     openDisputeBtn.addEventListener('click', () => {
-      toasts.show('Dispute Resolution Center scheduled for Layer 4 implementation.', 'info');
+      const targetUser = activeDrawerUser;
+      closeMemberDrawer();
+      document.querySelector('.sa-nav-item[data-pane="paneDisputes"]')?.click();
+      openCreateDisputeModal(targetUser?.id);
     });
   }
 
@@ -873,6 +878,83 @@ function initEventListeners() {
 
   const saveQuotaBtn = document.getElementById('btnSaveQuota');
   if (saveQuotaBtn) saveQuotaBtn.addEventListener('click', saveQuotaConfig);
+
+  // --- Layer 4 Event Listeners: Dispute Resolution Center ---
+  const openDisputeModalBtn = document.getElementById('btnOpenCreateDisputeModal');
+  if (openDisputeModalBtn) openDisputeModalBtn.addEventListener('click', () => openCreateDisputeModal());
+
+  const closeCreateDisputeBtn = document.getElementById('btnCloseCreateDispute');
+  const cancelCreateDisputeBtn = document.getElementById('btnCancelCreateDispute');
+  const modalCreateDispute = document.getElementById('modalCreateDispute');
+  const closeCreateDisputeModal = () => { if (modalCreateDispute) modalCreateDispute.classList.remove('active'); };
+  if (closeCreateDisputeBtn) closeCreateDisputeBtn.addEventListener('click', closeCreateDisputeModal);
+  if (cancelCreateDisputeBtn) cancelCreateDisputeBtn.addEventListener('click', closeCreateDisputeModal);
+
+  const submitCreateDisputeBtn = document.getElementById('btnSubmitCreateDispute');
+  if (submitCreateDisputeBtn) submitCreateDisputeBtn.addEventListener('click', submitCreateDispute);
+
+  const closeDetailDisputeBtn = document.getElementById('btnCloseDisputeDetail');
+  const modalDisputeDetail = document.getElementById('modalDisputeDetail');
+  if (closeDetailDisputeBtn) closeDetailDisputeBtn.addEventListener('click', () => {
+    if (modalDisputeDetail) modalDisputeDetail.classList.remove('active');
+  });
+
+  const applyStatusBtn = document.getElementById('btnApplyDisputeStatus');
+  if (applyStatusBtn) applyStatusBtn.addEventListener('click', () => {
+    if (activeDetailDisputeId) applyDisputeStatus(activeDetailDisputeId);
+  });
+
+  const togglePartyBtn = document.getElementById('btnToggleAddParty');
+  const partyFormWrap = document.getElementById('addPartyFormWrap');
+  if (togglePartyBtn && partyFormWrap) {
+    togglePartyBtn.addEventListener('click', () => {
+      partyFormWrap.style.display = partyFormWrap.style.display === 'none' ? 'block' : 'none';
+    });
+  }
+
+  const submitPartyBtn = document.getElementById('btnSubmitAddParty');
+  if (submitPartyBtn) submitPartyBtn.addEventListener('click', () => {
+    if (activeDetailDisputeId) addDisputePartyUI(activeDetailDisputeId);
+  });
+
+  const openAgreementBtn = document.getElementById('btnOpenDraftAgreement');
+  const cancelAgreementBtn = document.getElementById('btnCancelDraftAgreement');
+  const dispatchAgreementBtn = document.getElementById('btnDispatchAgreement');
+  const agreementPanel = document.getElementById('draftAgreementPanel');
+  if (openAgreementBtn && agreementPanel) openAgreementBtn.addEventListener('click', () => { agreementPanel.style.display = 'block'; });
+  if (cancelAgreementBtn && agreementPanel) cancelAgreementBtn.addEventListener('click', () => { agreementPanel.style.display = 'none'; });
+  if (dispatchAgreementBtn) dispatchAgreementBtn.addEventListener('click', () => {
+    if (activeDetailDisputeId) dispatchAgreementUI(activeDetailDisputeId);
+  });
+
+  const openWaiverBtn = document.getElementById('btnOpenDraftWaiver');
+  const cancelWaiverBtn = document.getElementById('btnCancelDraftWaiver');
+  const dispatchWaiverBtn = document.getElementById('btnDispatchWaiver');
+  const waiverPanel = document.getElementById('draftWaiverPanel');
+  if (openWaiverBtn && waiverPanel) openWaiverBtn.addEventListener('click', () => { waiverPanel.style.display = 'block'; });
+  if (cancelWaiverBtn && waiverPanel) cancelWaiverBtn.addEventListener('click', () => { waiverPanel.style.display = 'none'; });
+  if (dispatchWaiverBtn) dispatchWaiverBtn.addEventListener('click', () => {
+    if (activeDetailDisputeId) dispatchWaiverUI(activeDetailDisputeId);
+  });
+
+  const settleBtn = document.getElementById('btnExecuteSettlement');
+  if (settleBtn) settleBtn.addEventListener('click', () => {
+    if (activeDetailDisputeId) executeSettlementUI(activeDetailDisputeId);
+  });
+
+  ['disputeStatusFilter', 'disputeTypeFilter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => loadDisputes());
+  });
+
+  const disputeSearch = document.getElementById('disputeSearchInput');
+  let disputeSearchTimeout = null;
+  if (disputeSearch) {
+    disputeSearch.addEventListener('input', () => {
+      clearTimeout(disputeSearchTimeout);
+      disputeSearchTimeout = setTimeout(() => loadDisputes(), 300);
+    });
+  }
 }
 
 // ===================================================================
@@ -1414,10 +1496,445 @@ async function saveQuotaConfig() {
   }
 }
 
-// Global window exposure for inline onclick handlers in generated table markup
+// ===================================================================
+// SECTION 5: DISPUTE RESOLUTION CENTER CONTROLLER (LAYER 4)
+// ===================================================================
+
+let activeDetailDisputeId = null;
+
+async function loadDisputes() {
+  const tbody = document.getElementById('disputesTableBody');
+  if (!tbody) return;
+
+  const status = document.getElementById('disputeStatusFilter')?.value || '';
+  const dispute_type = document.getElementById('disputeTypeFilter')?.value || '';
+  const search = document.getElementById('disputeSearchInput')?.value || '';
+
+  const queryParams = new URLSearchParams();
+  if (status) queryParams.set('status', status);
+  if (dispute_type) queryParams.set('dispute_type', dispute_type);
+  if (search) queryParams.set('search', search);
+
+  tbody.innerHTML = '<tr><td colspan="8" class="sa-loading-cell">Loading dispute ledger...</td></tr>';
+
+  try {
+    const res = await apiCall(`/api/superadmin/disputes?${queryParams.toString()}`);
+    if (!res.ok) {
+      tbody.innerHTML = '<tr><td colspan="8" class="sa-empty-cell">Failed to load disputes</td></tr>';
+      return;
+    }
+
+    const disputes = res.data || [];
+    if (disputes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="sa-empty-cell">No disputes matching current filters</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = disputes.map(d => {
+      const daysOpen = Math.max(0, Math.floor((Date.now() - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24)));
+      const againstName = d.against_party_name || d.against_party_ext || 'External / Unspecified';
+      const typeLabel = (d.dispute_type || 'other').replace(/_/g, ' ').toUpperCase();
+      const statusLabel = (d.status || 'open').replace(/_/g, ' ').toUpperCase();
+
+      let badgeColor = '#94a3b8';
+      if (d.status === 'open') badgeColor = '#60a5fa';
+      else if (d.status === 'under_review') badgeColor = '#f59e0b';
+      else if (d.status === 'pending_signatures') badgeColor = '#a855f7';
+      else if (d.status === 'settled' || d.status === 'resolved') badgeColor = '#10b981';
+      else if (d.status === 'escalated_legal') badgeColor = '#ef4444';
+
+      return `
+        <tr>
+          <td><strong style="color:#e0e7ff; font-family:'JetBrains Mono',monospace;">${escapeHtml(d.dispute_number)}</strong></td>
+          <td><span style="font-size:11px; background:rgba(255,255,255,0.06); padding:3px 6px; border-radius:4px;">${escapeHtml(typeLabel)}</span></td>
+          <td>${escapeHtml(d.raised_by_name || 'Member')}</td>
+          <td>${escapeHtml(againstName)}</td>
+          <td><span class="sa-badge" style="background:${badgeColor}22; color:${badgeColor}; border:1px solid ${badgeColor}44;">${statusLabel}</span></td>
+          <td style="color:#94a3b8;">${daysOpen}d</td>
+          <td style="font-family:'JetBrains Mono',monospace; color:${d.settlement_amount ? '#34d399' : '#94a3b8'};">${d.settlement_amount ? formatINR(d.settlement_amount) : '—'}</td>
+          <td>
+            <button class="sa-btn-outline" style="padding:4px 10px; font-size:12px;" onclick="openDisputeDetail('${d.id}')">
+              Mediate & View →
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error loading disputes:', err);
+    tbody.innerHTML = '<tr><td colspan="8" class="sa-empty-cell">Network error while fetching disputes</td></tr>';
+  }
+}
+
+async function openCreateDisputeModal(preselectedAgainstUserId = null) {
+  const modal = document.getElementById('modalCreateDispute');
+  if (!modal) return;
+
+  const raisedBySelect = document.getElementById('newDisputeRaisedBySelect');
+  const againstPartySelect = document.getElementById('newDisputeAgainstPartySelect');
+
+  // Populate member dropdowns from members directory
+  try {
+    const res = await apiCall('/api/superadmin/members');
+    if (res.ok && res.data?.members) {
+      const optionsHtml = res.data.members.map(m => `
+        <option value="${m.id}">${escapeHtml(m.name)} (${escapeHtml(m.role)})</option>
+      `).join('');
+
+      if (raisedBySelect) {
+        raisedBySelect.innerHTML = `<option value="">Select Complainant...</option>` + optionsHtml;
+      }
+      if (againstPartySelect) {
+        againstPartySelect.innerHTML = `<option value="">None / External Party</option>` + optionsHtml;
+        if (preselectedAgainstUserId) {
+          againstPartySelect.value = preselectedAgainstUserId;
+        }
+      }
+    }
+  } catch (e) {}
+
+  modal.classList.add('active');
+}
+
+async function submitCreateDispute() {
+  const dispute_type = document.getElementById('newDisputeTypeSelect')?.value;
+  const raised_by = document.getElementById('newDisputeRaisedBySelect')?.value;
+  const against_party = document.getElementById('newDisputeAgainstPartySelect')?.value || null;
+  const against_party_ext = document.getElementById('newDisputeAgainstExtInput')?.value || null;
+  const description = document.getElementById('newDisputeDescInput')?.value || '';
+
+  if (!dispute_type || !raised_by) {
+    toasts.show('Dispute type and complainant are required', 'error');
+    return;
+  }
+  if (!description.trim()) {
+    toasts.show('Description statement is required', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnSubmitCreateDispute');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await apiCall('/api/superadmin/disputes', 'POST', {
+      dispute_type,
+      raised_by,
+      against_party,
+      against_party_ext,
+      description
+    });
+
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to create dispute', 'error');
+      return;
+    }
+
+    toasts.show(`Dispute ${res.data.dispute_number} created successfully`, 'success');
+    document.getElementById('modalCreateDispute')?.classList.remove('active');
+    document.getElementById('newDisputeDescInput').value = '';
+    loadDisputes();
+  } catch (err) {
+    toasts.show('Error submitting dispute: ' + err.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function openDisputeDetail(disputeId) {
+  activeDetailDisputeId = disputeId;
+  const modal = document.getElementById('modalDisputeDetail');
+  if (!modal) return;
+
+  try {
+    const res = await apiCall(`/api/superadmin/disputes/${disputeId}`);
+    if (!res.ok) {
+      toasts.show('Failed to load dispute details', 'error');
+      return;
+    }
+
+    const d = res.data;
+    document.getElementById('detailDisputeTitle').textContent = `Dispute ${d.dispute_number}`;
+    document.getElementById('detailDisputeSub').textContent = `Type: ${(d.dispute_type || '').replace(/_/g, ' ').toUpperCase()} | Opened ${new Date(d.created_at).toLocaleString()}`;
+    
+    const badge = document.getElementById('detailDisputeStatusBadge');
+    if (badge) {
+      badge.textContent = (d.status || 'open').replace(/_/g, ' ').toUpperCase();
+      badge.className = `sa-badge badge-${d.status}`;
+    }
+
+    document.getElementById('detailDisputeStatusSelect').value = d.status === 'open' ? 'under_review' : d.status;
+    document.getElementById('detailDisputeDesc').textContent = d.description || 'No description provided.';
+
+    // Populate Parties
+    const partiesList = document.getElementById('detailDisputePartiesList');
+    const targetBeneficiarySelect = document.getElementById('settleTargetUserSelect');
+    
+    if (partiesList) {
+      partiesList.innerHTML = (d.parties || []).map(p => `
+        <div style="background:var(--sa-bg); border:1px solid var(--sa-card-border); padding:6px 12px; border-radius:6px; font-size:12px; display:inline-flex; align-items:center; gap:8px;">
+          <strong>${escapeHtml(p.party_name)}</strong>
+          <span style="font-size:10px; color:#a5b4fc; text-transform:uppercase;">[${p.party_type}]</span>
+        </div>
+      `).join('') || '<span style="color:#94a3b8; font-size:12px;">No parties recorded</span>';
+    }
+
+    if (targetBeneficiarySelect) {
+      targetBeneficiarySelect.innerHTML = `<option value="">Target Beneficiary...</option>` +
+        (d.parties || []).filter(p => p.user_id).map(p => `
+          <option value="${p.user_id}">${escapeHtml(p.party_name)} (${p.party_type})</option>
+        `).join('');
+    }
+
+    // Populate Signatures / Agreements list
+    renderDisputeSignaturesStream(d);
+
+    // Settlement indicator
+    const settleInd = document.getElementById('settlementStatusIndicator');
+    if (settleInd) {
+      settleInd.textContent = d.settlement_amount ? `Executed: ${formatINR(d.settlement_amount)}` : 'Pending Settlement Execution';
+    }
+
+    modal.classList.add('active');
+  } catch (err) {
+    toasts.show('Error retrieving dispute: ' + err.message, 'error');
+  }
+}
+
+function renderDisputeSignaturesStream(d) {
+  const container = document.getElementById('detailDisputeSignaturesList');
+  if (!container) return;
+
+  const agreements = d.agreements || [];
+  const waivers = d.waivers || [];
+
+  if (agreements.length === 0 && waivers.length === 0) {
+    container.innerHTML = '<div style="padding:16px; text-align:center; color:#94a3b8; font-size:13px; background:rgba(255,255,255,0.02); border-radius:6px;">No agreements or liability waivers drafted yet. Use the buttons above to draft formal terms.</div>';
+    return;
+  }
+
+  let html = '';
+
+  if (agreements.length > 0) {
+    html += '<h5 style="margin:12px 0 6px; color:#e2e8f0; font-size:12px; text-transform:uppercase;">Dispute Agreements</h5>';
+    agreements.forEach(ag => {
+      html += `
+        <div style="background:#0b1120; border:1px solid var(--sa-card-border); border-radius:6px; padding:12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:12px;">
+            <strong>Agreement v${ag.version}.0 (Drafted by ${escapeHtml(ag.created_by_name || 'Admin')})</strong>
+            <span style="color:#94a3b8;">${new Date(ag.created_at).toLocaleDateString()}</span>
+          </div>
+          <div style="font-size:12px; color:#94a3b8; max-height:80px; overflow-y:auto; margin-bottom:8px; white-space:pre-wrap;">${escapeHtml(ag.agreement_text)}</div>
+          <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:6px;">
+            <span style="font-size:11px; color:#a5b4fc; font-weight:600;">Signatures:</span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">
+              ${(ag.signatures || []).map(s => `
+                <div style="background:var(--sa-bg); border:1px solid var(--sa-card-border); padding:4px 8px; border-radius:4px; font-size:11px;">
+                  <span>${escapeHtml(s.signer_name || 'Party')}:</span>
+                  <strong style="color:${s.status === 'signed' ? '#34d399' : s.status === 'declined' ? '#f87171' : '#fbbf24'};">${(s.status || 'pending').toUpperCase()}</strong>
+                  <button style="margin-left:6px; background:none; border:none; color:#60a5fa; cursor:pointer; font-size:10px; text-decoration:underline;" onclick="copySigningLink('dispute', '${d.id}', '${s.signature_token}')">Copy Link</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  if (waivers.length > 0) {
+    html += '<h5 style="margin:16px 0 6px; color:#e2e8f0; font-size:12px; text-transform:uppercase;">Liability Waivers</h5>';
+    waivers.forEach(w => {
+      html += `
+        <div style="background:#0b1120; border:1px solid var(--sa-card-border); border-radius:6px; padding:12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:12px;">
+            <strong>Waiver: ${escapeHtml((w.waiver_type || '').replace(/_/g, ' ').toUpperCase())} (Scope: ${escapeHtml((w.scope || 'global').toUpperCase())})</strong>
+            <span style="color:#94a3b8;">${new Date(w.created_at).toLocaleDateString()}</span>
+          </div>
+          <div style="font-size:12px; color:#94a3b8; max-height:80px; overflow-y:auto; margin-bottom:8px; white-space:pre-wrap;">${escapeHtml(w.waiver_text)}</div>
+          <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:6px;">
+            <span style="font-size:11px; color:#34d399; font-weight:600;">Signatures:</span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">
+              ${(w.signatures || []).map(s => `
+                <div style="background:var(--sa-bg); border:1px solid var(--sa-card-border); padding:4px 8px; border-radius:4px; font-size:11px;">
+                  <span>${escapeHtml(s.signer_name || 'Party')}:</span>
+                  <strong style="color:${s.status === 'signed' ? '#34d399' : s.status === 'declined' ? '#f87171' : '#fbbf24'};">${(s.status || 'pending').toUpperCase()}</strong>
+                  <button style="margin-left:6px; background:none; border:none; color:#60a5fa; cursor:pointer; font-size:10px; text-decoration:underline;" onclick="copySigningLink('waiver', '${w.id}', '${s.signature_token}')">Copy Link</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  container.innerHTML = html;
+}
+
+window.copySigningLink = function (type, docId, token) {
+  const link = `${window.location.origin}/sign.html?type=${type}&id=${docId}&token=${token}`;
+  navigator.clipboard.writeText(link).then(() => {
+    toasts.show('Signing Ceremony Link copied to clipboard!', 'success');
+  }).catch(() => {
+    prompt('Copy signing link:', link);
+  });
+};
+
+async function applyDisputeStatus(disputeId) {
+  const newStatus = document.getElementById('detailDisputeStatusSelect')?.value;
+  if (!newStatus) return;
+
+  try {
+    const res = await apiCall(`/api/superadmin/disputes/${disputeId}/status`, 'PATCH', { status: newStatus });
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to update dispute status', 'error');
+      return;
+    }
+    toasts.show(`Dispute transitioned to ${newStatus}`, 'success');
+    openDisputeDetail(disputeId);
+    loadDisputes();
+  } catch (err) {
+    toasts.show('Error updating status: ' + err.message, 'error');
+  }
+}
+
+async function addDisputePartyUI(disputeId) {
+  const party_name = document.getElementById('partyNameInput')?.value;
+  const party_type = document.getElementById('partyRoleSelect')?.value;
+
+  if (!party_name || !party_name.trim()) {
+    toasts.show('Party name is required', 'error');
+    return;
+  }
+
+  try {
+    const res = await apiCall(`/api/superadmin/disputes/${disputeId}/parties`, 'POST', { party_name, party_type });
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to add party', 'error');
+      return;
+    }
+    toasts.show('Party registered to dispute', 'success');
+    document.getElementById('partyNameInput').value = '';
+    document.getElementById('addPartyFormWrap').style.display = 'none';
+    openDisputeDetail(disputeId);
+  } catch (err) {
+    toasts.show('Error adding party: ' + err.message, 'error');
+  }
+}
+
+async function dispatchAgreementUI(disputeId) {
+  const agreement_text = document.getElementById('draftAgreementText')?.value;
+  if (!agreement_text || !agreement_text.trim()) {
+    toasts.show('Agreement terms are required', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnDispatchAgreement');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await apiCall(`/api/superadmin/disputes/${disputeId}/agreement`, 'POST', { agreement_text });
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to dispatch agreement', 'error');
+      return;
+    }
+    toasts.show(`Agreement v${res.data?.agreement?.version || 1} dispatched for digital signatures`, 'success');
+    document.getElementById('draftAgreementText').value = '';
+    document.getElementById('draftAgreementPanel').style.display = 'none';
+    openDisputeDetail(disputeId);
+    loadDisputes();
+  } catch (err) {
+    toasts.show('Error dispatching agreement: ' + err.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function dispatchWaiverUI(disputeId) {
+  const waiver_text = document.getElementById('draftWaiverText')?.value;
+  const waiver_type = document.getElementById('draftWaiverType')?.value;
+  const scope = document.getElementById('draftWaiverScope')?.value;
+
+  if (!waiver_text || !waiver_text.trim()) {
+    toasts.show('Waiver terms are required', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnDispatchWaiver');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await apiCall(`/api/superadmin/disputes/${disputeId}/waiver`, 'POST', {
+      waiver_text,
+      waiver_type,
+      scope
+    });
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to dispatch liability waiver', 'error');
+      return;
+    }
+    toasts.show('Liability waiver dispatched for digital signatures', 'success');
+    document.getElementById('draftWaiverText').value = '';
+    document.getElementById('draftWaiverPanel').style.display = 'none';
+    openDisputeDetail(disputeId);
+  } catch (err) {
+    toasts.show('Error dispatching waiver: ' + err.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function executeSettlementUI(disputeId) {
+  const amount = parseFloat(document.getElementById('settleAmountInput')?.value || 0);
+  const action = document.getElementById('settleActionSelect')?.value;
+  const target_user_id = document.getElementById('settleTargetUserSelect')?.value;
+  const notes = document.getElementById('settleNotesInput')?.value || '';
+
+  if (isNaN(amount) || amount < 0) {
+    toasts.show('Please provide a valid non-negative settlement amount', 'error');
+    return;
+  }
+
+  if ((action === 'wallet_credit' || action === 'wallet_debit') && !target_user_id) {
+    toasts.show('Please select a target beneficiary member for wallet actions', 'error');
+    return;
+  }
+
+  if (!confirm(`Are you certain you wish to execute financial settlement of ${formatINR(amount)} via ${action.toUpperCase()}? This action updates member balances and locks settlement.`)) {
+    return;
+  }
+
+  const btn = document.getElementById('btnExecuteSettlement');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await apiCall(`/api/superadmin/disputes/${disputeId}/settle`, 'POST', {
+      action,
+      amount,
+      target_user_id,
+      notes
+    });
+
+    if (!res.ok) {
+      toasts.show(res.data?.error || 'Failed to execute financial settlement', 'error');
+      return;
+    }
+
+    toasts.show('Financial settlement executed and recorded successfully!', 'success');
+    openDisputeDetail(disputeId);
+    loadDisputes();
+  } catch (err) {
+    toasts.show('Error executing settlement: ' + err.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Global window exposures for inline onclick handlers in generated table markup
 window.openTicketThread = openTicketThread;
 window.openKillIdeaModal = openKillIdeaModal;
 window.openRestoreIdeaModal = openRestoreIdeaModal;
+window.openDisputeDetail = openDisputeDetail;
 
 // 10. Initialize Admin Profile info in sidebar
 function initAdminInfo() {

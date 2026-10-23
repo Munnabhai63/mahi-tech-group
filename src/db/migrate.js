@@ -86,6 +86,13 @@ export function runMigration() {
     CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket_id ON ticket_messages(ticket_id);
   `);
 
+  // Step 14 Layer 4: Link support ticket to dispute
+  const ticketCols = queryAll('PRAGMA table_info(support_tickets);');
+  if (!ticketCols.some(c => c.name === 'dispute_id')) {
+    execRaw('ALTER TABLE support_tickets ADD COLUMN dispute_id TEXT REFERENCES disputes(id);');
+    console.log('>>> Added dispute_id column to support_tickets table.');
+  }
+
   // Step 14 Layer 3: Ideas Kill Switch columns
   const ideaCols = queryAll('PRAGMA table_info(ideas);');
   if (!ideaCols.some(c => c.name === 'killed_reason')) {

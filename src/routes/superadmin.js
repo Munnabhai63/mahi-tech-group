@@ -24,6 +24,17 @@ import {
   updateTicket,
   addTicketMessage
 } from '../services/ticketService.js';
+import {
+  createDispute,
+  listDisputes,
+  getDisputeById,
+  updateDisputeStatus,
+  addDisputeParty,
+  createDisputeAgreement,
+  createLiabilityWaiver,
+  settleDispute,
+  linkTicketToDispute
+} from '../services/disputeService.js';
 import { logAccess } from '../services/auditService.js';
 
 const router = express.Router();
@@ -436,6 +447,187 @@ router.patch('/quota/config', (req, res) => {
     return res.status(200).json(updated);
   } catch (err) {
     return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// ===================================================================
+// STEP 14 LAYER 4: Dispute Resolution & Legal Vault Endpoints
+// ===================================================================
+
+/**
+ * POST /api/superadmin/disputes — Create new dispute
+ */
+router.post('/disputes', (req, res) => {
+  try {
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const dispute = createDispute({
+      ...req.body,
+      adminId: req.user.id,
+      ipAddress
+    });
+    return res.status(201).json(dispute);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/superadmin/disputes — List disputes with filters
+ */
+router.get('/disputes', (req, res) => {
+  try {
+    const { status, dispute_type, date_from, search } = req.query;
+    const disputes = listDisputes({ status, dispute_type, date_from, search });
+    return res.status(200).json(disputes);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/superadmin/disputes/:id — Full dispute detail + parties + agreements + waivers
+ */
+router.get('/disputes/:id', (req, res) => {
+  try {
+    const dispute = getDisputeById(req.params.id);
+    if (!dispute) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+    return res.status(200).json(dispute);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * PATCH /api/superadmin/disputes/:id/status — Forward-only FSM status mutation
+ */
+router.patch('/disputes/:id/status', (req, res) => {
+  try {
+    const { status, resolution_notes } = req.body || {};
+    if (!status) {
+      return res.status(400).json({ error: 'status is required' });
+    }
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const updated = updateDisputeStatus(req.params.id, status, {
+      resolution_notes,
+      adminId: req.user.id,
+      ipAddress
+    });
+    return res.status(200).json(updated);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/superadmin/disputes/:id/parties — Add party to dispute
+ */
+router.post('/disputes/:id/parties', (req, res) => {
+  try {
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const party = addDisputeParty(req.params.id, {
+      ...req.body,
+      adminId: req.user.id,
+      ipAddress
+    });
+    return res.status(201).json(party);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/superadmin/disputes/:id/agreement — Draft agreement & dispatch signatures
+ */
+router.post('/disputes/:id/agreement', (req, res) => {
+  try {
+    const { agreement_text } = req.body || {};
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const agreement = createDisputeAgreement(req.params.id, {
+      agreement_text,
+      adminId: req.user.id,
+      ipAddress
+    });
+    return res.status(201).json(agreement);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/superadmin/disputes/:id/waiver — Create liability waiver & dispatch signatures
+ */
+router.post('/disputes/:id/waiver', (req, res) => {
+  try {
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const waiver = createLiabilityWaiver(req.params.id, {
+      ...req.body,
+      adminId: req.user.id,
+      ipAddress
+    });
+    return res.status(201).json(waiver);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/superadmin/disputes/:id/signatures — Check signature statuses
+ */
+router.get('/disputes/:id/signatures', (req, res) => {
+  try {
+    const dispute = getDisputeById(req.params.id);
+    if (!dispute) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+    const agreementSignatures = dispute.agreements.flatMap(a => a.signatures || []);
+    const waiverSignatures = dispute.waivers.flatMap(w => w.signatures || []);
+    return res.status(200).json({
+      dispute_id: dispute.id,
+      dispute_number: dispute.dispute_number,
+      agreement_signatures: agreementSignatures,
+      waiver_signatures: waiverSignatures
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/superadmin/disputes/:id/settle — Financial settlement execution
+ */
+router.post('/disputes/:id/settle', (req, res) => {
+  try {
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const settled = settleDispute(req.params.id, {
+      ...req.body,
+      adminId: req.user.id,
+      ipAddress
+    });
+    return res.status(200).json(settled);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * PATCH /api/superadmin/tickets/:id/link-dispute — Link ticket to dispute
+ */
+router.patch('/tickets/:id/link-dispute', (req, res) => {
+  try {
+    const { dispute_id } = req.body || {};
+    if (!dispute_id) {
+      return res.status(400).json({ error: 'dispute_id is required' });
+    }
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const result = linkTicketToDispute(req.params.id, dispute_id, {
+      adminId: req.user.id,
+      ipAddress
+    });
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
   }
 });
 

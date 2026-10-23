@@ -552,18 +552,69 @@
       </div>
     </section>
 
-    <!-- Section 5: Dispute Resolution Center Placeholder (Layer 4) -->
+    <!-- Section 5: Dispute Resolution Center (Layer 4) -->
     <section class="sa-pane" id="paneDisputes">
       <div class="sa-header">
         <div class="sa-header-title">
           <h2>Dispute Resolution Center</h2>
           <p>Multi-party agreement mediation, digital signature ceremonies, and financial settlement.</p>
         </div>
+        <div class="sa-header-actions">
+          <button class="sa-btn-primary" id="btnOpenCreateDisputeModal">
+            <span>+</span> Open New Dispute
+          </button>
+        </div>
       </div>
-      <div class="sa-placeholder-card">
-        <h3>Section 5: Dispute Resolution Center</h3>
-        <p>Cryptographic tokenized signing, append-only triggers, and liability waivers.</p>
-        <span class="sa-layer-tag">Scheduled for Layer 4 Implementation</span>
+
+      <!-- Filters Bar -->
+      <div class="sa-filter-bar" style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+        <input type="text" id="disputeSearchInput" placeholder="Search dispute #, description, parties..." style="flex: 1; min-width: 240px; background: var(--sa-card-bg); border: 1px solid var(--sa-card-border); border-radius: var(--radius-sm); padding: 8px 12px; color: #fff; font-size: 13px;">
+        <select id="disputeStatusFilter" style="background: var(--sa-card-bg); border: 1px solid var(--sa-card-border); border-radius: var(--radius-sm); padding: 8px 12px; color: #fff; font-size: 13px;">
+          <option value="">All Statuses</option>
+          <option value="open">Open</option>
+          <option value="under_review">Under Review</option>
+          <option value="negotiation">Negotiation</option>
+          <option value="pending_signatures">Pending Signatures</option>
+          <option value="settled">Settled</option>
+          <option value="resolved">Resolved</option>
+          <option value="escalated_legal">Escalated Legal</option>
+          <option value="closed">Closed</option>
+        </select>
+        <select id="disputeTypeFilter" style="background: var(--sa-card-bg); border: 1px solid var(--sa-card-border); border-radius: var(--radius-sm); padding: 8px 12px; color: #fff; font-size: 13px;">
+          <option value="">All Types</option>
+          <option value="financial_settlement">Financial Settlement</option>
+          <option value="ip_ownership">IP Ownership</option>
+          <option value="contribution_disagreement">Contribution Disagreement</option>
+          <option value="offboarding_settlement">Offboarding Settlement</option>
+          <option value="formal_complaint">Formal Complaint</option>
+          <option value="legal_matter">Legal Matter</option>
+          <option value="other">Other</option>
+        </select>
+        <button class="sa-btn-refresh" id="btnRefreshDisputes">
+          <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Refresh
+        </button>
+      </div>
+
+      <!-- Disputes Table Card -->
+      <div class="sa-card-table-wrap">
+        <table class="sa-table">
+          <thead>
+            <tr>
+              <th>Dispute #</th>
+              <th>Type</th>
+              <th>Raised By</th>
+              <th>Against Party</th>
+              <th>Status</th>
+              <th>Days Open</th>
+              <th>Settlement Amount</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="disputesTableBody">
+            <tr><td colspan="8" class="sa-loading-cell">Loading dispute ledger...</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -882,6 +933,193 @@
   </div>
 </div>
 
+<!-- ===================================================================
+     STEP 14 LAYER 4: Dispute Resolution Modals
+     =================================================================== -->
+
+<!-- 1. Open New Dispute Modal -->
+<div class="sa-modal-backdrop" id="modalCreateDispute">
+  <div class="sa-modal-card" style="max-width: 580px;">
+    <div class="sa-modal-header">
+      <h3>Initiate Formal Dispute</h3>
+      <button class="sa-modal-close" id="btnCloseCreateDispute">&times;</button>
+    </div>
+    <div class="sa-modal-grid">
+      <div class="sa-modal-field">
+        <label for="newDisputeTypeSelect">Dispute Type</label>
+        <select id="newDisputeTypeSelect">
+          <option value="financial_settlement">Financial Settlement</option>
+          <option value="ip_ownership">IP Ownership</option>
+          <option value="contribution_disagreement">Contribution Disagreement</option>
+          <option value="offboarding_settlement">Offboarding Settlement</option>
+          <option value="formal_complaint">Formal Complaint</option>
+          <option value="legal_matter">Legal Matter</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="sa-modal-field">
+        <label for="newDisputeRaisedBySelect">Raised By (Complainant)</label>
+        <select id="newDisputeRaisedBySelect">
+          <option value="">Select Member...</option>
+        </select>
+      </div>
+    </div>
+    <div class="sa-modal-grid">
+      <div class="sa-modal-field">
+        <label for="newDisputeAgainstPartySelect">Against Member (Optional)</label>
+        <select id="newDisputeAgainstPartySelect">
+          <option value="">None / External Party</option>
+        </select>
+      </div>
+      <div class="sa-modal-field">
+        <label for="newDisputeAgainstExtInput">External Party Name (If not a member)</label>
+        <input type="text" id="newDisputeAgainstExtInput" placeholder="e.g. Acme Corp / Third-party Vendor">
+      </div>
+    </div>
+    <div class="sa-modal-field">
+      <label for="newDisputeDescInput">Detailed Description of Disagreement / Dispute</label>
+      <textarea id="newDisputeDescInput" rows="4" placeholder="Comprehensive background, context, and claim..."></textarea>
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn-outline" id="btnCancelCreateDispute">Cancel</button>
+      <button class="sa-btn-primary" id="btnSubmitCreateDispute">Open Dispute</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Dispute Mediation & Detail Modal -->
+<div class="sa-modal-backdrop" id="modalDisputeDetail">
+  <div class="sa-modal-card" style="max-width: 860px; max-height: 90vh; overflow-y: auto;">
+    <div class="sa-modal-header">
+      <div>
+        <h3 id="detailDisputeTitle">Dispute DSP-0001</h3>
+        <p id="detailDisputeSub" style="font-size: 12px; color: var(--sa-text-muted); margin: 4px 0 0;"></p>
+      </div>
+      <button class="sa-modal-close" id="btnCloseDisputeDetail">&times;</button>
+    </div>
+
+    <!-- Dispute Status Controller -->
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--sa-card-border); border-radius: var(--radius-sm); padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <span style="font-size: 12px; color: var(--sa-text-muted); text-transform: uppercase;">Current Status:</span>
+        <span class="sa-badge" id="detailDisputeStatusBadge" style="margin-left: 8px;">OPEN</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <label for="detailDisputeStatusSelect" style="font-size: 12px; color: var(--sa-text-muted);">Transition:</label>
+        <select id="detailDisputeStatusSelect" style="padding: 4px 8px; font-size: 12px; background: var(--sa-card-bg); color: #fff; border: 1px solid var(--sa-card-border); border-radius: 4px;">
+          <option value="under_review">Under Review</option>
+          <option value="negotiation">Negotiation</option>
+          <option value="pending_signatures">Pending Signatures</option>
+          <option value="settled">Settled</option>
+          <option value="resolved">Resolved</option>
+          <option value="escalated_legal">Escalate Legal</option>
+          <option value="closed">Formally Close</option>
+        </select>
+        <button class="sa-btn-outline" id="btnApplyDisputeStatus" style="padding: 4px 10px; font-size: 12px;">Update Status</button>
+      </div>
+    </div>
+
+    <!-- Description & Context -->
+    <div style="margin-bottom: 20px;">
+      <h4 style="font-size: 13px; color: var(--sa-text-muted); text-transform: uppercase; margin-bottom: 6px;">Dispute Statement</h4>
+      <div id="detailDisputeDesc" style="background: var(--sa-bg); padding: 12px 16px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.6; border: 1px solid var(--sa-card-border); white-space: pre-wrap;"></div>
+    </div>
+
+    <!-- Parties Involved -->
+    <div style="margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h4 style="font-size: 13px; color: var(--sa-text-muted); text-transform: uppercase; margin: 0;">Parties & Signers</h4>
+        <button class="sa-btn-outline" id="btnToggleAddParty" style="padding: 3px 8px; font-size: 11px;">+ Add Party</button>
+      </div>
+      <div id="addPartyFormWrap" style="display:none; background:rgba(255,255,255,0.02); border:1px solid var(--sa-card-border); border-radius:6px; padding:12px; margin-bottom:12px;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <input type="text" id="partyNameInput" placeholder="Party Name" style="flex:1; padding:6px 10px; font-size:12px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+          <select id="partyRoleSelect" style="padding:6px 10px; font-size:12px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+            <option value="complainant">Complainant</option>
+            <option value="respondent">Respondent</option>
+            <option value="witness">Witness</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button class="sa-btn-primary" id="btnSubmitAddParty" style="padding:6px 14px; font-size:12px;">Save Party</button>
+        </div>
+      </div>
+      <div id="detailDisputePartiesList" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+    </div>
+
+    <!-- Agreements & Liability Waivers Tabs -->
+    <div style="border-top: 1px solid var(--sa-card-border); padding-top: 18px; margin-bottom: 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="font-size:14px; margin:0; color:#fff;">Agreements & Legal Waivers</h4>
+        <div style="display:flex; gap:8px;">
+          <button class="sa-btn-outline" id="btnOpenDraftAgreement">+ Draft Agreement</button>
+          <button class="sa-btn-outline" id="btnOpenDraftWaiver">+ Draft Waiver</button>
+        </div>
+      </div>
+
+      <!-- Agreement Drafting Panel -->
+      <div id="draftAgreementPanel" style="display:none; background:#0b1120; border:1px solid rgba(99,102,241,0.3); border-radius:8px; padding:16px; margin-bottom:16px;">
+        <h5 style="margin:0 0 8px; color:#a5b4fc; font-size:13px;">Draft Formal Dispute Agreement</h5>
+        <textarea id="draftAgreementText" rows="5" placeholder="Enter terms of agreement, mutual obligations, release provisions..." style="width:100%; box-sizing:border-box; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:6px; color:#fff; font-size:13px; padding:10px; margin-bottom:10px;"></textarea>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="sa-btn-outline" id="btnCancelDraftAgreement" style="font-size:12px;">Cancel</button>
+          <button class="sa-btn-primary" id="btnDispatchAgreement" style="font-size:12px;">Dispatch for Digital Signatures</button>
+        </div>
+      </div>
+
+      <!-- Waiver Drafting Panel -->
+      <div id="draftWaiverPanel" style="display:none; background:#0b1120; border:1px solid rgba(16,185,129,0.3); border-radius:8px; padding:16px; margin-bottom:16px;">
+        <h5 style="margin:0 0 8px; color:#6ee7b7; font-size:13px;">Draft Liability Waiver</h5>
+        <div style="display:flex; gap:12px; margin-bottom:10px; flex-wrap:wrap;">
+          <select id="draftWaiverType" style="flex:1; padding:6px 10px; font-size:12px; background:var(--sa-card-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+            <option value="full_release">Full Release of Claims</option>
+            <option value="partial_release">Partial Release</option>
+            <option value="nda_extension">NDA & Confidentiality Extension</option>
+            <option value="ip_assignment">IP Assignment & Transfer</option>
+            <option value="financial_final_settlement">Financial Final Settlement</option>
+          </select>
+          <select id="draftWaiverScope" style="width:160px; padding:6px 10px; font-size:12px; background:var(--sa-card-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+            <option value="global">Global (Platform-Wide)</option>
+            <option value="project">Project Scope</option>
+            <option value="individual">Individual Parties</option>
+          </select>
+        </div>
+        <textarea id="draftWaiverText" rows="4" placeholder="Enter explicit liability waiver text, waivers of claims..." style="width:100%; box-sizing:border-box; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:6px; color:#fff; font-size:13px; padding:10px; margin-bottom:10px;"></textarea>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="sa-btn-outline" id="btnCancelDraftWaiver" style="font-size:12px;">Cancel</button>
+          <button class="sa-btn-primary" id="btnDispatchWaiver" style="font-size:12px; background:#10b981;">Dispatch Liability Waiver</button>
+        </div>
+      </div>
+
+      <!-- Signatures Stream -->
+      <div id="detailDisputeSignaturesList"></div>
+    </div>
+
+    <!-- Financial Settlement Panel -->
+    <div style="border-top:1px solid var(--sa-card-border); padding-top:18px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h4 style="font-size:14px; margin:0; color:#fff;">Financial Settlement Execution</h4>
+        <span id="settlementStatusIndicator" style="font-size:12px; color:var(--sa-text-muted);">Amount: ₹0.00</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--sa-card-border); border-radius:8px; padding:14px;">
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+          <input type="number" id="settleAmountInput" placeholder="Amount (₹)" min="0" step="0.01" style="flex:1; min-width:140px; padding:8px 12px; font-size:13px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+          <select id="settleActionSelect" style="flex:1; min-width:180px; padding:8px 12px; font-size:13px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+            <option value="wallet_credit">Wallet Credit (Award to Party)</option>
+            <option value="wallet_debit">Wallet Debit (Deduction)</option>
+            <option value="external">External Bank/Escrow Wire</option>
+          </select>
+          <select id="settleTargetUserSelect" style="flex:1; min-width:180px; padding:8px 12px; font-size:13px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+            <option value="">Target Beneficiary...</option>
+          </select>
+        </div>
+        <input type="text" id="settleNotesInput" placeholder="Settlement reference notes (e.g. Mutual release agreement clause 4.2)..." style="width:100%; box-sizing:border-box; padding:8px 12px; font-size:13px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:flex-end;">
+          <button class="sa-btn-primary" id="btnExecuteSettlement" style="background:#10b981;">Confirm & Execute Settlement</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- FIFO Toast Notifications Container -->
 <div id="toastContainer"></div>

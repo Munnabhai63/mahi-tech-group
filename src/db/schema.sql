@@ -535,3 +535,128 @@ CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status)
 CREATE INDEX IF NOT EXISTS idx_support_tickets_reporter_id ON support_tickets(reporter_id);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_ticket_number ON support_tickets(ticket_number);
 CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket_id ON ticket_messages(ticket_id);
+
+-- ===================================================================
+-- STEP 14 LAYER 4: Dispute Resolution & Liability Waiver Systems
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS disputes (
+    id                  TEXT PRIMARY KEY,
+    dispute_number      VARCHAR(20) UNIQUE NOT NULL,
+    dispute_type        VARCHAR(50) NOT NULL CHECK (dispute_type IN (
+                          'financial_settlement','ip_ownership',
+                          'contribution_disagreement',
+                          'offboarding_settlement',
+                          'formal_complaint','legal_matter','other')),
+    raised_by           TEXT NOT NULL REFERENCES users(id),
+    against_party       TEXT NULL REFERENCES users(id),
+    against_party_ext   TEXT NULL,
+    linked_ticket_id    TEXT NULL REFERENCES support_tickets(id),
+    linked_project_id   TEXT NULL REFERENCES projects(id),
+    description         TEXT NOT NULL,
+    status              VARCHAR(30) NOT NULL DEFAULT 'open'
+                        CHECK (status IN (
+                          'open','under_review','negotiation',
+                          'pending_signatures','settled',
+                          'resolved','closed','escalated_legal')),
+    resolution_notes    TEXT NULL,
+    settlement_amount   DECIMAL(12,2) NULL,
+    settlement_currency VARCHAR(10) DEFAULT 'INR',
+    created_at          TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    updated_at          TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    closed_at           TIMESTAMP NULL,
+    closed_by           TEXT NULL REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS dispute_parties (
+    id          TEXT PRIMARY KEY,
+    dispute_id  TEXT NOT NULL REFERENCES disputes(id) ON DELETE CASCADE,
+    user_id     TEXT NULL REFERENCES users(id),
+    party_name  TEXT NOT NULL,
+    party_type  VARCHAR(30) CHECK (party_type IN (
+                  'complainant','respondent','witness','admin')),
+    added_at    TIMESTAMP NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS dispute_agreements (
+    id             TEXT PRIMARY KEY,
+    dispute_id     TEXT NOT NULL REFERENCES disputes(id) ON DELETE CASCADE,
+    agreement_text TEXT NOT NULL,
+    created_by     TEXT NOT NULL REFERENCES users(id),
+    created_at     TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    version        INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS dispute_signatures (
+    id              TEXT PRIMARY KEY,
+    agreement_id    TEXT NOT NULL REFERENCES dispute_agreements(id) ON DELETE CASCADE,
+    signed_by       TEXT NOT NULL REFERENCES users(id),
+    signed_at       TIMESTAMP NULL,
+    signature_token TEXT NOT NULL,
+    ip_address      TEXT NULL,
+    agreed          BOOLEAN NULL,
+    status          VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','signed','declined','expired')),
+    expires_at      TIMESTAMP NULL
+);
+
+CREATE TRIGGER IF NOT EXISTS prevent_dispute_signature_delete
+BEFORE DELETE ON dispute_signatures
+BEGIN
+    SELECT RAISE(FAIL, 'dispute_signatures are append-only: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_dispute_signature_update
+BEFORE UPDATE ON dispute_signatures
+WHEN OLD.signed_at IS NOT NULL
+BEGIN
+    SELECT RAISE(FAIL, 'dispute_signatures are append-only: signed records cannot be updated');
+END;
+
+CREATE TABLE IF NOT EXISTS liability_waivers (
+    id           TEXT PRIMARY KEY,
+    dispute_id   TEXT NULL REFERENCES disputes(id),
+    project_id   TEXT NULL REFERENCES projects(id),
+    waiver_text  TEXT NOT NULL,
+    waiver_type  VARCHAR(50) CHECK (waiver_type IN (
+                   'full_release','partial_release',
+                   'nda_extension','ip_assignment',
+                   'financial_final_settlement')),
+    scope        VARCHAR(30) DEFAULT 'global' CHECK (scope IN ('global','project','individual')),
+    created_by   TEXT NOT NULL REFERENCES users(id),
+    created_at   TIMESTAMP NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS waiver_signatures (
+    id              TEXT PRIMARY KEY,
+    waiver_id       TEXT NOT NULL REFERENCES liability_waivers(id) ON DELETE CASCADE,
+    signed_by       TEXT NOT NULL REFERENCES users(id),
+    signed_at       TIMESTAMP NULL,
+    signature_token TEXT NOT NULL,
+    ip_address      TEXT NULL,
+    agreed          BOOLEAN NULL,
+    status          VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','signed','declined','expired')),
+    expires_at      TIMESTAMP NULL
+);
+
+CREATE TRIGGER IF NOT EXISTS prevent_waiver_signature_delete
+BEFORE DELETE ON waiver_signatures
+BEGIN
+    SELECT RAISE(FAIL, 'waiver_signatures are append-only: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_waiver_signature_update
+BEFORE UPDATE ON waiver_signatures
+WHEN OLD.status = 'signed'
+BEGIN
+    SELECT RAISE(FAIL, 'waiver_signatures are append-only: signed records cannot be updated');
+END;
+
+CREATE INDEX IF NOT EXISTS idx_disputes_number ON disputes(dispute_number);
+CREATE INDEX IF NOT EXISTS idx_disputes_status ON disputes(status);
+CREATE INDEX IF NOT EXISTS idx_disputes_raised_by ON disputes(raised_by);
+CREATE INDEX IF NOT EXISTS idx_dispute_parties_dispute_id ON dispute_parties(dispute_id);
+CREATE INDEX IF NOT EXISTS idx_dispute_agreements_dispute_id ON dispute_agreements(dispute_id);
+CREATE INDEX IF NOT EXISTS idx_dispute_signatures_token ON dispute_signatures(signature_token);
+CREATE INDEX IF NOT EXISTS idx_liability_waivers_dispute_id ON liability_waivers(dispute_id);
+CREATE INDEX IF NOT EXISTS idx_waiver_signatures_token ON waiver_signatures(signature_token);
+
