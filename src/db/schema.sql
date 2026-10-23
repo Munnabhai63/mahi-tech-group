@@ -53,10 +53,12 @@ CREATE TABLE IF NOT EXISTS roles_permissions (
 CREATE TABLE IF NOT EXISTS access_log (
     id          TEXT PRIMARY KEY,
     user_id     TEXT REFERENCES users(id),
+    target_id   TEXT REFERENCES users(id),
     action      VARCHAR(100) NOT NULL,
     resource    VARCHAR(100),
     ip_address  VARCHAR(45),
-    timestamp   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    timestamp   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ===================================================================

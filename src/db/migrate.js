@@ -41,6 +41,19 @@ export function runMigration() {
     console.log('>>> Added avatar_url column to users table.');
   }
 
+  // Step 14 Layer 2: target_id and created_at on access_log table
+  const accessLogCols = queryAll('PRAGMA table_info(access_log);');
+  const hasTargetId = accessLogCols.some(c => c.name === 'target_id');
+  if (!hasTargetId) {
+    execRaw('ALTER TABLE access_log ADD COLUMN target_id TEXT REFERENCES users(id);');
+    console.log('>>> Added target_id column to access_log table.');
+  }
+  const hasCreatedAt = accessLogCols.some(c => c.name === 'created_at');
+  if (!hasCreatedAt) {
+    execRaw('ALTER TABLE access_log ADD COLUMN created_at TIMESTAMP;');
+    console.log('>>> Added created_at column to access_log table.');
+  }
+
   // 1. Check if users table role CHECK constraint includes 'designer'
   const usersSql = queryOne("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")?.sql || '';
   if (usersSql && !usersSql.includes("'designer'")) {
@@ -311,6 +324,21 @@ export function runMigration() {
   if (!jitsiDomainCfg) {
     execute("INSERT OR IGNORE INTO system_config (key, value, updated_at) VALUES ('jitsi_domain', 'meet.jit.si', CURRENT_TIMESTAMP)");
     console.log('>>> Seeded default jitsi_domain in system_config.');
+  }
+
+  // Step 14 Layer 2: Default performance weights
+  const defaultPerfWeights = [
+    { key: 'performance_weight_task', value: '0.30' },
+    { key: 'performance_weight_idea', value: '0.25' },
+    { key: 'performance_weight_voting', value: '0.20' },
+    { key: 'performance_weight_meeting', value: '0.15' },
+    { key: 'performance_weight_revenue', value: '0.10' }
+  ];
+  for (const pw of defaultPerfWeights) {
+    const exists = queryOne('SELECT value FROM system_config WHERE key = ?', [pw.key]);
+    if (!exists) {
+      execute("INSERT OR IGNORE INTO system_config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)", [pw.key, pw.value]);
+    }
   }
 
   // Verification of tables

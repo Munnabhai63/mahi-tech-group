@@ -221,33 +221,206 @@
       </div>
     </section>
 
-    <!-- Section 2: Member Directory Placeholder (Layer 2) -->
+    <!-- Section 2: Full Member Directory (Layer 2) -->
     <section class="sa-pane" id="paneDirectory">
       <div class="sa-header">
         <div class="sa-header-title">
           <h2>Full Member Directory</h2>
-          <p>Comprehensive roster with multi-vector histories and audit access.</p>
+          <p>Comprehensive roster with multi-vector histories, audit access, and profile drawers.</p>
+        </div>
+        <div class="sa-header-actions">
+          <button class="sa-btn-refresh" id="btnExportMembersCSV">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Directory (CSV)
+          </button>
         </div>
       </div>
-      <div class="sa-placeholder-card">
-        <h3>Section 2: Full Member Directory</h3>
-        <p>Searchable multi-role directory, slide-out profile drawer, and CSV exports.</p>
-        <span class="sa-layer-tag">Scheduled for Layer 2 Implementation</span>
+
+      <!-- Filter / Search Toolbar -->
+      <div class="sa-toolbar">
+        <div class="sa-search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="dirSearchInput" placeholder="Search by name, email, phone...">
+        </div>
+        <div class="sa-filters">
+          <select id="dirRoleFilter">
+            <option value="">All Roles</option>
+            <option value="researcher">Researcher</option>
+            <option value="developer">Developer</option>
+            <option value="designer">Designer</option>
+            <option value="producer">Producer</option>
+            <option value="admin">Admin</option>
+          </select>
+          <select id="dirStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="pending">Pending</option>
+            <option value="suspended">Suspended</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <select id="dirSortBy">
+            <option value="created_at">Joined Date</option>
+            <option value="name">Name</option>
+            <option value="total_earnings">Total Earnings</option>
+            <option value="projects_count">Projects Built</option>
+            <option value="ideas_count">Ideas Submitted</option>
+            <option value="last_active_at">Last Active</option>
+          </select>
+          <select id="dirSortOrder">
+            <option value="DESC">Descending</option>
+            <option value="ASC">Ascending</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Members Table -->
+      <div class="sa-table-container">
+        <table class="sa-table" id="dirMembersTable">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Ideas</th>
+              <th>Projects</th>
+              <th>Total Earnings</th>
+              <th>Last Active</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="dirMembersTbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
       </div>
     </section>
 
-    <!-- Section 3: Performance Intelligence Placeholder (Layer 2) -->
+    <!-- Section 3: Performance Intelligence (Layer 2) -->
     <section class="sa-pane" id="panePerformance">
       <div class="sa-header">
         <div class="sa-header-title">
           <h2>Performance Intelligence</h2>
-          <p>Stealth team productivity telemetry and composite scoring matrix.</p>
+          <p>Stealth team productivity telemetry, composite ranking, and activity trends.</p>
+        </div>
+        <div class="sa-header-actions">
+          <button class="sa-btn-refresh" id="btnToggleWeightsPanel">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Configure Weights
+          </button>
         </div>
       </div>
-      <div class="sa-placeholder-card">
-        <h3>Section 3: Stealth Performance Intelligence</h3>
-        <p>Composite weighting formulas, stealth access logging, and historical activity heatmaps.</p>
-        <span class="sa-layer-tag">Scheduled for Layer 2 Implementation</span>
+
+      <!-- Weights Configuration Panel (Expandable) -->
+      <div class="sa-config-card" id="weightsConfigCard" style="display: none;">
+        <div class="sa-config-header">
+          <h3>Composite Score Weight Percentages</h3>
+          <span class="sa-sum-badge" id="weightsSumBadge">Total: 100%</span>
+        </div>
+        <div class="sa-weights-grid">
+          <div class="sa-weight-input-group">
+            <label>Task Completion Rate</label>
+            <input type="number" step="0.05" min="0" max="1" id="weightTaskInput" value="0.30">
+          </div>
+          <div class="sa-weight-input-group">
+            <label>Idea Approval Rate</label>
+            <input type="number" step="0.05" min="0" max="1" id="weightIdeaInput" value="0.25">
+          </div>
+          <div class="sa-weight-input-group">
+            <label>Voting Participation Rate</label>
+            <input type="number" step="0.05" min="0" max="1" id="weightVotingInput" value="0.20">
+          </div>
+          <div class="sa-weight-input-group">
+            <label>Meeting Attendance Rate</label>
+            <input type="number" step="0.05" min="0" max="1" id="weightMeetingInput" value="0.15">
+          </div>
+          <div class="sa-weight-input-group">
+            <label>Revenue Relative Cut</label>
+            <input type="number" step="0.05" min="0" max="1" id="weightRevenueInput" value="0.10">
+          </div>
+        </div>
+        <div class="sa-config-actions">
+          <button class="sa-btn-primary" id="btnSaveWeights">Save Weight Configuration</button>
+        </div>
+      </div>
+
+      <!-- Performance Layout: Leaderboard & Detail Inspector -->
+      <div class="sa-perf-layout">
+        <!-- Leaderboard (Left) -->
+        <div class="sa-card sa-perf-left">
+          <div class="sa-card-header">
+            <h3>Active Member Leaderboard</h3>
+            <span class="sa-badge-indigo" id="leaderboardCount">0 Members</span>
+          </div>
+          <table class="sa-table sa-leaderboard-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Member</th>
+                <th>Role</th>
+                <th>Score</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardTbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Detail Inspector (Right) -->
+        <div class="sa-card sa-perf-right" id="perfDetailContainer">
+          <div class="sa-card-header">
+            <h3 id="perfDetailMemberName">Select a Member</h3>
+            <span class="sa-trend-pill" id="perfDetailTrend">--</span>
+          </div>
+
+          <div id="perfDetailEmpty" style="padding: 40px; text-align: center; color: var(--sa-text-muted);">
+            Click on any member in the leaderboard to inspect stealth performance metrics, monthly breakdowns, and activity heatmaps.
+          </div>
+
+          <div id="perfDetailContent" style="display: none;">
+            <!-- KPI Mini Cards -->
+            <div class="sa-kpi-grid">
+              <div class="sa-kpi-box">
+                <span class="sa-kpi-lbl">Task Completion</span>
+                <span class="sa-kpi-val" id="perfKpiTaskRate">0%</span>
+                <span class="sa-kpi-sub" id="perfKpiTasksCount">0/0 done</span>
+              </div>
+              <div class="sa-kpi-box">
+                <span class="sa-kpi-lbl">Idea Approval</span>
+                <span class="sa-kpi-val" id="perfKpiIdeaRate">0%</span>
+                <span class="sa-kpi-sub" id="perfKpiIdeasCount">0 submitted</span>
+              </div>
+              <div class="sa-kpi-box">
+                <span class="sa-kpi-lbl">Voting Participation</span>
+                <span class="sa-kpi-val" id="perfKpiVotingRate">0%</span>
+                <span class="sa-kpi-sub" id="perfKpiVotesCount">0 votes</span>
+              </div>
+              <div class="sa-kpi-box">
+                <span class="sa-kpi-lbl">Meeting Attendance</span>
+                <span class="sa-kpi-val" id="perfKpiMeetingRate">0%</span>
+                <span class="sa-kpi-sub" id="perfKpiMeetingsCount">0 attended</span>
+              </div>
+            </div>
+
+            <!-- Month by Month Activity Bar Chart (CSS-only) -->
+            <div class="sa-chart-container">
+              <h4 class="sa-section-subtitle">Monthly Output Velocity (Last 6 Months)</h4>
+              <div class="sa-bar-chart" id="perfBarChart">
+                <!-- Dynamically populated bars -->
+              </div>
+            </div>
+
+            <!-- Activity Heatmap (CSS Grid, GitHub-Style) -->
+            <div class="sa-heatmap-container">
+              <h4 class="sa-section-subtitle">Historical Activity Distribution (Heatmap)</h4>
+              <div class="sa-heatmap-grid" id="perfHeatmapGrid">
+                <!-- Dynamically generated grid cells -->
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -328,6 +501,138 @@
 
   </main>
 
+</div>
+
+<!-- Member Detail Drawer & Overlay -->
+<div class="sa-drawer-overlay" id="drawerOverlay"></div>
+<aside class="sa-drawer" id="memberDrawer" aria-hidden="true">
+  <div class="sa-drawer-header">
+    <div class="sa-drawer-user-info">
+      <div class="sa-drawer-avatar" id="drawerAvatar">MD</div>
+      <div>
+        <h3 id="drawerUserName">Member Name</h3>
+        <span class="sa-drawer-email" id="drawerUserEmail">user@mahitechgroup.com</span>
+      </div>
+    </div>
+    <button class="sa-drawer-close-btn" id="closeDrawerBtn" aria-label="Close drawer">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="sa-drawer-quick-actions">
+    <button class="sa-btn-outline" id="drawerEditRoleBtn">Edit Role</button>
+    <button class="sa-btn-outline sa-btn-warning" id="drawerOpenDisputeBtn" title="Layer 4 feature">Open Dispute</button>
+    <button class="sa-btn-outline sa-btn-danger" id="drawerBlockBtn" title="Layer 5 feature">Initiate Block</button>
+  </div>
+
+  <div class="sa-drawer-tabs">
+    <button class="sa-tab-btn active" data-tab="tabIdeas">Ideas History</button>
+    <button class="sa-tab-btn" data-tab="tabProjects">Projects &amp; Tasks</button>
+    <button class="sa-tab-btn" data-tab="tabEarnings">Earnings Ledger</button>
+    <button class="sa-tab-btn" data-tab="tabAccess">Access History</button>
+  </div>
+
+  <div class="sa-drawer-body">
+    <!-- Tab 1: Ideas History -->
+    <div class="sa-tab-content active" id="tabIdeas">
+      <div class="sa-drawer-table-wrap">
+        <table class="sa-drawer-table">
+          <thead>
+            <tr>
+              <th>Idea ID</th>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="drawerIdeasBody">
+            <tr><td colspan="4" class="sa-loading-cell">Loading ideas...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 2: Projects & Tasks -->
+    <div class="sa-tab-content" id="tabProjects">
+      <div class="sa-drawer-table-wrap">
+        <table class="sa-drawer-table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Role</th>
+              <th>Tasks Assigned</th>
+              <th>Tasks Completed</th>
+            </tr>
+          </thead>
+          <tbody id="drawerProjectsBody">
+            <tr><td colspan="4" class="sa-loading-cell">Loading projects...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 3: Earnings Ledger -->
+    <div class="sa-tab-content" id="tabEarnings">
+      <div class="sa-drawer-table-wrap">
+        <table class="sa-drawer-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Event ID</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="drawerEarningsBody">
+            <tr><td colspan="4" class="sa-loading-cell">Loading earnings...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 4: Access History -->
+    <div class="sa-tab-content" id="tabAccess">
+      <div class="sa-drawer-table-wrap">
+        <table class="sa-drawer-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Action</th>
+              <th>IP Address</th>
+            </tr>
+          </thead>
+          <tbody id="drawerAccessBody">
+            <tr><td colspan="3" class="sa-loading-cell">Loading access history...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- Simple Role Edit Modal -->
+<div class="sa-modal-overlay" id="roleModalOverlay" style="display:none;">
+  <div class="sa-modal">
+    <h3>Edit Member Role</h3>
+    <p id="roleModalUser">Updating role for user</p>
+    <div class="sa-modal-field">
+      <label for="newRoleSelect">Role</label>
+      <select id="newRoleSelect">
+        <option value="researcher">Researcher</option>
+        <option value="developer">Developer</option>
+        <option value="designer">Designer</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="sa-modal-field">
+      <label for="newSubRoleInput">Sub Role</label>
+      <input type="text" id="newSubRoleInput" placeholder="e.g. Frontend Lead, UI/UX">
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn-outline" id="cancelRoleModalBtn">Cancel</button>
+      <button class="sa-btn-primary" id="saveRoleModalBtn">Save Changes</button>
+    </div>
+  </div>
 </div>
 
 <!-- FIFO Toast Notifications Container -->

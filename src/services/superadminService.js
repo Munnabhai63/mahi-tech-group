@@ -6,6 +6,10 @@ import { queryOne, queryAll, execute } from '../db/database.js';
  * dispute workflows, and gateway controls.
  */
 
+// ===================================================================
+// LAYER 1: Command Center Overview
+// ===================================================================
+
 export function getCommandCenterOverview() {
   const activeMembers = queryOne("SELECT COUNT(*) as cnt FROM users WHERE status = 'active'");
   const pendingApps = queryOne("SELECT COUNT(*) as cnt FROM users WHERE status = 'pending'");
@@ -47,4 +51,393 @@ export function getCommandCenterOverview() {
     open_disputes: Number(openDisputes?.cnt || 0),
     db_total_users: Number(totalUsers?.cnt || 0)
   };
+}
+
+// ===================================================================
+// LAYER 2: Full Member Directory
+// ===================================================================
+
+export function getAllMembers({ status = null, role = null, search = null, sort_by = 'created_at', order = 'DESC' } = {}) {
+  let sql = `
+    SELECT 
+      u.id, u.name, u.email, u.phone_number, u.role, u.sub_role,
+      u.desired_role, u.status, u.created_at, u.last_active_at,
+      u.avatar_url, u.bio, u.wallet_frozen,
+      (SELECT COUNT(*) FROM ideas i WHERE i.owner_id = u.id) as ideas_count,
+      (SELECT COUNT(*) FROM project_members pm WHERE pm.user_id = u.id) as projects_count,
+      COALESCE((SELECT SUM(amount) FROM revenue_splits rs WHERE rs.user_id = u.id), 0.0) as total_earnings,
+      (SELECT COUNT(*) FROM meeting_attendance ma WHERE ma.user_id = u.id) as meetings_attended
+    FROM users u
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (status) {
+    sql += ' AND u.status = ?';
+    params.push(status);
+  }
+
+  if (role) {
+    sql += ' AND u.role = ?';
+    params.push(role);
+  }
+
+  if (search && search.trim()) {
+    sql += ' AND (u.name LIKE ? OR u.email LIKE ? OR u.phone_number LIKE ?)';
+    const term = `%${search.trim()}%`;
+    params.push(term, term, term);
+  }
+
+  const allowedSort = [
+    'name', 'email', 'role', 'status', 'created_at', 'last_active_at',
+    'ideas_count', 'projects_count', 'total_earnings', 'meetings_attended'
+  ];
+  const safeSort = allowedSort.includes(sort_by) ? sort_by : 'created_at';
+  const safeOrder = String(order).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+  sql += ` ORDER BY ${safeSort} ${safeOrder}`;
+
+  const rows = queryAll(sql, params);
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    phone_number: r.phone_number,
+    role: r.role,
+    sub_role: r.sub_role,
+    desired_role: r.desired_role,
+    status: r.status,
+    created_at: r.created_at,
+    last_active_at: r.last_active_at,
+    avatar_url: r.avatar_url,
+    bio: r.bio,
+    wallet_frozen: Number(r.wallet_frozen || 0),
+    ideas_count: Number(r.ideas_count || 0),
+    projects_count: Number(r.projects_count || 0),
+    total_earnings: Number(r.total_earnings || 0),
+    meetings_attended: Number(r.meetings_attended || 0)
+  }));
+}
+
+export function getMemberDetail(userId) {
+  const members = getAllMembers();
+  const member = members.find(m => m.id === userId);
+  if (!member) return null;
+
+  const ideas_history = queryAll(`
+    SELECT id, title, status, created_at
+    FROM ideas
+    WHERE owner_id = ?
+    ORDER BY created_at DESC
+  `, [userId]);
+
+  const projects_history = queryAll(`
+    SELECT 
+      p.id as project_id,
+      p.title as project_title,
+      pm.role_in_project,
+      (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id AND pt.assigned_to = pm.user_id) as tasks_assigned,
+      (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id AND pt.assigned_to = pm.user_id AND pt.status = 'DONE') as tasks_completed
+    FROM project_members pm
+    JOIN projects p ON pm.project_id = p.id
+    WHERE pm.user_id = ?
+    ORDER BY pm.joined_at DESC
+  `, [userId]);
+
+  const earnings_ledger = queryAll(`
+    SELECT rs.id, rs.amount, rs.rule_applied, rs.split_type, rs.created_at, re.event_date, re.source, p.title as project_title
+    FROM revenue_splits rs
+    JOIN revenue_events re ON rs.revenue_event_id = re.id
+    LEFT JOIN projects p ON re.project_id = p.id
+    WHERE rs.user_id = ?
+    ORDER BY rs.created_at DESC
+  `, [userId]);
+
+  const attendance_history = queryAll(`
+    SELECT ma.id, ma.meeting_id, ma.joined_at, ma.left_at, m.title as meeting_title, m.meeting_type
+    FROM meeting_attendance ma
+    JOIN meetings m ON ma.meeting_id = m.id
+    WHERE ma.user_id = ?
+    ORDER BY ma.joined_at DESC
+  `, [userId]);
+
+  const access_log_recent = queryAll(`
+    SELECT id, user_id, action, resource, ip_address, timestamp
+    FROM access_log
+    WHERE user_id = ?
+    ORDER BY timestamp DESC
+    LIMIT 100
+  `, [userId]);
+
+  return {
+    ...member,
+    ideas_history,
+    projects_history: projects_history.map(ph => ({
+      ...ph,
+      tasks_assigned: Number(ph.tasks_assigned || 0),
+      tasks_completed: Number(ph.tasks_completed || 0)
+    })),
+    earnings_ledger: earnings_ledger.map(el => ({
+      ...el,
+      amount: Number(el.amount || 0)
+    })),
+    attendance_history,
+    access_log_recent
+  };
+}
+
+export function exportMembersCSV() {
+  const members = getAllMembers({ sort_by: 'created_at', order: 'DESC' });
+  const headers = [
+    'ID', 'Name', 'Email', 'Phone Number', 'Role', 'Sub Role',
+    'Desired Role', 'Status', 'Created At', 'Last Active At',
+    'Wallet Frozen', 'Ideas Count', 'Projects Count', 'Total Earnings', 'Meetings Attended'
+  ];
+
+  const escapeCSV = (val) => {
+    if (val === null || val === undefined) return '""';
+    const str = String(val).replace(/"/g, '""');
+    return `"${str}"`;
+  };
+
+  const rows = [headers.join(',')];
+  for (const m of members) {
+    const row = [
+      escapeCSV(m.id),
+      escapeCSV(m.name),
+      escapeCSV(m.email),
+      escapeCSV(m.phone_number),
+      escapeCSV(m.role),
+      escapeCSV(m.sub_role),
+      escapeCSV(m.desired_role),
+      escapeCSV(m.status),
+      escapeCSV(m.created_at),
+      escapeCSV(m.last_active_at),
+      escapeCSV(m.wallet_frozen),
+      escapeCSV(m.ideas_count),
+      escapeCSV(m.projects_count),
+      escapeCSV(m.total_earnings),
+      escapeCSV(m.meetings_attended)
+    ];
+    rows.push(row.join(','));
+  }
+
+  return rows.join('\r\n');
+}
+
+// ===================================================================
+// LAYER 2: Performance Intelligence (Stealth)
+// ===================================================================
+
+export function getPerformanceConfig() {
+  const taskRow = queryOne("SELECT value FROM system_config WHERE key = 'performance_weight_task'");
+  const ideaRow = queryOne("SELECT value FROM system_config WHERE key = 'performance_weight_idea'");
+  const votingRow = queryOne("SELECT value FROM system_config WHERE key = 'performance_weight_voting'");
+  const meetingRow = queryOne("SELECT value FROM system_config WHERE key = 'performance_weight_meeting'");
+  const revenueRow = queryOne("SELECT value FROM system_config WHERE key = 'performance_weight_revenue'");
+
+  return {
+    performance_weight_task: taskRow ? Number(taskRow.value) : 0.30,
+    performance_weight_idea: ideaRow ? Number(ideaRow.value) : 0.25,
+    performance_weight_voting: votingRow ? Number(votingRow.value) : 0.20,
+    performance_weight_meeting: meetingRow ? Number(meetingRow.value) : 0.15,
+    performance_weight_revenue: revenueRow ? Number(revenueRow.value) : 0.10
+  };
+}
+
+export function updatePerformanceConfig(weights) {
+  const wTask = Number(weights.performance_weight_task);
+  const wIdea = Number(weights.performance_weight_idea);
+  const wVoting = Number(weights.performance_weight_voting);
+  const wMeeting = Number(weights.performance_weight_meeting);
+  const wRevenue = Number(weights.performance_weight_revenue);
+
+  const sum = wTask + wIdea + wVoting + wMeeting + wRevenue;
+  if (Math.abs(sum - 1.00) > 0.001) {
+    const err = new Error('Weights must sum to exactly 1.00');
+    err.status = 400;
+    err.received_sum = Number(sum.toFixed(2));
+    throw err;
+  }
+
+  const updates = [
+    { key: 'performance_weight_task', value: String(wTask) },
+    { key: 'performance_weight_idea', value: String(wIdea) },
+    { key: 'performance_weight_voting', value: String(wVoting) },
+    { key: 'performance_weight_meeting', value: String(wMeeting) },
+    { key: 'performance_weight_revenue', value: String(wRevenue) }
+  ];
+
+  for (const u of updates) {
+    execute("INSERT OR REPLACE INTO system_config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)", [u.key, u.value]);
+  }
+
+  return getPerformanceConfig();
+}
+
+export function getUserPerformance(userId) {
+  const user = queryOne("SELECT id, name, role, status FROM users WHERE id = ?", [userId]);
+  if (!user) return null;
+
+  const weights = getPerformanceConfig();
+
+  // Ideas metrics
+  const ideasSub = queryOne("SELECT COUNT(*) as cnt FROM ideas WHERE owner_id = ? AND status != 'DRAFT'", [userId]);
+  const ideasApp = queryOne("SELECT COUNT(*) as cnt FROM ideas WHERE owner_id = ? AND status = 'APPROVED'", [userId]);
+  const ideasRej = queryOne("SELECT COUNT(*) as cnt FROM ideas WHERE owner_id = ? AND status = 'REJECTED'", [userId]);
+  
+  const ideas_submitted = Number(ideasSub?.cnt || 0);
+  const ideas_approved = Number(ideasApp?.cnt || 0);
+  const ideas_rejected = Number(ideasRej?.cnt || 0);
+  const idea_approval_rate = ideas_submitted > 0 ? Number(((ideas_approved / ideas_submitted) * 100).toFixed(1)) : 0.0;
+
+  // Task metrics
+  const tasksAssignedRow = queryOne("SELECT COUNT(*) as cnt FROM project_tasks WHERE assigned_to = ?", [userId]);
+  const tasksCompletedRow = queryOne("SELECT COUNT(*) as cnt FROM project_tasks WHERE assigned_to = ? AND status = 'DONE'", [userId]);
+  const tasksOverdueRow = queryOne("SELECT COUNT(*) as cnt FROM project_tasks WHERE assigned_to = ? AND status = 'BLOCKED'", [userId]);
+  const avgDaysRow = queryOne(`
+    SELECT AVG(julianday(COALESCE(completed_at, created_at)) - julianday(created_at)) as avg_days
+    FROM project_tasks
+    WHERE assigned_to = ? AND status = 'DONE'
+  `, [userId]);
+
+  const tasks_assigned = Number(tasksAssignedRow?.cnt || 0);
+  const tasks_completed = Number(tasksCompletedRow?.cnt || 0);
+  const tasks_overdue = Number(tasksOverdueRow?.cnt || 0);
+  const task_completion_rate = tasks_assigned > 0 ? Number(((tasks_completed / tasks_assigned) * 100).toFixed(1)) : 0.0;
+  const avg_task_completion_days = avgDaysRow?.avg_days !== null && avgDaysRow?.avg_days !== undefined 
+    ? Number(Number(avgDaysRow.avg_days).toFixed(1)) 
+    : null;
+
+  // Voting metrics
+  const votableIdeasRow = queryOne("SELECT COUNT(*) as cnt FROM ideas WHERE status IN ('APPROVED', 'REJECTED', 'REVISE', 'PENDING_REVIEW')");
+  const votesCastRow = queryOne("SELECT COUNT(*) as cnt FROM votes WHERE voter_id = ?", [userId]);
+  const total_votable = Number(votableIdeasRow?.cnt || 0);
+  const votes_cast = Number(votesCastRow?.cnt || 0);
+  const voting_participation_rate = total_votable > 0 
+    ? Number(Math.min(100, (votes_cast / total_votable) * 100).toFixed(1)) 
+    : 0.0;
+
+  // Meeting metrics
+  const totalMeetingsRow = queryOne("SELECT COUNT(*) as cnt FROM meetings");
+  const attendedRow = queryOne("SELECT COUNT(*) as cnt FROM meeting_attendance WHERE user_id = ?", [userId]);
+  const total_meetings = Number(totalMeetingsRow?.cnt || 0);
+  const meetings_attended = Number(attendedRow?.cnt || 0);
+  const meeting_attendance_rate = total_meetings > 0 
+    ? Number(Math.min(100, (meetings_attended / total_meetings) * 100).toFixed(1)) 
+    : 0.0;
+
+  // Coworking metrics
+  const coworkingRow = queryOne("SELECT COUNT(*) as cnt FROM room_participants WHERE user_id = ?", [userId]);
+  const coworking_sessions_count = Number(coworkingRow?.cnt || 0);
+
+  // Revenue metrics
+  const revGenRow = queryOne(`
+    SELECT COALESCE(SUM(re.amount), 0) as total
+    FROM revenue_events re
+    JOIN projects p ON re.project_id = p.id
+    WHERE p.owner_id = ?
+  `, [userId]);
+  const revEarnedRow = queryOne("SELECT COALESCE(SUM(amount), 0) as total FROM revenue_splits WHERE user_id = ?", [userId]);
+  const maxTeamRevRow = queryOne(`
+    SELECT COALESCE(MAX(team_sum), 0) as max_rev 
+    FROM (SELECT SUM(amount) as team_sum FROM revenue_splits GROUP BY user_id)
+  `);
+
+  const revenue_generated = Number(revGenRow?.total || 0);
+  const revenue_earned = Number(revEarnedRow?.total || 0);
+  const max_team_revenue = Number(maxTeamRevRow?.max_rev || 0);
+  const revenue_ratio = max_team_revenue > 0 ? Math.min(1.0, revenue_earned / max_team_revenue) : 0.0;
+
+  // Composite Score (0.00 to 1.00)
+  const taskComponent = (task_completion_rate / 100) * weights.performance_weight_task;
+  const ideaComponent = (idea_approval_rate / 100) * weights.performance_weight_idea;
+  const votingComponent = (voting_participation_rate / 100) * weights.performance_weight_voting;
+  const meetingComponent = (meeting_attendance_rate / 100) * weights.performance_weight_meeting;
+  const revenueComponent = revenue_ratio * weights.performance_weight_revenue;
+
+  const rawComposite = taskComponent + ideaComponent + votingComponent + meetingComponent + revenueComponent;
+  const composite_score = Number(Math.max(0, Math.min(1, rawComposite)).toFixed(2));
+
+  // Monthly breakdown: last 6 calendar months
+  const monthly_breakdown = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const monthKey = `${yyyy}-${mm}`;
+
+    const mTasks = queryOne("SELECT COUNT(*) as cnt FROM project_tasks WHERE assigned_to = ? AND status = 'DONE' AND strftime('%Y-%m', COALESCE(completed_at, created_at)) = ?", [userId, monthKey]);
+    const mIdeas = queryOne("SELECT COUNT(*) as cnt FROM ideas WHERE owner_id = ? AND strftime('%Y-%m', created_at) = ?", [userId, monthKey]);
+    const mVotes = queryOne("SELECT COUNT(*) as cnt FROM votes WHERE voter_id = ? AND strftime('%Y-%m', voted_at) = ?", [userId, monthKey]);
+
+    monthly_breakdown.push({
+      month: monthKey,
+      tasks_completed: Number(mTasks?.cnt || 0),
+      ideas_submitted: Number(mIdeas?.cnt || 0),
+      votes_cast: Number(mVotes?.cnt || 0)
+    });
+  }
+
+  // Trend logic: last 3 months vs prev 3 months
+  const recent3Sum = monthly_breakdown.slice(3).reduce((acc, m) => acc + m.tasks_completed + m.ideas_submitted + m.votes_cast, 0);
+  const prev3Sum = monthly_breakdown.slice(0, 3).reduce((acc, m) => acc + m.tasks_completed + m.ideas_submitted + m.votes_cast, 0);
+  const recentAvg = recent3Sum / 3;
+  const prevAvg = prev3Sum / 3;
+  const diff = recentAvg - prevAvg;
+
+  let trend = 'stable';
+  if (diff > 0.05) trend = 'improving';
+  else if (diff < -0.05) trend = 'declining';
+
+  return {
+    id: user.id,
+    name: user.name,
+    role: user.role,
+    status: user.status,
+    ideas_submitted,
+    ideas_approved,
+    ideas_rejected,
+    idea_approval_rate,
+    tasks_assigned,
+    tasks_completed,
+    tasks_overdue,
+    task_completion_rate,
+    avg_task_completion_days,
+    voting_participation_rate,
+    meeting_attendance_rate,
+    coworking_sessions_count,
+    revenue_generated,
+    revenue_earned,
+    composite_score,
+    trend,
+    monthly_breakdown
+  };
+}
+
+export function getAllPerformance() {
+  const activeUsers = queryAll("SELECT id FROM users WHERE status = 'active'");
+  const list = [];
+  for (const u of activeUsers) {
+    const perf = getUserPerformance(u.id);
+    if (perf) {
+      const { monthly_breakdown, ...summary } = perf;
+      list.push(summary);
+    }
+  }
+  list.sort((a, b) => b.composite_score - a.composite_score);
+  return list;
+}
+
+export function getPerformanceLeaderboard() {
+  const all = getAllPerformance();
+  return all.map((item, idx) => ({
+    rank: idx + 1,
+    id: item.id,
+    name: item.name,
+    role: item.role,
+    composite_score: item.composite_score,
+    trend: item.trend
+  }));
 }

@@ -46,12 +46,13 @@ async function req(method, urlPath, token = null, body = null) {
     data = await res.text().catch(() => '');
   }
 
-  return { status: res.status, ok: res.ok, data };
+  return { status: res.status, ok: res.ok, data, headers: res.headers };
 }
 
 async function runStep14Layer1Tests() {
   console.log('\n===================================================================');
-  console.log('   MAHI TECH GROUP — STEP 14 SUPER ADMIN PANEL (LAYER 1 QA SUITE)');
+  console.log('   MAHI TECH GROUP — STEP 14 SUPER ADMIN PANEL (QA SUITE)');
+  console.log('   Layer 1 & Layer 2 Verification');
   console.log('===================================================================\n');
 
   // Step A: Restore clean canonical team roster
@@ -214,7 +215,6 @@ async function runStep14Layer1Tests() {
     }
 
     assert(allFieldsPresentAndNumeric, 'All 9 metrics present in overview response and strictly typed as numbers');
-    console.log('    Telemetry snapshot:', JSON.stringify(data, null, 2));
 
     // Verify self-action protection helper
     const selfDisputeCheck = (adminId, targetId) => adminId === targetId;
@@ -253,23 +253,170 @@ async function runStep14Layer1Tests() {
     const isUpdated = Boolean(afterTime && afterTime !== pastTimestamp && new Date(afterTime).getTime() > new Date(pastTimestamp).getTime());
     assert(isUpdated, `last_active_at dynamically updated to current timestamp (after: "${afterTime}" > before: "${pastTimestamp}")`);
 
+    // =============================================================
+    // TEST 05: MEMBER DIRECTORY RETURNS ALL 13 CANONICAL USERS
+    // =============================================================
+    console.log('\n--- TEST 05: Member Directory Returns All 13 Users with Correct Field Types ---');
+    
+    const resMembers = await req('GET', '/api/superadmin/members', adminToken);
+    assert(resMembers.status === 200, 'GET /api/superadmin/members returns HTTP 200');
+    
+    const membersList = Array.isArray(resMembers.data) ? resMembers.data : [];
+    assert(membersList.length === 13, `Member directory returns exactly 13 canonical users (found: ${membersList.length})`);
+
+    let directoryFieldsValid = true;
+    for (const m of membersList) {
+      if (
+        typeof m.ideas_count !== 'number' ||
+        typeof m.projects_count !== 'number' ||
+        typeof m.total_earnings !== 'number' ||
+        typeof m.meetings_attended !== 'number'
+      ) {
+        directoryFieldsValid = false;
+        console.error('Invalid member field types:', m);
+        break;
+      }
+    }
+    assert(directoryFieldsValid, 'Each user has numeric typed fields: ideas_count, projects_count, total_earnings, meetings_attended');
+
+    const inactiveUser = membersList.find(m => m.email === 'dev.riya@mahitechgroup.com');
+    assert(Boolean(inactiveUser && inactiveUser.status === 'inactive'), 'Inactive user dev.riya@mahitechgroup.com is included (status="inactive")');
+
+    // =============================================================
+    // TEST 06: SEARCH BY EMAIL RETURNS EXACT SINGLE MEMBER
+    // =============================================================
+    console.log('\n--- TEST 06: Search by Email Returns Correct Single Member ---');
+    
+    const resSearch = await req('GET', '/api/superadmin/members?search=designer@mahitechgroup.com', adminToken);
+    assert(resSearch.status === 200, 'GET /api/superadmin/members?search=... returns HTTP 200');
+    
+    const searchResults = Array.isArray(resSearch.data) ? resSearch.data : [];
+    assert(
+      searchResults.length === 1 && searchResults[0].name === 'Diya Designer',
+      `Search returns exactly 1 result: Diya Designer (found: ${searchResults.length})`
+    );
+
+    // =============================================================
+    // TEST 07: PERFORMANCE ENDPOINT RETURNS COMPOSITE SCORE AND TREND
+    // =============================================================
+    console.log('\n--- TEST 07: Performance Intelligence Active Member Scoring & Trend ---');
+    
+    const resPerf = await req('GET', '/api/superadmin/performance', adminToken);
+    assert(resPerf.status === 200, 'GET /api/superadmin/performance returns HTTP 200');
+    
+    const perfList = Array.isArray(resPerf.data) ? resPerf.data : [];
+    assert(perfList.length > 0, `Active member performance list returned (${perfList.length} active members)`);
+
+    let scoresAndTrendsValid = true;
+    for (const p of perfList) {
+      const isScoreValid = typeof p.composite_score === 'number' && p.composite_score >= 0 && p.composite_score <= 1;
+      const isTrendValid = ['improving', 'declining', 'stable'].includes(p.trend);
+      if (!isScoreValid || !isTrendValid) {
+        scoresAndTrendsValid = false;
+        console.error('Invalid performance record:', p);
+        break;
+      }
+    }
+    assert(scoresAndTrendsValid, 'All active members have composite_score (0.00-1.00) and valid trend (improving|declining|stable)');
+
+    // =============================================================
+    // TEST 08: ADMIN VIEWING PERFORMANCE CREATES STEALTH ACCESS_LOG
+    // =============================================================
+    console.log('\n--- TEST 08: Admin Viewing Performance Creates Stealth Access Log ---');
+    
+    const targetUserId = researcherUser.id;
+    const resSinglePerf = await req('GET', `/api/superadmin/performance/${targetUserId}`, adminToken);
+    assert(resSinglePerf.status === 200, `GET /api/superadmin/performance/${targetUserId} returns HTTP 200`);
+
+    const stealthLog = queryOne(
+      "SELECT * FROM access_log WHERE action = 'superadmin_perf_view' AND target_id = ? ORDER BY id DESC LIMIT 1",
+      [targetUserId]
+    );
+    assert(
+      Boolean(stealthLog && stealthLog.target_id === targetUserId),
+      `Stealth access_log recorded with action='superadmin_perf_view' and target_id=${targetUserId}`
+    );
+
+    // =============================================================
+    // TEST 09: STEALTH GUARANTEE — MEMBER CANNOT SEE PERFORMANCE METRICS
+    // =============================================================
+    console.log('\n--- TEST 09: Stealth Guarantee Verification (Zero Leakage on Member Endpoints) ---');
+    
+    const resMe = await req('GET', '/api/users/me', researcherToken);
+    assert(resMe.status === 200, 'GET /api/users/me returns HTTP 200');
+    const meData = resMe.data?.user || resMe.data || {};
+
+    const resProfile = await req('GET', `/api/users/${researcherUser.id}/profile`, researcherToken);
+    assert(resProfile.status === 200, `GET /api/users/${researcherUser.id}/profile returns HTTP 200`);
+    const profileData = resProfile.data || {};
+
+    const prohibitedFields = ['composite_score', 'task_completion_rate', 'voting_participation_rate', 'meeting_attendance_rate', 'trend'];
+    let leakDetected = false;
+
+    for (const field of prohibitedFields) {
+      if (meData[field] !== undefined || profileData[field] !== undefined) {
+        leakDetected = true;
+        console.error(`Stealth violation! Prohibited field "${field}" exposed to member`);
+      }
+    }
+    assert(!leakDetected, 'Stealth Guarantee Confirmed: No performance metrics exposed in /api/users/me or /profile');
+
+    // =============================================================
+    // TEST 10: WEIGHT CONFIG VALIDATION (WEIGHTS MUST SUM TO 1.00)
+    // =============================================================
+    console.log('\n--- TEST 10: Performance Weight Config Validation (Sum !== 1.00 Rejection) ---');
+    
+    const invalidWeights = {
+      performance_weight_task: 0.50,
+      performance_weight_idea: 0.50,
+      performance_weight_voting: 0.50,
+      performance_weight_meeting: 0.15,
+      performance_weight_revenue: 0.10
+    }; // sum = 1.75
+
+    const resInvalidWeights = await req('PATCH', '/api/superadmin/performance/config', adminToken, invalidWeights);
+    assert(resInvalidWeights.status === 400, 'PATCH /api/superadmin/performance/config returns HTTP 400 for invalid sum');
+    
+    const errObj = resInvalidWeights.data || {};
+    const hasSumInError = JSON.stringify(errObj).toLowerCase().includes('sum');
+    assert(hasSumInError && errObj.received_sum !== undefined, `Error response contains 'sum' and received_sum (received: ${errObj.received_sum})`);
+
+    // =============================================================
+    // TEST 11: MEMBER EXPORT RETURNS CSV AND LOGS AUDIT
+    // =============================================================
+    console.log('\n--- TEST 11: Member Export Returns CSV and Logs Audit Entry ---');
+    
+    const resExport = await req('GET', '/api/superadmin/members/export', adminToken);
+    assert(resExport.status === 200, 'GET /api/superadmin/members/export returns HTTP 200');
+
+    const contentType = resExport.headers.get('content-type') || '';
+    assert(contentType.includes('text/csv'), `Content-Type header includes 'text/csv' (received: "${contentType}")`);
+
+    const csvContent = typeof resExport.data === 'string' ? resExport.data : '';
+    assert(csvContent.length > 50 && csvContent.includes('ID,Name,Email'), 'CSV body is non-empty and contains canonical headers');
+
+    const exportLog = queryOne(
+      "SELECT * FROM access_log WHERE action = 'superadmin_member_export' ORDER BY id DESC LIMIT 1"
+    );
+    assert(Boolean(exportLog), "access_log contains action='superadmin_member_export' entry");
+
   } catch (err) {
     console.error('\n[FATAL SUITE ERROR]:', err);
     assert(false, 'Suite Execution Without Fatal Crash', err.message);
   } finally {
     server.close();
-    console.log('\n[TEARDOWN] Step 14 Layer 1 Test Server closed cleanly.');
+    console.log('\n[TEARDOWN] Step 14 Test Server closed cleanly.');
   }
 
   console.log('\n===================================================================');
-  console.log(`   LAYER 1 SUMMARY: ${results.filter(r => r.status === 'PASS').length} PASSED / ${results.length} TOTAL`);
+  console.log(`   LAYER 1 & 2 QA SUMMARY: ${results.filter(r => r.status === 'PASS').length} PASSED / ${results.length} TOTAL`);
   console.log('===================================================================\n');
 
   if (!allPassed) {
-    console.error('Some tests failed in Step 14 Layer 1 Suite.');
+    console.error('Some tests failed in Step 14 QA Suite.');
     process.exit(1);
   } else {
-    console.log('🎉 ALL STEP 14 LAYER 1 TESTS PASSED WITH ZERO ERRORS!');
+    console.log('🎉 ALL STEP 14 LAYER 1 & 2 TESTS (TESTS 01-11) PASSED WITH ZERO ERRORS!');
     process.exit(0);
   }
 }
