@@ -98,7 +98,7 @@ export async function cleanupTestData(verbose = true) {
       const pHash = await bcrypt.hash(cm.pass, config.BCRYPT_SALT_ROUNDS);
       execute(`
         UPDATE users
-        SET name = ?, password_hash = ?, role = ?, sub_role = ?, status = ?, rating_avg = ?, wallet_balance = ?, wallet_frozen = ?, updated_at = CURRENT_TIMESTAMP
+        SET name = ?, password_hash = ?, role = ?, sub_role = ?, status = ?, rating_avg = ?, idea_quota_used = 0, wallet_balance = ?, wallet_frozen = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `, [cm.name, pHash, cm.role, cm.sub_role, cm.status, cm.rating, cm.balance, cm.frozen, existing.id]);
     }

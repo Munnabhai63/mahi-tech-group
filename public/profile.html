@@ -320,6 +320,7 @@
       <button class="tab-btn" data-tab="projects" id="tabBtnProjects">🚀 Projects & Contributions</button>
       <button class="tab-btn" data-tab="ratings" id="tabBtnRatings">⭐ Performance Ratings</button>
       <button class="tab-btn" data-tab="earnings" id="tabBtnEarnings">💰 Revenue & Earnings</button>
+      <button class="tab-btn" data-tab="settings" id="tabBtnSettings">⚙️ Settings</button>
     </nav>
 
     <!-- Tab 1: Ideas -->
@@ -340,6 +341,27 @@
     <!-- Tab 4: Earnings -->
     <section class="tab-content-pane" id="paneEarnings">
       <div id="earningsContainer">Loading earnings ledger...</div>
+    </section>
+
+    <!-- Tab 5: Settings & Preferences -->
+    <section class="tab-content-pane" id="paneSettings">
+      <div class="settings-card" style="background: #151c2f; border: 1px solid #1e2840; border-radius: 12px; padding: 1.5rem; max-width: 640px;">
+        <h3 style="font-family: 'Outfit', sans-serif; font-size: 1.25rem; margin-bottom: 0.5rem; color: #f8fafc;">🌐 Language & Localization</h3>
+        <p style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 1.25rem;">Choose your preferred display language for localized content fields (Meeting Notes, announcements, and descriptions).</p>
+        
+        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 0.65rem 1.15rem; border: 1px solid #2a3754; border-radius: 8px; background: rgba(255,255,255,0.03);" id="lblLangEn">
+            <input type="radio" name="languagePreference" value="en" id="radioLangEn" checked>
+            <span style="font-weight: 500; font-size: 0.95rem;">English (Default)</span>
+          </label>
+          
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 0.65rem 1.15rem; border: 1px solid #2a3754; border-radius: 8px; background: rgba(255,255,255,0.03);" id="lblLangHi">
+            <input type="radio" name="languagePreference" value="hi" id="radioLangHi">
+            <span style="font-weight: 500; font-size: 0.95rem;">हिंदी (Hindi Content)</span>
+          </label>
+        </div>
+        <div id="langSaveFeedback" style="margin-top: 1rem; font-size: 0.85rem; color: #10b981; display: none;">✓ Preference saved to browser storage!</div>
+      </div>
     </section>
   </main>
 

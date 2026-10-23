@@ -32,7 +32,8 @@
     ideas: document.getElementById('paneIdeas'),
     projects: document.getElementById('paneProjects'),
     ratings: document.getElementById('paneRatings'),
-    earnings: document.getElementById('paneEarnings')
+    earnings: document.getElementById('paneEarnings'),
+    settings: document.getElementById('paneSettings')
   };
 
   const loadedTabs = {};
@@ -191,7 +192,37 @@
         container.innerHTML = `<p style="color: #ef4444;">Error loading earnings ledger.</p>`;
       }
       loadedTabs['earnings'] = true;
+    } else if (tabName === 'settings') {
+      setupLanguagePreferences();
+      loadedTabs['settings'] = true;
     }
+  }
+
+  function setupLanguagePreferences() {
+    const radioEn = document.getElementById('radioLangEn');
+    const radioHi = document.getElementById('radioLangHi');
+    const feedback = document.getElementById('langSaveFeedback');
+    const currentPref = localStorage.getItem('mtg_language_preference') || 'en';
+
+    if (currentPref === 'hi' && radioHi) {
+      radioHi.checked = true;
+    } else if (radioEn) {
+      radioEn.checked = true;
+    }
+
+    const savePref = (val) => {
+      localStorage.setItem('mtg_language_preference', val);
+      if (feedback) {
+        feedback.style.display = 'block';
+        feedback.textContent = val === 'hi' 
+          ? '✓ भाषा प्राथमिकता हिंदी सेट की गई! (Language set to Hindi for localized content)' 
+          : '✓ Language preference set to English!';
+        setTimeout(() => { feedback.style.display = 'none'; }, 3500);
+      }
+    };
+
+    if (radioEn) radioEn.addEventListener('change', () => savePref('en'));
+    if (radioHi) radioHi.addEventListener('change', () => savePref('hi'));
   }
 
   function renderIdeas(ideas, container) {

@@ -41,8 +41,90 @@ const ROLE_ACCOUNTS = {
   admin: { email: 'admin@mahitechgroup.com', password: 'AdminPassword@2026', role: 'admin' }
 };
 
+// Step 13: Unified Indian Rupee Currency Formatter
+function formatINR(amount) {
+  const num = parseFloat(amount) || 0;
+  return '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Step 13: Unified Empty State Component Generator
+function renderEmptyState(icon, title, desc = '') {
+  return `
+    <div class="empty-state-box">
+      <div class="empty-icon">${icon}</div>
+      <div class="empty-title">${escapeHtml(title)}</div>
+      ${desc ? `<div class="empty-desc">${escapeHtml(desc)}</div>` : ''}
+    </div>
+  `;
+}
+
+// Step 13: Floating Toast Stack Manager (Max 3 visible, 4s auto-dismiss, queueing)
+const ToastManager = {
+  maxVisible: 3,
+  activeToasts: [],
+  queue: [],
+
+  show(message, type = 'normal', priority = 'normal') {
+    if (this.activeToasts.length < this.maxVisible) {
+      this._displayToast(message, type, priority);
+    } else {
+      this.queue.push({ message, type, priority });
+    }
+  },
+
+  _displayToast(message, type, priority) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    const isCritical = priority === 'critical' || type === 'critical';
+    toast.className = `toast-item ${isCritical ? 'toast-critical' : type === 'success' ? 'toast-success' : 'toast-normal'}`;
+
+    let icon = '🔔';
+    if (isCritical) icon = '⚠️';
+    else if (type === 'success') icon = '✓';
+    else if (type === 'meeting') icon = '📹';
+    else if (type === 'vote') icon = '🗳️';
+    else if (type === 'revenue') icon = '💰';
+
+    toast.innerHTML = `
+      <span class="toast-icon">${icon}</span>
+      <div class="toast-body">${escapeHtml(message)}</div>
+      <button class="toast-close" title="Dismiss">✕</button>
+    `;
+
+    container.appendChild(toast);
+    this.activeToasts.push(toast);
+
+    let dismissed = false;
+    const dismiss = () => {
+      if (dismissed) return;
+      dismissed = true;
+      toast.style.animation = 'toastSlideOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+      setTimeout(() => {
+        if (toast.parentElement) toast.parentElement.removeChild(toast);
+        this.activeToasts = this.activeToasts.filter(t => t !== toast);
+        if (this.queue.length > 0) {
+          const next = this.queue.shift();
+          this._displayToast(next.message, next.type, next.priority);
+        }
+      }, 200);
+    };
+
+    toast.querySelector('.toast-close').addEventListener('click', dismiss);
+    setTimeout(dismiss, 4000);
+  }
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
+  setupResponsiveTabDeck();
+  setupDesignerCornerActions();
   // Start with UI/UX Designer session by default
   await switchAccount('designer');
 });
@@ -345,6 +427,9 @@ function handleNewNotification(notif) {
   state.notifications.unshift(notif);
   renderNotificationsList();
 
+  // Step 13: Floating Toast notification
+  ToastManager.show(notif.message, notif.type || 'normal', notif.priority || 'normal');
+
   const badge = document.getElementById('notifBadge');
   const sideCount = document.getElementById('sideNotifCount');
   const currentCount = parseInt(badge.textContent || '0', 10) + 1;
@@ -418,8 +503,7 @@ async function fetchSummary() {
     }
 
     if (data.walletSummary) {
-      const balance = Number(data.walletSummary.balance || 0).toFixed(2);
-      document.getElementById('statWalletBalance').textContent = `₹${balance}`;
+      document.getElementById('statWalletBalance').textContent = formatINR(data.walletSummary.balance);
     }
   } catch (err) {
     console.error('Failed to fetch dashboard summary:', err);
@@ -512,7 +596,7 @@ async function fetchVotesFeed() {
     badgeEl.textContent = `${data.totalPending || data.ideas.length} Awaiting`;
 
     if (data.ideas.length === 0) {
-      listEl.innerHTML = '<div class="empty-state">No ideas currently awaiting team votes</div>';
+      listEl.innerHTML = renderEmptyState('🗳️', 'No ideas currently awaiting team votes', 'New proposals submitted by researchers will appear here for team voting.');
       return;
     }
 
@@ -586,7 +670,7 @@ async function fetchMiniProfiles() {
       const ratingEl = document.getElementById(`${prefix}RatingAvg`);
       if (ratingEl) ratingEl.textContent = `${data.ratingAverage} ★`;
       const walletEl = document.getElementById(`${prefix}Wallet`);
-      if (walletEl) walletEl.textContent = `₹${data.totalRevenueEarned || data.walletBalance || '0.00'}`;
+      if (walletEl) walletEl.textContent = formatINR(data.totalRevenueEarned || data.walletBalance || 0);
     }
 
     if (data.role === 'researcher') {
@@ -676,13 +760,8 @@ async function fetchResearcherTasks() {
 
   try {
     const res = await apiFetch('/api/projects/my-tasks?role=researcher');
-    if (!res || !res.tasks) {
-      listEl.innerHTML = '<div class="empty-state">No research tasks assigned</div>';
-      return;
-    }
-
-    if (res.tasks.length === 0) {
-      listEl.innerHTML = '<div class="empty-state">No research tasks currently active</div>';
+    if (!res || !res.tasks || res.tasks.length === 0) {
+      listEl.innerHTML = renderEmptyState('🔬', 'No research tasks assigned', 'Active research and market evaluation tasks will appear here.');
       return;
     }
 
@@ -721,13 +800,8 @@ async function fetchResearcherIdeas() {
 
   try {
     const res = await apiFetch('/api/ideas/my');
-    if (!res || !res.ideas) {
-      listEl.innerHTML = '<div class="empty-state">No ideas submitted yet</div>';
-      return;
-    }
-
-    if (res.ideas.length === 0) {
-      listEl.innerHTML = '<div class="empty-state">No ideas in your submission log</div>';
+    if (!res || !res.ideas || res.ideas.length === 0) {
+      listEl.innerHTML = renderEmptyState('💡', 'No ideas in your submission log', 'Submitted project proposals and their voting outcomes will appear here.');
       return;
     }
 
@@ -770,15 +844,8 @@ async function fetchDeveloperTasks() {
     }
 
     const res = await apiFetch(url);
-    if (!res || !res.tasks) {
-      listEl.innerHTML = '<div class="empty-state">No dev tasks assigned</div>';
-      return;
-    }
-
-    if (countEl) countEl.textContent = `${res.tasks.length} active`;
-
-    if (res.tasks.length === 0) {
-      listEl.innerHTML = '<div class="empty-state">No development tasks in queue</div>';
+    if (!res || !res.tasks || res.tasks.length === 0) {
+      listEl.innerHTML = renderEmptyState('💻', 'No development tasks in queue', 'Assigned sprint development tasks will appear here.');
       return;
     }
 
@@ -839,15 +906,8 @@ async function fetchProducerTasks() {
 
   try {
     const res = await apiFetch('/api/projects/my-tasks?role=producer');
-    if (!res || !res.tasks) {
-      listEl.innerHTML = '<div class="empty-state">No QA tasks assigned</div>';
-      return;
-    }
-
-    if (countEl) countEl.textContent = `${res.tasks.length} active`;
-
-    if (res.tasks.length === 0) {
-      listEl.innerHTML = '<div class="empty-state">No QA tasks currently in testing queue</div>';
+    if (!res || !res.tasks || res.tasks.length === 0) {
+      listEl.innerHTML = renderEmptyState('🧪', 'No QA tasks currently in testing queue', 'Test scenarios, test runs, and bug reports will appear here.');
       return;
     }
 
@@ -900,15 +960,8 @@ async function fetchDesignerTasks() {
 
   try {
     const res = await apiFetch('/api/projects/my-tasks?role=designer');
-    if (!res || !res.tasks) {
-      listEl.innerHTML = '<div class="empty-state">No design tasks assigned</div>';
-      return;
-    }
-
-    if (countEl) countEl.textContent = `${res.tasks.length} active`;
-
-    if (res.tasks.length === 0) {
-      listEl.innerHTML = '<div class="empty-state">No design tasks in queue</div>';
+    if (!res || !res.tasks || res.tasks.length === 0) {
+      listEl.innerHTML = renderEmptyState('🎨', 'No design tasks in queue', 'UI/UX wireframes, prototypes, and asset reviews will appear here.');
       return;
     }
 
@@ -1122,17 +1175,49 @@ function renderNotificationsList() {
   const notifList = document.getElementById('notifList');
   const sideList = document.getElementById('sideNotifList');
 
-  const content = state.notifications.length === 0
-    ? '<div class="empty-state">No notifications recorded</div>'
-    : state.notifications.map(n => `
-      <div class="notification-item ${n.is_read ? 'read' : 'unread'}">
+  if (state.notifications.length === 0) {
+    const emptyHtml = renderEmptyState('🔔', 'No notifications recorded', "You're completely caught up! New alerts and activities will appear here in real time.");
+    if (notifList) notifList.innerHTML = emptyHtml;
+    if (sideList) sideList.innerHTML = emptyHtml;
+    return;
+  }
+
+  const todayStr = new Date().toDateString();
+  const todayNotifs = [];
+  const earlierNotifs = [];
+
+  state.notifications.forEach(n => {
+    const d = new Date(n.created_at);
+    if (d.toDateString() === todayStr) {
+      todayNotifs.push(n);
+    } else {
+      earlierNotifs.push(n);
+    }
+  });
+
+  const renderItem = (n) => {
+    const isCritical = n.priority === 'critical' || n.type === 'critical';
+    return `
+      <div class="notification-item ${n.is_read ? 'read' : 'unread'} ${isCritical ? 'critical' : ''}">
         <div class="notif-header">
           <span class="notif-type">${escapeHtml(n.type)}</span>
           <span class="notif-time">${formatDate(n.created_at)}</span>
         </div>
         <div class="notif-message">${escapeHtml(n.message)}</div>
       </div>
-    `).join('');
+    `;
+  };
+
+  let content = '';
+  if (todayNotifs.length > 0) {
+    content += '<div class="notif-group-header">Today</div>' + todayNotifs.map(renderItem).join('');
+  }
+  if (earlierNotifs.length > 0) {
+    content += '<div class="notif-group-header">Earlier</div>' + earlierNotifs.map(renderItem).join('');
+  }
+  if (todayNotifs.length === 0 && earlierNotifs.length === 0) {
+    content = state.notifications.map(renderItem).join('');
+  }
 
   if (notifList) notifList.innerHTML = content;
   if (sideList) sideList.innerHTML = content;
@@ -2261,7 +2346,8 @@ async function openMeetingNotes(meetingId) {
     document.getElementById('notesMetaModel').textContent = `Model: ${data.notes.ai_model_used || 'OpenAI Whisper + GPT-4o'}`;
     document.getElementById('notesMetaConfirmed').textContent = data.notes.confirmed_at ? `✓ Confirmed ${new Date(data.notes.confirmed_at).toLocaleString()}` : 'Draft';
 
-    switchNotesLang('en');
+    const preferredLang = localStorage.getItem('mtg_language_preference') || 'en';
+    switchNotesLang(preferredLang === 'hi' ? 'hi' : 'en');
     document.getElementById('meetingNotesModalBackdrop').style.display = 'flex';
   } catch (err) {
     console.error('Error fetching notes:', err);
@@ -2339,9 +2425,101 @@ function handleMeetingNotesReady(data) {
   fetchMeetingsList();
 }
 
+// ===================================================================
+// STEP 13: RESPONSIVE TAB-DECK CONTROLLER (<1024px)
+// ===================================================================
+function setupResponsiveTabDeck() {
+  const tabDeck = document.getElementById('responsiveTabDeck');
+  if (!tabDeck) return;
+
+  const buttons = tabDeck.querySelectorAll('.resp-tab-btn');
+  const panelMap = {
+    researcher: document.getElementById('researcherCornerPanel'),
+    designer: document.getElementById('designerCornerPanel'),
+    center: document.getElementById('centerDashboardContainer'),
+    producer: document.getElementById('producerCornerPanel'),
+    developer: document.getElementById('developerCornerPanel')
+  };
+
+  const activateTab = (panelKey) => {
+    buttons.forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-panel') === panelKey);
+    });
+
+    Object.keys(panelMap).forEach(key => {
+      const el = panelMap[key];
+      if (el) {
+        if (key === panelKey) {
+          el.classList.add('panel-active-mobile');
+        } else {
+          el.classList.remove('panel-active-mobile');
+        }
+      }
+    });
+
+    localStorage.setItem('mtg_active_mobile_panel', panelKey);
+  };
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panelKey = btn.getAttribute('data-panel');
+      if (panelKey) activateTab(panelKey);
+    });
+  });
+
+  // Restore saved active tab or default to 'center'
+  const savedTab = localStorage.getItem('mtg_active_mobile_panel') || 'center';
+  activateTab(savedTab);
+}
+
+// ===================================================================
+// STEP 13: DESIGNER CORNER PARITY & ASSET UPLOAD
+// ===================================================================
+function setupDesignerCornerActions() {
+  const btnUpload = document.getElementById('btnUploadDesignAsset');
+  const inputUrl = document.getElementById('designerAssetUrlInput');
+  const btnCanvas = document.getElementById('btnDesignerOpenCanvas');
+  const reviewStatus = document.getElementById('designReviewStatus');
+
+  if (btnUpload) {
+    btnUpload.addEventListener('click', () => {
+      const url = inputUrl ? inputUrl.value.trim() : '';
+      if (!url) {
+        ToastManager.show('Please provide a Figma URL or Design Spec link.', 'normal');
+        return;
+      }
+      if (reviewStatus) {
+        reviewStatus.textContent = 'Review: In Review';
+        reviewStatus.className = 'badge badge-xs amber';
+      }
+      if (inputUrl) inputUrl.value = '';
+      ToastManager.show(`🎨 Design asset attached: ${url.slice(0, 30)}...`, 'success');
+      addTickerItem(`🎨 Designer attached design spec: "${url.slice(0, 30)}..."`);
+    });
+  }
+
+  if (btnCanvas) {
+    btnCanvas.addEventListener('click', () => {
+      const projId = state.canvasProjectId || (state.activeProjects && state.activeProjects[0]?.id);
+      if (projId) {
+        openCoworkingRoom(projId);
+      } else {
+        ToastManager.show('No active approved project canvas available yet.', 'normal');
+      }
+    });
+  }
+}
+
 window.openCoworkingRoom = openCoworkingRoom;
 window.joinMeetingRoom = joinMeetingRoom;
 window.startMeetingFromUI = startMeetingFromUI;
 window.openMeetingNotes = openMeetingNotes;
+window.switchNotesLang = switchNotesLang;
+window.ToastManager = ToastManager;
+window.formatINR = formatINR;
+window.renderEmptyState = renderEmptyState;
+window.setupResponsiveTabDeck = setupResponsiveTabDeck;
+window.setupDesignerCornerActions = setupDesignerCornerActions;
+
 
 

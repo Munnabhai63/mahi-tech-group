@@ -103,6 +103,25 @@
     </div>
   </div>
 
+  <!-- Step 13: Tablet & Mobile Responsive Tab Deck (<1024px) -->
+  <nav class="responsive-tab-deck" id="responsiveTabDeck" aria-label="Workspace Spatial Deck">
+    <button class="resp-tab-btn" data-panel="researcher" title="Researcher Corner">
+      <span class="tab-icon">🔬</span><span class="tab-label">Research</span>
+    </button>
+    <button class="resp-tab-btn" data-panel="designer" title="UI/UX Designer Corner">
+      <span class="tab-icon">🎨</span><span class="tab-label">Design</span>
+    </button>
+    <button class="resp-tab-btn active" data-panel="center" title="Shared Center Hub">
+      <span class="tab-icon">⚡</span><span class="tab-label">Center</span>
+    </button>
+    <button class="resp-tab-btn" data-panel="producer" title="Producer / QA Corner">
+      <span class="tab-icon">🧪</span><span class="tab-label">QA</span>
+    </button>
+    <button class="resp-tab-btn" data-panel="developer" title="Developer Corner">
+      <span class="tab-icon">💻</span><span class="tab-label">Dev</span>
+    </button>
+  </nav>
+
   <!-- Main Workspace Canvas -->
   <main class="dashboard-main spatial-workspace-layout" id="workspaceMain">
     
@@ -235,6 +254,25 @@
           <div class="task-items-list" id="designerTasksList">
             <div class="loading-state">Loading assigned design tasks...</div>
           </div>
+        </div>
+
+        <!-- Designer Asset Upload Area (Figma / Wireframe / Design Spec) -->
+        <div class="corner-asset-upload-area" id="designerAssetArea" style="margin-top: 12px; background: rgba(244, 63, 94, 0.05); border: 1px dashed rgba(244, 63, 94, 0.3); border-radius: 8px; padding: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11.5px; font-weight: 600; color: #fda4af;">🎨 Design Spec & Asset Upload</span>
+            <span class="badge badge-xs rose" id="designReviewStatus">Review: In Sync</span>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <input type="url" id="designerAssetUrlInput" class="form-input" placeholder="Paste Figma, FigJam, or Prototype URL..." style="font-size: 11px; padding: 4px 8px; flex: 1;">
+            <button class="btn btn-rose btn-xs" id="btnUploadDesignAsset">Attach Spec</button>
+          </div>
+        </div>
+
+        <!-- Designer Co-working Canvas Quick Launcher -->
+        <div style="margin-top: 10px; display: flex; gap: 8px;">
+          <button class="btn btn-secondary btn-xs" id="btnDesignerOpenCanvas" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-color: rgba(244, 63, 94, 0.4); color: #fda4af;">
+            <span>🖌️</span> Launch Co-working Canvas
+          </button>
         </div>
       </section>
 
@@ -984,6 +1022,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Step 13: Floating Toast Notifications Container (Bottom-Right, Max 3 Stack) -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
   <script src="/js/dashboard.js"></script>
 </body>
