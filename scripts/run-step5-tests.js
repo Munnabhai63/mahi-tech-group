@@ -433,6 +433,55 @@ async function runStep5Tests() {
     results.push({ test: 'Asset Registration & ORG Ownership Enforcement', status: 'PASS' });
 
     // -----------------------------------------------------------------
+    // TEST 9: Non-Admin User (Developer/Researcher) Offboarding RBAC Rejection (403 Forbidden)
+    // -----------------------------------------------------------------
+    console.log('\n--- TEST 9: Non-Admin Offboarding Attempt RBAC Guard (403 Forbidden) ---');
+    console.log(`Developer "${peerDev.user.name}" attempting to call POST /api/admin/members/:id/offboard...`);
+
+    const nonAdminRes = await fetch(`${BASE_URL}/api/admin/members/${walletMember.user.id}/offboard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${peerDev.token}` },
+      body: JSON.stringify({ reason: 'Malicious non-admin offboard attempt' })
+    });
+    const nonAdminData = await nonAdminRes.json();
+    console.log(`Non-Admin offboard attempt response status: ${nonAdminRes.status}`);
+    console.log(`Non-Admin offboard attempt response body:`, JSON.stringify(nonAdminData));
+
+    if (nonAdminRes.status !== 403 || !nonAdminData.error.includes('Forbidden')) {
+      throw new Error(`Expected 403 Forbidden for non-admin offboarding attempt, got ${nonAdminRes.status}: ${JSON.stringify(nonAdminData)}`);
+    }
+    console.log('Verified: RBAC permission "member.remove" strictly blocks non-administrators with HTTP 403 Forbidden.');
+    results.push({ test: 'Non-Admin Offboarding RBAC Guard (403 Forbidden)', status: 'PASS' });
+
+    // -----------------------------------------------------------------
+    // TEST 10: Admin Self-Offboarding Attempt Rejection (400 Bad Request)
+    // -----------------------------------------------------------------
+    console.log('\n--- TEST 10: Admin Self-Offboarding Attempt Rejection (400 Bad Request) ---');
+    console.log(`Admin "${adminUser.name}" (ID: ${adminUser.id}) attempting to offboard their OWN account...`);
+
+    const selfOffboardRes = await fetch(`${BASE_URL}/api/admin/members/${adminUser.id}/offboard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+      body: JSON.stringify({ reason: 'Self-offboard attempt test' })
+    });
+    const selfOffboardData = await selfOffboardRes.json();
+    console.log(`Self-offboard attempt response status: ${selfOffboardRes.status}`);
+    console.log(`Self-offboard attempt response body:`, JSON.stringify(selfOffboardData));
+
+    if (selfOffboardRes.status !== 400 || !selfOffboardData.error.includes('Cannot offboard yourself')) {
+      throw new Error(`Expected 400 "Cannot offboard yourself", got ${selfOffboardRes.status}: ${JSON.stringify(selfOffboardData)}`);
+    }
+
+    // Verify database: Admin account is completely active, untouched, and sessions valid
+    const adminInDb = queryOne('SELECT id, name, email, status, wallet_frozen FROM users WHERE id = ?', [adminUser.id]);
+    console.log('Database verification: Admin account state remains untouched:', adminInDb);
+    if (adminInDb.status !== 'active' || adminInDb.wallet_frozen !== 0) {
+      throw new Error('Admin account status was corrupted by self-offboard attempt!');
+    }
+    console.log('Verified: Self-offboarding is structurally blocked to prevent administrative lockout.');
+    results.push({ test: 'Admin Self-Offboarding Safety Lock (400 Bad Request)', status: 'PASS' });
+
+    // -----------------------------------------------------------------
     // FINAL REPORT SUMMARY
     // -----------------------------------------------------------------
     console.log('\n===================================================================');
