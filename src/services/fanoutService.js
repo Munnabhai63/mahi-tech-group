@@ -535,7 +535,27 @@ export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, i
 /**
  * Reassign Project Member/Task (Admin Only)
  */
-export function reassignTask({ taskId, newUserId, adminUserId, ipAddress = null }) {
+export function isTaskRoleCompatible(taskType, userRole, userSubRole = null) {
+  if (userRole === 'admin') return true;
+  switch (taskType) {
+    case 'research':
+      return userRole === 'researcher';
+    case 'backend':
+      return userRole === 'developer' && userSubRole !== 'frontend';
+    case 'frontend':
+      return userRole === 'developer' && userSubRole !== 'backend';
+    case 'design':
+      return userRole === 'designer';
+    case 'testing':
+      return userRole === 'producer';
+    case 'review':
+      return userRole === 'admin';
+    default:
+      return true;
+  }
+}
+
+export function reassignTask({ taskId, newUserId, adminUserId, allowCrossRole = false, ipAddress = null }) {
   const task = queryOne('SELECT * FROM project_tasks WHERE id = ?', [taskId]);
   if (!task) {
     return { success: false, status: 404, error: 'Task not found' };
@@ -548,6 +568,26 @@ export function reassignTask({ taskId, newUserId, adminUserId, ipAddress = null 
 
   if (targetUser.status !== 'active') {
     return { success: false, status: 400, error: 'Cannot assign task to an inactive user' };
+  }
+
+  // Role Compatibility Verification
+  const isCompatible = isTaskRoleCompatible(task.task_type, targetUser.role, targetUser.sub_role);
+  if (!isCompatible) {
+    if (!allowCrossRole) {
+      return {
+        success: false,
+        status: 400,
+        isCrossRoleMismatch: true,
+        error: `Role mismatch: User '${targetUser.name}' has role '${targetUser.role}' which does not match task type '${task.task_type}'. Specify allowCrossRole: true to execute an executive override.`
+      };
+    }
+    // Executive cross-role override permitted by Admin: Log warning entry
+    logAccess({
+      userId: adminUserId,
+      action: 'role_mismatch_override',
+      resource: `/api/admin/projects/${task.project_id}/reassign (role_mismatch_override: task ${taskId} '${task.task_name}' of type ${task.task_type} assigned to ${targetUser.role} '${targetUser.name}')`,
+      ipAddress
+    });
   }
 
   execute(
@@ -584,7 +624,7 @@ export function reassignTask({ taskId, newUserId, adminUserId, ipAddress = null 
   });
 
   const updatedTask = queryOne('SELECT * FROM project_tasks WHERE id = ?', [taskId]);
-  return { success: true, task: updatedTask };
+  return { success: true, task: updatedTask, wasCrossRole: !isCompatible };
 }
 
 /**

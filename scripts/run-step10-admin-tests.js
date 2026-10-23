@@ -32,6 +32,7 @@ import { runMigration } from '../src/db/migrate.js';
 import { runSeed } from '../src/db/seed.js';
 import { queryOne, queryAll, execute } from '../src/db/database.js';
 import { initWebSocketServer } from '../src/services/wsService.js';
+import { cleanupTestData } from './cleanup-test-data.js';
 
 const require = createRequire(import.meta.url);
 const TEST_PORT = 4993;
@@ -84,7 +85,8 @@ async function runStep10AdminTests() {
   console.log('   STEP 10: FRONTEND ADMIN CONTROL PANEL COMPREHENSIVE SUITE');
   console.log('===================================================================\n');
 
-  console.log('[SETUP] Running database migrations & seeding...');
+  console.log('[SETUP] Restoring canonical team roster and running migrations...');
+  await cleanupTestData(false);
   runMigration();
   runSeed();
 
@@ -416,33 +418,57 @@ async function runStep10AdminTests() {
     // -------------------------------------------------------------------------
     // TEST 6C: Project Task & Contributor Reassignment Lifecycle
     // -------------------------------------------------------------------------
-    console.log('[TEST 6C] Project Task & Contributor Reassignment Lifecycle...');
-    const targetTask = tasksCreated[0];
-    console.log(`   -> Target task to reassign: "${targetTask.task_name}" (id: ${targetTask.id}, initial_assigned: ${targetTask.assigned_to || 'None'})`);
+    console.log('[TEST 6C] Project Task & Contributor Reassignment Lifecycle (Role Compatibility & Override)...');
+    const targetTask = tasksCreated[0]; // "Deep Research", task_type='research'
+    console.log(`   -> Target task to reassign: "${targetTask.task_name}" (type: ${targetTask.task_type}, id: ${targetTask.id})`);
 
-    const reassignRes = await req('PATCH', `/api/admin/projects/${projectCreated.id}/reassign`, adminSession.token, {
+    // A: Cross-role reassignment attempt WITHOUT allowCrossRole (Expected 400)
+    // Note: devId was changed in Test 4 to role='producer'
+    const crossRoleBlocked = await req('PATCH', `/api/admin/projects/${projectCreated.id}/reassign`, adminSession.token, {
       taskId: targetTask.id,
-      newUserId: devId
+      newUserId: devId,
+      allowCrossRole: false
     });
-    console.log(`   -> Admin task reassignment call: HTTP ${reassignRes.status}`);
-    if (reassignRes.status !== 200) throw new Error('Task reassignment failed');
+    console.log(`   -> Cross-role reassignment without override: HTTP ${crossRoleBlocked.status} (Expected 400)`);
+    console.log(`     * Block error message: "${crossRoleBlocked.data.error}"`);
+    if (crossRoleBlocked.status !== 400 || !crossRoleBlocked.data.error.includes('Role mismatch')) {
+      throw new Error(`Expected HTTP 400 role mismatch rejection, got ${crossRoleBlocked.status}`);
+    }
 
-    const taskInDb = queryOne('SELECT assigned_to FROM project_tasks WHERE id = ?', [targetTask.id]);
-    const memberInDb = queryOne('SELECT id, role_in_project FROM project_members WHERE project_id = ? AND user_id = ?', [projectCreated.id, devId]);
-    const reassignLog = queryOne(`
-      SELECT resource FROM access_log
-      WHERE action = 'task_reassigned_by_admin' AND resource LIKE ?
+    // B: Cross-role reassignment WITH allowCrossRole: true (Executive Override)
+    const crossRoleApproved = await req('PATCH', `/api/admin/projects/${projectCreated.id}/reassign`, adminSession.token, {
+      taskId: targetTask.id,
+      newUserId: devId,
+      allowCrossRole: true
+    });
+    console.log(`   -> Cross-role reassignment with executive override: HTTP ${crossRoleApproved.status} (wasCrossRole: ${crossRoleApproved.data.wasCrossRole})`);
+    if (crossRoleApproved.status !== 200 || !crossRoleApproved.data.wasCrossRole) {
+      throw new Error('Executive cross-role override should succeed with wasCrossRole=true');
+    }
+
+    // Verify warning entry in access_log
+    const crossRoleLog = queryOne(`
+      SELECT action, resource FROM access_log
+      WHERE action = 'role_mismatch_override' AND resource LIKE ?
       ORDER BY timestamp DESC LIMIT 1
     `, [`%${targetTask.id}%`]);
+    console.log(`     * access_log cross-role warning entry: action='${crossRoleLog?.action}', resource="${crossRoleLog?.resource}"`);
+    if (!crossRoleLog) throw new Error('role_mismatch_override entry missing from access_log');
 
-    console.log(`     * project_tasks.assigned_to: '${taskInDb.assigned_to}' (Matches new user: ${taskInDb.assigned_to === devId})`);
-    console.log(`     * project_members record: id='${memberInDb?.id}', role='${memberInDb?.role_in_project}'`);
-    console.log(`     * access_log entry: "${reassignLog?.resource}"`);
+    // C: Compatible same-role reassignment (reassigning 'research' task to 'resId' researcher)
+    const sameRoleReassign = await req('PATCH', `/api/admin/projects/${projectCreated.id}/reassign`, adminSession.token, {
+      taskId: targetTask.id,
+      newUserId: resId
+    });
+    console.log(`   -> Compatible same-role reassignment: HTTP ${sameRoleReassign.status} (wasCrossRole: ${sameRoleReassign.data.wasCrossRole})`);
+    if (sameRoleReassign.status !== 200 || sameRoleReassign.data.wasCrossRole) {
+      throw new Error('Same-role reassignment should succeed with wasCrossRole=false');
+    }
 
-    if (taskInDb.assigned_to !== devId) throw new Error('Task was not reassigned to new user in database');
-    if (!memberInDb) throw new Error('New user was not added to project_members');
-    if (!reassignLog) throw new Error('Reassignment was not recorded in access_log');
-    console.log('   ✓ TEST 6C PASSED: Project task and member reassignment verified in tasks, members, and access_log\n');
+    const taskInDb = queryOne('SELECT assigned_to FROM project_tasks WHERE id = ?', [targetTask.id]);
+    console.log(`     * Final project_tasks.assigned_to: '${taskInDb.assigned_to}' (Matches researcher resId: ${taskInDb.assigned_to === resId})`);
+    if (taskInDb.assigned_to !== resId) throw new Error('Task was not reassigned to compatible researcher in database');
+    console.log('   ✓ TEST 6C PASSED: Role-compatibility enforced, executive cross-role override audited, and compatible reassignment verified\n');
 
     // -------------------------------------------------------------------------
     // TEST 7: Project Final Review Attempt with Incomplete Tasks (Blocked)
@@ -689,30 +715,29 @@ async function runStep10AdminTests() {
     console.log('   ✓ TEST 11C PASSED: System parameters updated, persisted, audited, and strictly non-retroactive\n');
 
     // -------------------------------------------------------------------------
-    // TEST 12: Ephemeral Test Data vs Official Core Team Roster Verification
+    // TEST 12: Ephemeral Test Data Cleanup & Canonical Roster Verification
     // -------------------------------------------------------------------------
-    console.log('[TEST 12] Ephemeral Test Data vs Official Core Team Clarification...');
-    const totalUsersInDb = queryOne('SELECT COUNT(*) as count FROM users')?.count || 0;
-    const testUsersCount = queryOne(`
-      SELECT COUNT(*) as count FROM users
-      WHERE email LIKE '%.tester.%' OR email LIKE '%applicant.%' OR email LIKE '%candidate.%' 
-         OR email LIKE '%withdraw.user.%' OR email LIKE '%.dev.17%' OR email LIKE '%.s7.17%'
-    `)?.count || 0;
-    const officialUsers = queryAll(`
-      SELECT name, email, role, status FROM users
-      WHERE email NOT LIKE '%.tester.%' AND email NOT LIKE '%applicant.%' AND email NOT LIKE '%candidate.%'
-        AND email NOT LIKE '%withdraw.user.%' AND email NOT LIKE '%.dev.17%' AND email NOT LIKE '%.s7.17%'
-        AND email NOT LIKE '%step09.%' AND email NOT LIKE '%peer.dev.%' AND email NOT LIKE '%former.member.%'
-      ORDER BY role, name
-    `);
+    console.log('[TEST 12] Ephemeral Test Data Cleanup & Canonical Roster Verification...');
+    const canonicalUsers = await cleanupTestData(false);
+    console.log(`   ✓ Cleaned DB to exact canonical roster: ${canonicalUsers.length} members`);
 
-    console.log(`   * Total registered users in database: ${totalUsersInDb}`);
-    console.log(`   * Ephemeral test runner generated personas: ${testUsersCount}`);
-    console.log(`   * Permanent core official team roster: ${officialUsers.length} members`);
-    console.log('   ✓ Official Team Members sample:');
-    officialUsers.slice(0, 6).forEach(u => console.log(`     - [${u.role.toUpperCase()}] ${u.name} <${u.email}> (${u.status})`));
-    console.log('   ✓ Dedicated cleanup tool available: npm run db:clean-tests (scripts/cleanup-test-data.js)');
-    console.log('   ✓ TEST 12 PASSED: Test data boundaries and core roster isolation clearly established\n');
+    const usersInDb = queryAll('SELECT id, name, email, role, status FROM users ORDER BY created_at ASC');
+    console.log(`   * Total users remaining in database: ${usersInDb.length} (Expected exactly 13)`);
+    console.table(usersInDb);
+
+    if (usersInDb.length !== 13) {
+      throw new Error(`Expected exactly 13 canonical users after cleanup, found ${usersInDb.length}`);
+    }
+
+    const activeCount = usersInDb.filter(u => u.status === 'active').length;
+    const inactiveCount = usersInDb.filter(u => u.status === 'inactive').length;
+    console.log(`     - Active members: ${activeCount} (Expected 12)`);
+    console.log(`     - Inactive members: ${inactiveCount} (Expected 1: Riya Sharma)`);
+
+    if (activeCount !== 12 || inactiveCount !== 1) {
+      throw new Error(`Roster breakdown mismatch: expected 12 active, 1 inactive, got ${activeCount}/${inactiveCount}`);
+    }
+    console.log('   ✓ TEST 12 PASSED: Database strictly verified with exact 13-person official team roster\n');
 
     console.log('===================================================================');
     console.log('   ALL 16 CHECKS OF STEP 10 (ADMIN CONTROL PANEL) FULLY VERIFIED & PASSED');

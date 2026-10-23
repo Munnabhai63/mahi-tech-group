@@ -547,7 +547,7 @@ router.patch('/projects/:id/reassign', authenticate, (req, res) => {
     return res.status(403).json({ error: 'Forbidden: Only administrators can reassign project tasks' });
   }
 
-  const { taskId, newUserId } = req.body || {};
+  const { taskId, newUserId, allowCrossRole } = req.body || {};
 
   if (!taskId || !newUserId) {
     return res.status(400).json({ error: 'taskId and newUserId are required' });
@@ -557,16 +557,18 @@ router.patch('/projects/:id/reassign', authenticate, (req, res) => {
     taskId,
     newUserId,
     adminUserId: req.user.id,
+    allowCrossRole: allowCrossRole === true,
     ipAddress
   });
 
   if (!result.success) {
-    return res.status(result.status || 400).json({ error: result.error });
+    return res.status(result.status || 400).json({ error: result.error, isCrossRoleMismatch: result.isCrossRoleMismatch || false });
   }
 
   return res.status(200).json({
-    message: 'Task successfully reassigned by Admin',
-    task: result.task
+    message: result.wasCrossRole ? 'Task reassigned with executive cross-role override' : 'Task successfully reassigned by Admin',
+    task: result.task,
+    wasCrossRole: result.wasCrossRole || false
   });
 });
 
