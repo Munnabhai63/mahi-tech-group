@@ -37,7 +37,7 @@ router.post('/members/add', authenticate, requirePermission('member.add'), async
     return res.status(400).json({ error: 'Name, email, and role are required' });
   }
 
-  const validRoles = ['researcher', 'developer', 'producer', 'admin'];
+  const validRoles = ['researcher', 'developer', 'producer', 'admin', 'designer'];
   if (!validRoles.includes(role)) {
     return res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
   }

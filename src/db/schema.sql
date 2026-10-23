@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     name              VARCHAR(100) NOT NULL,
     email             VARCHAR(150) UNIQUE NOT NULL,
     password_hash     VARCHAR(255) NOT NULL,
-    role              VARCHAR(20) NOT NULL CHECK (role IN ('researcher','developer','producer','admin')),
+    role              VARCHAR(20) NOT NULL CHECK (role IN ('researcher','developer','producer','admin','designer')),
     sub_role          VARCHAR(20) CHECK (sub_role IN ('frontend','backend',NULL)),
     status            VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','suspended')),
     rating_avg        DECIMAL(3,2) DEFAULT 0.0,
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS project_members (
     user_id                 TEXT NOT NULL REFERENCES users(id),
     role_in_project         VARCHAR(30) NOT NULL CHECK (role_in_project IN
                             ('researcher','frontend_dev','backend_dev',
-                             'producer','admin_reviewer')),
+                             'producer','admin_reviewer','designer')),
     task_status             VARCHAR(20) DEFAULT 'ASSIGNED' CHECK (task_status IN
                             ('ASSIGNED','IN_PROGRESS','BLOCKED_ON_DEPENDENCY',
                              'SUBMITTED','APPROVED')),
@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS project_tasks (
     assigned_to         TEXT REFERENCES users(id),
     task_name           VARCHAR(150) NOT NULL,
     task_type           VARCHAR(30) CHECK (task_type IN
-                        ('research','backend','frontend','testing','review')),
+                        ('research','backend','frontend','testing','review','design')),
     depends_on_task_id  TEXT REFERENCES project_tasks(id) NULL,
     status              VARCHAR(20) DEFAULT 'TODO' CHECK (status IN
                         ('TODO','BLOCKED','IN_PROGRESS','DONE')),

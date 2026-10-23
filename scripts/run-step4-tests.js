@@ -93,11 +93,12 @@ async function runStep4Tests() {
     const researchMember = await createAndLoginMember('Dr. Elena Vance', 'elena.researcher@mahitechgroup.com', 'researcher');
     const backendMember = await createAndLoginMember('Marcus Chen', 'marcus.backend@mahitechgroup.com', 'developer', 'backend');
     const frontendMember = await createAndLoginMember('Aria Stark', 'aria.frontend@mahitechgroup.com', 'developer', 'frontend');
+    const designerMember = await createAndLoginMember('Diya Designer', 'diya.designer@mahitechgroup.com', 'designer');
     const producerMember = await createAndLoginMember('David Kim', 'david.producer@mahitechgroup.com', 'producer');
-    console.log('Team bootstrap complete: Researcher, Backend Dev, Frontend Dev, Producer.');
+    console.log('Team bootstrap complete: Researcher, Backend Dev, Frontend Dev, Designer, Producer.');
 
     // -----------------------------------------------------------------
-    // TEST 2: CRITICAL TEST — Simultaneous 4-Task Creation on Idea Approval
+    // TEST 2: CRITICAL TEST — Simultaneous 9-Task Creation on Idea Approval
     // -----------------------------------------------------------------
     console.log('\n--- TEST 2: True Parallelism — Single DB Query Proving Simultaneous Fan-Out ---');
     // Create and submit a fresh idea
@@ -158,29 +159,35 @@ async function runStep4Tests() {
       created_at: t.created_at
     })));
 
-    // Verify all 4 initial tasks exist with status TODO
+    // Verify all 9 tasks exist
+    if (tasks.length !== 9) throw new Error(`Expected exactly 9 tasks, got ${tasks.length}`);
+
+    // Verify root task (Deep Research) exists with status TODO
     const initialTasks = tasks.filter(t => t.depends_on_task_id === null);
-    console.log(`\nInitial Tasks Count (zero dependency): ${initialTasks.length}`);
-    if (initialTasks.length !== 4) throw new Error(`Expected exactly 4 initial tasks, got ${initialTasks.length}`);
+    console.log(`\nInitial Tasks Count (zero dependency root): ${initialTasks.length}`);
+    if (initialTasks.length !== 1 || initialTasks[0].task_name !== 'Deep Research') {
+      throw new Error(`Expected Deep Research as initial root task, got: ${JSON.stringify(initialTasks)}`);
+    }
 
-    const allInitialTodo = initialTasks.every(t => t.status === 'TODO');
-    console.log(`All 4 initial tasks have status = 'TODO': ${allInitialTodo}`);
-    if (!allInitialTodo) throw new Error('Not all initial tasks are TODO!');
+    // Verify all 9 tasks have exact identical millisecond timestamp
+    const firstTs = tasks[0].created_at;
+    const sameTimestamp = tasks.every(t => t.created_at === firstTs);
+    console.log(`All 9 tasks have exact identical millisecond timestamp (${firstTs}): ${sameTimestamp}`);
+    if (!sameTimestamp) throw new Error('Tasks timestamps differ!');
 
-    // Verify timestamp identical
-    const firstTs = initialTasks[0].created_at;
-    const sameTimestamp = initialTasks.every(t => t.created_at === firstTs);
-    console.log(`All 4 initial tasks have exact identical millisecond timestamp (${firstTs}): ${sameTimestamp}`);
-    if (!sameTimestamp) throw new Error('Initial tasks timestamps differ!');
+    // Verify 4 parallel tasks unlocked by Deep Research exist with status BLOCKED
+    const parallel4 = tasks.filter(t => [
+      'Backend Architecture Setup',
+      'Frontend UI Scaffolding',
+      'UI/UX Design',
+      'Test Plan Preparation'
+    ].includes(t.task_name));
+    console.log(`Parallel Tasks Count (unlocked by Deep Research): ${parallel4.length}`);
+    if (parallel4.length !== 4) throw new Error(`Expected exactly 4 parallel tasks, got ${parallel4.length}`);
 
-    // Verify 4 dependent tasks exist with status BLOCKED
-    const dependentTasks = tasks.filter(t => t.depends_on_task_id !== null);
-    console.log(`Dependent Tasks Count (integration gates): ${dependentTasks.length}`);
-    if (dependentTasks.length !== 4) throw new Error(`Expected exactly 4 dependent tasks, got ${dependentTasks.length}`);
-
-    const allDependentBlocked = dependentTasks.every(t => t.status === 'BLOCKED');
-    console.log(`All 4 dependent tasks have status = 'BLOCKED': ${allDependentBlocked}`);
-    if (!allDependentBlocked) throw new Error('Not all dependent tasks are BLOCKED!');
+    const allParallelBlocked = parallel4.every(t => t.status === 'BLOCKED' && t.depends_on_task_id === initialTasks[0].id);
+    console.log(`All 4 parallel tasks have status = 'BLOCKED' on Deep Research: ${allParallelBlocked}`);
+    if (!allParallelBlocked) throw new Error('Not all parallel tasks are BLOCKED on Deep Research!');
 
     // Verify revenue_clock_start is set and stage is RESEARCH_DEV_PARALLEL
     console.log(`Project revenue_clock_start: ${project.revenue_clock_start}`);
@@ -212,9 +219,22 @@ async function runStep4Tests() {
     results.push({ test: 'Structural Prevention of Sequential Fallback', status: 'PASS' });
 
     // -----------------------------------------------------------------
-    // TEST 4: Parent Task Completion Automatically Unblocks Child Task
+    // TEST 4: Simultaneous Unblock on Research & Parent Completion
     // -----------------------------------------------------------------
-    console.log('\n--- TEST 4: Parent Completion Auto-Unblocks Child Task ---');
+    console.log('\n--- TEST 4: Simultaneous Unblock on Research & Parent Completion ---');
+    // First, complete Deep Research to trigger simultaneous unblock of the 4 parallel tracks!
+    const researchTask = tasks.find(t => t.task_name === 'Deep Research');
+    const completeResearchRes = await fetch(`${BASE_URL}/api/tasks/${researchTask.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getTokenForUser(researchTask.assigned_to)}` },
+      body: JSON.stringify({ status: 'DONE' })
+    });
+    const completeResearchData = await completeResearchRes.json();
+    console.log(`Deep Research completed. Unblocked tasks (${completeResearchData.unblockedTasks.length}):`, completeResearchData.unblockedTasks.map(t => t.task_name));
+    if (completeResearchData.unblockedTasks.length !== 4) {
+      throw new Error(`Expected 4 tasks unblocked on research completion, got ${completeResearchData.unblockedTasks.length}`);
+    }
+
     const backendArchTask = tasks.find(t => t.task_name === 'Backend Architecture Setup');
     const apiIntegrationTask = tasks.find(t => t.task_name === 'Frontend API Integration');
 
@@ -259,6 +279,7 @@ async function runStep4Tests() {
     execute("UPDATE users SET rating_avg = 4.8 WHERE id = ?", [candC.user.id]);
 
     // Clean up any tasks previously assigned to these candidates from earlier standalone runs (exclude active project)
+    execute("UPDATE project_tasks SET depends_on_task_id = NULL WHERE depends_on_task_id IN (SELECT id FROM project_tasks WHERE assigned_to IN (?, ?, ?) AND project_id != ?)", [candA.user.id, candB.user.id, candC.user.id, project.id]);
     execute("DELETE FROM project_tasks WHERE assigned_to IN (?, ?, ?) AND project_id != ?", [candA.user.id, candB.user.id, candC.user.id, project.id]);
 
     // Create separate project for workload candidate evaluation so we do not pollute the main project tasks
@@ -368,27 +389,12 @@ async function runStep4Tests() {
     results.push({ test: 'Project owner_id Strict Immutability', status: 'PASS' });
 
     // -----------------------------------------------------------------
-    // TEST 8: Full Stage Progression Through All Gates & All 8 Tasks Verification
+    // TEST 8: Full Stage Progression Through All Gates & All 9 Tasks Verification
     // -----------------------------------------------------------------
-    console.log('\n--- TEST 8: Stage Progression State Machine Through All Gates (All 8 Tasks) ---');
-    console.log(`Initial Stage: ${queryOne('SELECT current_stage FROM projects WHERE id = ?', [project.id]).current_stage}`);
+    console.log('\n--- TEST 8: Stage Progression State Machine Through All Gates (All 9 Tasks) ---');
+    console.log(`Current Stage: ${queryOne('SELECT current_stage FROM projects WHERE id = ?', [project.id]).current_stage}`);
 
-    // Track A: Complete "Deep Research" (Gate 2: unblocks Feature Logic Lock)
-    // (Note: Backend Architecture Setup was already completed in Test 4, which unblocked Frontend API Integration)
-    const researchTask = tasks.find(t => t.task_name === 'Deep Research');
-    const compResearchRes = await fetch(`${BASE_URL}/api/tasks/${researchTask.id}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getTokenForUser(researchTask.assigned_to)}` },
-      body: JSON.stringify({ status: 'DONE' })
-    });
-    const compResearchData = await compResearchRes.json();
-    console.log(`Completed "Deep Research" -> Child "Feature Logic Lock" unblocked:`, compResearchData.unblockedTasks);
-    console.log(`Stage after Backend + Research complete: ${compResearchData.currentStage}`);
-
-    if (compResearchData.currentStage !== 'INTEGRATION') {
-      throw new Error(`Expected stage 'INTEGRATION', got '${compResearchData.currentStage}'`);
-    }
-
+    // (Note: Deep Research and Backend Architecture Setup were completed in Test 4)
     // Complete "Feature Logic Lock"
     const logicLockTask = tasks.find(t => t.task_name === 'Feature Logic Lock');
     await fetch(`${BASE_URL}/api/tasks/${logicLockTask.id}/status`, {
@@ -398,9 +404,9 @@ async function runStep4Tests() {
     });
     console.log('Completed "Feature Logic Lock".');
 
-    // VERIFICATION OF GAP FIX 1: Full QA Testing CANNOT unblock or start while Frontend or Test Plan Prep are incomplete!
+    // VERIFICATION: Full QA Testing CANNOT unblock or start while Frontend, Design, or Test Plan Prep are incomplete!
     const qaTaskCheck = queryOne('SELECT status FROM project_tasks WHERE id = ?', [fullQaTask.id]);
-    console.log(`Checking "Full QA Testing" status while Frontend & Test Plan are still incomplete: ${qaTaskCheck.status}`);
+    console.log(`Checking "Full QA Testing" status while Frontend, Design & Test Plan are still incomplete: ${qaTaskCheck.status}`);
     if (qaTaskCheck.status !== 'BLOCKED') {
       throw new Error(`Expected Full QA Testing to remain BLOCKED, but found: ${qaTaskCheck.status}`);
     }
@@ -418,7 +424,7 @@ async function runStep4Tests() {
       throw new Error('API failed to block premature QA start!');
     }
 
-    // VERIFICATION OF GAP FIX 2: Admin Final Review approval CANNOT be granted while other tracks are incomplete!
+    // VERIFICATION: Admin Final Review approval CANNOT be granted while other tracks are incomplete!
     const prematureAdminRes = await fetch(`${BASE_URL}/api/admin/projects/${project.id}/final-review`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
@@ -427,11 +433,11 @@ async function runStep4Tests() {
     const prematureAdminData = await prematureAdminRes.json();
     console.log(`Premature Admin approval rejection status: ${prematureAdminRes.status}`);
     console.log(`Premature Admin approval rejection response:`, prematureAdminData.error);
-    if (prematureAdminRes.status !== 400 || !prematureAdminData.error.includes('all 7 preceding tasks')) {
+    if (prematureAdminRes.status !== 400 || !prematureAdminData.error.includes('all 8 preceding tasks')) {
       throw new Error('API failed to reject premature Admin launch approval!');
     }
 
-    // Now complete the remaining parallel dev and test preparation tasks:
+    // Now complete the remaining parallel dev, design, and test preparation tasks:
     // 1. Complete "Frontend UI Scaffolding"
     const frontendScaffoldTask = tasks.find(t => t.task_name === 'Frontend UI Scaffolding');
     const freshScaffold = queryOne('SELECT assigned_to FROM project_tasks WHERE id = ?', [frontendScaffoldTask.id]);
@@ -457,7 +463,20 @@ async function runStep4Tests() {
     }
     console.log('Completed "Frontend API Integration".');
 
-    // 3. Complete "Test Plan Preparation" -> This completes all 6 prerequisites!
+    // 3. Complete "UI/UX Design" (New 9th Track)
+    const designTask = tasks.find(t => t.task_name === 'UI/UX Design');
+    const freshDesign = queryOne('SELECT assigned_to FROM project_tasks WHERE id = ?', [designTask.id]);
+    const resDesign = await fetch(`${BASE_URL}/api/tasks/${designTask.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getTokenForUser(freshDesign.assigned_to)}` },
+      body: JSON.stringify({ status: 'DONE' })
+    });
+    if (resDesign.status !== 200) {
+      throw new Error(`Failed to complete UI/UX Design: ${await resDesign.text()}`);
+    }
+    console.log('Completed "UI/UX Design" (9th Parallel Track).');
+
+    // 4. Complete "Test Plan Preparation" -> This completes all 7 foundational prerequisites!
     const freshTestPlan = queryOne('SELECT assigned_to FROM project_tasks WHERE id = ?', [testPlanTask.id]);
     const compTestPrepRes = await fetch(`${BASE_URL}/api/tasks/${testPlanTask.id}/status`, {
       method: 'PATCH',
@@ -469,8 +488,8 @@ async function runStep4Tests() {
     }
     const compTestPrepData = await compTestPrepRes.json();
     console.log('Completed "Test Plan Preparation".');
-    console.log('Unblocked tasks after all 6 dev/prep tasks complete:', compTestPrepData.unblockedTasks);
-    console.log('Stage after all 6 dev/prep tasks complete:', compTestPrepData.currentStage);
+    console.log('Unblocked tasks after all 7 foundational dev/design/prep tasks complete:', compTestPrepData.unblockedTasks);
+    console.log('Stage after all 7 foundational tasks complete:', compTestPrepData.currentStage);
 
     if (compTestPrepData.currentStage !== 'TESTING') {
       throw new Error(`Expected stage 'TESTING', got '${compTestPrepData.currentStage}'`);
@@ -501,7 +520,7 @@ async function runStep4Tests() {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
       body: JSON.stringify({
         approved: true,
-        notes: 'All 7 multi-disciplinary tasks complete. QA verified green. Production release approved.'
+        notes: 'All 8 multi-disciplinary tasks (including UI/UX Design) complete. QA verified green. Production release approved.'
       })
     });
     const finalReviewData = await finalReviewRes.json();
@@ -513,9 +532,9 @@ async function runStep4Tests() {
       throw new Error(`Expected stage and status 'LIVE', got stage: ${finalReviewData.stage}, status: ${finalReviewData.project.status}`);
     }
 
-    // Direct Database Query: Verify status of ALL 8 tasks at the moment LIVE is reached
+    // Direct Database Query: Verify status of ALL 9 tasks at the moment LIVE is reached
     const allFinalTasks = queryAll('SELECT id, task_name, task_type, status, completed_at FROM project_tasks WHERE project_id = ? ORDER BY task_type ASC, task_name ASC', [project.id]);
-    console.log('\n[COMPLETE DATABASE PROOF: ALL 8 TASKS AT LIVE STAGE]');
+    console.log('\n[COMPLETE DATABASE PROOF: ALL 9 TASKS AT LIVE STAGE]');
     console.table(allFinalTasks.map(t => ({
       task_name: t.task_name,
       type: t.task_type,
@@ -523,13 +542,13 @@ async function runStep4Tests() {
       completed_at: t.completed_at
     })));
 
-    const allEightDone = allFinalTasks.every(t => t.status === 'DONE');
-    console.log(`All 8 tasks across all 4 roles are strictly DONE: ${allEightDone}`);
-    if (!allEightDone) {
-      throw new Error('Not all 8 tasks reached DONE status at LIVE stage!');
+    const allNineDone = allFinalTasks.every(t => t.status === 'DONE');
+    console.log(`All 9 tasks across all roles are strictly DONE: ${allNineDone}`);
+    if (!allNineDone || allFinalTasks.length !== 9) {
+      throw new Error('Not all 9 tasks reached DONE status at LIVE stage!');
     }
 
-    results.push({ test: 'Stage Progression & All 8 Tasks Gating (Parallel -> Integration -> Testing -> Admin Review -> Live)', status: 'PASS' });
+    results.push({ test: 'Stage Progression & All 9 Tasks Gating (Parallel -> Integration -> Testing -> Admin Review -> Live)', status: 'PASS' });
 
     // -----------------------------------------------------------------
     // TEST 9: PRD Section 5 Endpoint Coverage Verification

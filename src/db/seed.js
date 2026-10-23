@@ -5,21 +5,21 @@ import { queryOne, execute, queryAll } from './database.js';
 import { config } from '../config.js';
 
 export const PERMISSION_MATRIX = [
-  { key: 'idea.submit', researcher: 1, developer: 1, producer: 1, admin: 1 },
-  { key: 'idea.vote', researcher: 1, developer: 1, producer: 1, admin: 1 },
-  { key: 'project.view_own', researcher: 1, developer: 1, producer: 1, admin: 1 },
-  { key: 'project.view_all', researcher: 0, developer: 0, producer: 0, admin: 1 },
-  { key: 'project.launch_approve', researcher: 0, developer: 0, producer: 0, admin: 1 },
-  { key: 'member.add', researcher: 0, developer: 0, producer: 0, admin: 1 },
-  { key: 'member.remove', researcher: 0, developer: 0, producer: 0, admin: 1 },
-  { key: 'payout.approve', researcher: 0, developer: 0, producer: 0, admin: 1 },
-  { key: 'revenue.manual_entry', researcher: 0, developer: 0, producer: 0, admin: 1 },
-  { key: 'asset.export_download', researcher: 0, developer: 0, producer: 0, admin: 1 },
-  { key: 'meeting.host', researcher: 1, developer: 1, producer: 1, admin: 1 },
-  { key: 'coworking.join', researcher: 1, developer: 1, producer: 1, admin: 1 }
+  { key: 'idea.submit', researcher: 1, developer: 1, producer: 1, admin: 1, designer: 1 },
+  { key: 'idea.vote', researcher: 1, developer: 1, producer: 1, admin: 1, designer: 1 },
+  { key: 'project.view_own', researcher: 1, developer: 1, producer: 1, admin: 1, designer: 1 },
+  { key: 'project.view_all', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
+  { key: 'project.launch_approve', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
+  { key: 'member.add', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
+  { key: 'member.remove', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
+  { key: 'payout.approve', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
+  { key: 'revenue.manual_entry', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
+  { key: 'asset.export_download', researcher: 0, developer: 0, producer: 0, admin: 1, designer: 0 },
+  { key: 'meeting.host', researcher: 1, developer: 1, producer: 1, admin: 1, designer: 1 },
+  { key: 'coworking.join', researcher: 1, developer: 1, producer: 1, admin: 1, designer: 1 }
 ];
 
-export const ROLES = ['researcher', 'developer', 'producer', 'admin'];
+export const ROLES = ['researcher', 'developer', 'producer', 'admin', 'designer'];
 
 export async function runSeed() {
   console.log('>>> Running Database Seeding...');
@@ -84,11 +84,12 @@ export async function runSeed() {
     console.log(`>>> Default Admin User already exists: ${adminEmail}`);
   }
 
-  // 2b. Seed Default Role Demo Users (Researcher, Developer, Producer)
+  // 2b. Seed Default Role Demo Users (Researcher, Developer, Producer, Designer)
   const defaultRoleUsers = [
     { name: 'Dr. Priya Sharma', email: 'researcher@mahitechgroup.com', pass: 'ResearcherPass123!', role: 'researcher', subRole: null },
     { name: 'Arjun Dev', email: 'developer@mahitechgroup.com', pass: 'DeveloperPass123!', role: 'developer', subRole: 'frontend' },
-    { name: 'Sameer Tester', email: 'producer@mahitechgroup.com', pass: 'ProducerPass123!', role: 'producer', subRole: null }
+    { name: 'Sameer Tester', email: 'producer@mahitechgroup.com', pass: 'ProducerPass123!', role: 'producer', subRole: null },
+    { name: 'Diya Designer', email: 'designer@mahitechgroup.com', pass: 'DesignerPass123!', role: 'designer', subRole: null }
   ];
 
   for (const ru of defaultRoleUsers) {

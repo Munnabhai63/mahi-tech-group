@@ -4,14 +4,17 @@ import { logAccess } from './auditService.js';
 import { broadcastEvent, pushToUser, pushToProject } from './wsService.js';
 import { createNotification } from './notificationService.js';
 
-// The 6 foundational dev, research, and test preparation tasks required before QA testing can begin
+// The 9 foundational tasks across research, backend, frontend, design, testing, and review
 export const DEV_AND_TEST_PREP_PREREQUISITES = [
   'Deep Research',
   'Backend Architecture Setup',
   'Frontend UI Scaffolding',
+  'UI/UX Design',
   'Test Plan Preparation',
   'Frontend API Integration',
-  'Feature Logic Lock'
+  'Feature Logic Lock',
+  'Full QA Testing',
+  'Admin Final Review'
 ];
 
 /**
@@ -89,6 +92,7 @@ export function triggerProjectFanout(ideaId) {
   const researcher = getAvailableMember('researcher');
   const backendDev = getAvailableMember('developer', 'backend');
   const frontendDev = getAvailableMember('developer', 'frontend', backendDev ? [backendDev.id] : []);
+  const designer = getAvailableMember('designer');
   const producer = getAvailableMember('producer');
   const admin = queryOne("SELECT id, name, email, role FROM users WHERE role = 'admin' AND status = 'active' LIMIT 1");
 
@@ -96,6 +100,7 @@ export function triggerProjectFanout(ideaId) {
     { user: researcher, roleInProject: 'researcher' },
     { user: backendDev, roleInProject: 'backend_dev' },
     { user: frontendDev, roleInProject: 'frontend_dev' },
+    { user: designer, roleInProject: 'designer' },
     { user: producer, roleInProject: 'producer' },
     { user: admin, roleInProject: 'admin_reviewer' }
   ];
@@ -104,6 +109,7 @@ export function triggerProjectFanout(ideaId) {
   const taskResearchId = crypto.randomUUID();
   const taskBackendId = crypto.randomUUID();
   const taskFrontendId = crypto.randomUUID();
+  const taskDesignId = crypto.randomUUID();
   const taskTestingPrepId = crypto.randomUUID();
 
   const taskApiIntegrationId = crypto.randomUUID();
@@ -122,7 +128,7 @@ export function triggerProjectFanout(ideaId) {
       ) VALUES (?, ?, 'DEFAULT_ORG', ?, ?, CURRENT_TIMESTAMP, 'RESEARCH_DEV_PARALLEL', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `, [projectId, idea.id, idea.title, idea.owner_id]);
 
-    // B. Assign members
+    // B. Assign members across all 6 roles
     for (const a of assignments) {
       if (a.user) {
         execute(`
@@ -133,47 +139,54 @@ export function triggerProjectFanout(ideaId) {
       }
     }
 
-    // C. 4 Initial Parallel Tasks (zero dependencies, status = 'TODO')
+    // C. Initial Research Task (starts in TODO status)
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
       VALUES (?, ?, ?, 'Deep Research', 'research', NULL, 'TODO', CURRENT_TIMESTAMP)
     `, [taskResearchId, projectId, researcher ? researcher.id : null]);
 
+    // D. 4 Parallel Tasks Unlocked Simultaneously by Deep Research (status = 'BLOCKED', depends on Deep Research)
+    // Runs in TRUE PARALLEL with no dependencies between each other
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
-      VALUES (?, ?, ?, 'Backend Architecture Setup', 'backend', NULL, 'TODO', CURRENT_TIMESTAMP)
-    `, [taskBackendId, projectId, backendDev ? backendDev.id : null]);
+      VALUES (?, ?, ?, 'Backend Architecture Setup', 'backend', ?, 'BLOCKED', CURRENT_TIMESTAMP)
+    `, [taskBackendId, projectId, backendDev ? backendDev.id : null, taskResearchId]);
 
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
-      VALUES (?, ?, ?, 'Frontend UI Scaffolding', 'frontend', NULL, 'TODO', CURRENT_TIMESTAMP)
-    `, [taskFrontendId, projectId, frontendDev ? frontendDev.id : null]);
+      VALUES (?, ?, ?, 'Frontend UI Scaffolding', 'frontend', ?, 'BLOCKED', CURRENT_TIMESTAMP)
+    `, [taskFrontendId, projectId, frontendDev ? frontendDev.id : null, taskResearchId]);
 
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
-      VALUES (?, ?, ?, 'Test Plan Preparation', 'testing', NULL, 'TODO', CURRENT_TIMESTAMP)
-    `, [taskTestingPrepId, projectId, producer ? producer.id : null]);
+      VALUES (?, ?, ?, 'UI/UX Design', 'design', ?, 'BLOCKED', CURRENT_TIMESTAMP)
+    `, [taskDesignId, projectId, designer ? designer.id : null, taskResearchId]);
 
-    // D. 4 Dependent Tasks (status = 'BLOCKED', depends_on set)
-    // Task 5: Frontend API Integration (Gate 1: depends on Backend Architecture Setup)
+    execute(`
+      INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
+      VALUES (?, ?, ?, 'Test Plan Preparation', 'testing', ?, 'BLOCKED', CURRENT_TIMESTAMP)
+    `, [taskTestingPrepId, projectId, producer ? producer.id : null, taskResearchId]);
+
+    // E. 4 Downstream Dependent Tasks (status = 'BLOCKED')
+    // Task 6: Frontend API Integration (depends on Backend Architecture Setup)
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
       VALUES (?, ?, ?, 'Frontend API Integration', 'frontend', ?, 'BLOCKED', CURRENT_TIMESTAMP)
     `, [taskApiIntegrationId, projectId, frontendDev ? frontendDev.id : null, taskBackendId]);
 
-    // Task 6: Feature Logic Lock (Gate 2: depends on Deep Research)
+    // Task 7: Feature Logic Lock (depends on Backend Architecture Setup)
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
       VALUES (?, ?, ?, 'Feature Logic Lock', 'backend', ?, 'BLOCKED', CURRENT_TIMESTAMP)
-    `, [taskLogicLockId, projectId, backendDev ? backendDev.id : null, taskResearchId]);
+    `, [taskLogicLockId, projectId, backendDev ? backendDev.id : null, taskBackendId]);
 
-    // Task 7: Full QA Testing (Gate 3: Dev build complete & test plan ready - primary parent is Feature Logic Lock)
+    // Task 8: Full QA Testing (Gate 3: All 7 foundational dev, design, and prep tasks must be DONE)
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
       VALUES (?, ?, ?, 'Full QA Testing', 'testing', ?, 'BLOCKED', CURRENT_TIMESTAMP)
     `, [taskFullQaId, projectId, producer ? producer.id : null, taskLogicLockId]);
 
-    // Task 8: Admin Final Review (Gate 4: Testing passed - depends on Full QA Testing)
+    // Task 9: Admin Final Review (Gate 4: Testing passed - depends on Full QA Testing)
     execute(`
       INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status, created_at)
       VALUES (?, ?, ?, 'Admin Final Review', 'review', ?, 'BLOCKED', CURRENT_TIMESTAMP)
@@ -219,30 +232,45 @@ export function getMissingPrerequisites(task, allTasks) {
 
   const missing = [];
 
-  if (task.task_name === 'Frontend API Integration') {
+  // Unlock Timing: Backend Architecture Setup, Frontend UI Scaffolding, UI/UX Design, and Test Plan Preparation
+  // all unlock SIMULTANEOUSLY at the EXACT SAME MOMENT when Deep Research transitions to DONE.
+  // They run in TRUE PARALLEL with NO dependency on each other.
+  if (
+    task.task_name === 'Backend Architecture Setup' ||
+    task.task_name === 'Frontend UI Scaffolding' ||
+    task.task_name === 'UI/UX Design' ||
+    task.task_name === 'Test Plan Preparation'
+  ) {
+    if (taskMap['Deep Research'] !== 'DONE') {
+      missing.push('Deep Research');
+    }
+  } else if (task.task_name === 'Frontend API Integration') {
     if (taskMap['Backend Architecture Setup'] !== 'DONE') {
       missing.push('Backend Architecture Setup');
     }
   } else if (task.task_name === 'Feature Logic Lock') {
-    if (taskMap['Deep Research'] !== 'DONE') {
-      missing.push('Deep Research');
+    if (taskMap['Backend Architecture Setup'] !== 'DONE') {
+      missing.push('Backend Architecture Setup');
     }
   } else if (task.task_name === 'Full QA Testing') {
-    // Gate 3: Dev build complete (Backend + Frontend) AND Test Plan Preparation
-    for (const prereq of DEV_AND_TEST_PREP_PREREQUISITES) {
+    // Gate 3: Dev, Design, and Test Plan preparation complete (all 7 non-QA, non-review tasks)
+    const foundationalPrereqs = DEV_AND_TEST_PREP_PREREQUISITES.filter(
+      p => p !== 'Full QA Testing' && p !== 'Admin Final Review'
+    );
+    for (const prereq of foundationalPrereqs) {
       if (taskMap[prereq] !== 'DONE') {
         missing.push(prereq);
       }
     }
   } else if (task.task_name === 'Admin Final Review') {
-    // Gate 4: Full QA Testing + ALL preceding 6 tasks must be DONE
-    for (const prereq of DEV_AND_TEST_PREP_PREREQUISITES) {
+    // Gate 4: Full QA Testing + ALL preceding 7 tasks must be DONE (all 8 non-review tasks)
+    const allEightPrereqs = DEV_AND_TEST_PREP_PREREQUISITES.filter(
+      p => p !== 'Admin Final Review'
+    );
+    for (const prereq of allEightPrereqs) {
       if (taskMap[prereq] !== 'DONE') {
         missing.push(prereq);
       }
-    }
-    if (taskMap['Full QA Testing'] !== 'DONE') {
-      missing.push('Full QA Testing');
     }
   }
 
@@ -261,34 +289,39 @@ export function evaluateProjectStage(projectId) {
     taskMap[t.task_name] = t.status;
   }
 
-  // Check completion of the 6 dev and test-plan preparation prerequisites
-  const allDevAndPrepDone = DEV_AND_TEST_PREP_PREREQUISITES.every(name => taskMap[name] === 'DONE');
+  // Check completion of the 7 foundational dev, design, and prep tasks
+  const allFoundationalDone = DEV_AND_TEST_PREP_PREREQUISITES
+    .filter(name => name !== 'Full QA Testing' && name !== 'Admin Final Review')
+    .every(name => taskMap[name] === 'DONE');
   const qaTestingDone = taskMap['Full QA Testing'] === 'DONE';
   const adminReviewDone = taskMap['Admin Final Review'] === 'DONE';
 
   let stage = 'RESEARCH_DEV_PARALLEL';
 
-  if (adminReviewDone && allDevAndPrepDone && qaTestingDone) {
-    // Stage 5: LIVE — All 8 tasks across all roles are 100% DONE
+  if (adminReviewDone && allFoundationalDone && qaTestingDone) {
+    // Stage 5: LIVE — All 9 tasks across all roles are 100% DONE
     stage = 'LIVE';
-  } else if (allDevAndPrepDone && qaTestingDone) {
-    // Stage 4: ADMIN_REVIEW — QA testing passed and all 6 dev/prep tasks are DONE
+  } else if (allFoundationalDone && qaTestingDone) {
+    // Stage 4: ADMIN_REVIEW — QA testing passed and all 7 foundational tasks are DONE
     stage = 'ADMIN_REVIEW';
-  } else if (allDevAndPrepDone && (taskMap['Full QA Testing'] === 'TODO' || taskMap['Full QA Testing'] === 'IN_PROGRESS')) {
-    // Stage 3: TESTING — All 6 dev/prep tasks are DONE, QA testing underway
+  } else if (allFoundationalDone && (taskMap['Full QA Testing'] === 'TODO' || taskMap['Full QA Testing'] === 'IN_PROGRESS')) {
+    // Stage 3: TESTING — All 7 foundational tasks are DONE, QA testing underway
     stage = 'TESTING';
   } else if (
-    taskMap['Backend Architecture Setup'] === 'DONE' ||
     taskMap['Deep Research'] === 'DONE' ||
+    taskMap['Backend Architecture Setup'] === 'DONE' ||
+    taskMap['Frontend UI Scaffolding'] === 'DONE' ||
+    taskMap['UI/UX Design'] === 'DONE' ||
+    taskMap['Test Plan Preparation'] === 'DONE' ||
     taskMap['Frontend API Integration'] === 'IN_PROGRESS' ||
     taskMap['Frontend API Integration'] === 'DONE' ||
     taskMap['Feature Logic Lock'] === 'IN_PROGRESS' ||
     taskMap['Feature Logic Lock'] === 'DONE'
   ) {
-    // Stage 2: INTEGRATION — Foundational tasks started unblocking integration gates
+    // Stage 2: INTEGRATION — Deep research complete, parallel dev and design tracks unlocked
     stage = 'INTEGRATION';
   } else {
-    // Stage 1: RESEARCH_DEV_PARALLEL — Initial 4 parallel tasks underway
+    // Stage 1: RESEARCH_DEV_PARALLEL — Initial Deep Research underway
     stage = 'RESEARCH_DEV_PARALLEL';
   }
 
@@ -415,7 +448,7 @@ export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, i
   const project = queryOne('SELECT title FROM projects WHERE id = ?', [task.project_id]);
   const projectTitle = project ? project.title : 'Project';
 
-  // 1. Researcher completes research -> Developer gets RESEARCH_READY banner
+  // 1. Researcher completes research -> Developer & Designer get RESEARCH_READY banner
   if (task.task_type === 'research' && newStatus === 'DONE') {
     broadcastEvent('role:developer', 'banner.new', {
       type: 'RESEARCH_READY',
@@ -424,8 +457,23 @@ export function updateTaskStatus({ taskId, userId, newStatus, isAdmin = false, i
       projectId: task.project_id,
       taskId: task.id
     });
+    broadcastEvent('role:designer', 'banner.new', {
+      type: 'RESEARCH_READY',
+      title: 'Research Ready',
+      message: `Research for "${projectTitle}" is ready — view research attachment`,
+      projectId: task.project_id,
+      taskId: task.id
+    });
     broadcastEvent('org:global', 'banner.new', {
       targetRole: 'developer',
+      type: 'RESEARCH_READY',
+      title: 'Research Ready',
+      message: `Research for "${projectTitle}" is ready — view research attachment`,
+      projectId: task.project_id,
+      taskId: task.id
+    });
+    broadcastEvent('org:global', 'banner.new', {
+      targetRole: 'designer',
       type: 'RESEARCH_READY',
       title: 'Research Ready',
       message: `Research for "${projectTitle}" is ready — view research attachment`,
@@ -511,8 +559,10 @@ export function reassignTask({ taskId, newUserId, adminUserId, ipAddress = null 
     let roleInProject = 'backend_dev';
     if (targetUser.role === 'researcher') roleInProject = 'researcher';
     else if (targetUser.role === 'producer') roleInProject = 'producer';
+    else if (targetUser.role === 'designer') roleInProject = 'designer';
     else if (targetUser.role === 'admin') roleInProject = 'admin_reviewer';
     else if (task.task_type === 'frontend' || targetUser.sub_role === 'frontend') roleInProject = 'frontend_dev';
+    else if (task.task_type === 'design') roleInProject = 'designer';
     else roleInProject = 'backend_dev';
 
     execute(`
@@ -534,7 +584,7 @@ export function reassignTask({ taskId, newUserId, adminUserId, ipAddress = null 
 
 /**
  * Admin Final Review:
- * Requires ALL 7 preceding tasks across research, backend, frontend, and QA testing to be DONE.
+ * Requires ALL 8 preceding tasks across research, backend, frontend, design, and QA testing to be DONE.
  * Launch approval sets stage=LIVE, status=LIVE, and marks Admin Final Review task as DONE.
  */
 export function adminFinalReview({ projectId, adminUserId, approved, notes = null, ipAddress = null }) {
@@ -549,19 +599,16 @@ export function adminFinalReview({ projectId, adminUserId, approved, notes = nul
     taskMap[t.task_name] = t.status;
   }
 
-  // If Admin attempts to APPROVE the project for launch, strictly verify all 7 preceding tasks
+  // If Admin attempts to APPROVE the project for launch, strictly verify all 8 non-review tasks
   if (approved) {
-    const requiredTasks = [
-      ...DEV_AND_TEST_PREP_PREREQUISITES,
-      'Full QA Testing'
-    ];
+    const requiredTasks = DEV_AND_TEST_PREP_PREREQUISITES.filter(t => t !== 'Admin Final Review');
     const incompleteTasks = requiredTasks.filter(name => taskMap[name] !== 'DONE');
 
     if (incompleteTasks.length > 0) {
       return {
         success: false,
         status: 400,
-        error: `Cannot approve project for LIVE launch: all 7 preceding tasks across research, backend, frontend, and QA testing must be DONE. Incomplete tasks: ${incompleteTasks.join(', ')}`
+        error: `Cannot approve project for LIVE launch: all 8 preceding tasks across research, backend, frontend, design, and QA testing must be DONE. Incomplete tasks: ${incompleteTasks.join(', ')}`
       };
     }
   }

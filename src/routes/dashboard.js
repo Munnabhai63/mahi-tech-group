@@ -124,15 +124,15 @@ router.get('/banners/active', authenticate, (req, res) => {
   const user = req.user;
   const banners = [];
 
-  if (user.role === 'developer') {
-    // Developer: "Research Ready" banner when research task is DONE
+  if (user.role === 'developer' || user.role === 'designer') {
+    // Developer & Designer: "Research Ready" banner when research task is DONE
     const readyDevTasks = queryAll(`
       SELECT pt.id as task_id, pt.task_name, p.id as project_id, p.title as project_title,
              (SELECT url FROM assets WHERE project_id = p.id AND type = 'pdf_doc' ORDER BY created_at DESC LIMIT 1) as attachment_url
       FROM project_tasks pt
       JOIN projects p ON pt.project_id = p.id
       WHERE pt.assigned_to = ?
-        AND pt.task_type IN ('backend', 'frontend')
+        AND pt.task_type IN ('backend', 'frontend', 'design')
         AND pt.status IN ('TODO', 'IN_PROGRESS')
         AND EXISTS (
           SELECT 1 FROM project_tasks r

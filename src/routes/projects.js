@@ -70,6 +70,8 @@ router.get('/my-tasks', authenticate, (req, res) => {
     query += " AND pt.task_type IN ('backend', 'frontend')";
   } else if (role === 'producer') {
     query += " AND pt.task_type = 'testing'";
+  } else if (role === 'designer') {
+    query += " AND pt.task_type = 'design'";
   }
 
   if (status) {
