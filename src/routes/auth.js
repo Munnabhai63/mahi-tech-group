@@ -6,11 +6,12 @@ import { queryOne, execute } from '../db/database.js';
 import { config } from '../config.js';
 import { authenticate } from '../middleware/auth.js';
 import { logAccess } from '../services/auditService.js';
+import { loginLimiter, signupLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
-// 0. POST /api/auth/signup (Public)
-router.post('/signup', async (req, res) => {
+// 0. POST /api/auth/signup (Public with Rate Limiting)
+router.post('/signup', signupLimiter, async (req, res) => {
   const { name, email, password, phone_number, desired_role, desired_sub_role } = req.body || {};
   const ipAddress = req.ip || req.socket.remoteAddress;
 
@@ -90,8 +91,8 @@ router.post('/signup', async (req, res) => {
   });
 });
 
-// 1. POST /api/auth/login (Public)
-router.post('/login', async (req, res) => {
+// 1. POST /api/auth/login (Public with Rate Limiting)
+router.post('/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   const ipAddress = req.ip || req.socket.remoteAddress;
 

@@ -16,6 +16,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { queryAll } from './db/database.js';
 import { config } from './config.js';
+import { securityHeaders } from './middleware/securityHeaders.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +25,7 @@ const publicPath = path.join(__dirname, '..', 'public');
 export function createApp() {
   const app = express();
 
+  app.use(securityHeaders);
   app.use(cors());
   app.use(express.json());
 
@@ -45,6 +47,11 @@ export function createApp() {
       tables_verified: tablesCount,
       uptime_seconds: Math.floor(process.uptime())
     });
+  });
+
+  // Test error trigger endpoint for verification suites
+  app.get('/api/debug/error-test', (req, res, next) => {
+    next(new Error('Simulated internal database crash'));
   });
 
   // Serve static frontend assets
@@ -80,10 +87,14 @@ export function createApp() {
     res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
   });
 
-  // Global error handler
+  // Global error handler (Sanitized to prevent internal information leakage in production)
   app.use((err, req, res, next) => {
     console.error('Unhandled Application Error:', err);
-    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+    const isDev = process.env.NODE_ENV !== 'production';
+    res.status(err.status || 500).json({
+      error: err.name || 'Internal Server Error',
+      message: isDev ? err.message : 'An unexpected error occurred. Please contact the administrator.'
+    });
   });
 
   return app;

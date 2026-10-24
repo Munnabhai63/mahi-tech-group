@@ -104,8 +104,8 @@ node scripts/run-step13-final-qa-tests.js
 | :--- | :--- | :--- | :--- |
 | 1 | **Center Dashboard** | [`public/index.html`](public/index.html) | Live voting feed, Kanban execution board, idea submission modal, and persistent real-time toast notifications. |
 | 2 | **4-Corner Role Dashboards** | Integrated in `/` | Context-aware dedicated operational views for Researcher, UI/UX Designer, Developer, and Producer roles. |
-| 3 | **Co-Working Canvas** | [`public/canvas.html`](public/canvas.html) | Multi-user collaborative whiteboard canvas with shape tools, freehand drawing, real-time sync, and snapshot export. |
-| 4 | **Encrypted Video Meetings** | [`public/meetings.html`](public/meetings.html) | Jitsi video conference rooms with real-time attendee tracking and AI meeting transcript record keeping. |
+| 3 | **Co-Working Canvas** | `/canvas` (SPA Modal in [`public/index.html`](public/index.html)) | Multi-user collaborative whiteboard canvas with shape tools, freehand drawing, real-time WebSocket sync, and snapshot export. |
+| 4 | **Encrypted Video Meetings** | `/meetings` (SPA Modal in [`public/index.html`](public/index.html)) | Jitsi WebRTC video conference rooms with real-time attendee tracking, 100MB audio upload, and AI meeting transcript record keeping. |
 | 5 | **User Profile & Wallet** | [`public/profile.html`](public/profile.html) | Privacy-gated earnings telemetry, contribution scoring, active project history, and credential updating. |
 | 6 | **Admin Control Panel** | [`public/admin.html`](public/admin.html) | 8-module administrative suite: member directory, task reassignment, idea management, withdrawal disbursals, and audit log analysis. |
 | 7 | **Super Admin Executive Panel** | [`public/superadmin.html`](public/superadmin.html) | High-privilege command center: stealth analytics, support tickets, disputes, payment gateways, and system integrity audits. |
@@ -113,13 +113,31 @@ node scripts/run-step13-final-qa-tests.js
 
 ---
 
-## 🔒 Security & Database Immutability Model
+## 🔒 Security, Rate Limiting & Immutability Architecture
 
-### 1. Zero Plaintext Secrets Policy
+### 1. Defense-in-Depth HTTP Security Headers
+- `X-Content-Type-Options: nosniff` — Prevents MIME-confusion attacks.
+- `X-Frame-Options: SAMEORIGIN` — Mitigates clickjacking while permitting same-origin modal overlays.
+- `Referrer-Policy: strict-origin-when-cross-origin` — Protects referral URLs.
+- `Permissions-Policy` — Safely grants microphone/camera to trusted WebRTC origins (`meet.jit.si`) while restricting sensitive device APIs.
+
+### 2. Intelligent Sliding-Window Rate Limiting
+- `/api/auth/login` throttled to 20 attempts/minute per IP to neutralize brute-force attacks.
+- `/api/auth/signup` throttled to 10 registrations/15 minutes per IP.
+- Sets standard RFC headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`) with automated periodic memory sweeps.
+
+### 3. Production Error Sanitization
+- Global Express error handling strictly sanitizes uncaught exceptions in production environments.
+- Prevents database schema, file path, and library syntax disclosure to end users.
+
+### 4. Zero Plaintext Secrets Policy
 - Payment gateway API secrets and webhook keys are encrypted at rest using **AES-256-GCM** with unique 96-bit random IVs and 128-bit authentication tags.
 - Client-side code and logs contain strictly **0 plaintext passwords or secret tokens**.
 
-### 2. SQLite Database-Level Immutable Triggers
+### 5. Transactional Email Dispatcher Service
+- Built-in SMTP adapter (`src/services/emailService.js`) with structured audit logging for onboarding, status updates, and OTP notifications.
+
+### 6. SQLite Database-Level Immutable Triggers
 The platform enforces append-only immutability at the SQLite database layer. Any direct `UPDATE` or `DELETE` query targeting these records is aborted by the engine:
 - `prevent_dispute_signature_delete`: Protects digital dispute signatures from deletion.
 - `prevent_dispute_signature_update`: Protects digital dispute signatures from tampering.
