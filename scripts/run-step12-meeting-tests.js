@@ -262,8 +262,13 @@ async function runStep12Tests() {
     }
 
     // Verify persistent notifications in database for all active members
-    const devNotif = queryOne("SELECT * FROM notifications WHERE user_id = ? AND event_type = 'meeting_scheduled' ORDER BY created_at DESC LIMIT 1", [devUser.id]);
-    if (!devNotif || !devNotif.message.includes(meeting1.title)) {
+    // (filtered by title — created_at has second precision, so an unfiltered
+    // ORDER BY DESC can race with notifications from earlier test meetings)
+    const devNotif = queryOne(
+      "SELECT * FROM notifications WHERE user_id = ? AND event_type = 'meeting_scheduled' AND message LIKE ? ORDER BY created_at DESC LIMIT 1",
+      [devUser.id, `%${meeting1.title}%`]
+    );
+    if (!devNotif) {
       throw new Error('Persistent notification was not created in database for active member');
     }
 

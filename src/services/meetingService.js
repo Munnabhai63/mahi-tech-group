@@ -95,7 +95,7 @@ export function scheduleMeeting({
     execute(`
       INSERT INTO notifications (id, user_id, event_type, message, link, read_status, created_at)
       VALUES (?, ?, 'meeting_scheduled', ?, ?, 0, CURRENT_TIMESTAMP)
-    `, [notifId, u.id, notifMsg, `/dashboard.html#meeting-${meetingId}`]);
+    `, [notifId, u.id, notifMsg, `/#meeting-${meetingId}`]);
   }
 
   const created = queryOne('SELECT * FROM meetings WHERE id = ?', [meetingId]);
@@ -151,7 +151,7 @@ export function startMeeting({ meetingId, userId, ipAddress = null }) {
     execute(`
       INSERT INTO notifications (id, user_id, event_type, message, link, read_status, created_at)
       VALUES (?, ?, 'meeting_live', ?, ?, 0, CURRENT_TIMESTAMP)
-    `, [notifId, u.id, notifMsg, `/dashboard.html#meeting-${meetingId}`]);
+    `, [notifId, u.id, notifMsg, `/#meeting-${meetingId}`]);
   }
 
   const updated = queryOne('SELECT * FROM meetings WHERE id = ?', [meetingId]);
@@ -512,7 +512,7 @@ export function confirmMeetingNotes({
     execute(`
       INSERT INTO notifications (id, user_id, event_type, message, link, read_status, created_at)
       VALUES (?, ?, 'meeting_notes_ready', ?, ?, 0, CURRENT_TIMESTAMP)
-    `, [notifId, att.user_id, notifMsg, `/dashboard.html#meeting-${meetingId}`]);
+    `, [notifId, att.user_id, notifMsg, `/#meeting-${meetingId}`]);
   }
 
   const confirmedNotes = queryOne('SELECT * FROM meeting_notes WHERE meeting_id = ?', [meetingId]);

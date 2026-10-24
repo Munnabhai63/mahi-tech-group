@@ -33,12 +33,7 @@ const state = {
 };
 
 // Worker corner roles directory per Step 01 RBAC (Corner Panels)
-const ROLE_ACCOUNTS = {
-  researcher: { email: 'researcher@mahitechgroup.com', role: 'researcher' },
-  designer: { email: 'designer@mahitechgroup.com', role: 'designer' },
-  producer: { email: 'producer@mahitechgroup.com', role: 'producer' },
-  developer: { email: 'developer@mahitechgroup.com', role: 'developer' }
-};
+// (Removed demo identity switcher — authentication now flows through /login.html)
 
 // Step 13: Unified Indian Rupee Currency Formatter
 function formatINR(amount) {
@@ -125,75 +120,49 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupResponsiveTabDeck();
   setupDesignerCornerActions();
 
-  // Restore existing session from localStorage if present
+  // Restore existing session from localStorage; unauthenticated visitors go to the login page
   const savedToken = localStorage.getItem('token');
   const savedUserStr = localStorage.getItem('user');
-  if (savedToken && savedUserStr) {
-    try {
-      state.token = savedToken;
-      state.user = JSON.parse(savedUserStr);
-      updateUserBadge(state.user);
-      highlightActiveCornerPanel(state.user.role);
-      await refreshAllData();
-      connectWebSocket();
-    } catch (e) {
-      console.warn('Session restoration failed:', e);
-    }
+  if (!savedToken || !savedUserStr) {
+    window.location.replace('/login.html');
+    return;
+  }
+  try {
+    state.token = savedToken;
+    state.user = JSON.parse(savedUserStr);
+    updateUserBadge(state.user);
+    highlightActiveCornerPanel(state.user.role);
+
+    // Admin-only controls visibility
+    const btnSched = document.getElementById('btnScheduleMeetingModal');
+    const btnSchedList = document.getElementById('btnLaunchNewMeetingFromList');
+    if (btnSched) btnSched.style.display = (state.user.role === 'admin') ? 'inline-flex' : 'none';
+    if (btnSchedList) btnSchedList.style.display = (state.user.role === 'admin') ? 'inline-block' : 'none';
+
+    await refreshAllData();
+    connectWebSocket();
+  } catch (e) {
+    console.warn('Session restoration failed:', e);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.replace('/login.html');
   }
 });
 
 /**
- * Switch active session & reconnect WebSocket
+ * Logout: revoke the session server-side, clear local credentials, return to login.
  */
-async function switchAccount(roleKey) {
-  const accountInfo = ROLE_ACCOUNTS[roleKey];
-  if (!accountInfo) return;
-
-  const authSecret = window.prompt(`Enter secret key for ${accountInfo.role} (${accountInfo.email}):`);
-  if (!authSecret) {
-    updateWsStatus('disconnected', 'Switch Cancelled');
-    return;
-  }
-
+async function logoutUser() {
   try {
-    updateWsStatus('reconnecting', 'Authenticating...');
-    const loginPayload = { email: accountInfo.email };
-    loginPayload['pass' + 'word'] = authSecret;
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(loginPayload)
-    });
-
-    if (!res.ok) {
-      console.warn(`Could not login with ${roleKey} account.`);
-      updateWsStatus('disconnected', 'Login Failed');
-      return;
+    if (state.token) {
+      await apiFetch('/api/auth/logout', { method: 'POST' });
     }
-
-    const data = await res.json();
-    state.token = data.token;
-    state.user = data.user;
-    localStorage.setItem('token', state.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-
-    updateUserBadge(data.user);
-    highlightActiveCornerPanel(data.user.role);
-
-    // Update meeting admin buttons visibility
-    const btnSched = document.getElementById('btnScheduleMeetingModal');
-    const btnSchedList = document.getElementById('btnLaunchNewMeetingFromList');
-    if (btnSched) btnSched.style.display = (data.user.role === 'admin') ? 'inline-flex' : 'none';
-    if (btnSchedList) btnSchedList.style.display = (data.user.role === 'admin') ? 'inline-block' : 'none';
-
-    // Initial Full Refresh
-    await refreshAllData();
-
-    // Connect WebSocket
-    connectWebSocket();
-  } catch (err) {
-    console.error('Login error during switchAccount:', err);
-    updateWsStatus('disconnected', 'Login Failed');
+  } catch (e) {
+    console.warn('Logout request failed (session may already be invalid):', e);
+  } finally {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.replace('/login.html');
   }
 }
 
@@ -213,17 +182,37 @@ function highlightActiveCornerPanel(role) {
 }
 
 /**
- * Connect to WebSocket Server with JWT Token
+ * Connect to WebSocket Server via one-time ticket
+ * (JWT never travels in the URL — a fresh single-use ticket is fetched per connection)
  */
-function connectWebSocket() {
+async function connectWebSocket() {
   if (state.ws) {
     try { state.ws.close(); } catch (e) {}
   }
 
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/ws?token=${state.token}`;
-
   updateWsStatus('reconnecting', 'Connecting...');
+
+  let ticket = null;
+  try {
+    const ticketRes = await apiFetch('/api/auth/ws-ticket', { method: 'POST' });
+    if (ticketRes.ok) {
+      const ticketData = await ticketRes.json();
+      ticket = ticketData.ticket;
+    }
+  } catch (e) {
+    console.error('WS ticket fetch failed:', e);
+  }
+
+  if (!ticket) {
+    updateWsStatus('disconnected', 'Auth failed (Polling active)');
+    startPollingFallback();
+    scheduleReconnect();
+    return;
+  }
+
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws?ticket=${encodeURIComponent(ticket)}`;
+
   state.ws = new WebSocket(wsUrl);
 
   state.ws.onopen = () => {
@@ -1220,15 +1209,17 @@ function renderNotificationsList() {
 
   const renderItem = (n) => {
     const isCritical = n.priority === 'critical' || n.type === 'critical';
-    return `
-      <div class="notification-item ${n.is_read ? 'read' : 'unread'} ${isCritical ? 'critical' : ''}">
+    const inner = `
         <div class="notif-header">
           <span class="notif-type">${escapeHtml(n.type)}</span>
           <span class="notif-time">${formatDate(n.created_at)}</span>
         </div>
         <div class="notif-message">${escapeHtml(n.message)}</div>
-      </div>
-    `;
+      `;
+    if (n.link) {
+      return `<a class="notification-item notif-linked ${n.is_read ? 'read' : 'unread'} ${isCritical ? 'critical' : ''}" href="${escapeHtml(n.link)}">${inner}</a>`;
+    }
+    return `<div class="notification-item ${n.is_read ? 'read' : 'unread'} ${isCritical ? 'critical' : ''}">${inner}</div>`;
   };
 
   let content = '';
@@ -1272,8 +1263,8 @@ async function apiFetch(endpoint, options = {}) {
  */
 function setupEventListeners() {
   // Role Selector
-  const roleSelect = document.getElementById('roleSelect');
-  roleSelect.addEventListener('change', (e) => switchAccount(e.target.value));
+  const btnLogout = document.getElementById('btnLogout');
+  if (btnLogout) btnLogout.addEventListener('click', () => { logoutUser(); });
 
   // Layout View Mode Switcher
   const btnSpatial = document.getElementById('btnSpatialView');

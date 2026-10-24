@@ -2,8 +2,8 @@
 
 > **Enterprise-Grade Decentralized Team Orchestration & Innovation Execution Platform**
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/Munnabhai63/mahi-tech-group)
-[![Tests](https://img.shields.io/badge/tests-265%2F265%20passing-success.svg)](https://github.com/Munnabhai63/mahi-tech-group)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/Munnabhai63/mahi-tech-group/actions)
+[![Tests](https://img.shields.io/badge/tests-20%20suites%20%2F%20npm%20run%20test%3Aall-success.svg)](https://github.com/Munnabhai63/mahi-tech-group)
 [![Node.js](https://img.shields.io/badge/Node.js-v24%20(ESM)-blue.svg)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/SQLite-native%20DatabaseSync-informational.svg)](https://sqlite.org/)
 [![Security](https://img.shields.io/badge/security-AES--256--GCM-red.svg)](https://github.com/Munnabhai63/mahi-tech-group)
@@ -82,18 +82,22 @@ npm start
 ```
 The server will start on `http://127.0.0.1:4000` with WebSocket support enabled.
 
-### 4. Run Automated Test Suites
-Run the core regression test suite:
+### 4. Sign In
+Open `http://127.0.0.1:4000/login.html` and sign in with a seeded account
+(dev seed only; e.g. `admin@mahitechgroup.com` / `AdminPassword@2026`).
+New members apply via **Sign Up** and sign in after Admin approval.
+Configure real secrets via environment variables before any real deployment —
+in production the server refuses to start without `JWT_SECRET` and `ENCRYPTION_KEY`
+(see `.env.example`).
+
+### 5. Run Automated Test Suites
+Run the core regression suite:
 ```bash
 npm test
 ```
-Run the comprehensive Super Admin & End-to-End integration suite:
+Run the **full battery** (all 20 verification suites, same as CI):
 ```bash
-node scripts/run-step14-superadmin-tests.js
-```
-Run cross-browser UI/UX audits:
-```bash
-node scripts/run-step13-final-qa-tests.js
+npm run test:all
 ```
 
 ---
@@ -102,14 +106,15 @@ node scripts/run-step13-final-qa-tests.js
 
 | # | Screen / Module | Endpoint / Path | Description |
 | :--- | :--- | :--- | :--- |
-| 1 | **Center Dashboard** | [`public/index.html`](public/index.html) | Live voting feed, Kanban execution board, idea submission modal, and persistent real-time toast notifications. |
-| 2 | **4-Corner Role Dashboards** | Integrated in `/` | Context-aware dedicated operational views for Researcher, UI/UX Designer, Developer, and Producer roles. |
-| 3 | **Co-Working Canvas** | `/canvas` (SPA Modal in [`public/index.html`](public/index.html)) | Multi-user collaborative whiteboard canvas with shape tools, freehand drawing, real-time WebSocket sync, and snapshot export. |
-| 4 | **Encrypted Video Meetings** | `/meetings` (SPA Modal in [`public/index.html`](public/index.html)) | Jitsi WebRTC video conference rooms with real-time attendee tracking, 100MB audio upload, and AI meeting transcript record keeping. |
-| 5 | **User Profile & Wallet** | [`public/profile.html`](public/profile.html) | Privacy-gated earnings telemetry, contribution scoring, active project history, and credential updating. |
-| 6 | **Admin Control Panel** | [`public/admin.html`](public/admin.html) | 8-module administrative suite: member directory, task reassignment, idea management, withdrawal disbursals, and audit log analysis. |
-| 7 | **Super Admin Executive Panel** | [`public/superadmin.html`](public/superadmin.html) | High-privilege command center: stealth analytics, support tickets, disputes, payment gateways, and system integrity audits. |
-| 8 | **Digital Signing Ceremony** | [`public/sign.html`](public/sign.html) | Cryptographic signature execution gateway for disputes and liability waivers using single-use 32-byte tokens. |
+| 1 | **Login / Session Entry** | [`public/login.html`](public/login.html) | Email + password sign-in with pending/denied/revoked account messaging; all protected pages redirect here without a session. |
+| 2 | **Center Dashboard** | [`public/index.html`](public/index.html) | Live voting feed, Kanban execution board, idea submission modal, and persistent real-time toast notifications. |
+| 3 | **4-Corner Role Dashboards** | Integrated in `/` | Context-aware dedicated operational views for Researcher, UI/UX Designer, Developer, and Producer roles. |
+| 4 | **Co-Working Canvas** | `/canvas` (SPA Modal in [`public/index.html`](public/index.html)) | Multi-user collaborative whiteboard canvas with shape tools, freehand drawing, real-time WebSocket sync, and snapshot export. |
+| 5 | **Encrypted Video Meetings** | `/meetings` (SPA Modal in [`public/index.html`](public/index.html)) | Jitsi WebRTC video conference rooms with real-time attendee tracking, 25MB audio upload (Whisper limit), and AI meeting transcript record keeping. |
+| 6 | **User Profile & Wallet** | [`public/profile.html`](public/profile.html) | Privacy-gated earnings telemetry, contribution scoring, active project history, and credential updating. |
+| 7 | **Admin Control Panel** | [`public/admin.html`](public/admin.html) | 8-module administrative suite: member directory, task reassignment, idea management, withdrawal disbursals, and audit log analysis. |
+| 8 | **Super Admin Executive Panel** | [`public/superadmin.html`](public/superadmin.html) | High-privilege command center: stealth analytics, support tickets, disputes, payment gateways, and system integrity audits. |
+| 9 | **Digital Signing Ceremony** | [`public/sign.html`](public/sign.html) | Cryptographic signature execution gateway for disputes and liability waivers using single-use 32-byte tokens. |
 
 ---
 

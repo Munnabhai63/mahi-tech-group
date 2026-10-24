@@ -45,16 +45,8 @@
         <span class="status-text" id="wsStatusText">Live Connected</span>
       </div>
 
-      <!-- Quick Role Switcher (Authenticates Real Seed Users) -->
-      <div class="role-selector-wrap">
-        <label for="roleSelect" class="sr-only">Switch User Role</label>
-        <select id="roleSelect" class="role-select" title="Switch active test identity">
-          <option value="researcher">Researcher (Top-Left)</option>
-          <option value="designer" selected>UI/UX Designer (Top-Right)</option>
-          <option value="producer">Producer / Tester (Bottom-Left)</option>
-          <option value="developer">Developer (Bottom-Right)</option>
-        </select>
-      </div>
+      <!-- Session Control: Sign out -->
+      <button class="view-btn" id="btnLogout" title="Sign out and return to login" style="display: inline-flex; align-items: center; gap: 4px;">🚪 Logout</button>
 
       <!-- Public Sign Up Link -->
       <a href="/signup.html" class="view-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 0.4rem 0.75rem; font-size: 0.8rem;" title="Public Signup Form">📝 Sign Up</a>

@@ -11,6 +11,12 @@
   let currentProfileData = null;
   let currentAuthToken = localStorage.getItem('token') || '';
 
+  // Authentication gate: no session means back to the login page
+  if (!currentAuthToken) {
+    window.location.replace('/login.html');
+    return;
+  }
+
   // DOM Elements
   const avatarDisplay = document.getElementById('avatarDisplay');
   const nameDisplay = document.getElementById('nameDisplay');

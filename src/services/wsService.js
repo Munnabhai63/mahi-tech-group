@@ -1,5 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
+import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { queryOne, queryAll } from '../db/database.js';
 import {
@@ -17,6 +18,26 @@ const clients = new Map();
 // Map from userId to Set of ws clients (one user may have multiple tabs)
 const userSockets = new Map();
 
+// One-time connection tickets: the browser fetches a short-lived single-use
+// ticket over authenticated REST and connects with ?ticket=..., so long-lived
+// JWTs never leak into proxy/access logs via the URL.
+const wsTickets = new Map();
+const WS_TICKET_TTL_MS = 30_000;
+
+export function issueWsTicket(userId, sessionId) {
+  const ticket = crypto.randomBytes(32).toString('hex');
+  wsTickets.set(ticket, { userId, sessionId, expiresAt: Date.now() + WS_TICKET_TTL_MS });
+  return { ticket, expiresInMs: WS_TICKET_TTL_MS };
+}
+
+const ticketSweep = setInterval(() => {
+  const now = Date.now();
+  for (const [t, meta] of wsTickets.entries()) {
+    if (meta.expiresAt <= now) wsTickets.delete(t);
+  }
+}, WS_TICKET_TTL_MS);
+if (ticketSweep.unref) ticketSweep.unref();
+
 /**
  * Initialize WebSocket Server attached to the existing HTTP server
  */
@@ -32,18 +53,30 @@ export function initWebSocketServer(httpServer) {
         return;
       }
 
+      // Preferred auth: single-use 30s ticket (JWT never appears in the URL).
+      // Legacy fallback: full JWT in ?token= (kept for API/test clients).
+      const ticket = url.searchParams.get('ticket');
       const token = url.searchParams.get('token');
-      if (!token) {
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-        socket.destroy();
-        return;
-      }
+      let decoded = null;
 
-      // Verify JWT
-      let decoded;
-      try {
-        decoded = jwt.verify(token, config.JWT_SECRET);
-      } catch (err) {
+      if (ticket) {
+        const meta = wsTickets.get(ticket);
+        wsTickets.delete(ticket); // tickets are single-use
+        if (!meta || meta.expiresAt <= Date.now()) {
+          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+          socket.destroy();
+          return;
+        }
+        decoded = { sessionId: meta.sessionId, userId: meta.userId };
+      } else if (token) {
+        try {
+          decoded = jwt.verify(token, config.JWT_SECRET);
+        } catch (err) {
+          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+          socket.destroy();
+          return;
+        }
+      } else {
         socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
         socket.destroy();
         return;

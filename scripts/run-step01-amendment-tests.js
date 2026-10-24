@@ -53,7 +53,7 @@ async function runStep01AmendmentTests() {
   // 1. Database migration & baseline check
   console.log('[SETUP] Running database migrations...');
   runMigration();
-  runSeed();
+  await runSeed();
 
   const app = createApp();
   const server = http.createServer(app);

@@ -88,7 +88,7 @@ async function runStep10AdminTests() {
   console.log('[SETUP] Restoring canonical team roster and running migrations...');
   await cleanupTestData(false);
   runMigration();
-  runSeed();
+  await runSeed();
 
   const app = createApp();
   const server = http.createServer(app);

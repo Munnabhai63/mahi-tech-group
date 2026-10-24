@@ -212,8 +212,12 @@ export function exportMembersCSV({ userId = null, adminId = null } = {}) {
 
   const escapeCSV = (val) => {
     if (val === null || val === undefined) return '""';
-    const str = String(val).replace(/"/g, '""');
-    return `"${str}"`;
+    let str = String(val);
+    // Neutralize spreadsheet formula injection (cells starting with =, +, -, @, tab or CR)
+    if (/^[=+\-@\t\r]/.test(str)) {
+      str = `'${str}`;
+    }
+    return `"${str.replace(/"/g, '""')}"`;
   };
 
   const rows = [headers.join(',')];
@@ -473,8 +477,8 @@ export function listAllIdeasCommand() {
            p.revenue_clock_start,
            p.id as project_id,
            (SELECT COUNT(*) FROM votes WHERE idea_id = i.id) as vote_count,
-           (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id OR pt.idea_id = i.id) as tasks_total,
-           (SELECT COUNT(*) FROM project_tasks pt WHERE (pt.project_id = p.id OR pt.idea_id = i.id) AND pt.status IN ('DONE','completed')) as tasks_completed,
+           (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id) as tasks_total,
+           (SELECT COUNT(*) FROM project_tasks pt WHERE pt.project_id = p.id AND pt.status IN ('DONE','completed')) as tasks_completed,
            kb.name as killed_by_name
     FROM ideas i
     JOIN users u ON i.owner_id = u.id
@@ -527,14 +531,14 @@ export function getIdeaDetailCommand(ideaId) {
     ORDER BY v.voted_at DESC
   `, [ideaId]);
 
-  // Tasks
+  // Tasks (project_tasks links to the idea only via projects.idea_id)
   const tasks = queryAll(`
     SELECT pt.*, u.name as assignee_name
     FROM project_tasks pt
     LEFT JOIN users u ON pt.assigned_to = u.id
-    WHERE pt.project_id = ? OR pt.idea_id = ?
+    WHERE pt.project_id = ?
     ORDER BY pt.created_at ASC
-  `, [idea.project_id || '', ideaId]);
+  `, [idea.project_id || '']);
 
   // Revenue accrued
   const revRow = queryOne(`
@@ -591,13 +595,14 @@ export function killIdea(ideaId, reason, adminId) {
     WHERE id = ?
   `, [reason.trim(), adminId, preKillStatus, ideaId]);
 
-  // Cancel any non-completed tasks for this idea
+  // Cancel any non-completed tasks belonging to this idea's projects
+  // (project_tasks has no idea_id column — the idea link lives on projects.idea_id)
   execute(`
     UPDATE project_tasks
     SET status = 'cancelled'
-    WHERE (project_id IN (SELECT id FROM projects WHERE idea_id = ?) OR idea_id = ?)
+    WHERE project_id IN (SELECT id FROM projects WHERE idea_id = ?)
       AND status NOT IN ('DONE', 'completed')
-  `, [ideaId, ideaId]);
+  `, [ideaId]);
 
   // Log access
   logAccess({

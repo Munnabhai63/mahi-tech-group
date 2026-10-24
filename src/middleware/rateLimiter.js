@@ -29,7 +29,7 @@ class RateLimiter {
   middleware() {
     return (req, res, next) => {
       // In test mode, skip throttling to allow fast automated test suites to run
-      if (process.env.NODE_ENV === 'test' || req.headers['x-bypass-ratelimit'] === 'test-runner') {
+      if (process.env.NODE_ENV === 'test') {
         return next();
       }
 

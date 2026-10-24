@@ -68,7 +68,7 @@ async function runStep09ProfileTests() {
 
   console.log('[SETUP] Running database migrations & seeding...');
   runMigration();
-  runSeed();
+  await runSeed();
 
   const app = createApp();
   const server = http.createServer(app);

@@ -6,3 +6,6 @@ node_modules/
 .env
 .playwright-cli/
 uploads/
+battery.sqlite
+test-battery.sqlite
+battery-server.log

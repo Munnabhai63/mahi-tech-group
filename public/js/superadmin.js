@@ -7,7 +7,9 @@
 const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 const authToken = localStorage.getItem('token');
 
-if (!authToken || !currentUser || currentUser.role !== 'admin') {
+if (!authToken) {
+  window.location.replace('/login.html');
+} else if (!currentUser || currentUser.role !== 'admin') {
   alert('Access Denied — Insufficient Privileges');
   window.location.href = '/';
 }

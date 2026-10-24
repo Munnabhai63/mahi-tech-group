@@ -98,6 +98,12 @@ router.get('/activity/recent', authenticate, (req, res) => {
  * Broadcasts a new notification through the server process
  */
 router.post('/notifications/send', authenticate, (req, res) => {
+  // Only administrators may create notifications for other users — this endpoint is an
+  // org-wide spoofing/phishing primitive in the wrong hands.
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can broadcast notifications' });
+  }
+
   const { user_id, event_type, message, link } = req.body || {};
   if (!user_id || !event_type || !message) {
     return res.status(400).json({ error: 'user_id, event_type, and message are required' });

@@ -213,6 +213,7 @@ export function evaluateVotingDecision(ideaId, simulatedDate = null) {
 
       return {
         action: 'EXTENDED',
+        status: 'PENDING_REVIEW',
         reason: `Quorum not met (${participationRate}% < ${quorumPercentage}%). Window extended 24 hours.`,
         newDeadline: extendedEnd,
         participationRate

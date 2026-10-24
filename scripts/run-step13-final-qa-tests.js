@@ -257,6 +257,12 @@ async function runStep13FinalQASuite() {
           const browserLauncher = bTarget.type === 'firefox' ? pw.firefox : pw.chromium;
           const browser = await browserLauncher.launch(bTarget.options);
           const context = await browser.newContext();
+          // The dashboard redirects unauthenticated visitors to /login.html, so the
+          // session must exist in localStorage BEFORE the first navigation.
+          await context.addInitScript(([token, userJson]) => {
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', userJson);
+          }, [adminToken, JSON.stringify(authAdmin.data.user)]);
           const page = await context.newPage();
 
           // 4a. Large Desktop (1440x900)
@@ -630,7 +636,7 @@ async function runStep13FinalQASuite() {
     console.log('===================================================================\n');
 
     const regressionSuites = [
-      { name: 'Unit & Contract Tests (npm test)', cmd: 'npm test' },
+      { name: 'Unit & Contract Tests (core suite)', cmd: 'node scripts/run-tests.js' },
       { name: 'Step 01: Amendment Tests', cmd: 'node scripts/run-step01-amendment-tests.js' },
       { name: 'Step 08: Revision Tests', cmd: 'node scripts/run-step08-revision-tests.js' },
       { name: 'Step 09: Profile Tests', cmd: 'node scripts/run-step09-profile-tests.js' },

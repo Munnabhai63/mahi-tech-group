@@ -7,6 +7,7 @@ import { config } from '../config.js';
 import { authenticate } from '../middleware/auth.js';
 import { logAccess } from '../services/auditService.js';
 import { loginLimiter, signupLimiter } from '../middleware/rateLimiter.js';
+import { issueWsTicket } from '../services/wsService.js';
 
 const router = express.Router();
 
@@ -92,6 +93,19 @@ router.post('/signup', signupLimiter, async (req, res) => {
 });
 
 // 1. POST /api/auth/login (Public with Rate Limiting)
+
+// Equalizes bcrypt cost for unknown emails so response timing cannot reveal whether an account exists
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('timing-equalizer-placeholder', config.BCRYPT_SALT_ROUNDS);
+
+// Parses JWT_EXPIRES_IN style durations ("30m", "12h", "7d") to milliseconds
+function parseDurationToMs(value, fallbackMs) {
+  const match = /^(\d+)\s*([smhd])$/.exec(String(value || '').trim());
+  if (!match) return fallbackMs;
+  const units = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 };
+  return Number(match[1]) * units[match[2]];
+}
+const SESSION_TTL_MS = parseDurationToMs(config.JWT_EXPIRES_IN, 7 * 24 * 60 * 60 * 1000);
+
 router.post('/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   const ipAddress = req.ip || req.socket.remoteAddress;
@@ -102,6 +116,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 
   const user = queryOne('SELECT * FROM users WHERE email = ?', [email.toLowerCase().trim()]);
   if (!user) {
+    await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
     logAccess({ action: 'login_failed_user_not_found', resource: '/api/auth/login', ipAddress });
     return res.status(401).json({ error: 'Invalid email or password' });
   }
@@ -135,7 +150,7 @@ router.post('/login', loginLimiter, async (req, res) => {
   }
 
   const sessionId = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
   const token = jwt.sign(
     { userId: user.id, sessionId, role: user.role, email: user.email },
     config.JWT_SECRET,
@@ -144,10 +159,14 @@ router.post('/login', loginLimiter, async (req, res) => {
 
   const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
 
+  // Only a SHA-256 digest of the JWT is persisted — a database leak must not
+  // expose usable session tokens.
+  const tokenDigest = crypto.createHash('sha256').update(token).digest('hex');
+
   execute(
     `INSERT INTO sessions (id, user_id, token, device_info, ip_address, created_at, expires_at, is_revoked)
      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 0)`,
-    [sessionId, user.id, token, deviceInfo, ipAddress, expiresAt]
+    [sessionId, user.id, tokenDigest, deviceInfo, ipAddress, expiresAt]
   );
 
   logAccess({ userId: user.id, action: 'login', resource: '/api/auth/login', ipAddress });
@@ -184,15 +203,16 @@ router.post('/refresh', authenticate, (req, res) => {
   const user = req.user;
   const session = req.session;
 
-  const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const newExpiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
   const newToken = jwt.sign(
     { userId: user.id, sessionId: session.id, role: user.role, email: user.email },
     config.JWT_SECRET,
     { expiresIn: config.JWT_EXPIRES_IN }
   );
 
+  const newTokenDigest = crypto.createHash('sha256').update(newToken).digest('hex');
   execute('UPDATE sessions SET token = ?, expires_at = ? WHERE id = ?', [
-    newToken,
+    newTokenDigest,
     newExpiresAt,
     session.id
   ]);
@@ -200,6 +220,14 @@ router.post('/refresh', authenticate, (req, res) => {
   logAccess({ userId: user.id, action: 'token_refresh', resource: '/api/auth/refresh', ipAddress });
 
   return res.status(200).json({ token: newToken });
+});
+
+// 4. POST /api/auth/ws-ticket (Authenticated)
+// Issues a single-use 30-second ticket for WebSocket connection so the JWT
+// is never placed in the connection URL (proxy/access log exposure).
+router.post('/ws-ticket', authenticate, (req, res) => {
+  const { ticket, expiresInMs } = issueWsTicket(req.user.id, req.session.id);
+  return res.status(201).json({ ticket, expires_in_ms: expiresInMs });
 });
 
 export default router;

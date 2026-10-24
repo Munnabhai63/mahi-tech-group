@@ -53,12 +53,23 @@ export async function runSeed() {
   console.log(`>>> Seeded/Verified RBAC permissions: 48 entries (${permissionsInserted} newly inserted).`);
 
   // 2. Seed Default Admin User (The initial system owner)
-  const adminEmail = 'admin@mahitechgroup.com';
+  const isProduction = process.env.NODE_ENV === 'production';
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@mahitechgroup.com';
   const existingAdmin = queryOne('SELECT id, email FROM users WHERE email = ?', [adminEmail]);
 
   if (!existingAdmin) {
+    if (isProduction && !process.env.ADMIN_PASSWORD) {
+      console.error('>>> FATAL: ADMIN_PASSWORD environment variable is required when seeding in production.');
+      process.exit(1);
+    }
     const adminId = crypto.randomUUID();
-    const plainPassword = 'AdminPassword@2026';
+    const plainPassword = process.env.ADMIN_PASSWORD || 'AdminPassword@2026';
+    if (!process.env.ADMIN_PASSWORD) {
+      console.warn(
+        `>>> WARNING: Using development default admin password for ${adminEmail}. ` +
+        'Set ADMIN_PASSWORD (and change this account) before any real deployment.'
+      );
+    }
     const passwordHash = await bcrypt.hash(plainPassword, config.BCRYPT_SALT_ROUNDS);
 
     execute(`
@@ -86,12 +97,15 @@ export async function runSeed() {
   }
 
   // 2b. Seed Default Role Demo Users (Researcher, Developer, Producer, Designer)
-  const defaultRoleUsers = [
-    { name: 'Dr. Priya Sharma', email: 'researcher@mahitechgroup.com', pass: 'ResearcherPass123!', role: 'researcher', subRole: null },
-    { name: 'Arjun Dev', email: 'developer@mahitechgroup.com', pass: 'DeveloperPass123!', role: 'developer', subRole: 'frontend' },
-    { name: 'Sameer Tester', email: 'producer@mahitechgroup.com', pass: 'ProducerPass123!', role: 'producer', subRole: null },
-    { name: 'Diya Designer', email: 'designer@mahitechgroup.com', pass: 'DesignerPass123!', role: 'designer', subRole: null }
-  ];
+  //     Development convenience only — demo accounts are never created in production.
+  const defaultRoleUsers = process.env.NODE_ENV === 'production'
+    ? []
+    : [
+      { name: 'Dr. Priya Sharma', email: 'researcher@mahitechgroup.com', pass: 'ResearcherPass123!', role: 'researcher', subRole: null },
+      { name: 'Arjun Dev', email: 'developer@mahitechgroup.com', pass: 'DeveloperPass123!', role: 'developer', subRole: 'frontend' },
+      { name: 'Sameer Tester', email: 'producer@mahitechgroup.com', pass: 'ProducerPass123!', role: 'producer', subRole: null },
+      { name: 'Diya Designer', email: 'designer@mahitechgroup.com', pass: 'DesignerPass123!', role: 'designer', subRole: null }
+    ];
 
   for (const ru of defaultRoleUsers) {
     const existing = queryOne('SELECT id FROM users WHERE email = ?', [ru.email]);

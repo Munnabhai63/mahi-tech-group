@@ -42,7 +42,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB max
+  // Whisper's transcription API hard-caps files at 25MB — anything larger would
+  // always fail AI processing, so reject it at upload time.
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB max
   fileFilter: (req, file, cb) => {
     const allowed = ['.mp3', '.wav', '.m4a', '.webm', '.mp4'];
     const ext = path.extname(file.originalname).toLowerCase();
@@ -55,6 +57,30 @@ const upload = multer({
 });
 
 const router = express.Router();
+
+/**
+ * Validates the uploaded file's magic bytes against its claimed extension so a
+ * renamed executable/payload cannot masquerade as an audio recording.
+ */
+function hasValidMediaSignature(filePath, originalName) {
+  const ext = path.extname(originalName).toLowerCase();
+  let header;
+  try {
+    const fd = fs.openSync(filePath, 'r');
+    const buf = Buffer.alloc(16);
+    fs.readSync(fd, buf, 0, buf.length, 0);
+    fs.closeSync(fd);
+    header = buf;
+  } catch (e) {
+    return false;
+  }
+  const ascii = header.toString('latin1');
+  if (ext === '.wav') return ascii.slice(0, 4) === 'RIFF' && ascii.slice(8, 12) === 'WAVE';
+  if (ext === '.mp3') return ascii.slice(0, 3) === 'ID3' || (header[0] === 0xff && (header[1] & 0xe0) === 0xe0);
+  if (ext === '.m4a' || ext === '.mp4') return ascii.slice(4, 8) === 'ftyp';
+  if (ext === '.webm') return header[0] === 0x1a && header[1] === 0x45 && header[2] === 0xdf && header[3] === 0xa3;
+  return false;
+}
 
 /**
  * 1. POST /api/meetings (Admin only)
@@ -250,6 +276,12 @@ router.post('/:id/recording', authenticate, (req, res) => {
       return res.status(400).json({ error: 'Recording was not enabled for this meeting' });
     }
 
+    // Magic-byte validation: reject files whose content does not match the claimed media type
+    if (!hasValidMediaSignature(req.file.path, req.file.originalname)) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+      return res.status(400).json({ error: 'File content does not match a supported media type (corrupted or disguised file)' });
+    }
+
     // Update meeting with stored recording file path
     const storedPath = req.file.path;
     execute('UPDATE meetings SET recording_file_path = ? WHERE id = ?', [storedPath, meetingId]);
@@ -265,6 +297,46 @@ router.post('/:id/recording', authenticate, (req, res) => {
       meeting_id: meetingId
     });
   });
+});
+
+/**
+ * 11. GET /api/meetings/:id/recording (Admin, Host, or Attendee)
+ * Streams the stored meeting recording file (uploads were previously write-only).
+ */
+router.get('/:id/recording', authenticate, (req, res) => {
+  const meetingId = req.params.id;
+  const meeting = queryOne('SELECT * FROM meetings WHERE id = ?', [meetingId]);
+
+  if (!meeting) {
+    return res.status(404).json({ error: 'Meeting not found' });
+  }
+
+  const isPrivileged = req.user.role === 'admin' || meeting.hosted_by === req.user.id;
+  if (!isPrivileged) {
+    const attendance = queryOne(
+      'SELECT id FROM meeting_attendance WHERE meeting_id = ? AND user_id = ?',
+      [meetingId, req.user.id]
+    );
+    if (!attendance) {
+      return res.status(403).json({ error: 'Forbidden: Only the host, attendees or administrators can access this recording' });
+    }
+  }
+
+  if (!meeting.recording_file_path) {
+    return res.status(404).json({ error: 'No recording uploaded for this meeting' });
+  }
+
+  const resolved = path.resolve(meeting.recording_file_path);
+  // Defense-in-depth: stored path must stay inside the uploads directory
+  const uploadsRoot = path.resolve(uploadsDir);
+  if (!resolved.startsWith(uploadsRoot + path.sep)) {
+    return res.status(500).json({ error: 'Recording path is invalid' });
+  }
+  if (!fs.existsSync(resolved)) {
+    return res.status(404).json({ error: 'Recording file is no longer available on disk' });
+  }
+
+  return res.sendFile(resolved);
 });
 
 export default router;

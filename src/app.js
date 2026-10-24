@@ -14,7 +14,6 @@ import superadminRouter from './routes/superadmin.js';
 import signRouter from './routes/sign.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { queryAll } from './db/database.js';
 import { config } from './config.js';
 import { securityHeaders } from './middleware/securityHeaders.js';
 
@@ -25,34 +24,38 @@ const publicPath = path.join(__dirname, '..', 'public');
 export function createApp() {
   const app = express();
 
+  // Only trust X-Forwarded-* headers when explicitly running behind a reverse proxy
+  if (config.TRUST_PROXY) {
+    app.set('trust proxy', 1);
+  }
+
   app.use(securityHeaders);
-  app.use(cors());
+
+  // Cross-origin requests are opt-in: list origins in CORS_ORIGIN (comma-separated).
+  // The frontend is served same-origin by this server, so by default no CORS is allowed.
+  if (config.CORS_ORIGIN) {
+    const origins = config.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
+    app.use(cors({ origin: origins }));
+  }
+
   app.use(express.json());
 
-  // Enhanced health check endpoint
+  // Health check endpoint (no internal configuration details exposed)
   app.get('/api/health', (req, res) => {
-    let tablesCount = 0;
-    try {
-      const rows = queryAll("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'");
-      tablesCount = rows.length;
-    } catch (e) {}
-
     res.status(200).json({
       status: 'ok',
       version: '1.0.0',
       timestamp: new Date().toISOString(),
-      database: 'connected',
-      websocket: 'active',
-      encryption: Boolean(process.env.ENCRYPTION_KEY || config.ENCRYPTION_KEY),
-      tables_verified: tablesCount,
       uptime_seconds: Math.floor(process.uptime())
     });
   });
 
-  // Test error trigger endpoint for verification suites
-  app.get('/api/debug/error-test', (req, res, next) => {
-    next(new Error('Simulated internal database crash'));
-  });
+  // Test error trigger endpoint for verification suites (development only)
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/api/debug/error-test', (req, res, next) => {
+      next(new Error('Simulated internal database crash'));
+    });
+  }
 
   // Serve static frontend assets
   app.use(express.static(publicPath));

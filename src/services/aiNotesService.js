@@ -32,7 +32,7 @@ export async function processMeetingRecording(meetingId, filePath) {
 
     if (config.OPENAI_API_KEY && config.OPENAI_API_KEY.trim().length > 0) {
       console.log(`[AI NOTES] Invoking OpenAI Whisper API with real audio...`);
-      const fileBuffer = fs.readFileSync(filePath);
+      const fileBuffer = await fs.promises.readFile(filePath);
       const ext = path.extname(filePath).toLowerCase();
       let mimeType = 'audio/mpeg';
       if (ext === '.wav') mimeType = 'audio/wav';
@@ -102,8 +102,8 @@ Return a valid JSON object matching this exact schema:
       notesEnglish = content.notes_english || '';
       notesHindi = content.notes_hindi || '';
     } else {
-      console.warn(`[AI NOTES WARNING] OPENAI_API_KEY not configured in environment. Using development synthesis baseline.`);
-      transcriptRaw = `[SAMPLE TRANSCRIPT: Audio recording stored at ${path.basename(filePath)}] The team discussed project deliverables, reviewed design assets, confirmed sprint timeline for frontend center dashboard, and approved budget allocation.`;
+      console.warn(`[AI NOTES WARNING] OPENAI_API_KEY not configured in environment. Generating clearly-labelled PLACEHOLDER draft (not a real transcript).`);
+      transcriptRaw = `[PLACEHOLDER — NOT A REAL TRANSCRIPT. Generated locally because OPENAI_API_KEY is not configured. Audio stored as ${path.basename(filePath)}. Configure OPENAI_API_KEY and re-upload to get real transcription.]`;
       notesEnglish = `## Executive Summary\nThe team convened to discuss core deliverables, reviewed design assets, confirmed sprint timeline for the platform dashboard, and approved budget allocation.\n\n## Key Decisions\n- Approved sprint timeline for Phase 4 deliverables.\n- Confirmed budget allocation.\n\n## Action Items\n- Complete frontend integration by end of week.\n- Conduct review with Admin team.\n\n## Attendees Mentioned\n- Project Team Members`;
       notesHindi = `## कार्यकारी सारांश\nटीम ने मुख्य कार्यों पर चर्चा करने, डिज़ाइन संपत्तियों की समीक्षा करने, प्लेटफ़ॉर्म डैशबोर्ड के लिए स्प्रिंट समयसीमा की पुष्टि करने और बजट आवंटन को मंजूरी देने के लिए बैठक की।\n\n## प्रमुख निर्णय\n- चरण 4 के कार्यों के लिए स्प्रिंट समयसीमा को मंजूरी दी गई।\n- बजट आवंटन की पुष्टि की गई।\n\n## कार्य सूची\n- सप्ताह के अंत तक फ्रंटएंड एकीकरण पूरा करें।\n- व्यवस्थापक टीम के साथ समीक्षा आयोजित करें।\n\n## उपस्थित सदस्य\n- परियोजना टीम के सदस्य`;
       aiModelUsed = 'OpenAI Whisper-1 + GPT-4o [DEV_SYNTHESIS: OPENAI_API_KEY_REQUIRED]';

@@ -160,7 +160,11 @@ router.get('/profile-mini', authenticate, (req, res) => {
 });
 
 // GET /api/users/:id/profile-mini (Profile summary mini-card data by ID)
+// Private data (email, wallet, quota) is limited to the owner or an admin.
 router.get('/:id/profile-mini', authenticate, (req, res) => {
+  if (req.params.id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: You may only view your own profile summary' });
+  }
   return handleProfileMini(req.params.id, res);
 });
 

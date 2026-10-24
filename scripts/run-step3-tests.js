@@ -46,6 +46,13 @@ async function runStep3Tests() {
     console.log('Database voting configurations:', JSON.stringify(configs, null, 2));
     results.push({ test: 'Admin Login & Voting Config Check', status: 'PASS' });
 
+    // Deterministic quorum math: deactivate the 4 seeded demo accounts so the
+    // eligible-voter pool is exactly this suite's owner + 10 voters (+ admin,
+    // who does not vote). Otherwise participation never reaches 70% on a fresh DB.
+    execute(
+      "UPDATE users SET status = 'inactive' WHERE email IN ('researcher@mahitechgroup.com', 'developer@mahitechgroup.com', 'producer@mahitechgroup.com', 'designer@mahitechgroup.com')"
+    );
+
     // -----------------------------------------------------------------
     // Helper to create & login team members
     // -----------------------------------------------------------------

@@ -2328,6 +2328,19 @@ body.dark-theme {
   font-weight: 700;
 }
 
+/* Clickable notifications carrying a deep link */
+a.notification-item.notif-linked,
+.notif-linked {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.notif-linked:hover {
+  background: var(--bg-card-hover, #1b243b);
+}
+
 /* 6. Breakpoint 1: Tablet Viewport (max-width: 1024px) */
 @media (max-width: 1024px) {
   .responsive-tab-deck {

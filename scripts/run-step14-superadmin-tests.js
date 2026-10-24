@@ -568,14 +568,15 @@ async function runStep14Layer1Tests() {
     // Create 1 pending task and 1 completed task
     const taskPendingId = crypto.randomUUID();
     const taskCompletedId = crypto.randomUUID();
+    // project_tasks has no idea_id column — the idea link lives on projects.idea_id
     execute(`
-      INSERT INTO project_tasks (id, project_id, idea_id, task_name, task_type, status, assigned_to, created_at)
-      VALUES (?, ?, ?, 'Deploy Edge Gateway Daemon', 'backend', 'TODO', ?, datetime('now'))
-    `, [taskPendingId, testProjectId, testIdeaId, authDev.data.user.id]);
+      INSERT INTO project_tasks (id, project_id, task_name, task_type, status, assigned_to, created_at)
+      VALUES (?, ?, 'Deploy Edge Gateway Daemon', 'backend', 'TODO', ?, datetime('now'))
+    `, [taskPendingId, testProjectId, authDev.data.user.id]);
     execute(`
-      INSERT INTO project_tasks (id, project_id, idea_id, task_name, task_type, status, assigned_to, created_at)
-      VALUES (?, ?, ?, 'Security Benchmark Spec', 'research', 'completed', ?, datetime('now'))
-    `, [taskCompletedId, testProjectId, testIdeaId, researcherUser.id]);
+      INSERT INTO project_tasks (id, project_id, task_name, task_type, status, assigned_to, created_at)
+      VALUES (?, ?, 'Security Benchmark Spec', 'research', 'completed', ?, datetime('now'))
+    `, [taskCompletedId, testProjectId, researcherUser.id]);
 
     // Connect WebSocket client to receive idea_killed event
     let wsReceivedIdeaKilled = null;
@@ -1314,10 +1315,12 @@ async function runStep14Layer1Tests() {
     assert(resHealth.data?.status === 'ok', 'Health status is "ok"');
     assert(resHealth.data?.version === '1.0.0', 'Health version is "1.0.0"');
     assert(typeof resHealth.data?.timestamp === 'string' && !isNaN(Date.parse(resHealth.data.timestamp)), 'Health timestamp is valid ISO string');
-    assert(resHealth.data?.database === 'connected', 'Database is "connected"');
-    assert(resHealth.data?.websocket === 'active', 'WebSocket is "active"');
-    assert(resHealth.data?.encryption === true, 'Encryption is true (ENCRYPTION_KEY configured)');
-    assert(typeof resHealth.data?.tables_verified === 'number' && resHealth.data.tables_verified >= 20, `tables_verified is >= 20 (actual: ${resHealth.data?.tables_verified})`);
+    // Health is intentionally minimal & unauthenticated: internal config details
+    // (database/websocket/encryption/tables) must NOT be exposed on this endpoint
+    assert(resHealth.data?.database === undefined, 'Health does not leak database config details');
+    assert(resHealth.data?.websocket === undefined, 'Health does not leak websocket config details');
+    assert(resHealth.data?.encryption === undefined, 'Health does not leak encryption key status');
+    assert(resHealth.data?.tables_verified === undefined, 'Health does not leak schema table counts');
     assert(typeof resHealth.data?.uptime_seconds === 'number', 'uptime_seconds is a number');
 
     // TEST 41: System Integrity Check

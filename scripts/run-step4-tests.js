@@ -340,7 +340,9 @@ async function runStep4Tests() {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
       body: JSON.stringify({
         taskId: testPlanTask.id,
-        newUserId: candC.user.id
+        newUserId: candC.user.id,
+        // QA task moving to a developer requires the explicit executive override
+        allowCrossRole: true
       })
     });
     const reassignData = await reassignRes.json();

@@ -8,6 +8,7 @@
  */
 
 import { WebSocket } from 'ws';
+import crypto from 'node:crypto';
 import { execute } from '../src/db/database.js';
 
 const BASE_URL = 'http://localhost:4000';
@@ -79,7 +80,29 @@ async function runStep08Tests() {
 
   if (!testProject) {
     console.log('  Creating a baseline project for weight test...');
-    // If no project, create one through voting or seed
+    const baselineIdeaId = crypto.randomUUID();
+    const baselineProjectId = crypto.randomUUID();
+    execute(`
+      INSERT INTO ideas (id, title, description, owner_id, status, created_at, updated_at)
+      VALUES (?, 'Baseline Weight Validation Idea', 'Auto-created baseline for contribution weight validation', ?, 'APPROVED', datetime('now'), datetime('now'))
+    `, [baselineIdeaId, sessions.researcher.user.id]);
+    execute(`
+      INSERT INTO projects (id, idea_id, org_id, title, owner_id, status, created_at, updated_at)
+      VALUES (?, ?, 'DEFAULT_ORG', 'Baseline Weight Validation Project', ?, 'ACTIVE', datetime('now'), datetime('now'))
+    `, [baselineProjectId, baselineIdeaId, sessions.researcher.user.id]);
+    execute(
+      "INSERT INTO project_members (id, project_id, user_id, role_in_project, contribution_weight) VALUES (?, ?, ?, 'backend_dev', 0.0)",
+      [crypto.randomUUID(), baselineProjectId, sessions.developer.user.id]
+    );
+    execute(
+      "INSERT INTO project_members (id, project_id, user_id, role_in_project, contribution_weight) VALUES (?, ?, ?, 'frontend_dev', 0.0)",
+      [crypto.randomUUID(), baselineProjectId, sessions.researcher.user.id]
+    );
+    const refetchRes = await req('GET', '/api/admin/projects/all', sessions.admin.token);
+    testProject = ((await refetchRes.json()).projects || [])[0];
+    if (!testProject) {
+      throw new Error('Failed to create baseline project for weight test');
+    }
   }
 
   const projDetailsRes = await req('GET', `/api/projects/${testProject.id}`, sessions.admin.token);
@@ -276,6 +299,19 @@ async function runStep08Tests() {
     const completeRes = await req('PATCH', `/api/tasks/${dt.id}/status`, sessions.admin.token, { status: 'DONE' });
     const completeJson = await completeRes.json();
     console.log(`      -> Marked DONE (Push to Center) — Unblocked: ${completeJson.unblockedTasks.join(', ') || 'None'}`);
+  }
+
+  // Step D2: Designer Corner — the design task is a prerequisite of the Full QA gate,
+  // so it must be completed before the Producer QA stage
+  const designTasks = projTasks.filter(t => t.task_type === 'design');
+  for (const dst of designTasks) {
+    const currentTask = (await (await req('GET', `/api/projects/${newProject.id}`, sessions.admin.token)).json()).tasks.find(t => t.id === dst.id);
+    if (!currentTask || currentTask.status === 'DONE') continue;
+    console.log(`\n  [STAGE 3b - DESIGNER CORNER] Completing design task "${dst.task_name}" (Current Status: ${currentTask.status})`);
+    await req('PATCH', `/api/tasks/${dst.id}/status`, sessions.admin.token, { status: 'IN_PROGRESS' });
+    const designDoneRes = await req('PATCH', `/api/tasks/${dst.id}/status`, sessions.admin.token, { status: 'DONE' });
+    const designDoneJson = await designDoneRes.json();
+    console.log(`      -> Marked DONE — Unblocked: ${designDoneJson.unblockedTasks.join(', ') || 'None'}`);
   }
 
   // Step E: Producer Corner testing queue

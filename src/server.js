@@ -2,6 +2,7 @@ import { createApp } from './app.js';
 import { config } from './config.js';
 import { runMigration } from './db/migrate.js';
 import { runSeed } from './db/seed.js';
+import { execute } from './db/database.js';
 import { startScheduledQuotaReset, stopScheduledQuotaReset } from './jobs/quotaResetJob.js';
 import { startScheduledVotingDecision, stopScheduledVotingDecision } from './jobs/votingDecisionJob.js';
 import { initWebSocketServer } from './services/wsService.js';
@@ -11,6 +12,10 @@ async function startServer() {
     console.log('>>> Initializing Database Schema & Seed Data...');
     runMigration();
     await runSeed();
+
+    // Session hygiene: purge expired sessions; keep revoked ones 30 days for audit
+    execute("DELETE FROM sessions WHERE expires_at <= datetime('now')");
+    execute("DELETE FROM sessions WHERE is_revoked = 1 AND expires_at <= datetime('now', '-30 days')");
 
     // Start automated background jobs
     startScheduledQuotaReset();

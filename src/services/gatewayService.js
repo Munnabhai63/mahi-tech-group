@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { queryOne, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
+import { config } from '../config.js';
 
 /**
  * MAHI TECH GROUP — PAYMENT GATEWAY CONFIGURATION SERVICE (STEP 14 LAYER 5)
@@ -9,12 +10,13 @@ import { logAccess } from './auditService.js';
 
 /**
  * Derives a 32-byte cryptographic key for AES-256-GCM.
- * Refuses to run if ENCRYPTION_KEY environment variable is missing.
+ * Refuses to run if no ENCRYPTION_KEY was resolved at boot (config guarantees
+ * a production abort when the environment variable is missing).
  */
 export function getEncryptionKey() {
-  const key = process.env.ENCRYPTION_KEY;
+  const key = config.ENCRYPTION_KEY;
   if (!key) {
-    throw new Error('Startup Error: ENCRYPTION_KEY environment variable is not set. Refusing to run.');
+    throw new Error('Startup Error: ENCRYPTION_KEY is not set. Refusing to run.');
   }
   return crypto.createHash('sha256').update(String(key)).digest();
 }

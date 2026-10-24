@@ -10,7 +10,11 @@
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  if (!token || user.role !== 'admin') {
+  if (!token) {
+    window.location.replace('/login.html');
+    return;
+  }
+  if (user.role !== 'admin') {
     alert('Access Denied: Administrator role required to access Governance Control Panel.');
     window.location.href = '/';
     return;

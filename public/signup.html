@@ -168,8 +168,8 @@
 
       <div class="form-group">
         <label for="password">Password *</label>
-        <input type="password" id="password" name="password" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password">
-        <div class="hint">Must contain at least 6 characters.</div>
+        <input type="password" id="password" name="password" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password">
+        <div class="hint">Must contain at least 8 characters (server policy).</div>
       </div>
 
       <div class="form-group">
@@ -193,6 +193,9 @@
       </div>
 
       <button type="submit" id="submitBtn" class="submit-btn">Submit Application</button>
+      <div style="margin-top: 14px; text-align: center; font-size: 0.85rem;">
+        Already a member? <a href="/login.html" style="color: #93c5fd;">Sign in here</a>
+      </div>
     </form>
 
     <div class="links-footer">
@@ -236,7 +239,7 @@
         return;
       }
 
-      if (password.length < 6) {
+      if (password.length < 8) {
         showStatus('Password must be at least 6 characters long.', 'error');
         return;
       }
@@ -262,7 +265,7 @@
 
         if (response.status === 201) {
           showStatus(
-            data.message || 'Application submitted successfully! Your account is currently PENDING review by an administrator. You will be able to log in once an admin approves your request.',
+            data.message || 'Application submitted successfully! Your account is PENDING administrator review. Once approved, you can sign in from the Login page.',
             'success'
           );
           signupForm.reset();
