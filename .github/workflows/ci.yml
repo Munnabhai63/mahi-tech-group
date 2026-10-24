@@ -1,0 +1,35 @@
+name: Continuous Integration & Verification
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    name: Run Core & Regression Test Suites
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js v24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Initialize Test Schema & Seeds
+        run: |
+          npm run migrate
+          npm run seed
+
+      - name: Run Core Test Suite
+        run: npm test
+
+      - name: Run Super Admin Verification Suite
+        run: node scripts/run-step14-superadmin-tests.js
