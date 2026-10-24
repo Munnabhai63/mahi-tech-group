@@ -7,6 +7,7 @@ import { authenticate } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/rbac.js';
 import { logAccess } from '../services/auditService.js';
 import { getUnsignedDocuments } from '../services/legalService.js';
+import { provisionMemberAccess, revokeMemberAccess } from '../services/githubService.js';
 import { adminOverrideDecision } from '../services/votingService.js';
 import { reassignTask, adminFinalReview } from '../services/fanoutService.js';
 import {
@@ -185,7 +186,7 @@ router.get('/applications/pending', authenticate, requirePermission('application
 });
 
 // 7c. PATCH /api/admin/applications/:id/decide (Admin only - RBAC: application.review)
-router.patch('/applications/:id/decide', authenticate, requirePermission('application.review'), (req, res) => {
+router.patch('/applications/:id/decide', authenticate, requirePermission('application.review'), async (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
   const { id } = req.params;
   const { decision, finalRole, finalSubRole } = req.body || {};
@@ -273,6 +274,20 @@ router.patch('/applications/:id/decide', authenticate, requirePermission('applic
       console.warn('Failed to dispatch approval notification:', notifErr.message);
     }
 
+    // GITHUB ACCESS LIFECYCLE (joiner): best-effort org invite + role team.
+    // Failures never block the approval — they are audited and retryable.
+    let githubProvisioning = null;
+    try {
+      githubProvisioning = await provisionMemberAccess({
+        userId: id,
+        role: assignedRole,
+        adminId: req.user.id,
+        ipAddress
+      });
+    } catch (ghErr) {
+      githubProvisioning = { provisioned: false, reason: 'error', message: ghErr.message };
+    }
+
     const updated = queryOne(`
       SELECT id, name, email, phone_number, desired_role, desired_sub_role,
              role, sub_role, status, approved_at, approved_by, created_at, updated_at
@@ -281,7 +296,8 @@ router.patch('/applications/:id/decide', authenticate, requirePermission('applic
 
     return res.status(200).json({
       message: 'Application approved successfully',
-      user: updated
+      user: updated,
+      github: githubProvisioning
     });
   }
 
@@ -623,13 +639,51 @@ router.patch('/projects/:id/final-review', authenticate, (req, res) => {
 // STEP 05: Offboarding Kill-Switch Endpoints (Admin Only)
 // ===================================================================
 
-// 14. POST /api/admin/members/:id/offboard (Admin only - RBAC: member.remove)
-router.post('/members/:id/offboard', authenticate, requirePermission('member.remove'), (req, res) => {
+// 14b. PATCH /api/admin/members/:id/github (Admin only)
+// Sets/updates a member's GitHub username and (re)provisions org access.
+router.patch('/members/:id/github', authenticate, requirePermission('member.add'), async (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+  const { github_username, provision } = req.body || {};
+
+  const member = queryOne('SELECT id, name, role, status, github_username FROM users WHERE id = ?', [id]);
+  if (!member) {
+    return res.status(404).json({ error: 'Member not found' });
+  }
+
+  const username = String(github_username || '').trim();
+  if (username && !/^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/.test(username)) {
+    return res.status(400).json({ error: 'Invalid GitHub username format (1-39 chars, alphanumeric/hyphen)' });
+  }
+
+  execute('UPDATE users SET github_username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [username || null, id]);
+
+  let provisioning = null;
+  if (provision !== false && username) {
+    provisioning = await provisionMemberAccess({ userId: id, githubUsername: username, role: member.role, adminId: req.user.id, ipAddress });
+  }
+
+  logAccess({
+    userId: req.user.id,
+    action: 'member_github_username_updated',
+    resource: `/api/admin/members/${id}/github (username: ${username || '(cleared)'})`,
+    ipAddress
+  });
+
+  return res.status(200).json({
+    message: 'GitHub username updated.',
+    member: queryOne('SELECT id, name, role, github_username FROM users WHERE id = ?', [id]),
+    github: provisioning
+  });
+});
+
+// 15. POST /api/admin/members/:id/offboard (Admin only - RBAC: member.remove)
+router.post('/members/:id/offboard', authenticate, requirePermission('member.remove'), async (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
   const { id } = req.params;
   const { reason } = req.body || {};
 
-  const result = executeOffboardingKillswitch({
+  const result = await executeOffboardingKillswitch({
     userId: id,
     adminUserId: req.user.id,
     reason,

@@ -3,6 +3,7 @@ import { queryOne, queryAll, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
 import { disconnectUserSockets } from './wsService.js';
 import { ejectUserFromActiveMeetings } from './meetingService.js';
+import { revokeMemberAccess } from './githubService.js';
 
 export const DEFAULT_EXTERNAL_SERVICES_CHECKLIST = [
   { id: 'github_org', label: 'Remove from GitHub org', status: 'PENDING', type: 'manual_checklist', completed_at: null },
@@ -23,7 +24,7 @@ export const DEFAULT_EXTERNAL_SERVICES_CHECKLIST = [
  * 6) Freeze revenue wallet (wallet_frozen=TRUE, snapshot amount saved)
  * 7) Write exit audit log (offboarding row + access_log entry + Admin notification)
  */
-export function executeOffboardingKillswitch({ userId, adminUserId, reason, ipAddress = null }) {
+export async function executeOffboardingKillswitch({ userId, adminUserId, reason, ipAddress = null }) {
   // Validate Admin User
   const admin = queryOne('SELECT id, name, role FROM users WHERE id = ?', [adminUserId]);
   if (!admin || admin.role !== 'admin') {
@@ -98,10 +99,32 @@ export function executeOffboardingKillswitch({ userId, adminUserId, reason, ipAd
   const step3Start = new Date().toISOString();
   const servicesChecklist = JSON.parse(JSON.stringify(DEFAULT_EXTERNAL_SERVICES_CHECKLIST));
   executionTimestamps.step3 = step3Start;
+
+  // GITHUB ACCESS LIFECYCLE (leaver): org removal via the configured token —
+  // one API call revokes every team, repository AND pending invitation.
+  // When not configured/no username, the checklist item stays manual.
+  let githubRevocation = null;
+  try {
+    githubRevocation = await revokeMemberAccess({ userId, adminId: adminUserId, ipAddress });
+    if (githubRevocation.revoked) {
+      const ghItem = servicesChecklist.find((s) => s.id === 'github_org');
+      if (ghItem) {
+        ghItem.status = 'COMPLETED';
+        ghItem.type = 'automated';
+        ghItem.completed_at = new Date().toISOString();
+        ghItem.details = `Removed from org ${githubRevocation.org}${githubRevocation.invite_cancelled ? ' (pending invite cancelled)' : ''}`;
+      }
+    }
+  } catch (ghErr) {
+    githubRevocation = { revoked: false, reason: 'error', message: ghErr.message };
+  }
+
   stepsExecuted.push({
     step: 3,
     action: 'revoke_external_services',
-    details: 'Initialized external services deprovisioning checklist with 5 items (manual checklist mode)'
+    details: githubRevocation?.revoked
+      ? `GitHub org access REVOKED automatically (${githubRevocation.username}); remaining external services tracked as manual checklist`
+      : 'External services deprovisioning checklist initialized (GitHub automated revocation unavailable — not configured or no username on file)'
   });
 
   // -----------------------------------------------------------------

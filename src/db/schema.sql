@@ -783,3 +783,20 @@ BEFORE DELETE ON legal_signatures
 BEGIN
     SELECT RAISE(ABORT, 'legal_signatures is append-only. Signed records can never be deleted.');
 END;
+
+
+-- ===================================================================
+-- GITHUB ACCESS LIFECYCLE: org connection + member GitHub identity.
+-- The PAT token is stored AES-256-GCM encrypted (gatewayService helpers);
+-- role->team mapping auto-grants least-privilege repo access on approve and
+-- revokes EVERYTHING (org membership + teams + pending invites) on offboard.
+-- ===================================================================
+CREATE TABLE IF NOT EXISTS github_config (
+    id                  TEXT PRIMARY KEY,
+    org_login           TEXT NOT NULL,
+    token_encrypted     TEXT NOT NULL,
+    api_base            TEXT NOT NULL DEFAULT 'https://api.github.com',
+    default_team_slug   TEXT NULL,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

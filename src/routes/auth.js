@@ -14,7 +14,7 @@ const router = express.Router();
 
 // 0. POST /api/auth/signup (Public with Rate Limiting)
 router.post('/signup', signupLimiter, async (req, res) => {
-  const { name, email, password, phone_number, desired_role, desired_sub_role, legal_typed_name, legal_accepted_doc_ids } = req.body || {};
+  const { name, email, password, phone_number, desired_role, desired_sub_role, legal_typed_name, legal_accepted_doc_ids, github_username } = req.body || {};
   const ipAddress = req.ip || req.socket.remoteAddress;
 
   if (!name || !email || !password || !desired_role) {
@@ -77,8 +77,8 @@ router.post('/signup', signupLimiter, async (req, res) => {
       id, name, email, password_hash, phone_number,
       desired_role, desired_sub_role, role, sub_role, status,
       rating_avg, idea_quota_used, quota_reset_date, wallet_balance,
-      wallet_frozen, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, 'pending', 0.0, 0, null, 0.0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      wallet_frozen, github_username, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, 'pending', 0.0, 0, null, 0.0, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
   `, [
     userId,
     name.trim(),
@@ -86,7 +86,8 @@ router.post('/signup', signupLimiter, async (req, res) => {
     passwordHash,
     phone_number ? phone_number.trim() : null,
     desired_role,
-    desired_sub_role || null
+    desired_sub_role || null,
+    (typeof github_username === 'string' && github_username.trim()) ? github_username.trim() : null
   ]);
 
   logAccess({

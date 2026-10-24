@@ -46,6 +46,11 @@ import {
   testYoupiConnection
 } from '../services/youpiService.js';
 import {
+  getGithubConfigStatus,
+  setGithubConfig,
+  testGithubConnection
+} from '../services/githubService.js';
+import {
   addGovernanceEntry,
   getGovernanceHistory,
   blockMember,
@@ -721,9 +726,51 @@ router.post('/gateway/test', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/superadmin/github/config — GitHub access lifecycle status (masked)
+ */
+router.get('/github/config', (req, res) => {
+  return res.status(200).json(getGithubConfigStatus());
+});
+
+/**
+ * PUT /api/superadmin/github/config — save org + PAT (AES-256-GCM encrypted)
+ */
+router.put('/github/config', (req, res) => {
+  try {
+    const { org_login, token, api_base } = req.body || {};
+    const status = setGithubConfig({
+      org_login, token, api_base,
+      adminId: req.user.id,
+      ipAddress: req.ip
+    });
+    return res.status(200).json(status);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/superadmin/github/test — real connectivity check (rate_limit)
+ */
+router.post('/github/test', async (req, res) => {
+  try {
+    const result = await testGithubConnection();
+    logAccess({
+      userId: req.user.id,
+      action: 'superadmin_github_test',
+      resource: `/api/superadmin/github/test (success: ${result.success})`,
+      ipAddress: req.ip
+    });
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ===================================================================
 // STEP 14 LAYER 5: User Data Governance Endpoints (Parameterized Routes)
-// ===================================================================
+  // ===================================================================
 
 /**
  * POST /api/superadmin/governance/:userId/block — Suspend member access (with preventSelfAction guard)

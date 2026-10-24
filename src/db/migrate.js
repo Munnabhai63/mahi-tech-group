@@ -48,6 +48,13 @@ export function runMigration() {
     console.log('>>> Added upi_id column to users table.');
   }
 
+  // GitHub Access Lifecycle: member GitHub username for org invitations
+  const hasGithubUsername = userColumns.some(c => c.name === 'github_username');
+  if (!hasGithubUsername) {
+    execRaw('ALTER TABLE users ADD COLUMN github_username TEXT NULL;');
+    console.log('>>> Added github_username column to users table.');
+  }
+
   // Step 14 Layer 2: target_id and created_at on access_log table
   const accessLogCols = queryAll('PRAGMA table_info(access_log);');
   const hasTargetId = accessLogCols.some(c => c.name === 'target_id');
