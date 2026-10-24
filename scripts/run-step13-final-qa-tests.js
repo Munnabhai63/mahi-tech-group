@@ -617,7 +617,9 @@ async function runStep13FinalQASuite() {
     assert(endedMeet.status === 'ENDED', 'Meeting ends cleanly with attendance recorded');
 
     // Close Step 13 Test Server before running regressions so ports are completely free
-    server.close();
+    wss.close();
+    await new Promise(r => server.close(r));
+    await new Promise(r => setTimeout(r, 1000));
     console.log('\n[TEARDOWN] Step 13 Test Server closed cleanly prior to running regression suites.');
 
     // =============================================================

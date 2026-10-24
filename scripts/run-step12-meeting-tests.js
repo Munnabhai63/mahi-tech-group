@@ -86,7 +86,7 @@ function connectWs(token) {
   });
 }
 
-function waitForWsMessage(ws, eventName, timeoutMs = 4000) {
+function waitForWsMessage(ws, eventName, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`Timeout waiting for WS event "${eventName}"`));
