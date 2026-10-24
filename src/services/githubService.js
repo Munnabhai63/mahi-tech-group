@@ -44,7 +44,7 @@ export function getGithubConfigStatus() {
   };
 }
 
-export function setGithubConfig({ org_login, token, api_base, adminId, ipAddress = '127.0.0.1' }) {
+export function setGithubConfig({ org_login, token, api_base, webhook_secret, adminId, ipAddress = '127.0.0.1' }) {
   if (!org_login || !token) {
     const err = new Error('org_login and token are required');
     err.status = 400;
@@ -67,23 +67,47 @@ export function setGithubConfig({ org_login, token, api_base, adminId, ipAddress
     execute(`
       UPDATE github_config
       SET org_login = ?, token_encrypted = ?, api_base = ?, updated_at = CURRENT_TIMESTAMP
+      ${webhook_secret !== undefined ? ', webhook_secret_encrypted = ?' : ''}
       WHERE id = ?
-    `, [String(org_login).trim(), encrypted, apiBase, existing.id]);
+    `, webhook_secret !== undefined
+        ? [String(org_login).trim(), encrypted, apiBase, webhook_secret ? encrypt(String(webhook_secret)) : null, existing.id]
+        : [String(org_login).trim(), encrypted, apiBase, existing.id]);
   } else {
     execute(`
-      INSERT INTO github_config (id, org_login, token_encrypted, api_base, created_at, updated_at)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    `, [crypto.randomUUID(), String(org_login).trim(), encrypted, apiBase]);
+      INSERT INTO github_config (id, org_login, token_encrypted, webhook_secret_encrypted, api_base, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `, [crypto.randomUUID(), String(org_login).trim(), encrypted, webhook_secret ? encrypt(String(webhook_secret)) : null, apiBase]);
   }
 
   logAccess({
     userId: adminId,
     action: 'github_config_updated',
-    resource: `/api/superadmin/github/config (org: ${org_login}, api: ${apiBase})`,
+    resource: `/api/superadmin/github/config (org: ${org_login}, api: ${apiBase}${webhook_secret !== undefined ? ', webhook_secret: updated' : ''})`,
     ipAddress
   });
 
   return getGithubConfigStatus();
+}
+
+/**
+ * Verifies a GitHub webhook request (X-Hub-Signature-256 = HMAC-SHA256 of the
+ * raw body with the configured webhook secret — GitHub documented contract).
+ */
+export function verifyGithubWebhookSignature({ rawBody, signatureHeader }) {
+  const row = getConfigRow();
+  if (!row?.webhook_secret_encrypted) {
+    return { valid: false, reason: 'Webhook secret not configured' };
+  }
+  const secret = decrypt(row.webhook_secret_encrypted);
+  const provided = String(signatureHeader || '').replace(/^sha256=/, '').trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(provided)) {
+    return { valid: false, reason: 'Malformed signature header' };
+  }
+  const expected = crypto.createHmac('sha256', secret).update(Buffer.from(String(rawBody), 'utf8')).digest('hex');
+  const a = Buffer.from(provided, 'hex');
+  const b = Buffer.from(expected, 'hex');
+  const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
+  return valid ? { valid: true } : { valid: false, reason: 'Signature mismatch' };
 }
 
 function getConnection() {

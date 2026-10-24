@@ -792,11 +792,12 @@ END;
 -- revokes EVERYTHING (org membership + teams + pending invites) on offboard.
 -- ===================================================================
 CREATE TABLE IF NOT EXISTS github_config (
-    id                  TEXT PRIMARY KEY,
-    org_login           TEXT NOT NULL,
-    token_encrypted     TEXT NOT NULL,
-    api_base            TEXT NOT NULL DEFAULT 'https://api.github.com',
-    default_team_slug   TEXT NULL,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id                       TEXT PRIMARY KEY,
+    org_login                TEXT NOT NULL,
+    token_encrypted          TEXT NOT NULL,
+    webhook_secret_encrypted TEXT NULL,
+    api_base                 TEXT NOT NULL DEFAULT 'https://api.github.com',
+    default_team_slug        TEXT NULL,
+    created_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

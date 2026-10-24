@@ -14,6 +14,7 @@ import superadminRouter from './routes/superadmin.js';
 import signRouter from './routes/sign.js';
 import paymentsRouter from './routes/payments.js';
 import legalRouter from './routes/legal.js';
+import githubWebhookRouter from './routes/githubWebhook.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
@@ -83,6 +84,7 @@ export function createApp() {
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/payments', paymentsRouter); // YouPI collections + HMAC webhook (self-authenticating)
   app.use('/api/legal', legalRouter); // Legal onboarding gate (public doc reads, signed acceptances)
+  app.use('/api/github', githubWebhookRouter); // GitHub PR↔task sync (HMAC self-authenticating)
   app.use('/api', dashboardRouter); // Covers /api/notifications/* and /api/activity/*
 
   // Client-side SPA fallback for non-API routes (Express 5 compatible)

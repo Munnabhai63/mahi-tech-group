@@ -37,6 +37,7 @@ const SUITES = [
   { file: 'test-youpi-integration.js', liveServer: false },       // YouPI webhook + manual UPI payouts
   { file: 'test-legal-gate.js', liveServer: false },              // Legal onboarding gate + e-signatures
   { file: 'test-github-lifecycle.js', liveServer: false },        // GitHub access lifecycle (mock API stub)
+  { file: 'test-github-webhook.js', liveServer: false },          // GitHub PR↔task webhook pipeline
   // ---- live-server suites (real server on port 4000, booted fresh per suite) ----
   { file: 'run-step5-tests.js', liveServer: true },               // Offboarding kill-switch
   { file: 'run-step6-tests.js', liveServer: true },               // Revenue split engine

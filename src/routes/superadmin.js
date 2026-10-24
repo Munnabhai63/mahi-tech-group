@@ -738,9 +738,9 @@ router.get('/github/config', (req, res) => {
  */
 router.put('/github/config', (req, res) => {
   try {
-    const { org_login, token, api_base } = req.body || {};
+    const { org_login, token, api_base, webhook_secret } = req.body || {};
     const status = setGithubConfig({
-      org_login, token, api_base,
+      org_login, token, api_base, webhook_secret,
       adminId: req.user.id,
       ipAddress: req.ip
     });

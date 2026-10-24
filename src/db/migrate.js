@@ -55,6 +55,18 @@ export function runMigration() {
     console.log('>>> Added github_username column to users table.');
   }
 
+  // GitHub pipeline: link projects to their repository + webhook secret column
+  const ghCfgCols = queryAll('PRAGMA table_info(github_config);');
+  if (ghCfgCols.length > 0 && !ghCfgCols.some(c => c.name === 'webhook_secret_encrypted')) {
+    execRaw('ALTER TABLE github_config ADD COLUMN webhook_secret_encrypted TEXT NULL;');
+    console.log('>>> Added webhook_secret_encrypted column to github_config table.');
+  }
+  const projCols = queryAll('PRAGMA table_info(projects);');
+  if (!projCols.some(c => c.name === 'github_repo')) {
+    execRaw('ALTER TABLE projects ADD COLUMN github_repo TEXT NULL;');
+    console.log('>>> Added github_repo column to projects table.');
+  }
+
   // Step 14 Layer 2: target_id and created_at on access_log table
   const accessLogCols = queryAll('PRAGMA table_info(access_log);');
   const hasTargetId = accessLogCols.some(c => c.name === 'target_id');

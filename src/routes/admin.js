@@ -519,7 +519,37 @@ router.get('/projects/all', authenticate, (req, res) => {
   });
 });
 
-// 11b. PATCH /api/admin/projects/:id/members/:memberId/weight (Admin only - RBAC: project.launch_approve)
+// 11c. PATCH /api/admin/projects/:id/github-repo (Admin only)
+// Links a project to its GitHub repository so PR webhooks sync its tasks.
+router.patch('/projects/:id/github-repo', authenticate, requirePermission('project.launch_approve'), (req, res) => {
+  const { id } = req.params;
+  const { github_repo } = req.body || {};
+
+  const project = queryOne('SELECT id, title, github_repo FROM projects WHERE id = ?', [id]);
+  if (!project) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+
+  const repo = String(github_repo || '').trim();
+  if (repo && !/^[\w.-]+\/[\w.-]+$/.test(repo)) {
+    return res.status(400).json({ error: 'Repository must look like owner/repo' });
+  }
+
+  execute('UPDATE projects SET github_repo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [repo || null, id]);
+  logAccess({
+    userId: req.user.id,
+    action: 'project_repo_linked',
+    resource: `/api/admin/projects/${id}/github-repo (${repo || 'cleared'})`,
+    ipAddress: req.ip
+  });
+
+  return res.status(200).json({
+    message: repo ? `Project linked to ${repo}. PRs from branches mtg/<taskId>/… will now sync tasks.` : 'Repository link cleared.',
+    project: queryOne('SELECT id, title, github_repo FROM projects WHERE id = ?', [id])
+  });
+});
+
+// 11d. PATCH /api/admin/projects/:id/members/:memberId/weight (Admin only - RBAC: project.launch_approve)
 router.patch('/projects/:id/members/:memberId/weight', authenticate, requirePermission('project.launch_approve'), (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
   const { id: projectId, memberId } = req.params;
