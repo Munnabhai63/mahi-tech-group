@@ -75,6 +75,44 @@
     renderHeader(currentProfileData);
     setupTabs();
     switchTab(activeTab);
+    setupUpiIdField(currentProfileData);
+  }
+
+  /**
+   * Payout UPI ID (Settings tab) — populate from own profile and save via API.
+   */
+  function setupUpiIdField(profileData) {
+    const upiInput = document.getElementById('upiIdInput');
+    const saveBtn = document.getElementById('saveUpiBtn');
+    const feedback = document.getElementById('upiSaveFeedback');
+    if (!upiInput || !saveBtn) return;
+
+    const isSelf = profileData?.user?.id === (JSON.parse(localStorage.getItem('user') || '{}').id);
+    if (!isSelf) return; // UPI settings only for the owner's own profile
+
+    if (profileData?.user?.upi_id) {
+      upiInput.value = profileData.user.upi_id;
+    }
+
+    saveBtn.addEventListener('click', async () => {
+      const value = upiInput.value.trim();
+      feedback.style.display = 'block';
+      feedback.style.color = '#94a3b8';
+      feedback.textContent = 'Saving...';
+
+      const res = await apiFetch('/api/users/me/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ upi_id: value })
+      });
+
+      if (res.ok) {
+        feedback.style.color = '#10b981';
+        feedback.textContent = value ? '✓ UPI ID saved! Payouts will use this address.' : '✓ UPI ID cleared.';
+      } else {
+        feedback.style.color = '#f87171';
+        feedback.textContent = `✗ ${res.data?.error || 'Save failed'}`;
+      }
+    });
   }
 
   function renderHeader(data) {

@@ -84,10 +84,10 @@ router.patch('/me/password', authenticate, async (req, res) => {
   return res.status(200).json({ message: 'Password updated successfully' });
 });
 
-// 8b. PATCH /api/users/me/profile (Authenticated - Edit own photo/bio)
+// 8b. PATCH /api/users/me/profile (Authenticated - Edit own photo/bio/UPI)
 router.patch('/me/profile', authenticate, (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
-  const { profile_photo_url, bio } = req.body || {};
+  const { profile_photo_url, bio, upi_id } = req.body || {};
 
   const currentUser = queryOne('SELECT status FROM users WHERE id = ?', [req.user.id]);
   if (!currentUser) {
@@ -99,24 +99,38 @@ router.patch('/me/profile', authenticate, (req, res) => {
     return res.status(403).json({ error: 'Former or inactive member profile is read-only. Editing is disabled.' });
   }
 
-  if (profile_photo_url === undefined && bio === undefined) {
-    return res.status(400).json({ error: "At least one of 'profile_photo_url' or 'bio' must be provided" });
+  if (upi_id !== undefined) {
+    const upi = String(upi_id).trim();
+    if (upi.length === 0) {
+      // empty string clears the stored UPI ID
+    } else if (!/^[a-zA-Z0-9.\-_]{2,64}@[a-zA-Z]{2,32}$/.test(upi)) {
+      return res.status(400).json({ error: 'Invalid UPI ID format. Expected something like name@bank' });
+    }
+  }
+
+  if (profile_photo_url === undefined && bio === undefined && upi_id === undefined) {
+    return res.status(400).json({ error: "At least one of 'profile_photo_url', 'bio' or 'upi_id' must be provided" });
   }
 
   execute(
-    'UPDATE users SET profile_photo_url = COALESCE(?, profile_photo_url), bio = COALESCE(?, bio), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [profile_photo_url !== undefined ? profile_photo_url : null, bio !== undefined ? bio : null, req.user.id]
+    'UPDATE users SET profile_photo_url = COALESCE(?, profile_photo_url), bio = COALESCE(?, bio), upi_id = COALESCE(?, upi_id), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [
+      profile_photo_url !== undefined ? profile_photo_url : null,
+      bio !== undefined ? bio : null,
+      upi_id !== undefined ? (String(upi_id).trim() || null) : null,
+      req.user.id
+    ]
   );
 
   logAccess({
     userId: req.user.id,
     action: 'profile_updated',
-    resource: '/api/users/me/profile',
+    resource: `/api/users/me/profile${upi_id !== undefined ? ' (upi_id changed)' : ''}`,
     ipAddress
   });
 
   const updatedUser = queryOne(
-    'SELECT id, name, email, role, sub_role, status, profile_photo_url, bio, rating_avg, updated_at FROM users WHERE id = ?',
+    'SELECT id, name, email, role, sub_role, status, profile_photo_url, bio, upi_id, rating_avg, updated_at FROM users WHERE id = ?',
     [req.user.id]
   );
 
@@ -222,9 +236,12 @@ router.get('/:id/profile', authenticate, (req, res) => {
   const { id } = req.params;
   const targetId = id === 'me' ? req.user.id : id;
 
+  // UPI ID is private: visible only on the owner's own full profile
+  const isSelf = targetId === req.user.id;
   const user = queryOne(`
     SELECT id, name, email, role, sub_role, status, rating_avg,
            wallet_balance, wallet_frozen, profile_photo_url, bio,
+           ${isSelf ? 'upi_id,' : ''}
            created_at, updated_at, deactivated_at
     FROM users WHERE id = ?
   `, [targetId]);

@@ -16,15 +16,11 @@ export function generateSignatureToken() {
  * Returns the next sequential dispute number in format DSP-0001, DSP-0002...
  */
 export function getNextDisputeNumber() {
-  const row = queryOne("SELECT dispute_number FROM disputes ORDER BY created_at DESC, id DESC LIMIT 1");
-  if (!row || !row.dispute_number) {
-    return 'DSP-0001';
-  }
-  const match = row.dispute_number.match(/^DSP-(\d+)$/);
-  if (!match) {
-    return 'DSP-0001';
-  }
-  const nextNum = parseInt(match[1], 10) + 1;
+  // Deterministic: highest numeric suffix + 1. (Ordering by created_at/id is
+  // unsafe — timestamps have second precision and UUIDs sort randomly, which
+  // made same-second creations collide on the UNIQUE constraint.)
+  const row = queryOne("SELECT MAX(CAST(SUBSTR(dispute_number, 5) AS INTEGER)) as max_num FROM disputes WHERE dispute_number LIKE 'DSP-%'");
+  const nextNum = (row?.max_num || 0) + 1;
   return `DSP-${String(nextNum).padStart(4, '0')}`;
 }
 

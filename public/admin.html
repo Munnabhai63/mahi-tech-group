@@ -692,6 +692,49 @@
         <section id="view-revenue" class="view-section">
           <div class="card">
             <div class="card-header">
+              <h3>YouPI UPI Collections (0% Fee)</h3>
+            </div>
+            <form id="youpiCollectForm" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end;">
+              <div class="form-group" style="margin:0;">
+                <label>Select Project</label>
+                <select id="ypiProjectSelect" class="form-select" required>
+                  <option value="">-- Choose Project --</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label>Collect Amount (₹)</label>
+                <input type="number" id="ypiAmountInput" class="form-input" min="1" step="0.01" placeholder="e.g. 10000" required>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label>Payer Name (optional)</label>
+                <input type="text" id="ypiCustomerInput" class="form-input" placeholder="e.g. Acme Client">
+              </div>
+              <button type="submit" class="btn-primary" style="height: 42px;">Create UPI QR</button>
+            </form>
+            <p style="font-size: 0.78rem; color: #7c8db5; margin: 10px 0 0;">
+              Creates a YouPI payment session (UPI QR / WhatsApp OTP checkout). Payment confirmation arrives via
+              HMAC-signed webhook and is auto-credited to the project with instant splits. Configure the gateway in
+              Super Admin → Gateway.
+            </p>
+            <table class="data-table" style="margin-top: 12px;">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Project</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>UTR</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="youpiCollectionsBody">
+                <tr><td colspan="6" style="text-align:center;">No collections yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
               <h3>Enter Project Revenue</h3>
             </div>
             <form id="enterRevenueForm" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end;">

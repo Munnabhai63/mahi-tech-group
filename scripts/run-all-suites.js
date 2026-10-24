@@ -14,7 +14,6 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(__dirname, '..');
 const BATTERY_DB = path.join(repoRoot, 'test-battery.sqlite');
@@ -35,6 +34,7 @@ const SUITES = [
   { file: 'run-step12-meeting-tests.js', liveServer: false },     // Meeting integration
   { file: 'run-step14-superadmin-tests.js', liveServer: false },  // Super admin + E2E
   { file: 'test-security-enhancements.js', liveServer: false },   // Rate limiter, headers, email
+  { file: 'test-youpi-integration.js', liveServer: false },       // YouPI webhook + manual UPI payouts
   // ---- live-server suites (real server on port 4000, booted fresh per suite) ----
   { file: 'run-step5-tests.js', liveServer: true },               // Offboarding kill-switch
   { file: 'run-step6-tests.js', liveServer: true },               // Revenue split engine
@@ -93,6 +93,31 @@ async function waitForServer(timeoutMs = 45000) {
   return false;
 }
 
+/**
+ * Live-server suites hardcode http://localhost:4000. If another process
+ * (e.g. a dev preview server) occupies the port, the freshly spawned battery
+ * server dies with EADDRINUSE and the suites silently talk to the WRONG
+ * server+database. So the port MUST be free — terminate any occupant.
+ */
+function freePort4000() {
+  if (process.platform !== 'win32') return;
+  const out = spawnSync('netstat', ['-ano'], { encoding: 'utf8' }).stdout || '';
+  const pids = new Set();
+  for (const line of out.split('\n')) {
+    if (line.includes(':4000') && line.toUpperCase().includes('LISTENING')) {
+      const pid = line.trim().split(/\s+/).pop();
+      if (pid && /^\d+$/.test(pid) && Number(pid) !== process.pid) pids.add(pid);
+    }
+  }
+  for (const pid of pids) {
+    console.log(`  [BATTERY] Port 4000 occupied by PID ${pid} — terminating it (live-server suites require :4000).`);
+    spawnSync('taskkill', ['/F', '/PID', pid], { stdio: 'ignore' });
+  }
+  if (pids.size > 0) {
+    spawnSync('ping', ['-n', '2', '127.0.0.1'], { stdio: 'ignore' }); // brief settle delay on Windows
+  }
+}
+
 async function runSuite(suite) {
   console.log(`\n${'='.repeat(72)}`);
   console.log(`  SUITE: ${suite.file}${suite.liveServer ? '  [live server :4000]' : ''}`);
@@ -105,6 +130,7 @@ async function runSuite(suite) {
     resetBatteryDb();
 
     if (suite.liveServer) {
+      freePort4000();
       const out = fs.openSync(SERVER_LOG, 'a');
       serverProc = spawn(process.execPath, [path.join('src', 'server.js')], {
         cwd: repoRoot,

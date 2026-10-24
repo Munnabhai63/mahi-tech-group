@@ -535,13 +535,19 @@
   // VIEW 5: REVENUE & PAYOUTS
   // ---------------------------------------------------------------------------
   async function loadRevenueView() {
-    // Populate project dropdown for revenue entry
+    // Populate project dropdown for revenue entry (+ YouPI collection form)
     const projRes = await apiCall('GET', '/api/admin/projects/all');
     const select = document.getElementById('revProjectSelect');
+    const ypiSelect = document.getElementById('ypiProjectSelect');
     if (projRes.ok && projRes.data.projects) {
-      select.innerHTML = '<option value="">-- Choose Project --</option>' + 
+      const options = '<option value="">-- Choose Project --</option>' +
         projRes.data.projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)} (${p.current_stage})</option>`).join('');
+      select.innerHTML = options;
+      if (ypiSelect) ypiSelect.innerHTML = options;
     }
+
+    // YouPI collections list
+    loadYoupiCollections();
 
     // Pending Withdrawals
     const withRes = await apiCall('GET', '/api/admin/withdrawals/pending');
@@ -564,11 +570,21 @@
 
         document.querySelectorAll('.btn-approve-with').forEach(btn => {
           btn.addEventListener('click', async () => {
-            const ok = confirm('Confirm approval for gateway disbursement?');
+            const ok = confirm('Approve this withdrawal?\n\nWallet will be debited and the amount committed for MANUAL UPI transfer (no automatic gateway).');
             if (!ok) return;
             const res = await apiCall('PATCH', `/api/admin/withdrawals/${btn.dataset.id}/approve`);
             if (res.ok) {
-              showToast('Withdrawal approved and disbursed via gateway!');
+              const gw = res.data.gateway || {};
+              if (gw.upi_intent && confirm('Member has a UPI ID on file.\n\nOpen your UPI app now to transfer? (Cancel = transfer manually later)')) {
+                window.location.href = gw.upi_intent;
+              }
+              const utr = prompt('Transfer done? Enter the bank UTR / reference number:\n(Leave blank to record it later via the ledger)', '');
+              if (utr && utr.trim()) {
+                const utrRes = await apiCall('PATCH', `/api/admin/withdrawals/${btn.dataset.id}/utr`, { utr_reference: utr.trim() });
+                if (utrRes.ok) showToast('UTR reference recorded.');
+                else showToast(utrRes.data?.error || 'UTR could not be recorded', true);
+              }
+              showToast('Withdrawal approved — manual UPI transfer pending UTR record.');
               loadRevenueView();
               loadOverview();
             } else {
@@ -635,6 +651,74 @@
         loadOverview();
       } else {
         showToast(res.data.error || 'Failed to record revenue', true);
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // YOUPI UPI COLLECTIONS (0% fee incoming payments)
+  // ---------------------------------------------------------------------------
+  async function loadYoupiCollections() {
+    const tbody = document.getElementById('youpiCollectionsBody');
+    if (!tbody) return;
+    const res = await apiCall('GET', '/api/payments/youpi/collections');
+    if (!res.ok) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">${escapeHtml(res.data?.error || 'Failed to load collections')}</td></tr>`;
+      return;
+    }
+    const collections = res.data.collections || [];
+    if (collections.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No collections yet.</td></tr>';
+      return;
+    }
+    const statusClass = { PAID: 'status-approved', FAILED: 'status-rejected', EXPIRED: 'status-rejected', CANCELLED: 'status-rejected' };
+    tbody.innerHTML = collections.map(c => `
+      <tr>
+        <td><strong>${escapeHtml(c.order_id)}</strong></td>
+        <td>${escapeHtml(c.project_title || '-')}</td>
+        <td>₹${Number(c.amount).toFixed(2)}</td>
+        <td><span class="status-badge ${statusClass[c.status] || 'status-pending'}">${c.status}</span></td>
+        <td>${escapeHtml(c.utr || '-')}</td>
+        <td>
+          ${c.status === 'CREATED' ? `<button class="btn-primary btn-ypi-sync" data-id="${c.id}" style="padding: 4px 10px; font-size: 0.75rem;">Sync Status</button>` : ''}
+        </td>
+      </tr>
+    `).join('');
+
+    document.querySelectorAll('.btn-ypi-sync').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = 'Checking...';
+        const res = await apiCall('POST', `/api/payments/youpi/collections/${btn.dataset.id}/sync`);
+        if (res.ok) {
+          showToast(res.data.message || 'Status synced');
+          loadRevenueView();
+        } else {
+          showToast(res.data?.error || 'Sync failed', true);
+          btn.disabled = false;
+          btn.textContent = 'Sync Status';
+        }
+      });
+    });
+  }
+
+  const youpiCollectForm = document.getElementById('youpiCollectForm');
+  if (youpiCollectForm) {
+    youpiCollectForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const projectId = document.getElementById('ypiProjectSelect').value;
+      const amount = parseFloat(document.getElementById('ypiAmountInput').value);
+      const customerName = document.getElementById('ypiCustomerInput').value.trim();
+
+      const res = await apiCall('POST', '/api/payments/youpi/collections', { project_id: projectId, amount, customer_name: customerName || undefined });
+      if (res.ok) {
+        const url = res.data.checkoutUrl;
+        showToast('YouPI session created — opening checkout...');
+        window.open(url, '_blank');
+        youpiCollectForm.reset();
+        loadRevenueView();
+      } else {
+        showToast(res.data?.error || 'YouPI collection failed', true);
       }
     });
   }

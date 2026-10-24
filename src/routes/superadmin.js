@@ -38,9 +38,13 @@ import {
 } from '../services/disputeService.js';
 import {
   getGatewayConfig,
-  updateGatewayConfig,
-  testGatewayConnection
+  updateGatewayConfig
 } from '../services/gatewayService.js';
+import {
+  getYoupiConfigStatus,
+  setYoupiBaseUrl,
+  testYoupiConnection
+} from '../services/youpiService.js';
 import {
   addGovernanceEntry,
   getGovernanceHistory,
@@ -671,7 +675,7 @@ router.patch('/tickets/:id/link-dispute', (req, res) => {
 router.get('/gateway/config', (req, res) => {
   try {
     const config = getGatewayConfig();
-    return res.status(200).json(config);
+    return res.status(200).json({ ...config, ...getYoupiConfigStatus() });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -679,24 +683,38 @@ router.get('/gateway/config', (req, res) => {
 
 /**
  * PATCH /api/superadmin/gateway/config — Update gateway configuration
+ * Accepted fields: mode, gateway_name, api_key, webhook_secret,
+ * auto_approve_below (rejected > 0 by policy) and base_url (YouPI gateway URL).
  */
 router.patch('/gateway/config', (req, res) => {
   try {
     const ipAddress = req.ip || req.socket.remoteAddress;
-    const updated = updateGatewayConfig(req.body || {}, req.user.id, ipAddress);
-    return res.status(200).json(updated);
+    const { base_url, ...gatewayFields } = req.body || {};
+
+    const updated = updateGatewayConfig(gatewayFields, req.user.id, ipAddress);
+
+    if (base_url !== undefined) {
+      setYoupiBaseUrl(base_url, req.user.id, ipAddress);
+    }
+
+    return res.status(200).json({ ...updated, ...getYoupiConfigStatus() });
   } catch (err) {
     return res.status(err.status || 400).json({ error: err.message });
   }
 });
 
 /**
- * POST /api/superadmin/gateway/test — Simulated gateway ping diagnostic
+ * POST /api/superadmin/gateway/test — Real YouPI gateway connectivity check
  */
-router.post('/gateway/test', (req, res) => {
+router.post('/gateway/test', async (req, res) => {
   try {
-    const ipAddress = req.ip || req.socket.remoteAddress;
-    const result = testGatewayConnection(req.user.id, ipAddress);
+    const result = await testYoupiConnection();
+    logAccess({
+      userId: req.user.id,
+      action: 'superadmin_gateway_test',
+      resource: `/api/superadmin/gateway/test (gateway: youpi, success: ${result.success}, base_url: ${result.base_url})`,
+      ipAddress: req.ip || req.socket.remoteAddress
+    });
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });

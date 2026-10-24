@@ -708,3 +708,29 @@ CREATE INDEX IF NOT EXISTS idx_governance_user_id ON user_data_governance(user_i
 CREATE INDEX IF NOT EXISTS idx_governance_created_at ON user_data_governance(created_at);
 
 
+
+
+-- ===================================================================
+-- YOUPI-PG INTEGRATION: Incoming UPI payment collection sessions
+-- A paid collection is credited as a project revenue event (auto splits)
+-- by the HMAC-verified webhook or by admin status polling.
+-- ===================================================================
+CREATE TABLE IF NOT EXISTS payment_collections (
+    id                  TEXT PRIMARY KEY,
+    youpi_payment_id    TEXT NULL,
+    order_id            TEXT NOT NULL UNIQUE,
+    project_id          TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    amount              DECIMAL(12,2) NOT NULL CHECK (amount > 0),
+    currency            VARCHAR(5) DEFAULT 'INR',
+    status              VARCHAR(20) DEFAULT 'CREATED' CHECK (status IN ('CREATED','PAID','FAILED','EXPIRED','CANCELLED')),
+    utr                 VARCHAR(50) NULL,
+    description         TEXT,
+    customer_name       TEXT NULL,
+    created_by          TEXT REFERENCES users(id),
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    credited_at         TIMESTAMP NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_collections_project ON payment_collections(project_id);
+CREATE INDEX IF NOT EXISTS idx_payment_collections_status ON payment_collections(status);
+CREATE INDEX IF NOT EXISTS idx_payment_collections_youpi ON payment_collections(youpi_payment_id);

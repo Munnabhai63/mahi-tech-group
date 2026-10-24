@@ -12,6 +12,7 @@ import dashboardRouter from './routes/dashboard.js';
 import meetingsRouter from './routes/meetings.js';
 import superadminRouter from './routes/superadmin.js';
 import signRouter from './routes/sign.js';
+import paymentsRouter from './routes/payments.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
@@ -38,7 +39,13 @@ export function createApp() {
     app.use(cors({ origin: origins }));
   }
 
-  app.use(express.json());
+  // Raw body capture for HMAC verification (YouPI payment webhooks)
+  app.use(express.json({
+    limit: '1mb',
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    }
+  }));
 
   // Health check endpoint (no internal configuration details exposed)
   app.get('/api/health', (req, res) => {
@@ -73,6 +80,7 @@ export function createApp() {
   app.use('/api/coworking-rooms', coworkingRouter);
   app.use('/api/meetings', meetingsRouter);
   app.use('/api/dashboard', dashboardRouter);
+  app.use('/api/payments', paymentsRouter); // YouPI collections + HMAC webhook (self-authenticating)
   app.use('/api', dashboardRouter); // Covers /api/notifications/* and /api/activity/*
 
   // Client-side SPA fallback for non-API routes (Express 5 compatible)

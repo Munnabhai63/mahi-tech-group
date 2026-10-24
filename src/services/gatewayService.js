@@ -62,8 +62,7 @@ export function decrypt(encryptedStr) {
  * MANDATORY SECURITY GUARANTEE:
  * api_key_encrypted and webhook_secret_encrypted are NEVER selected or returned in plaintext.
  */
-export function getGatewayConfig() {
-  const row = queryOne(`
+export function getGatewayConfig() {  const row = queryOne(`
     SELECT id, mode, gateway_name, auto_approve_below,
            (api_key_encrypted IS NOT NULL AND api_key_encrypted != '') as api_key_set,
            (webhook_secret_encrypted IS NOT NULL AND webhook_secret_encrypted != '') as webhook_secret_set,
@@ -102,6 +101,26 @@ export function getGatewayConfig() {
     webhook_secret_set: Boolean(row.webhook_secret_set),
     created_at: row.created_at,
     updated_at: row.updated_at
+  };
+}
+
+/**
+ * Server-side decrypted secrets for gateway API calls and webhook verification.
+ * NEVER expose these through any HTTP response — internal service use only.
+ */
+export function getDecryptedGatewaySecrets() {
+  const row = queryOne(`
+    SELECT api_key_encrypted, webhook_secret_encrypted
+    FROM payment_gateway_config
+    ORDER BY created_at ASC
+    LIMIT 1
+  `);
+  if (!row) {
+    return { api_key: null, webhook_secret: null };
+  }
+  return {
+    api_key: row.api_key_encrypted ? decrypt(row.api_key_encrypted) : null,
+    webhook_secret: row.webhook_secret_encrypted ? decrypt(row.webhook_secret_encrypted) : null
   };
 }
 

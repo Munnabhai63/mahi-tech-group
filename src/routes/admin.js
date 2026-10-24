@@ -23,7 +23,8 @@ import {
 import {
   getPendingWithdrawals,
   approveWithdrawal,
-  rejectWithdrawal
+  rejectWithdrawal,
+  attachWithdrawalUtr
 } from '../services/payoutService.js';
 import { createNotification } from '../services/notificationService.js';
 import { confirmMeetingNotes } from '../services/meetingService.js';
@@ -782,6 +783,28 @@ const handleApproveWithdrawal = (req, res) => {
 };
 router.patch('/withdrawals/:id/approve', authenticate, requirePermission('payout.approve'), handleApproveWithdrawal);
 router.post('/withdrawals/:id/approve', authenticate, requirePermission('payout.approve'), handleApproveWithdrawal);
+
+// 23b. PATCH /api/admin/withdrawals/:id/utr (Admin only - RBAC: payout.approve)
+// Records the real bank UTR reference after the manual UPI transfer is done.
+const handleAttachUtr = (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+  const { utr_reference } = req.body || {};
+
+  const result = attachWithdrawalUtr({
+    withdrawalId: id,
+    utrReference: utr_reference,
+    adminUserId: req.user.id,
+    ipAddress
+  });
+
+  if (!result.success) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+
+  return res.status(200).json(result);
+};
+router.patch('/withdrawals/:id/utr', authenticate, requirePermission('payout.approve'), handleAttachUtr);
 
 // 24. POST / PATCH /api/admin/withdrawals/:id/reject (Admin only - RBAC: payout.approve)
 const handleRejectWithdrawal = (req, res) => {

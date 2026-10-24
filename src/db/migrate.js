@@ -41,6 +41,13 @@ export function runMigration() {
     console.log('>>> Added avatar_url column to users table.');
   }
 
+  // YouPI-PG integration: member UPI ID for manual payout transfers
+  const hasUpiId = userColumns.some(c => c.name === 'upi_id');
+  if (!hasUpiId) {
+    execRaw('ALTER TABLE users ADD COLUMN upi_id TEXT NULL;');
+    console.log('>>> Added upi_id column to users table.');
+  }
+
   // Step 14 Layer 2: target_id and created_at on access_log table
   const accessLogCols = queryAll('PRAGMA table_info(access_log);');
   const hasTargetId = accessLogCols.some(c => c.name === 'target_id');

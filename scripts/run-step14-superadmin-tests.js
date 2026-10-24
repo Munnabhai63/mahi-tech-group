@@ -1121,10 +1121,13 @@ async function runStep14Layer1Tests() {
     console.log('\n--- TEST 34: Gateway Connection Test (Simulated) ---');
     const resTestPing = await req('POST', '/api/superadmin/gateway/test', adminToken);
     assert(resTestPing.status === 200, 'POST /api/superadmin/gateway/test returns HTTP 200');
-    assert(resTestPing.data?.success === true, 'Test ping returns success: true');
-    assert(typeof resTestPing.data?.latency_ms === 'number' && resTestPing.data.latency_ms > 0, `Test ping returns positive latency_ms (${resTestPing.data?.latency_ms}ms)`);
-    assert(resTestPing.data?.mode === 'sandbox', 'Test ping returns active gateway mode ("sandbox")');
-    assert(Boolean(resTestPing.data?.timestamp), 'Test ping returns valid ISO timestamp');
+    // Honest connectivity check: success reflects REAL reachability of the
+    // configured YouPI gateway (no fake positive when offline/unconfigured)
+    assert(typeof resTestPing.data?.success === 'boolean', 'Test ping returns a boolean success flag');
+    assert(resTestPing.data?.gateway === 'youpi', 'Test ping identifies the youpi gateway');
+    assert(typeof resTestPing.data?.latency_ms === 'number' && resTestPing.data.latency_ms >= 0, `Test ping returns latency_ms (${resTestPing.data?.latency_ms}ms)`);
+    assert(['sandbox', 'live'].includes(resTestPing.data?.mode), `Test ping returns gateway mode ("${resTestPing.data?.mode}")`);
+    assert(Boolean(resTestPing.data?.timestamp) && !isNaN(Date.parse(resTestPing.data.timestamp)), 'Test ping returns valid ISO timestamp');
 
     const testPingLog = queryOne("SELECT * FROM access_log WHERE action = 'superadmin_gateway_test' ORDER BY id DESC LIMIT 1");
     assert(Boolean(testPingLog), 'Audit access_log records action="superadmin_gateway_test"');
@@ -1424,7 +1427,7 @@ async function runStep14Layer1Tests() {
       settlement_amount: 15000,
       settlement_currency: 'INR'
     });
-    assert(l6ResCreateDispute.status === 201, 'Step G: Admin opens dispute via POST /api/superadmin/disputes -> HTTP 201');
+    assert(l6ResCreateDispute.status === 201, `Step G: Admin opens dispute via POST /api/superadmin/disputes -> HTTP 201 (got ${l6ResCreateDispute.status}: ${JSON.stringify(l6ResCreateDispute.data).slice(0, 160)})`);
     const e2eDisputeId = l6ResCreateDispute.data?.id;
     assert(Boolean(e2eDisputeId), `Dispute created with ID: ${e2eDisputeId}`);
 
