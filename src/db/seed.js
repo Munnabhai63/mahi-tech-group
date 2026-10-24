@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { fileURLToPath } from 'node:url';
 import { queryOne, execute, queryAll } from './database.js';
 import { config } from '../config.js';
+import { seedDefaultDocuments } from '../services/legalService.js';
 
 export const PERMISSION_MATRIX = [
   { key: 'idea.submit', researcher: 1, developer: 1, producer: 1, admin: 1, designer: 1 },
@@ -121,6 +122,17 @@ export async function runSeed() {
       `, [uId, ru.name, ru.email, pHash, ru.role, ru.subRole]);
       console.log(`>>> Seeded Default Role User: ${ru.email} (${ru.role})`);
     }
+  }
+
+  // 2c. Seed default legal document templates (T&C / Privacy / NDA / IP / Liability / Conduct)
+  //     STARTER DRAFTS only — review with a lawyer before real enforcement.
+  try {
+    const adminRow = queryOne("SELECT id FROM users WHERE email = ? AND role = 'admin'", [adminEmail]);
+    if (adminRow && seedDefaultDocuments(adminRow.id)) {
+      console.log('>>> Seeded default LEGAL documents (6 templates — have a lawyer review them).');
+    }
+  } catch (e) {
+    console.warn('>>> Legal document seeding skipped:', e.message);
   }
 
   // 3. Seed Default System Config (Step 02 & Step 03)

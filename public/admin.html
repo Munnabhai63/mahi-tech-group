@@ -489,6 +489,11 @@
           </button>
         </li>
         <li>
+          <button class="nav-btn" data-view="legal" id="nav-legal">
+            <span>📜</span> Legal Center
+          </button>
+        </li>
+        <li>
           <button class="nav-btn" data-view="config" id="nav-config">
             <span>⚙️</span> System Configuration
           </button>
@@ -837,6 +842,67 @@
               </thead>
               <tbody id="offboardingHistoryTableBody">
                 <tr><td colspan="6" style="text-align:center;">Loading offboarding history...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 6b. LEGAL CENTER -->
+        <section id="view-legal" class="view-section">
+          <div class="card">
+            <div class="card-header">
+              <h3>Active Legal Documents</h3>
+            </div>
+            <p style="font-size: 0.8rem; color: #7c8db5; margin-bottom: 12px;">
+              Every member must electronically sign all active documents before their application can be approved.
+              Publishing a new version requires existing members to re-sign (IT Act 2000 §3A e-signatures, append-only records).
+            </p>
+            <table class="data-table">
+              <thead>
+                <tr><th>Type</th><th>Title</th><th>Version</th><th>SHA-256</th><th>Published</th></tr>
+              </thead>
+              <tbody id="legalDocsTableBody">
+                <tr><td colspan="5" style="text-align:center;">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>Publish New Document Version</h3>
+            </div>
+            <form id="legalPublishForm" style="display:grid; grid-template-columns: 180px 1fr; gap: 12px; align-items: start;">
+              <div class="form-group" style="margin:0;">
+                <label>Document Type</label>
+                <select id="legalDocType" class="form-select" required>
+                  <option value="terms">Terms &amp; Conditions</option>
+                  <option value="privacy">Privacy Policy (DPDP)</option>
+                  <option value="nda">NDA</option>
+                  <option value="ip_assignment">IP Assignment</option>
+                  <option value="liability">Liability &amp; Indemnity</option>
+                  <option value="conduct">Code of Conduct</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label>Title</label>
+                <input type="text" id="legalDocTitle" class="form-input" placeholder="Document title" required>
+                <label style="margin-top:8px;">Body</label>
+                <textarea id="legalDocBody" class="form-input" rows="8" placeholder="Full document text (plain text)…" required></textarea>
+                <button type="submit" class="btn-primary" style="margin-top:10px;">Publish Version</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>Member Compliance (unsigned documents)</h3>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr><th>Member</th><th>Status</th><th>Missing Documents</th></tr>
+              </thead>
+              <tbody id="legalComplianceBody">
+                <tr><td colspan="3" style="text-align:center;">Loading…</td></tr>
               </tbody>
             </table>
           </div>

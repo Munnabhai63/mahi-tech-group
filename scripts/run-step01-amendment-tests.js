@@ -20,6 +20,7 @@ import { runMigration } from '../src/db/migrate.js';
 import { runSeed } from '../src/db/seed.js';
 import { queryOne, queryAll, execute } from '../src/db/database.js';
 import { initWebSocketServer } from '../src/services/wsService.js';
+import { withLegalAcceptance } from './lib/legal-helper.js';
 
 const TEST_PORT = 4992;
 const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
@@ -90,7 +91,7 @@ async function runStep01AmendmentTests() {
       desired_role: 'designer'
     };
 
-    const signupRes = await req('POST', '/api/auth/signup', null, signupPayload);
+    const signupRes = await req('POST', '/api/auth/signup', null, await withLegalAcceptance(req, signupPayload));
     console.log(`   -> HTTP Status: ${signupRes.status}`);
     console.log(`   -> Response message: "${signupRes.data.message}"`);
 
@@ -291,13 +292,13 @@ async function runStep01AmendmentTests() {
     const rejectedEmail = `applicant.producer.${Date.now()}@example.com`;
     const rejectedPass = 'RejectPass@2026';
 
-    const rejSignupRes = await req('POST', '/api/auth/signup', null, {
+    const rejSignupRes = await req('POST', '/api/auth/signup', null, await withLegalAcceptance(req, {
       name: 'Arthur Dent',
       email: rejectedEmail,
       password: rejectedPass,
       phone_number: '+44-20-7946-0912',
       desired_role: 'producer'
-    });
+    }));
     if (rejSignupRes.status !== 201) {
       throw new Error(`Signup failed for reject test: ${rejSignupRes.status}`);
     }
@@ -439,13 +440,13 @@ async function runStep01AmendmentTests() {
       throw new Error(`DATA INTEGRITY ERROR: Expected HTTP 400 for producer with sub_role, got ${badProducerSubRole.status}`);
     }
 
-    const validDevSubRole = await req('POST', '/api/auth/signup', null, {
+    const validDevSubRole = await req('POST', '/api/auth/signup', null, await withLegalAcceptance(req, {
       name: 'Valid Developer Applicant',
       email: `valid.dev.${Date.now()}@example.com`,
       password: 'StrongPassword123!',
       desired_role: 'developer',
       desired_sub_role: 'backend'
-    });
+    }));
     console.log(`      * desired_role='developer' + desired_sub_role='backend': HTTP ${validDevSubRole.status} (Expected 201)`);
     if (validDevSubRole.status !== 201) {
       throw new Error(`Expected HTTP 201 for developer with sub_role, got ${validDevSubRole.status}`);

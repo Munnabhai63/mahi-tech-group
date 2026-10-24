@@ -20,6 +20,7 @@
 import { WebSocket } from 'ws';
 import { createApp } from '../src/app.js';
 import { initWebSocketServer } from '../src/services/wsService.js';
+import { withLegalAcceptance } from './lib/legal-helper.js';
 import { queryOne, queryAll, execute } from '../src/db/database.js';
 import { cleanupTestData, CANONICAL_TEAM } from './cleanup-test-data.js';
 
@@ -207,12 +208,12 @@ async function runStep11Tests() {
     
     // Create a standalone non-project user NOW after project fanout has locked its roster
     const nonMemberEmail = `outsider.${Date.now()}@example.com`;
-    const outsiderSignup = await req('POST', '/api/auth/signup', null, {
+    const outsiderSignup = await req('POST', '/api/auth/signup', null, await withLegalAcceptance(req, {
       name: 'Oliver Outsider',
       email: nonMemberEmail,
       password: 'OutsiderPass123!',
       desired_role: 'developer'
-    });
+    }));
     await req('PATCH', `/api/admin/applications/${outsiderSignup.data.user.id}/decide`, adminToken, {
       decision: 'approve',
       assigned_role: 'developer'
@@ -517,12 +518,12 @@ async function runStep11Tests() {
 
     // Create a temporary developer persona to join and offboard
     const offboardDevEmail = `temp.dev.${Date.now()}@mahitechgroup.com`;
-    const tempDevSignup = await req('POST', '/api/auth/signup', null, {
+    const tempDevSignup = await req('POST', '/api/auth/signup', null, await withLegalAcceptance(req, {
       name: 'Temp Collab Dev',
       email: offboardDevEmail,
       password: 'TempPassword123!',
       desired_role: 'developer'
-    });
+    }));
     await req('PATCH', `/api/admin/applications/${tempDevSignup.data.user.id}/decide`, adminToken, {
       decision: 'approve',
       assigned_role: 'developer'

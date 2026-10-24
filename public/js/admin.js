@@ -65,6 +65,7 @@
     projects: 'Project Pipeline & Final Review Gates',
     revenue: 'Revenue Entry & Disbursal Ledger',
     offboarding: 'Offboarding Center & Wallet Settlements',
+    legal: 'Legal Center — Documents & Signatures',
     config: 'System Configuration Parameters',
     meetings: 'Meeting Management & AI Governance',
     audit: 'Immutable Compliance & Audit Logs'
@@ -86,6 +87,7 @@
     else if (viewName === 'projects') loadProjectsView();
     else if (viewName === 'revenue') loadRevenueView();
     else if (viewName === 'offboarding') loadOffboardingView();
+    else if (viewName === 'legal') loadLegalView();
     else if (viewName === 'config') loadConfigView();
     else if (viewName === 'meetings') loadMeetingsView();
     else if (viewName === 'audit') loadAuditLogs();
@@ -719,6 +721,63 @@
         loadRevenueView();
       } else {
         showToast(res.data?.error || 'YouPI collection failed', true);
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // VIEW 6b: LEGAL CENTER — documents, publish, compliance
+  // ---------------------------------------------------------------------------
+  async function loadLegalView() {
+    // Active documents
+    const docsRes = await apiCall('GET', '/api/legal/documents/active');
+    const docsBody = document.getElementById('legalDocsTableBody');
+    if (docsRes.ok && docsRes.data.documents) {
+      const docs = docsRes.data.documents;
+      docsBody.innerHTML = docs.length
+        ? docs.map((d) => `
+          <tr>
+            <td><strong>${escapeHtml(d.doc_type)}</strong></td>
+            <td>${escapeHtml(d.title)}</td>
+            <td>v${d.version}</td>
+            <td style="font-family: monospace; font-size: 0.7rem;">${escapeHtml(String(d.content_hash).slice(0, 16))}…</td>
+            <td>${d.created_at ? d.created_at.slice(0, 16) : '-'}</td>
+          </tr>`).join('')
+        : '<tr><td colspan="5" style="text-align:center;">No documents published yet.</td></tr>';
+    }
+
+    // Compliance
+    const compRes = await apiCall('GET', '/api/legal/compliance');
+    const compBody = document.getElementById('legalComplianceBody');
+    if (compRes.ok && compRes.data) {
+      const rows = compRes.data.non_compliant;
+      compBody.innerHTML = rows.length
+        ? rows.map((u) => `
+          <tr>
+            <td><strong>${escapeHtml(u.name)}</strong><br><span style="font-size:0.72rem;color:#7c8db5;">${escapeHtml(u.email)}</span></td>
+            <td><span class="status-badge status-pending">${u.status}</span></td>
+            <td>${u.missing.map((m) => escapeHtml(m.doc_type + ' v' + m.version)).join(', ')}</td>
+          </tr>`).join('')
+        : '<tr><td colspan="3" style="text-align:center;">✓ All members have signed every active document.</td></tr>';
+    }
+  }
+
+  const legalPublishForm = document.getElementById('legalPublishForm');
+  if (legalPublishForm) {
+    legalPublishForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        doc_type: document.getElementById('legalDocType').value,
+        title: document.getElementById('legalDocTitle').value.trim(),
+        body: document.getElementById('legalDocBody').value
+      };
+      const res = await apiCall('POST', '/api/legal/documents', payload);
+      if (res.ok) {
+        showToast(res.data.message || 'Published!');
+        legalPublishForm.reset();
+        loadLegalView();
+      } else {
+        showToast(res.data?.error || 'Publish failed', true);
       }
     });
   }

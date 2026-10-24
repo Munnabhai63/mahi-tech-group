@@ -8,12 +8,13 @@ import { authenticate } from '../middleware/auth.js';
 import { logAccess } from '../services/auditService.js';
 import { loginLimiter, signupLimiter } from '../middleware/rateLimiter.js';
 import { issueWsTicket } from '../services/wsService.js';
+import { getActiveDocuments, signDocument } from '../services/legalService.js';
 
 const router = express.Router();
 
 // 0. POST /api/auth/signup (Public with Rate Limiting)
 router.post('/signup', signupLimiter, async (req, res) => {
-  const { name, email, password, phone_number, desired_role, desired_sub_role } = req.body || {};
+  const { name, email, password, phone_number, desired_role, desired_sub_role, legal_typed_name, legal_accepted_doc_ids } = req.body || {};
   const ipAddress = req.ip || req.socket.remoteAddress;
 
   if (!name || !email || !password || !desired_role) {
@@ -50,6 +51,24 @@ router.post('/signup', signupLimiter, async (req, res) => {
     return res.status(409).json({ error: 'An account with this email already exists' });
   }
 
+  // LEGAL GATE: when active legal documents exist, the application must carry
+  // an electronic signature acceptance for every one of them (IT Act 2000 §3A)
+  const activeLegalDocs = getActiveDocuments();
+  if (activeLegalDocs.length > 0) {
+    const acceptedIds = new Set(Array.isArray(legal_accepted_doc_ids) ? legal_accepted_doc_ids : []);
+    const missing = activeLegalDocs.filter((d) => !acceptedIds.has(d.id)).map((d) => ({ id: d.id, doc_type: d.doc_type, title: d.title }));
+    if (missing.length > 0) {
+      return res.status(400).json({
+        error: 'All legal documents must be read and accepted before applying',
+        missing_documents: missing
+      });
+    }
+    const typedOk = String(legal_typed_name || '').trim().toLowerCase() === name.trim().toLowerCase();
+    if (!typedOk) {
+      return res.status(400).json({ error: 'legal_typed_name must exactly match your full name to count as an electronic signature' });
+    }
+  }
+
   const passwordHash = await bcrypt.hash(password, config.BCRYPT_SALT_ROUNDS);
   const userId = crypto.randomUUID();
 
@@ -77,9 +96,21 @@ router.post('/signup', signupLimiter, async (req, res) => {
     ipAddress
   });
 
+  // Record the electronic signature for every active legal document
+  let legalSigned = 0;
+  for (const doc of activeLegalDocs) {
+    try {
+      signDocument({ documentId: doc.id, userId, typedName: legal_typed_name, ipAddress });
+      legalSigned++;
+    } catch (e) {
+      console.error('[SIGNUP LEGAL SIGN] failed for doc', doc.id, e.message);
+    }
+  }
+
   return res.status(201).json({
     message: 'Application submitted successfully. Your account is pending Administrator approval.',
     status: 'pending',
+    legal_documents_signed: legalSigned,
     user: {
       id: userId,
       name: name.trim(),

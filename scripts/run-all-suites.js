@@ -35,6 +35,7 @@ const SUITES = [
   { file: 'run-step14-superadmin-tests.js', liveServer: false },  // Super admin + E2E
   { file: 'test-security-enhancements.js', liveServer: false },   // Rate limiter, headers, email
   { file: 'test-youpi-integration.js', liveServer: false },       // YouPI webhook + manual UPI payouts
+  { file: 'test-legal-gate.js', liveServer: false },              // Legal onboarding gate + e-signatures
   // ---- live-server suites (real server on port 4000, booted fresh per suite) ----
   { file: 'run-step5-tests.js', liveServer: true },               // Offboarding kill-switch
   { file: 'run-step6-tests.js', liveServer: true },               // Revenue split engine

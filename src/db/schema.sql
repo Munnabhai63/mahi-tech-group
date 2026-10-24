@@ -734,3 +734,52 @@ CREATE TABLE IF NOT EXISTS payment_collections (
 CREATE INDEX IF NOT EXISTS idx_payment_collections_project ON payment_collections(project_id);
 CREATE INDEX IF NOT EXISTS idx_payment_collections_status ON payment_collections(status);
 CREATE INDEX IF NOT EXISTS idx_payment_collections_youpi ON payment_collections(youpi_payment_id);
+
+
+-- ===================================================================
+-- LEGAL ONBOARDING GATE: Versioned legal documents + signatures.
+-- Signatures are APPEND-ONLY (tamper-proof trigger below) — each record
+-- captures the exact document hash the member signed, their typed name,
+-- IP address and timestamp, forming a court-ready evidence chain under
+-- India's IT Act 2000 Section  3A (electronic signature validity).
+-- ===================================================================
+CREATE TABLE IF NOT EXISTS legal_documents (
+    id              TEXT PRIMARY KEY,
+    doc_type        TEXT NOT NULL CHECK (doc_type IN ('terms','privacy','nda','ip_assignment','liability','conduct')),
+    version         INTEGER NOT NULL,
+    title           TEXT NOT NULL,
+    body            TEXT NOT NULL,
+    content_hash    TEXT NOT NULL,
+    is_active       INTEGER NOT NULL DEFAULT 1,
+    created_by      TEXT REFERENCES users(id),
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_legal_documents_type_version ON legal_documents(doc_type, version);
+CREATE INDEX IF NOT EXISTS idx_legal_documents_active ON legal_documents(is_active);
+
+CREATE TABLE IF NOT EXISTS legal_signatures (
+    id                TEXT PRIMARY KEY,
+    document_id       TEXT NOT NULL REFERENCES legal_documents(id),
+    user_id           TEXT NOT NULL REFERENCES users(id),
+    document_version  INTEGER NOT NULL,
+    document_hash     TEXT NOT NULL,
+    typed_name        TEXT NOT NULL,
+    ip_address        TEXT,
+    signed_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_legal_signatures_user ON legal_signatures(user_id);
+CREATE INDEX IF NOT EXISTS idx_legal_signatures_document ON legal_signatures(document_id);
+
+CREATE TRIGGER IF NOT EXISTS prevent_legal_signature_update
+BEFORE UPDATE ON legal_signatures
+BEGIN
+    SELECT RAISE(ABORT, 'legal_signatures is append-only. Signed records can never be altered.');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_legal_signature_delete
+BEFORE DELETE ON legal_signatures
+BEGIN
+    SELECT RAISE(ABORT, 'legal_signatures is append-only. Signed records can never be deleted.');
+END;

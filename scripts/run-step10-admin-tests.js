@@ -32,6 +32,7 @@ import { runMigration } from '../src/db/migrate.js';
 import { runSeed } from '../src/db/seed.js';
 import { queryOne, queryAll, execute } from '../src/db/database.js';
 import { initWebSocketServer } from '../src/services/wsService.js';
+import { withLegalAcceptance } from './lib/legal-helper.js';
 import { cleanupTestData } from './cleanup-test-data.js';
 
 const require = createRequire(import.meta.url);
@@ -217,13 +218,13 @@ async function runStep10AdminTests() {
     // -------------------------------------------------------------------------
     console.log('[TEST 3] Full Signup-Approval Flow (Step 01 Amendment Path)...');
     const applicantEmail = `applicant.ui.${Date.now()}@example.com`;
-    const signupRes = await req('POST', '/api/auth/signup', null, {
+    const signupRes = await req('POST', '/api/auth/signup', null, await withLegalAcceptance(req, {
       name: 'Zara UI Designer',
       email: applicantEmail,
       phone_number: '+1-555-019-2233',
       password: 'ZaraSecretPass123!',
       desired_role: 'designer'
-    });
+    }));
     console.log(`   -> Public Signup submitted: HTTP ${signupRes.status}`);
     const applicantId = signupRes.data.user.id;
 

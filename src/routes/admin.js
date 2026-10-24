@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import { authenticate } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/rbac.js';
 import { logAccess } from '../services/auditService.js';
+import { getUnsignedDocuments } from '../services/legalService.js';
 import { adminOverrideDecision } from '../services/votingService.js';
 import { reassignTask, adminFinalReview } from '../services/fanoutService.js';
 import {
@@ -211,6 +212,16 @@ router.patch('/applications/:id/decide', authenticate, requirePermission('applic
   const validRoles = ['researcher', 'developer', 'producer', 'admin', 'designer'];
 
   if (decision === 'approve') {
+    // LEGAL GATE: the member must have signed every active legal document
+    // before the application can be approved
+    const unsignedDocs = getUnsignedDocuments(application.id);
+    if (unsignedDocs.length > 0) {
+      return res.status(400).json({
+        error: 'Legal gate: member has not signed all active legal documents',
+        missing_documents: unsignedDocs.map((d) => ({ id: d.id, doc_type: d.doc_type, title: d.title, version: d.version }))
+      });
+    }
+
     const assignedRole = finalRole || application.desired_role;
     if (!assignedRole || !validRoles.includes(assignedRole)) {
       return res.status(400).json({
