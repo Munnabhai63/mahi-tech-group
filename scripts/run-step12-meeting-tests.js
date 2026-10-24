@@ -491,7 +491,7 @@ async function runStep12Tests() {
     if (!vicAttBefore) throw new Error('Victim open attendance row not found');
 
     // 4. Trigger Step 05 Killswitch
-    const killRes = executeOffboardingKillswitch({
+    const killRes = await executeOffboardingKillswitch({
       userId: victimId,
       adminUserId: adminUser.id,
       reason: 'Mid-meeting compromise'
