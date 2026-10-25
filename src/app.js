@@ -15,6 +15,8 @@ import signRouter from './routes/sign.js';
 import paymentsRouter from './routes/payments.js';
 import legalRouter from './routes/legal.js';
 import githubWebhookRouter from './routes/githubWebhook.js';
+import searchRouter from './routes/search.js';
+import onboardingRouter from './routes/onboarding.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
@@ -87,6 +89,8 @@ export function createApp() {
   app.use('/api/payments', paymentsRouter); // YouPI collections + HMAC webhook (self-authenticating)
   app.use('/api/legal', legalRouter); // Legal onboarding gate (public doc reads, signed acceptances)
   app.use('/api/github', githubWebhookRouter); // GitHub PR↔task sync (HMAC self-authenticating)
+  app.use('/api/search', searchRouter); // Cmd+K global search (role-filtered)
+  app.use('/api/users/me/onboarding', onboardingRouter); // getting-started checklist
   app.use('/api', dashboardRouter); // Covers /api/notifications/* and /api/activity/*
 
   // Client-side SPA fallback for non-API routes (Express 5 compatible)

@@ -67,6 +67,13 @@ export function runMigration() {
     console.log('>>> Added github_repo column to projects table.');
   }
 
+  // Onboarding: dismissed flag for the getting-started checklist
+  const hasOnboardingDismissed = userColumns.some(c => c.name === 'onboarding_dismissed');
+  if (!hasOnboardingDismissed) {
+    execRaw('ALTER TABLE users ADD COLUMN onboarding_dismissed INTEGER NOT NULL DEFAULT 0;');
+    console.log('>>> Added onboarding_dismissed column to users table.');
+  }
+
   // Auth UX: email verification flag (seeded/demo users are pre-verified)
   const hasEmailVerified = userColumns.some(c => c.name === 'email_verified');
   if (!hasEmailVerified) {

@@ -1034,6 +1034,18 @@
     </div>
   </div>
 
+  
+  <!-- Cmd+K command palette (functional search) -->
+  <div id="cmdkOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10000; align-items:flex-start; justify-content:center; padding-top:12vh;">
+    <div style="width: min(640px, 92vw); background:#151c2f; border:1px solid #2a3754; border-radius:14px; box-shadow:0 24px 60px rgba(0,0,0,0.5); overflow:hidden;">
+      <input id="cmdkInput" placeholder="Search ideas, projects, tasks, members… (Esc to close)" style="width:100%; padding:14px 16px; border:none; outline:none; background:#0f1422; color:#e2e8f0; font-size:1rem; border-bottom:1px solid #1e2840;">
+      <div id="cmdkResults" style="max-height:50vh; overflow-y:auto; padding:8px;"></div>
+    </div>
+  </div>
+
+  <!-- Onboarding checklist (dynamic, dismissible) -->
+  <div id="onboardingCard" style="display:none; margin: 12px auto 0; max-width: 1280px; padding: 0 16px;"></div>
+
   <script src="/js/dashboard.js"></script>
 </body>
 </html>

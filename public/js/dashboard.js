@@ -2598,3 +2598,84 @@ window.setupDesignerCornerActions = setupDesignerCornerActions;
 
 
 
+
+/**
+ * Cmd+K command palette — global search across ideas/projects/tasks/members
+ */
+const cmdkOverlay = document.getElementById('cmdkOverlay');
+const cmdkInput = document.getElementById('cmdkInput');
+const cmdkResults = document.getElementById('cmdkResults');
+let cmdkDebounce = null;
+
+function openCmdK() {
+  if (!cmdkOverlay) return;
+  cmdkOverlay.style.display = 'flex';
+  cmdkInput.value = '';
+  cmdkResults.innerHTML = '<div class="text-muted text-xs" style="padding:10px;">Type at least 2 characters…</div>';
+  setTimeout(() => cmdkInput.focus(), 50);
+}
+function closeCmdK() {
+  if (cmdkOverlay) cmdkOverlay.style.display = 'none';
+}
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    if (cmdkOverlay && cmdkOverlay.style.display === 'flex') closeCmdK(); else openCmdK();
+  }
+  if (e.key === 'Escape') closeCmdK();
+});
+cmdkOverlay?.addEventListener('click', (e) => { if (e.target === cmdkOverlay) closeCmdK(); });
+
+cmdkInput?.addEventListener('input', () => {
+  clearTimeout(cmdkDebounce);
+  const q = cmdkInput.value.trim();
+  if (q.length < 2) { cmdkResults.innerHTML = '<div class="text-muted text-xs" style="padding:10px;">Type at least 2 characters…</div>'; return; }
+  cmdkDebounce = setTimeout(async () => {
+    const res = await apiFetch('/api/search?q=' + encodeURIComponent(q));
+    if (!res.ok) { cmdkResults.innerHTML = '<div class="text-muted text-xs" style="padding:10px;">Search failed.</div>'; return; }
+    const d = res.data;
+    const section = (title, items, render) => items.length ? `
+      <div style="padding:6px 10px; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:#7c8db5;">${title}</div>
+      ${items.map(render).join('')}` : '';
+    cmdkResults.innerHTML =
+      section('Ideas', d.ideas, (x) => `<div style="padding:8px 10px; border-radius:8px;"><strong style="color:#e2e8f0; font-size:0.85rem;">${escapeHtml(x.title)}</strong> <span class="text-muted text-xs">${escapeHtml(x.status)}</span></div>`) +
+      section('Projects', d.projects, (x) => `<div style="padding:8px 10px; border-radius:8px;"><strong style="color:#e2e8f0; font-size:0.85rem;">${escapeHtml(x.title)}</strong> <span class="text-muted text-xs">${escapeHtml(x.current_stage || '')}</span></div>`) +
+      section('Tasks', d.tasks, (x) => `<div style="padding:8px 10px; border-radius:8px;"><strong style="color:#e2e8f0; font-size:0.85rem;">${escapeHtml(x.task_name)}</strong> <span class="text-muted text-xs">in ${escapeHtml(x.project_title || '')} — ${escapeHtml(x.status)}</span></div>`) +
+      section('Members', d.members, (x) => `<div style="padding:8px 10px; border-radius:8px;"><strong style="color:#e2e8f0; font-size:0.85rem;">${escapeHtml(x.name)}</strong> <span class="text-muted text-xs">${escapeHtml(x.role)}</span></div>`) ||
+      '<div class="text-muted text-xs" style="padding:10px;">No matches.</div>';
+  }, 250);
+});
+
+/**
+ * Onboarding checklist — computed from live state, dismissible
+ */
+async function renderOnboardingCard() {
+  const card = document.getElementById('onboardingCard');
+  if (!card) return;
+  const res = await apiFetch('/api/users/me/onboarding');
+  if (!res.ok || res.data.dismissed || res.data.completed) { card.style.display = 'none'; return; }
+  const d = res.data;
+  card.style.display = 'block';
+  card.innerHTML = `
+    <div style="background:#151c2f; border:1px solid #2a3754; border-radius:14px; padding:16px 18px; margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <strong style="color:#f8fafc;">🧭 Getting started — ${d.progress}% complete</strong>
+        <button id="onboardingDismiss" class="text-muted text-xs" style="background:none; border:none; cursor:pointer;">Dismiss</button>
+      </div>
+      <div style="height:6px; background:#0f1422; border-radius:3px; overflow:hidden; margin-bottom:12px;">
+        <div style="height:100%; width:${d.progress}%; background:linear-gradient(90deg,#3b82f6,#6366f1);"></div>
+      </div>
+      ${d.items.map((i) => `
+        <div style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:0.85rem; ${i.done ? 'color:#6ee7b7;' : 'color:#e2e8f0;'}">
+          <span>${i.done ? '✓' : '○'}</span>
+          ${i.done ? escapeHtml(i.label) : `<a href="${i.action}" style="color:#e2e8f0; text-decoration:none;">${escapeHtml(i.label)}</a>`}
+        </div>`).join('')}
+    </div>`;
+  document.getElementById('onboardingDismiss')?.addEventListener('click', async () => {
+    await apiFetch('/api/users/me/onboarding/dismiss', { method: 'POST' });
+    card.style.display = 'none';
+  });
+}
+// kick it off with initial data refresh
+const _origRefreshAllData = typeof refreshAllData === 'function' ? refreshAllData : null;
+document.addEventListener('DOMContentLoaded', () => setTimeout(renderOnboardingCard, 1200));
