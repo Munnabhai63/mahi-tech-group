@@ -794,6 +794,7 @@ async function fetchResearcherTasks() {
             <button class="btn btn-cyan btn-xs" onclick="openUploadResearchModal('${task.id}', '${escapeHtml(task.task_name)}')">
               📄 Upload Research (Mark Done)
             </button>
+            <button class="btn btn-secondary btn-xs" onclick="openTaskCommentsModal('${task.id}', '${escapeHtml(task.task_name)}')">💬 Comments</button>
           ` : `
             <span class="text-muted text-xs">✓ Research Document Uploaded</span>
           `}
@@ -896,6 +897,7 @@ async function fetchDeveloperTasks() {
               🚀 Mark Complete (Push to Center)
             </button>
           ` : ''}
+          <button class="btn btn-secondary btn-xs" onclick="openTaskCommentsModal('${task.id}', '${escapeHtml(task.task_name)}')">💬</button>
           ${isDone ? `
             <span class="text-muted text-xs">✓ Work completed & pushed</span>
           ` : ''}
@@ -949,6 +951,7 @@ async function fetchProducerTasks() {
             <button class="btn btn-green btn-xs" onclick="openTestReportModal('${task.id}', '${escapeHtml(task.task_name)}')">
               🧪 Submit Test Report (Mark Done)
             </button>
+            <button class="btn btn-secondary btn-xs" onclick="openTaskCommentsModal('${task.id}', '${escapeHtml(task.task_name)}')">💬</button>
           ` : ''}
           ${isDone ? `
             <span class="text-muted text-xs">✓ Testing verified & passed</span>
@@ -1014,6 +1017,7 @@ async function fetchDesignerTasks() {
             <button class="btn btn-rose btn-xs" onclick="openUploadDesignModal('${task.id}', '${escapeHtml(task.task_name)}')">
               🎨 Upload Deliverables (Mark Done)
             </button>
+            <button class="btn btn-secondary btn-xs" onclick="openTaskCommentsModal('${task.id}', '${escapeHtml(task.task_name)}')">💬</button>
           ` : ''}
           ${isDone ? `
             <span class="text-muted text-xs">✓ Design deliverables uploaded & pushed</span>
@@ -1057,6 +1061,62 @@ window.openUploadDesignModal = function(taskId, taskName) {
 /**
  * Modal Openers
  */
+/**
+ * Task comments thread (functional UX) — open/post per task
+ */
+window.openTaskCommentsModal = async function(taskId, taskName) {
+  const modal = document.getElementById('taskCommentsModal');
+  const list = document.getElementById('taskCommentsList');
+  const title = document.getElementById('taskCommentsTitle');
+  const input = document.getElementById('taskCommentInput');
+  if (!modal) return;
+  title.textContent = '💬 ' + taskName;
+  modal.style.display = 'flex';
+  list.innerHTML = '<div class="text-muted text-xs">Loading discussion…</div>';
+  input.dataset.taskId = taskId;
+  input.focus();
+
+  const res = await apiFetch(`/api/tasks/${taskId}/comments`);
+  if (!res.ok) { list.innerHTML = '<div class="text-muted text-xs">Could not load comments.</div>'; return; }
+  if (res.data.count === 0) {
+    list.innerHTML = '<div class="text-muted text-xs">No comments yet — start the discussion.</div>';
+    return;
+  }
+  list.innerHTML = res.data.comments.map((c) => `
+    <div style="background: #151c2f; border: 1px solid #1e2840; border-radius: 10px; padding: 10px 12px;">
+      <div style="display:flex; justify-content:space-between; font-size: 0.72rem; color: #7c8db5; margin-bottom: 4px;">
+        <strong style="color: #aab6d3;">${escapeHtml(c.author_name)}</strong>
+        <span>${escapeHtml(String(c.created_at).slice(0, 16))}</span>
+      </div>
+      <div style="font-size: 0.85rem; color: #e2e8f0; white-space: pre-wrap;">${escapeHtml(c.body)}</div>
+    </div>
+  `).join('');
+  list.scrollTop = list.scrollHeight;
+};
+
+window.closeTaskCommentsModal = function() {
+  const m = document.getElementById('taskCommentsModal');
+  if (m) m.style.display = 'none';
+};
+
+document.getElementById('taskCommentPost')?.addEventListener('click', async () => {
+  const input = document.getElementById('taskCommentInput');
+  const body = input.value.trim();
+  if (!body || !input.dataset.taskId) return;
+  const res = await apiFetch(`/api/tasks/${input.dataset.taskId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ body })
+  });
+  if (res.ok) {
+    input.value = '';
+    openTaskCommentsModal(input.dataset.taskId, document.getElementById('taskCommentsTitle').textContent.replace('💬 ', ''));
+  }
+});
+
+document.getElementById('taskCommentInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('taskCommentPost')?.click();
+});
+
 window.openUploadResearchModal = function(taskId, taskName) {
   document.getElementById('researchTaskId').value = taskId;
   document.getElementById('researchTaskNameDisplay').textContent = taskName;

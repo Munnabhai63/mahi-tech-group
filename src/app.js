@@ -68,6 +68,8 @@ export function createApp() {
 
   // Serve static frontend assets
   app.use(express.static(publicPath));
+  // Uploaded attachments (task files, meeting recordings) — authenticated UX flows fetch them by URL
+  app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
   // Mount API routers
   app.use('/api/auth', authRouter);

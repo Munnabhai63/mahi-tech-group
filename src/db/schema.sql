@@ -827,3 +827,28 @@ CREATE TABLE IF NOT EXISTS email_verifications (
 );
 CREATE INDEX IF NOT EXISTS idx_email_verifications_user ON email_verifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_email_verifications_token ON email_verifications(token);
+
+
+-- ===================================================================
+-- TASK COLLABORATION: comment threads + real file attachments
+-- ===================================================================
+CREATE TABLE IF NOT EXISTS task_comments (
+    id          TEXT PRIMARY KEY,
+    task_id     TEXT NOT NULL REFERENCES project_tasks(id) ON DELETE CASCADE,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    body        TEXT NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
+
+CREATE TRIGGER IF NOT EXISTS prevent_task_comment_update
+BEFORE UPDATE ON task_comments
+BEGIN
+    SELECT RAISE(ABORT, 'task_comments are append-only. Post a follow-up comment instead.');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_task_comment_delete
+BEFORE DELETE ON task_comments
+BEGIN
+    SELECT RAISE(ABORT, 'task_comments are append-only.');
+END;
