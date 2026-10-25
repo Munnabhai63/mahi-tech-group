@@ -6,6 +6,7 @@ import { execute } from './db/database.js';
 import { startScheduledQuotaReset, stopScheduledQuotaReset } from './jobs/quotaResetJob.js';
 import { startScheduledVotingDecision, stopScheduledVotingDecision } from './jobs/votingDecisionJob.js';
 import { startScheduledVotingReminder, stopScheduledVotingReminder } from './jobs/votingReminderJob.js';
+import { startScheduledDailyDigest, stopScheduledDailyDigest } from './jobs/dailyDigestJob.js';
 import { initWebSocketServer } from './services/wsService.js';
 
 async function startServer() {
@@ -22,6 +23,7 @@ async function startServer() {
     startScheduledQuotaReset();
     startScheduledVotingDecision();
     startScheduledVotingReminder();
+    startScheduledDailyDigest();
 
     const app = createApp();
 
@@ -43,6 +45,7 @@ async function startServer() {
       stopScheduledQuotaReset();
       stopScheduledVotingDecision();
       stopScheduledVotingReminder();
+      stopScheduledDailyDigest();
       wss.close();
       server.close(() => {
         console.log('>>> Server closed cleanly.');

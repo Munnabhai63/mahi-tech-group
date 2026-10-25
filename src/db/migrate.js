@@ -74,6 +74,13 @@ export function runMigration() {
     console.log('>>> Added onboarding_dismissed column to users table.');
   }
 
+  // Notification preferences: JSON { muted_types: [...] }
+  const hasNotificationPrefs = userColumns.some(c => c.name === 'notification_prefs');
+  if (!hasNotificationPrefs) {
+    execRaw('ALTER TABLE users ADD COLUMN notification_prefs TEXT NULL;');
+    console.log('>>> Added notification_prefs column to users table.');
+  }
+
   // Auth UX: email verification flag (seeded/demo users are pre-verified)
   const hasEmailVerified = userColumns.some(c => c.name === 'email_verified');
   if (!hasEmailVerified) {

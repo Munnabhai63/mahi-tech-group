@@ -6,6 +6,7 @@ import { authenticate } from '../middleware/auth.js';
 import { logAccess } from '../services/auditService.js';
 import { getUserQuotaStatus } from '../services/quotaService.js';
 import { provisionMemberAccess } from '../services/githubService.js';
+import { MUTABLE_NOTIFICATION_TYPES } from '../services/notificationService.js';
 import { getUserWallet, getUserEarnings } from '../services/revenueService.js';
 import {
   createTicket,
@@ -164,6 +165,34 @@ router.patch('/me/profile', authenticate, async (req, res) => {
     user: updatedUser,
     ...(ghProvision ? { github: ghProvision } : {})
   });
+});
+
+// GET /api/users/me/notification-preferences (Authenticated)
+router.get('/me/notification-preferences', authenticate, (req, res) => {
+  const row = queryOne('SELECT notification_prefs FROM users WHERE id = ?', [req.user.id]);
+  let muted_types = [];
+  try {
+    const parsed = JSON.parse(row?.notification_prefs || '{}');
+    if (Array.isArray(parsed.muted_types)) muted_types = parsed.muted_types;
+  } catch (e) {}
+  return res.status(200).json({
+    muted_types,
+    mutable_types: MUTABLE_NOTIFICATION_TYPES,
+    note: 'Critical financial and account events are always delivered.'
+  });
+});
+
+// PUT /api/users/me/notification-preferences (Authenticated)
+router.put('/me/notification-preferences', authenticate, (req, res) => {
+  const { muted_types } = req.body || {};
+  if (!Array.isArray(muted_types)) {
+    return res.status(400).json({ error: 'muted_types must be an array of notification types' });
+  }
+  const valid = muted_types.filter((t) => MUTABLE_NOTIFICATION_TYPES.includes(t));
+  const invalid = muted_types.filter((t) => !MUTABLE_NOTIFICATION_TYPES.includes(t));
+  execute('UPDATE users SET notification_prefs = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [JSON.stringify({ muted_types: valid }), req.user.id]);
+  return res.status(200).json({ message: 'Notification preferences saved.', muted_types: valid, ...(invalid.length ? { ignored: invalid } : {}) });
 });
 
 // GET /api/users/me/quota-status (Authenticated - Fetch remaining quota and reset date)

@@ -5,9 +5,37 @@ import { pushToUser, pushToGlobal } from './wsService.js';
 /**
  * Persists a notification to the database and pushes real-time WebSocket event
  */
+// Types a member may mute. Critical financial/account events stay unmutable.
+export const MUTABLE_NOTIFICATION_TYPES = [
+  'voting_reminder',
+  'task.unblocked',
+  'task.comment',
+  'meeting_scheduled',
+  'meeting_started',
+  'project_progress',
+  'ai_notes_ready_for_review',
+  'github_pr_sync'
+];
+
+function isMutedFor(userId, eventType) {
+  const row = queryOne('SELECT notification_prefs FROM users WHERE id = ?', [userId]);
+  if (!row || !row.notification_prefs) return false;
+  try {
+    const prefs = JSON.parse(row.notification_prefs);
+    return Array.isArray(prefs.muted_types) && prefs.muted_types.includes(eventType);
+  } catch {
+    return false;
+  }
+}
+
 export function createNotification({ userId, eventType, message, link = null }) {
   if (!userId || !eventType || !message) {
     throw new Error('userId, eventType, and message are required for notification');
+  }
+
+  // Respect member notification preferences (critical types are never muted)
+  if (MUTABLE_NOTIFICATION_TYPES.includes(eventType) && isMutedFor(userId, eventType)) {
+    return null;
   }
 
   const id = crypto.randomUUID();

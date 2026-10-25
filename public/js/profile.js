@@ -77,6 +77,7 @@
     switchTab(activeTab);
     setupUpiIdField(currentProfileData);
     setupGithubField(currentProfileData);
+    setupNotificationPrefs();
   }
 
   /**
@@ -109,6 +110,49 @@
       if (res.ok) {
         feedback.style.color = '#10b981';
         feedback.textContent = value ? '✓ UPI ID saved! Payouts will use this address.' : '✓ UPI ID cleared.';
+      } else {
+        feedback.style.color = '#f87171';
+        feedback.textContent = `✗ ${res.data?.error || 'Save failed'}`;
+      }
+    });
+  }
+
+  /**
+   * Notification preferences — load mutable types, save muted set.
+   */
+  function setupNotificationPrefs() {
+    const list = document.getElementById('notifPrefsList');
+    const saveBtn = document.getElementById('saveNotifPrefsBtn');
+    const feedback = document.getElementById('notifPrefsFeedback');
+    if (!list || !saveBtn) return;
+
+    let mutableTypes = [];
+    let muted = [];
+
+    apiFetch('/api/users/me/notification-preferences').then((res) => {
+      if (!res.ok) return;
+      mutableTypes = res.data.mutable_types || [];
+      muted = res.data.muted_types || [];
+      list.innerHTML = mutableTypes.map((t) => `
+        <label style="display:flex; align-items:center; gap:10px; font-size:0.85rem; color:#e2e8f0; cursor:pointer;">
+          <input type="checkbox" data-type="${t}" ${muted.includes(t) ? '' : 'checked'}>
+          <span>${t.replace(/[._]/g, ' ')}</span>
+        </label>`).join('');
+    });
+
+    saveBtn.addEventListener('click', async () => {
+      const checked = Array.from(list.querySelectorAll('input:checked')).map((cb) => cb.dataset.type);
+      const mutedTypes = mutableTypes.filter((t) => !checked.includes(t));
+      feedback.style.display = 'block';
+      feedback.style.color = '#94a3b8';
+      feedback.textContent = 'Saving...';
+      const res = await apiFetch('/api/users/me/notification-preferences', {
+        method: 'PUT',
+        body: JSON.stringify({ muted_types: mutedTypes })
+      });
+      if (res.ok) {
+        feedback.style.color = '#10b981';
+        feedback.textContent = '✓ Preferences saved.';
       } else {
         feedback.style.color = '#f87171';
         feedback.textContent = `✗ ${res.data?.error || 'Save failed'}`;
