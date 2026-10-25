@@ -17,6 +17,7 @@ import legalRouter from './routes/legal.js';
 import githubWebhookRouter from './routes/githubWebhook.js';
 import searchRouter from './routes/search.js';
 import onboardingRouter from './routes/onboarding.js';
+import chatRouter from './routes/chat.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
@@ -80,7 +81,8 @@ export function createApp() {
   app.use('/api/superadmin', superadminRouter);
   app.use('/api/users', usersRouter);
   app.use('/api/ideas', ideasRouter);
-  app.use('/api/projects', projectsRouter);
+  app.use('/api/projects', chatRouter); // project chat (mount before :id routes)
+app.use('/api/projects', projectsRouter);
   app.use('/api/tasks', tasksRouter);
   app.use('/api/withdrawals', withdrawalsRouter);
   app.use('/api/coworking-rooms', coworkingRouter);

@@ -852,3 +852,22 @@ BEFORE DELETE ON task_comments
 BEGIN
     SELECT RAISE(ABORT, 'task_comments are append-only.');
 END;
+
+
+-- ===================================================================
+-- PROJECT CHAT: real-time per-project messaging over the existing WS engine
+-- ===================================================================
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id          TEXT PRIMARY KEY,
+    project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    body        TEXT NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_project ON chat_messages(project_id, created_at);
+
+CREATE TRIGGER IF NOT EXISTS prevent_chat_message_update
+BEFORE UPDATE ON chat_messages
+BEGIN
+    SELECT RAISE(ABORT, 'chat_messages are append-only.');
+END;

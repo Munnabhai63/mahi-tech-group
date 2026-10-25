@@ -74,6 +74,18 @@ export function runMigration() {
     console.log('>>> Added onboarding_dismissed column to users table.');
   }
 
+  // 2FA (TOTP): base32 secret + enabled flag
+  const hasTotpSecret = userColumns.some(c => c.name === 'totp_secret');
+  if (!hasTotpSecret) {
+    execRaw('ALTER TABLE users ADD COLUMN totp_secret TEXT NULL;');
+    console.log('>>> Added totp_secret column to users table.');
+  }
+  const hasTotpEnabled = userColumns.some(c => c.name === 'totp_enabled');
+  if (!hasTotpEnabled) {
+    execRaw('ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0;');
+    console.log('>>> Added totp_enabled column to users table.');
+  }
+
   // Notification preferences: JSON { muted_types: [...] }
   const hasNotificationPrefs = userColumns.some(c => c.name === 'notification_prefs');
   if (!hasNotificationPrefs) {

@@ -2,7 +2,7 @@ import express from 'express';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { queryOne, execute } from '../db/database.js';
+import { queryOne, queryAll, execute } from '../db/database.js';
 import { config } from '../config.js';
 import { authenticate } from '../middleware/auth.js';
 import { logAccess } from '../services/auditService.js';
@@ -10,6 +10,8 @@ import { loginLimiter, signupLimiter } from '../middleware/rateLimiter.js';
 import { issueWsTicket } from '../services/wsService.js';
 import { getActiveDocuments, signDocument } from '../services/legalService.js';
 import { emailService } from '../services/emailService.js';
+import { generateTotpSecret, verifyTotp, otpauthUrl } from '../services/totpService.js';
+import { createNotification } from '../services/notificationService.js';
 
 const router = express.Router();
 
@@ -181,8 +183,23 @@ router.post('/login', loginLimiter, async (req, res) => {
   const isPasswordValid = await bcrypt.compare(password, user.password_hash);
   if (!isPasswordValid) {
     logAccess({ userId: user.id, action: 'login_failed_invalid_password', resource: '/api/auth/login', ipAddress });
+    recordFailedLogin(user.email);
     return res.status(401).json({ error: 'Invalid email or password' });
   }
+
+  // 2FA: if enabled, a valid TOTP code is mandatory
+  if (user.totp_enabled) {
+    const code = String((req.body || {}).totp_code || '').trim();
+    if (!code) {
+      return res.status(401).json({ error: '2FA code required', requires_2fa: true });
+    }
+    if (!verifyTotp(user.totp_secret, code)) {
+      logAccess({ userId: user.id, action: 'login_failed_2fa', resource: '/api/auth/login', ipAddress });
+      return res.status(401).json({ error: 'Invalid 2FA code', requires_2fa: true });
+    }
+  }
+
+  checkLoginAnomaly(user, ipAddress);
 
   // Check account lifecycle status (Pending, Rejected, Inactive, Suspended)
   if (user.status === 'pending') {
@@ -433,6 +450,92 @@ router.post('/resend-verification', loginLimiter, async (req, res) => {
   } catch (err) {
     return res.status(200).json(generic);
   }
+});
+
+// ===================================================================
+// LOGIN ANOMALY DETECTION: 5+ failures for one account in 10 min -> admins alerted
+// ===================================================================
+const failedLoginStreaks = new Map(); // email -> { count, firstAt }
+
+function recordFailedLogin(email) {
+  const now = Date.now();
+  const entry = failedLoginStreaks.get(email);
+  if (!entry || now - entry.firstAt > 10 * 60 * 1000) {
+    failedLoginStreaks.set(email, { count: 1, firstAt: now });
+    return;
+  }
+  entry.count++;
+  if (entry.count === 5) {
+    const admins = queryAll("SELECT id FROM users WHERE role = 'admin' AND status = 'active'");
+    for (const a of admins) {
+      try {
+        createNotification({
+          userId: a.id,
+          eventType: 'security_alert',
+          message: `🚨 Security: 5 failed login attempts for ${email} in the last 10 minutes (IP: logged in access_log).`,
+          link: '/admin.html'
+        });
+      } catch (e) { /* non-blocking */ }
+    }
+    logAccess({ action: 'login_anomaly_alert', resource: `/api/auth/login (${email}: 5 failures in 10 min)` });
+  }
+}
+
+function checkLoginAnomaly(user, ipAddress) {
+  const entry = failedLoginStreaks.get(user.email);
+  if (entry && entry.count >= 5) {
+    const admins = queryAll("SELECT id FROM users WHERE role = 'admin' AND status = 'active'");
+    for (const a of admins) {
+      try {
+        createNotification({
+          userId: a.id,
+          eventType: 'security_alert',
+          message: `ℹ️ ${user.email} signed in successfully after the recent failed-login streak (IP: ${ipAddress}).`,
+          link: '/admin.html'
+        });
+      } catch (e) { /* non-blocking */ }
+    }
+    failedLoginStreaks.delete(user.email);
+  }
+}
+
+// 9. POST /api/auth/2fa/setup (Authenticated) — returns secret + otpauth URL
+router.post('/2fa/setup', authenticate, (req, res) => {
+  const secret = generateTotpSecret();
+  execute('UPDATE users SET totp_secret = ?, totp_enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [secret, req.user.id]);
+  return res.status(200).json({
+    secret,
+    otpauth_url: otpauthUrl(secret, req.user.email),
+    note: 'Add this secret to Google Authenticator/Authy, then confirm with POST /api/auth/2fa/enable { code }.'
+  });
+});
+
+// 10. POST /api/auth/2fa/enable (Authenticated)
+router.post('/2fa/enable', authenticate, (req, res) => {
+  const { code } = req.body || {};
+  const user = queryOne('SELECT totp_secret, totp_enabled FROM users WHERE id = ?', [req.user.id]);
+  if (!user?.totp_secret) return res.status(400).json({ error: 'Run /api/auth/2fa/setup first' });
+  if (user.totp_enabled) return res.status(409).json({ error: '2FA is already enabled' });
+  if (!code || !verifyTotp(user.totp_secret, String(code))) {
+    return res.status(400).json({ error: 'Invalid 2FA code. Check your authenticator app clock and try again.' });
+  }
+  execute('UPDATE users SET totp_enabled = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [req.user.id]);
+  logAccess({ userId: req.user.id, action: '2fa_enabled', resource: '/api/auth/2fa/enable', ipAddress: req.ip });
+  return res.status(200).json({ message: '2FA enabled. You will need your authenticator code at every sign-in.' });
+});
+
+// 11. POST /api/auth/2fa/disable (Authenticated)
+router.post('/2fa/disable', authenticate, (req, res) => {
+  const { code } = req.body || {};
+  const user = queryOne('SELECT totp_secret, totp_enabled FROM users WHERE id = ?', [req.user.id]);
+  if (!user?.totp_enabled) return res.status(400).json({ error: '2FA is not enabled' });
+  if (!code || !verifyTotp(user.totp_secret, String(code))) {
+    return res.status(400).json({ error: 'Valid 2FA code required to disable' });
+  }
+  execute("UPDATE users SET totp_secret = NULL, totp_enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [req.user.id]);
+  logAccess({ userId: req.user.id, action: '2fa_disabled', resource: '/api/auth/2fa/disable', ipAddress: req.ip });
+  return res.status(200).json({ message: '2FA disabled.' });
 });
 
 export default router;

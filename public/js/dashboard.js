@@ -581,6 +581,7 @@ async function fetchKanban() {
               <span>👤 ${escapeHtml(project.owner_name || 'Owner')}</span>
             </div>
             <button class="btn btn-secondary btn-xs" onclick="openProjectDetail('${project.id}')">View Workflows</button>
+            <button class="btn btn-secondary btn-xs" onclick="openProjectChat('${project.id}', '${escapeHtml(project.title)}')">💬 Chat</button>
           </div>
         `;
 
@@ -2679,3 +2680,86 @@ async function renderOnboardingCard() {
 // kick it off with initial data refresh
 const _origRefreshAllData = typeof refreshAllData === 'function' ? refreshAllData : null;
 document.addEventListener('DOMContentLoaded', () => setTimeout(renderOnboardingCard, 1200));
+
+/**
+ * Project Chat (functional UX) — per-project real-time discussion
+ */
+let chatWsProjectId = null;
+
+window.openProjectChat = async function(projectId, projectTitle) {
+  const modal = document.getElementById('taskCommentsModal');
+  const list = document.getElementById('taskCommentsList');
+  const title = document.getElementById('taskCommentsTitle');
+  const input = document.getElementById('taskCommentInput');
+  if (!modal) return;
+  title.textContent = '💬 Chat — ' + projectTitle;
+  modal.style.display = 'flex';
+  input.dataset.projectId = projectId;
+  delete input.dataset.taskId;
+  list.innerHTML = '<div class="text-muted text-xs">Loading chat…</div>';
+
+  const res = await apiFetch(`/api/projects/${projectId}/chat`);
+  if (!res.ok) { list.innerHTML = '<div class="text-muted text-xs">Chat unavailable.</div>'; return; }
+  list.innerHTML = res.data.messages.map((m) => `
+    <div style="background: #151c2f; border: 1px solid #1e2840; border-radius: 10px; padding: 10px 12px;">
+      <div style="display:flex; justify-content:space-between; font-size: 0.72rem; color: #7c8db5; margin-bottom: 4px;">
+        <strong style="color: #aab6d3;">${escapeHtml(m.author_name)}</strong>
+        <span>${escapeHtml(String(m.created_at).slice(0, 16))}</span>
+      </div>
+      <div style="font-size: 0.85rem; color: #e2e8f0; white-space: pre-wrap;">${escapeHtml(m.body)}</div>
+    </div>`).join('') || '<div class="text-muted text-xs">No messages yet.</div>';
+  list.scrollTop = list.scrollHeight;
+
+  // Live updates over WS while the chat is open
+  chatWsProjectId = projectId;
+};
+
+document.getElementById('taskCommentPost')?.addEventListener('click', async () => {
+  const input = document.getElementById('taskCommentInput');
+  const body = input.value.trim();
+  if (!body) return;
+  if (input.dataset.projectId) {
+    const res = await apiFetch(`/api/projects/${input.dataset.projectId}/chat`, { method: 'POST', body: JSON.stringify({ body }) });
+    if (res.ok) {
+      input.value = '';
+      // live WS handler appends the message; also refetch for safety
+      openProjectChat(input.dataset.projectId, document.getElementById('taskCommentsTitle').textContent.replace('💬 Chat — ', ''));
+    }
+    return;
+  }
+  if (input.dataset.taskId) {
+    const res = await apiFetch(`/api/tasks/${input.dataset.taskId}/comments`, { method: 'POST', body: JSON.stringify({ body }) });
+    if (res.ok) {
+      input.value = '';
+      openTaskCommentsModal(input.dataset.taskId, document.getElementById('taskCommentsTitle').textContent.replace('💬 ', ''));
+    }
+  }
+});
+
+// WS live append for open project chat
+function _wireChatLive() {
+  const _origHandler = handleWebSocketMessage;
+  if (window.__chatLiveWired) return;
+  window.__chatLiveWired = true;
+  const origDispatch = handleWebSocketMessage;
+  // wrap existing dispatcher to also catch chat.message
+  handleWebSocketMessage = function(msg) {
+    if (msg.event === 'chat.message' && msg.data && chatWsProjectId === msg.data.project_id) {
+      const list = document.getElementById('taskCommentsList');
+      const modal = document.getElementById('taskCommentsModal');
+      if (modal && modal.style.display === 'flex' && list) {
+        list.insertAdjacentHTML('beforeend', `
+          <div style="background: #151c2f; border: 1px solid #1e2840; border-radius: 10px; padding: 10px 12px;">
+            <div style="display:flex; justify-content:space-between; font-size: 0.72rem; color: #7c8db5; margin-bottom: 4px;">
+              <strong style="color: #aab6d3;">${escapeHtml(msg.data.author_name)}</strong>
+              <span>${escapeHtml(String(msg.data.created_at).slice(0, 16))}</span>
+            </div>
+            <div style="font-size: 0.85rem; color: #e2e8f0; white-space: pre-wrap;">${escapeHtml(msg.data.body)}</div>
+          </div>`);
+        list.scrollTop = list.scrollHeight;
+      }
+    }
+    _origHandler(msg);
+  };
+}
+if (typeof handleWebSocketMessage === 'function') _wireChatLive();
