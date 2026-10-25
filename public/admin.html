@@ -783,6 +783,20 @@
 
           <div class="card">
             <div class="card-header">
+              <h3>Payout Queue (awaiting UPI transfer)</h3>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr><th>Member</th><th>Amount</th><th>UPI ID</th><th>Paid At</th><th>Action</th></tr>
+              </thead>
+              <tbody id="payoutQueueBody">
+                <tr><td colspan="5" style="text-align:center;">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
               <h3>Immutable Revenue Ledger</h3>
             </div>
             <table class="data-table">
@@ -1237,6 +1251,23 @@
           <button type="submit" class="btn-primary">Upload & Dispatch Whisper AI</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div id="youpiCheckoutModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3>Complete UPI Payment</h3>
+        <button class="btn-action close-modal">&times;</button>
+      </div>
+      <p style="font-size: 0.78rem; color: #7c8db5; margin-bottom: 8px;">
+        Scan the QR or pay via any UPI app in this window. Revenue is credited automatically when the bank confirms.
+      </p>
+      <iframe id="youpiCheckoutFrame" src="" style="width: 100%; height: 480px; border: 1px solid #1e2840; border-radius: 10px; background: #fff;"></iframe>
+      <div class="modal-actions">
+        <a id="youpiCheckoutOpenNew" href="#" target="_blank" class="btn-primary" style="text-decoration: none;">Open in new tab ↗</a>
+        <button type="button" class="btn-action close-modal">Close</button>
+      </div>
     </div>
   </div>
 

@@ -551,6 +551,38 @@
     // YouPI collections list
     loadYoupiCollections();
 
+    // Payout queue: PAID withdrawals awaiting manual UPI transfer + UTR
+    (async () => {
+      const body = document.getElementById('payoutQueueBody');
+      if (!body) return;
+      const res = await apiCall('GET', '/api/admin/withdrawals/payout-queue');
+      if (!res.ok) { body.innerHTML = '<tr><td colspan="5" style="text-align:center;">Failed to load queue.</td></tr>'; return; }
+      if (res.data.count === 0) {
+        body.innerHTML = '<tr><td colspan="5" style="text-align:center;">✓ No payouts awaiting transfer. All UTRs recorded.</td></tr>';
+        return;
+      }
+      body.innerHTML = res.data.queue.map((q) => `
+        <tr>
+          <td><strong>${escapeHtml(q.user_name)}</strong><br><span style="font-size:0.72rem;color:#7c8db5;">${escapeHtml(q.email)}</span></td>
+          <td>₹${q.amount.toFixed(2)}</td>
+          <td>${q.upi_id ? escapeHtml(q.upi_id) : '<span class="text-muted">not on file</span>'}</td>
+          <td>${q.paid_at ? q.paid_at.slice(0, 16) : '-'}</td>
+          <td>
+            ${q.upi_intent ? `<button class="btn-primary btn-pq-pay" data-intent="${escapeHtml(q.upi_intent)}" style="padding:4px 10px;font-size:0.75rem;">Pay via UPI</button>` : '<span class="text-muted text-xs">no upi</span>'}
+            <button class="btn-success btn-pq-utr" data-id="${q.id}" style="padding:4px 10px;font-size:0.75rem;">Record UTR</button>
+          </td>
+        </tr>`).join('');
+      body.parentElement.nextElementSibling?.classList.add('hidden');
+      document.querySelectorAll('.btn-pq-pay').forEach((b) => b.addEventListener('click', () => window.location.href = b.dataset.intent));
+      document.querySelectorAll('.btn-pq-utr').forEach((b) => b.addEventListener('click', async () => {
+        const utr = prompt('Enter bank UTR / reference number:');
+        if (!utr) return;
+        const r = await apiCall('PATCH', `/api/admin/withdrawals/${b.dataset.id}/utr`, { utr_reference: utr.trim() });
+        if (r.ok) { showToast('UTR recorded.'); loadRevenueView(); }
+        else showToast(r.data?.error || 'Failed', true);
+      }));
+    })();
+
     // Pending Withdrawals
     const withRes = await apiCall('GET', '/api/admin/withdrawals/pending');
     const withTbody = document.getElementById('withdrawalsTableBody');
@@ -715,8 +747,11 @@
       const res = await apiCall('POST', '/api/payments/youpi/collections', { project_id: projectId, amount, customer_name: customerName || undefined });
       if (res.ok) {
         const url = res.data.checkoutUrl;
-        showToast('YouPI session created — opening checkout...');
-        window.open(url, '_blank');
+        showToast('YouPI session created — complete the UPI payment in the checkout window.');
+        const frame = document.getElementById('youpiCheckoutFrame');
+        frame.src = url;
+        document.getElementById('youpiCheckoutOpenNew').href = url;
+        openModal('youpiCheckoutModal');
         youpiCollectForm.reset();
         loadRevenueView();
       } else {

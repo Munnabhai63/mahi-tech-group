@@ -8,6 +8,7 @@ import { requirePermission } from '../middleware/rbac.js';
 import { logAccess } from '../services/auditService.js';
 import { getUnsignedDocuments } from '../services/legalService.js';
 import { provisionMemberAccess, revokeMemberAccess } from '../services/githubService.js';
+import { buildUpiIntentForWithdrawal } from '../services/payoutService.js';
 import { adminOverrideDecision } from '../services/votingService.js';
 import { reassignTask, adminFinalReview } from '../services/fanoutService.js';
 import {
@@ -885,6 +886,27 @@ const handleApproveWithdrawal = (req, res) => {
 };
 router.patch('/withdrawals/:id/approve', authenticate, requirePermission('payout.approve'), handleApproveWithdrawal);
 router.post('/withdrawals/:id/approve', authenticate, requirePermission('payout.approve'), handleApproveWithdrawal);
+
+// 23a. GET /api/admin/withdrawals/payout-queue (Admin only)
+// PAID withdrawals whose bank UTR is still missing, with ready UPI intents.
+router.get('/withdrawals/payout-queue', authenticate, requirePermission('payout.approve'), (req, res) => {
+  const rows = queryAll(`
+    SELECT w.id, w.amount, w.paid_at, w.user_id, u.name as user_name, u.email, u.upi_id
+    FROM withdrawals w JOIN users u ON w.user_id = u.id
+    WHERE w.status = 'PAID' AND w.gateway_txn_id IS NULL
+    ORDER BY w.paid_at ASC
+  `);
+    const queue = rows.map((w) => ({
+    id: w.id,
+    user_name: w.user_name,
+    email: w.email,
+    amount: Number(w.amount),
+    paid_at: w.paid_at,
+    upi_id: w.upi_id || null,
+    upi_intent: buildUpiIntentForWithdrawal(w)
+  }));
+  return res.status(200).json({ count: queue.length, total_pending: queue.reduce((s, q) => s + q.amount, 0), queue });
+});
 
 // 23b. PATCH /api/admin/withdrawals/:id/utr (Admin only - RBAC: payout.approve)
 // Records the real bank UTR reference after the manual UPI transfer is done.
