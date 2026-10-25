@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/css/dashboard.css">
 </head>
 <body class="dark-theme">
@@ -1046,6 +1047,11 @@
   <!-- Onboarding checklist (dynamic, dismissible) -->
   <div id="onboardingCard" style="display:none; margin: 12px auto 0; max-width: 1280px; padding: 0 16px;"></div>
 
+    <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+    }
+  </script>
   <script src="/js/dashboard.js"></script>
 </body>
 </html>

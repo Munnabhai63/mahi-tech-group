@@ -871,3 +871,25 @@ BEFORE UPDATE ON chat_messages
 BEGIN
     SELECT RAISE(ABORT, 'chat_messages are append-only.');
 END;
+
+
+-- ===================================================================
+-- PEER RATINGS: members rate teammates (feeds contribution credibility)
+-- ===================================================================
+CREATE TABLE IF NOT EXISTS peer_ratings (
+    id          TEXT PRIMARY KEY,
+    rater_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ratee_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    project_id  TEXT REFERENCES projects(id) ON DELETE SET NULL,
+    score       INTEGER NOT NULL CHECK (score BETWEEN 1 AND 5),
+    comment     TEXT,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (rater_id, ratee_id, project_id)
+);
+CREATE INDEX IF NOT EXISTS idx_peer_ratings_ratee ON peer_ratings(ratee_id);
+
+CREATE TRIGGER IF NOT EXISTS prevent_peer_rating_update
+BEFORE UPDATE ON peer_ratings
+BEGIN
+    SELECT RAISE(ABORT, 'peer_ratings are append-only.');
+END;
