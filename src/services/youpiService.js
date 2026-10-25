@@ -93,7 +93,7 @@ export function buildCheckoutUrl(baseUrl, paymentId) {
  * Creates a YouPI payment session for collecting revenue.
  * @param {{orderId: string, amountRupees: number|string, description?: string, customerName?: string, metadata?: object, idempotencyKey?: string}} input
  */
-export async function createYoupiPayment({ orderId, amountRupees, description, customerName, metadata, idempotencyKey }) {
+export async function createYoupiPayment({ orderId, amountRupees, description, customerName, customerPhone, customerEmail, metadata, idempotencyKey }) {
   const { baseUrl, merchantKey } = getYoupiConnection();
 
   const amount = Number(amountRupees);
@@ -110,8 +110,11 @@ export async function createYoupiPayment({ orderId, amountRupees, description, c
     description: description || `Mahi Tech Group collection ${orderId}`,
     metadata: metadata || {}
   };
-  if (customerName) {
-    body.customer = { name: String(customerName).slice(0, 100) };
+  if (customerName || customerPhone || customerEmail) {
+    body.customer = {};
+    if (customerName) body.customer.name = String(customerName).slice(0, 100);
+    if (customerPhone) body.customer.phoneNumber = String(customerPhone).slice(0, 15);
+    if (customerEmail) body.customer.email = String(customerEmail).slice(0, 120);
   }
 
   const headers = {

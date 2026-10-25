@@ -94,7 +94,7 @@ router.post('/youpi/collections', authenticate, async (req, res) => {
     return res.status(403).json({ error: 'Forbidden: Only administrators can create collections' });
   }
 
-  const { project_id, amount, description, customer_name } = req.body || {};
+  const { project_id, amount, description, customer_name, customer_phone, customer_email } = req.body || {};
   if (!project_id || !amount) {
     return res.status(400).json({ error: 'project_id and amount are required' });
   }
@@ -126,6 +126,8 @@ router.post('/youpi/collections', authenticate, async (req, res) => {
       amountRupees: numAmount,
       description: description || `Mahi Tech Group — ${project.title}`,
       customerName: customer_name,
+      customerPhone: customer_phone,
+      customerEmail: customer_email,
       metadata: { collection_id: collectionId, project_id, project_title: project.title },
       idempotencyKey: `mtg-${collectionId}`
     });
