@@ -1,0 +1,163 @@
+{
+  "responsive": [
+    {
+      "width": 360,
+      "status": 200,
+      "viewport": 360,
+      "documentWidth": 360,
+      "bodyWidth": 360,
+      "tracks": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "resources": 438803,
+      "errors": [],
+      "externalRequests": []
+    },
+    {
+      "width": 390,
+      "status": 200,
+      "viewport": 390,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "tracks": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "resources": 438803,
+      "errors": [],
+      "externalRequests": []
+    },
+    {
+      "width": 768,
+      "status": 200,
+      "viewport": 768,
+      "documentWidth": 768,
+      "bodyWidth": 768,
+      "tracks": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "resources": 438803,
+      "errors": [],
+      "externalRequests": []
+    },
+    {
+      "width": 1024,
+      "status": 200,
+      "viewport": 1024,
+      "documentWidth": 1024,
+      "bodyWidth": 1024,
+      "tracks": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "resources": 438803,
+      "errors": [],
+      "externalRequests": []
+    },
+    {
+      "width": 1440,
+      "status": 200,
+      "viewport": 1440,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "tracks": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "resources": 438803,
+      "errors": [],
+      "externalRequests": []
+    },
+    {
+      "width": 1920,
+      "status": 200,
+      "viewport": 1920,
+      "documentWidth": 1920,
+      "bodyWidth": 1920,
+      "tracks": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "resources": 438803,
+      "errors": [],
+      "externalRequests": []
+    }
+  ],
+  "interactions": {
+    "menuOpen": "true",
+    "menuFocus": "01Learning",
+    "mainInertOpen": true,
+    "menuClosed": "false",
+    "mainInertClosed": false,
+    "dialogOpen": true,
+    "dialogTitle": "Research & Product Strategy",
+    "dialogModules": 4,
+    "dialogClosed": true,
+    "focusReturn": "product-research",
+    "faqSecond": "true",
+    "faqFirst": "false"
+  },
+  "motion": {
+    "heroMotion": {
+      "visibleLines": 5,
+      "totalLines": 5
+    },
+    "scrollMotion": {
+      "visible": 28,
+      "total": 28
+    }
+  },
+  "accessibility": [
+    {
+      "width": 390,
+      "state": "page",
+      "violations": []
+    },
+    {
+      "width": 390,
+      "state": "dialog",
+      "violations": []
+    },
+    {
+      "width": 390,
+      "state": "mobile menu",
+      "violations": []
+    },
+    {
+      "width": 1440,
+      "state": "page",
+      "violations": []
+    },
+    {
+      "width": 1440,
+      "state": "dialog",
+      "violations": []
+    }
+  ]
+}

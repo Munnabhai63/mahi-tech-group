@@ -1,0 +1,236 @@
+{
+  "checks": [
+    {
+      "name": "Homepage entry returns 200",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Homepage fragment links all resolve",
+      "pass": true,
+      "details": [
+        {
+          "href": "#main-content",
+          "exists": true
+        },
+        {
+          "href": "#platform",
+          "exists": true
+        },
+        {
+          "href": "#collaboration",
+          "exists": true
+        },
+        {
+          "href": "#about",
+          "exists": true
+        },
+        {
+          "href": "#faq",
+          "exists": true
+        },
+        {
+          "href": "#home",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "name": "Homepage has no empty or external contact links",
+      "pass": true,
+      "details": {
+        "title": "MAHI TECH GROUP — Move ideas into delivery, together.",
+        "fragments": [
+          {
+            "href": "#main-content",
+            "exists": true
+          },
+          {
+            "href": "#platform",
+            "exists": true
+          },
+          {
+            "href": "#collaboration",
+            "exists": true
+          },
+          {
+            "href": "#about",
+            "exists": true
+          },
+          {
+            "href": "#faq",
+            "exists": true
+          },
+          {
+            "href": "#home",
+            "exists": true
+          }
+        ],
+        "appRoutes": [
+          "/role-selection",
+          "/login",
+          "/signup",
+          "/contact"
+        ],
+        "emptyLinks": 0,
+        "hero": "/assets/images/mahi-hero-studio.webp",
+        "favicon": "/assets/brand/favicon.svg",
+        "externalActions": []
+      }
+    },
+    {
+      "name": "Homepage uses the selected studio hero",
+      "pass": true,
+      "details": "/assets/images/mahi-hero-studio.webp"
+    },
+    {
+      "name": "Homepage navigation reaches #platform",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Homepage navigation reaches #collaboration",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Homepage navigation reaches #about",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Homepage navigation reaches #faq",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Entry/asset responds 200: /",
+      "pass": true,
+      "details": 200
+    },
+    {
+      "name": "Entry/asset responds 200: /app.html",
+      "pass": true,
+      "details": 200
+    },
+    {
+      "name": "Entry/asset responds 200: /assets/brand/favicon.svg",
+      "pass": true,
+      "details": 200
+    },
+    {
+      "name": "Entry/asset responds 200: /assets/images/mahi-hero-studio.webp",
+      "pass": true,
+      "details": 200
+    },
+    {
+      "name": "Entry/asset responds 200: /assets/images/mahi-mentorship.webp",
+      "pass": true,
+      "details": 200
+    },
+    {
+      "name": "Entry/asset responds 200: /css/application.css",
+      "pass": true,
+      "details": 200
+    },
+    {
+      "name": "Entry/asset responds 200: /js/app/index.js",
+      "pass": true,
+      "details": 200
+    },
+    {
+      "name": "Homepage exposes only expected application access routes",
+      "pass": true,
+      "details": [
+        "/role-selection",
+        "/login",
+        "/signup",
+        "/contact"
+      ]
+    },
+    {
+      "name": "Homepage application link renders /role-selection",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Homepage application link renders /login",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Homepage application link renders /signup",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Homepage application link renders /contact",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Bare application entry renders a public access route",
+      "pass": true,
+      "details": "http://127.0.0.1:4000/app.html#/login"
+    },
+    {
+      "name": "Application entry renders login",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Application favicon path is corrected",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Application demo entry renders Admin dashboard",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Admin sidebar navigation opens applications",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Admin-to-member area navigation renders dashboard",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Member sidebar navigation renders projects",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "Application homepage link returns to public homepage",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "No browser errors",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "No failed HTTP responses",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "No external runtime requests",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "No backend API calls",
+      "pass": true,
+      "details": []
+    }
+  ],
+  "errors": [],
+  "badResponses": [],
+  "externalRequests": [],
+  "apiCalls": []
+}

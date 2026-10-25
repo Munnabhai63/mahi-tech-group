@@ -1,0 +1,24 @@
+import { createRequire } from 'node:module'; import fs from 'node:fs';
+const require = createRequire('/home/user/mahi-tech-group-web/package.json'); const { chromium } = require('playwright'); const AxeBuilder = require('@axe-core/playwright').default;
+const base = 'http://127.0.0.1:4000'; const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] }); const results = [];
+async function go(page, route) { await page.goto(`${base}/app.html#${route}`, { waitUntil: 'networkidle' }); await page.waitForSelector('#main-content'); await page.waitForTimeout(280); }
+async function login(page, role) { await go(page, '/login'); await page.locator(`[data-demo-role="${role}"]`).click(); await page.waitForTimeout(150); }
+async function scan(page, name) { const report = await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze(); const violations = report.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.map(n => ({ target: n.target, summary: n.failureSummary, html: n.html.slice(0, 350) })) })); results.push({ name, violations }); fs.writeFileSync('/home/user/mahi-app-qa/accessibility-results.json', JSON.stringify({ results }, null, 2)); console.log(`${violations.length ? 'FAIL' : 'PASS'} ${name}: ${violations.map(v => `${v.id}(${v.nodes.length})`).join(', ') || 'no violations'}`); }
+const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } }); const page = await context.newPage(); await login(page, 'admin');
+for (const route of ['/admin','/app/dashboard','/app/projects','/app/projects/p-arogya','/app/ideas','/app/ideas/i-clinic','/app/voting','/app/meetings','/app/meetings/m-repair','/app/coworking/p-arogya','/app/profile','/app/wallet','/app/support','/admin/members','/admin/revenue','/admin/offboarding','/admin/config','/superadmin/performance','/superadmin/support','/superadmin/disputes','/superadmin/gateway','/superadmin/governance','/superadmin/audit']) { await go(page, route); await scan(page, `admin ${route}`); }
+await go(page, '/app/ideas/new'); await scan(page, 'new idea form');
+await go(page, '/app/support'); await page.locator('#new-ticket').click(); await scan(page, 'new support dialog'); await page.keyboard.press('Escape');
+await go(page, '/app/wallet'); await page.locator('#request-withdrawal').click(); await scan(page, 'withdrawal dialog'); await page.keyboard.press('Escape');
+await go(page, '/superadmin/disputes'); await page.locator('#create-dispute').click(); await scan(page, 'new dispute drawer'); await page.keyboard.press('Escape');
+await page.locator('[data-open-dispute="d-302"]').first().click(); await scan(page, 'dispute detail drawer'); await page.keyboard.press('Escape');
+await go(page, '/superadmin/performance'); await page.locator('[data-inspect-performance]').first().click(); await scan(page, 'performance drawer'); await page.keyboard.press('Escape');
+await go(page, '/admin'); await page.setViewportSize({ width: 360, height: 844 }); await page.waitForTimeout(300); await scan(page, 'mobile Admin dashboard');
+await go(page, '/app/ideas/i-clinic'); await scan(page, 'mobile idea detail');
+await context.close();
+const publicContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } }); const publicPage = await publicContext.newPage();
+for (const route of ['/login','/signup','/role-selection','/application-status?status=pending','/about','/contact','/mentorship','/legal/privacy']) { await go(publicPage, route); await scan(publicPage, `public ${route}`); }
+await publicContext.close();
+const signContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } }); const signPage = await signContext.newPage(); await go(signPage, '/sign/disputes/d-302?document=ag-302&signature=sig-302-front&token=local-demo-sig-302-front'); await signPage.locator('[data-sign-identity="u-dev-front"]').click(); await signPage.waitForTimeout(200); await scan(signPage, 'authenticated signing'); await signPage.setViewportSize({ width: 360, height: 844 }); await signPage.waitForTimeout(250); await scan(signPage, 'mobile signing'); await signContext.close();
+const formerContext = await browser.newContext(); const formerPage = await formerContext.newPage(); await login(formerPage, 'former'); await go(formerPage, '/app/former-member'); await scan(formerPage, 'former member'); await formerContext.close();
+const summary = results.map(r => ({ name: r.name, violations: r.violations.map(v => ({ id: v.id, impact: v.impact, count: v.nodes.length })) })); fs.writeFileSync('/home/user/mahi-app-qa/accessibility-results.json', JSON.stringify({ results }, null, 2)); fs.writeFileSync('/home/user/mahi-app-qa/accessibility-summary.json', JSON.stringify(summary, null, 2));
+console.log(`SCANS ${results.length}; CLEAN ${results.filter(r => !r.violations.length).length}; WITH VIOLATIONS ${results.filter(r => r.violations.length).length}`); await browser.close();

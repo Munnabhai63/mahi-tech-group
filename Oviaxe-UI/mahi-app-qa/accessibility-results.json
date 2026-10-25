@@ -1,0 +1,172 @@
+{
+  "results": [
+    {
+      "name": "admin /admin",
+      "violations": []
+    },
+    {
+      "name": "admin /app/dashboard",
+      "violations": []
+    },
+    {
+      "name": "admin /app/projects",
+      "violations": []
+    },
+    {
+      "name": "admin /app/projects/p-arogya",
+      "violations": []
+    },
+    {
+      "name": "admin /app/ideas",
+      "violations": []
+    },
+    {
+      "name": "admin /app/ideas/i-clinic",
+      "violations": []
+    },
+    {
+      "name": "admin /app/voting",
+      "violations": []
+    },
+    {
+      "name": "admin /app/meetings",
+      "violations": []
+    },
+    {
+      "name": "admin /app/meetings/m-repair",
+      "violations": []
+    },
+    {
+      "name": "admin /app/coworking/p-arogya",
+      "violations": []
+    },
+    {
+      "name": "admin /app/profile",
+      "violations": []
+    },
+    {
+      "name": "admin /app/wallet",
+      "violations": []
+    },
+    {
+      "name": "admin /app/support",
+      "violations": []
+    },
+    {
+      "name": "admin /admin/members",
+      "violations": []
+    },
+    {
+      "name": "admin /admin/revenue",
+      "violations": []
+    },
+    {
+      "name": "admin /admin/offboarding",
+      "violations": []
+    },
+    {
+      "name": "admin /admin/config",
+      "violations": []
+    },
+    {
+      "name": "admin /superadmin/performance",
+      "violations": []
+    },
+    {
+      "name": "admin /superadmin/support",
+      "violations": []
+    },
+    {
+      "name": "admin /superadmin/disputes",
+      "violations": []
+    },
+    {
+      "name": "admin /superadmin/gateway",
+      "violations": []
+    },
+    {
+      "name": "admin /superadmin/governance",
+      "violations": []
+    },
+    {
+      "name": "admin /superadmin/audit",
+      "violations": []
+    },
+    {
+      "name": "new idea form",
+      "violations": []
+    },
+    {
+      "name": "new support dialog",
+      "violations": []
+    },
+    {
+      "name": "withdrawal dialog",
+      "violations": []
+    },
+    {
+      "name": "new dispute drawer",
+      "violations": []
+    },
+    {
+      "name": "dispute detail drawer",
+      "violations": []
+    },
+    {
+      "name": "performance drawer",
+      "violations": []
+    },
+    {
+      "name": "mobile Admin dashboard",
+      "violations": []
+    },
+    {
+      "name": "mobile idea detail",
+      "violations": []
+    },
+    {
+      "name": "public /login",
+      "violations": []
+    },
+    {
+      "name": "public /signup",
+      "violations": []
+    },
+    {
+      "name": "public /role-selection",
+      "violations": []
+    },
+    {
+      "name": "public /application-status?status=pending",
+      "violations": []
+    },
+    {
+      "name": "public /about",
+      "violations": []
+    },
+    {
+      "name": "public /contact",
+      "violations": []
+    },
+    {
+      "name": "public /mentorship",
+      "violations": []
+    },
+    {
+      "name": "public /legal/privacy",
+      "violations": []
+    },
+    {
+      "name": "authenticated signing",
+      "violations": []
+    },
+    {
+      "name": "mobile signing",
+      "violations": []
+    },
+    {
+      "name": "former member",
+      "violations": []
+    }
+  ]
+}

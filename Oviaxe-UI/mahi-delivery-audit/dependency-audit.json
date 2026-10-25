@@ -1,0 +1,535 @@
+{
+  "changedFiles": 36,
+  "proposedFiles": 35,
+  "excluded": [
+    "public/assets/images/mahi-hero.webp"
+  ],
+  "dependencies": [
+    {
+      "source": "public/app.html",
+      "reference": "/assets/brand/favicon.svg",
+      "resolved": "public/assets/brand/favicon.svg",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/app.html",
+      "reference": "/css/application.css",
+      "resolved": "public/css/application.css",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/app.html",
+      "reference": "/js/app/index.js",
+      "resolved": "public/js/app/index.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/css/application.css",
+      "reference": "/assets/fonts/bricolage-grotesque-latin.woff2",
+      "resolved": "public/assets/fonts/bricolage-grotesque-latin.woff2",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/css/application.css",
+      "reference": "/assets/fonts/instrument-serif-latin.woff2",
+      "resolved": "public/assets/fonts/instrument-serif-latin.woff2",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/css/application.css",
+      "reference": "/assets/fonts/manrope-latin.woff2",
+      "resolved": "public/assets/fonts/manrope-latin.woff2",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/css/site.css",
+      "reference": "/assets/fonts/bricolage-grotesque-latin.woff2",
+      "resolved": "public/assets/fonts/bricolage-grotesque-latin.woff2",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/css/site.css",
+      "reference": "/assets/fonts/instrument-serif-italic-latin.woff2",
+      "resolved": "public/assets/fonts/instrument-serif-italic-latin.woff2",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/css/site.css",
+      "reference": "/assets/fonts/instrument-serif-latin.woff2",
+      "resolved": "public/assets/fonts/instrument-serif-latin.woff2",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/css/site.css",
+      "reference": "/assets/fonts/manrope-latin.woff2",
+      "resolved": "public/assets/fonts/manrope-latin.woff2",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/index.html",
+      "reference": "/assets/brand/favicon.svg",
+      "resolved": "public/assets/brand/favicon.svg",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/index.html",
+      "reference": "/assets/fonts/bricolage-grotesque-latin.woff2",
+      "resolved": "public/assets/fonts/bricolage-grotesque-latin.woff2",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/index.html",
+      "reference": "/assets/fonts/instrument-serif-italic-latin.woff2",
+      "resolved": "public/assets/fonts/instrument-serif-italic-latin.woff2",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/index.html",
+      "reference": "/assets/fonts/manrope-latin.woff2",
+      "resolved": "public/assets/fonts/manrope-latin.woff2",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/index.html",
+      "reference": "/assets/images/mahi-hero-studio.webp",
+      "resolved": "public/assets/images/mahi-hero-studio.webp",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/index.html",
+      "reference": "/assets/images/mahi-mentorship.webp",
+      "resolved": "public/assets/images/mahi-mentorship.webp",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/index.html",
+      "reference": "/css/hero-studio.css",
+      "resolved": "public/css/hero-studio.css",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/index.html",
+      "reference": "/css/homepage-studio.css",
+      "resolved": "public/css/homepage-studio.css",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/index.html",
+      "reference": "/css/site.css",
+      "resolved": "public/css/site.css",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/index.html",
+      "reference": "/js/pages/home.js",
+      "resolved": "public/js/pages/home.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./shell.js",
+      "resolved": "public/js/app/shell.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./ui.js",
+      "resolved": "public/js/app/ui.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./views/admin.js",
+      "resolved": "public/js/app/views/admin.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./views/disputes.js",
+      "resolved": "public/js/app/views/disputes.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./views/ideas.js",
+      "resolved": "public/js/app/views/ideas.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./views/meetings.js",
+      "resolved": "public/js/app/views/meetings.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./views/member.js",
+      "resolved": "public/js/app/views/member.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./views/projects.js",
+      "resolved": "public/js/app/views/projects.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./views/public.js",
+      "resolved": "public/js/app/views/public.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./views/signing.js",
+      "resolved": "public/js/app/views/signing.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/index.js",
+      "reference": "./views/superadmin.js",
+      "resolved": "public/js/app/views/superadmin.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/shell.js",
+      "reference": "./data.js",
+      "resolved": "public/js/app/data.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/shell.js",
+      "reference": "./store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/shell.js",
+      "reference": "./ui.js",
+      "resolved": "public/js/app/ui.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/store.js",
+      "reference": "./data.js",
+      "resolved": "public/js/app/data.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/ui.js",
+      "reference": "./store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/admin.js",
+      "reference": "../data.js",
+      "resolved": "public/js/app/data.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/admin.js",
+      "reference": "../store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/admin.js",
+      "reference": "../ui.js",
+      "resolved": "public/js/app/ui.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/admin.js",
+      "reference": "./ideas.js",
+      "resolved": "public/js/app/views/ideas.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/admin.js",
+      "reference": "./meetings.js",
+      "resolved": "public/js/app/views/meetings.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/admin.js",
+      "reference": "./projects.js",
+      "resolved": "public/js/app/views/projects.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/disputes.js",
+      "reference": "../store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/disputes.js",
+      "reference": "../ui.js",
+      "resolved": "public/js/app/ui.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/ideas.js",
+      "reference": "../data.js",
+      "resolved": "public/js/app/data.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/ideas.js",
+      "reference": "../store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/ideas.js",
+      "reference": "../ui.js",
+      "resolved": "public/js/app/ui.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/meetings.js",
+      "reference": "../store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/meetings.js",
+      "reference": "../ui.js",
+      "resolved": "public/js/app/ui.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/meetings.js",
+      "reference": "./ideas.js",
+      "resolved": "public/js/app/views/ideas.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/member.js",
+      "reference": "../data.js",
+      "resolved": "public/js/app/data.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/member.js",
+      "reference": "../store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/member.js",
+      "reference": "../ui.js",
+      "resolved": "public/js/app/ui.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/member.js",
+      "reference": "./projects.js",
+      "resolved": "public/js/app/views/projects.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/projects.js",
+      "reference": "../data.js",
+      "resolved": "public/js/app/data.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/projects.js",
+      "reference": "../store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/projects.js",
+      "reference": "../ui.js",
+      "resolved": "public/js/app/ui.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/public.js",
+      "reference": "../data.js",
+      "resolved": "public/js/app/data.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/public.js",
+      "reference": "../store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/public.js",
+      "reference": "../ui.js",
+      "resolved": "public/js/app/ui.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/signing.js",
+      "reference": "../data.js",
+      "resolved": "public/js/app/data.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/signing.js",
+      "reference": "../store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/signing.js",
+      "reference": "../ui.js",
+      "resolved": "public/js/app/ui.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/superadmin.js",
+      "reference": "../store.js",
+      "resolved": "public/js/app/store.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/superadmin.js",
+      "reference": "../ui.js",
+      "resolved": "public/js/app/ui.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/superadmin.js",
+      "reference": "./admin.js",
+      "resolved": "public/js/app/views/admin.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/app/views/superadmin.js",
+      "reference": "./disputes.js",
+      "resolved": "public/js/app/views/disputes.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/pages/home.js",
+      "reference": "../data/home.js",
+      "resolved": "public/js/data/home.js",
+      "exists": true,
+      "status": "proposed"
+    },
+    {
+      "source": "public/js/pages/home.js",
+      "reference": "../data/site.js",
+      "resolved": "public/js/data/site.js",
+      "exists": true,
+      "status": "proposed"
+    }
+  ],
+  "requiredChangedDependencies": [
+    "public/assets/brand/favicon.svg",
+    "public/assets/fonts/bricolage-grotesque-latin.woff2",
+    "public/assets/fonts/instrument-serif-italic-latin.woff2",
+    "public/assets/fonts/instrument-serif-latin.woff2",
+    "public/assets/fonts/manrope-latin.woff2",
+    "public/assets/images/mahi-hero-studio.webp",
+    "public/assets/images/mahi-mentorship.webp",
+    "public/css/application.css",
+    "public/css/hero-studio.css",
+    "public/css/homepage-studio.css",
+    "public/css/site.css",
+    "public/js/app/data.js",
+    "public/js/app/index.js",
+    "public/js/app/shell.js",
+    "public/js/app/store.js",
+    "public/js/app/ui.js",
+    "public/js/app/views/admin.js",
+    "public/js/app/views/disputes.js",
+    "public/js/app/views/ideas.js",
+    "public/js/app/views/meetings.js",
+    "public/js/app/views/member.js",
+    "public/js/app/views/projects.js",
+    "public/js/app/views/public.js",
+    "public/js/app/views/signing.js",
+    "public/js/app/views/superadmin.js",
+    "public/js/data/home.js",
+    "public/js/data/site.js",
+    "public/js/pages/home.js"
+  ],
+  "missingOrExcludedDependencies": [],
+  "applicationFaviconCorrection": {
+    "from": "/assets/brand-mark.svg",
+    "to": "/assets/brand/favicon.svg",
+    "httpStatus": 200
+  }
+}

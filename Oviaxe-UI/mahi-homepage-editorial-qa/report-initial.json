@@ -1,0 +1,225 @@
+{
+  "responsive": [
+    {
+      "width": 360,
+      "status": 200,
+      "viewport": 360,
+      "documentWidth": 433,
+      "bodyWidth": 433,
+      "tracks": 4,
+      "faqs": 5,
+      "images": [
+        {
+          "src": "/assets/images/mahi-hero.webp",
+          "loaded": true
+        },
+        {
+          "src": "/assets/images/mahi-mentorship.webp",
+          "loaded": true
+        }
+      ],
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": [
+        {
+          "class": "menu-toggle",
+          "height": 39
+        }
+      ],
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "status": 200,
+      "viewport": 390,
+      "documentWidth": 488,
+      "bodyWidth": 488,
+      "tracks": 4,
+      "faqs": 5,
+      "images": [
+        {
+          "src": "/assets/images/mahi-hero.webp",
+          "loaded": true
+        },
+        {
+          "src": "/assets/images/mahi-mentorship.webp",
+          "loaded": true
+        }
+      ],
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": [
+        {
+          "class": "menu-toggle",
+          "height": 39
+        }
+      ],
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "errors": []
+    },
+    {
+      "width": 768,
+      "status": 200,
+      "viewport": 768,
+      "documentWidth": 768,
+      "bodyWidth": 768,
+      "tracks": 4,
+      "faqs": 5,
+      "images": [
+        {
+          "src": "/assets/images/mahi-hero.webp",
+          "loaded": true
+        },
+        {
+          "src": "/assets/images/mahi-mentorship.webp",
+          "loaded": true
+        }
+      ],
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": [
+        {
+          "class": "menu-toggle",
+          "height": 42
+        }
+      ],
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "status": 200,
+      "viewport": 1024,
+      "documentWidth": 1024,
+      "bodyWidth": 1024,
+      "tracks": 4,
+      "faqs": 5,
+      "images": [
+        {
+          "src": "/assets/images/mahi-hero.webp",
+          "loaded": true
+        },
+        {
+          "src": "/assets/images/mahi-mentorship.webp",
+          "loaded": true
+        }
+      ],
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": [
+        {
+          "class": "button button--small nav-cta",
+          "height": 42
+        }
+      ],
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "status": 200,
+      "viewport": 1440,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "tracks": 4,
+      "faqs": 5,
+      "images": [
+        {
+          "src": "/assets/images/mahi-hero.webp",
+          "loaded": true
+        },
+        {
+          "src": "/assets/images/mahi-mentorship.webp",
+          "loaded": true
+        }
+      ],
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": [
+        {
+          "class": "button button--small nav-cta",
+          "height": 42
+        }
+      ],
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "errors": []
+    },
+    {
+      "width": 1920,
+      "status": 200,
+      "viewport": 1920,
+      "documentWidth": 1920,
+      "bodyWidth": 1920,
+      "tracks": 4,
+      "faqs": 5,
+      "images": [
+        {
+          "src": "/assets/images/mahi-hero.webp",
+          "loaded": true
+        },
+        {
+          "src": "/assets/images/mahi-mentorship.webp",
+          "loaded": true
+        }
+      ],
+      "emptyLinks": 0,
+      "missingTargets": [],
+      "smallControls": [
+        {
+          "class": "button button--small nav-cta",
+          "height": 42
+        }
+      ],
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "errors": []
+    }
+  ],
+  "interactions": {
+    "menuOpen": "true",
+    "menuFocus": "01Learning",
+    "mainInertOpen": true,
+    "menuClosed": "false",
+    "mainInertClosed": false,
+    "dialogOpen": true,
+    "dialogTitle": "Research & Product Strategy",
+    "modules": 4,
+    "dialogClosed": true,
+    "focusReturn": "product-research",
+    "faqSecond": "true",
+    "faqFirst": "false"
+  },
+  "accessibility": [
+    {
+      "width": 390,
+      "state": "page",
+      "violations": []
+    },
+    {
+      "width": 390,
+      "state": "dialog",
+      "violations": []
+    },
+    {
+      "width": 390,
+      "state": "mobile menu",
+      "violations": []
+    },
+    {
+      "width": 1440,
+      "state": "page",
+      "violations": []
+    },
+    {
+      "width": 1440,
+      "state": "dialog",
+      "violations": []
+    }
+  ]
+}

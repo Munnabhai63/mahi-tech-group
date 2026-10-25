@@ -1,0 +1,47 @@
+[
+  {
+    "name": "public access states, signup, and Admin application approval",
+    "status": "passed",
+    "ms": 3194
+  },
+  {
+    "name": "task dependencies, role switching, and final-review rejection recovery",
+    "status": "passed",
+    "ms": 4136
+  },
+  {
+    "name": "voting, direct review meeting, Admin fan-out, and role-compatible assignment",
+    "status": "passed",
+    "ms": 2660
+  },
+  {
+    "name": "member support isolation and manual withdrawal lifecycle",
+    "status": "passed",
+    "ms": 7297
+  },
+  {
+    "name": "meeting lifecycle, recording reference, and bilingual notes confirmation",
+    "status": "passed",
+    "ms": 6879
+  },
+  {
+    "name": "co-working pen, object editing, snapshots, and listener cleanup",
+    "status": "passed",
+    "ms": 2805
+  },
+  {
+    "name": "authenticated token signing and locked financial settlement",
+    "status": "passed",
+    "ms": 3413
+  },
+  {
+    "name": "declined agreement returns dispute to negotiation and invalid tokens stay closed",
+    "status": "passed",
+    "ms": 1258
+  },
+  {
+    "name": "elevated performance, gateway, ideation, governance, and unified audit controls",
+    "status": "passed",
+    "ms": 3106
+  }
+]

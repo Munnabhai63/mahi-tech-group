@@ -1,0 +1,172 @@
+{
+  "responsive": [
+    {
+      "width": 360,
+      "viewport": 360,
+      "documentWidth": 360,
+      "headlineTextRight": 355,
+      "imageLoaded": true,
+      "controls": [
+        {
+          "text": "Explore learning paths",
+          "height": 52,
+          "href": "#learning"
+        },
+        {
+          "text": "Discover mentorship",
+          "height": 44,
+          "href": "#mentorship"
+        },
+        {
+          "text": "Scroll to discover",
+          "height": 44,
+          "href": "#learning"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "viewport": 390,
+      "documentWidth": 390,
+      "headlineTextRight": 381,
+      "imageLoaded": true,
+      "controls": [
+        {
+          "text": "Explore learning paths",
+          "height": 52,
+          "href": "#learning"
+        },
+        {
+          "text": "Discover mentorship",
+          "height": 44,
+          "href": "#mentorship"
+        },
+        {
+          "text": "Scroll to discover",
+          "height": 44,
+          "href": "#learning"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 768,
+      "viewport": 768,
+      "documentWidth": 768,
+      "headlineTextRight": 562,
+      "imageLoaded": true,
+      "controls": [
+        {
+          "text": "Explore learning paths",
+          "height": 52,
+          "href": "#learning"
+        },
+        {
+          "text": "Discover mentorship",
+          "height": 44,
+          "href": "#mentorship"
+        },
+        {
+          "text": "Scroll to discover",
+          "height": 44,
+          "href": "#learning"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "viewport": 1024,
+      "documentWidth": 1024,
+      "headlineTextRight": 508,
+      "imageLoaded": true,
+      "controls": [
+        {
+          "text": "Explore learning paths",
+          "height": 52,
+          "href": "#learning"
+        },
+        {
+          "text": "Discover mentorship",
+          "height": 44,
+          "href": "#mentorship"
+        },
+        {
+          "text": "Scroll to discover",
+          "height": 44,
+          "href": "#learning"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "viewport": 1440,
+      "documentWidth": 1440,
+      "headlineTextRight": 710,
+      "imageLoaded": true,
+      "controls": [
+        {
+          "text": "Explore learning paths",
+          "height": 52,
+          "href": "#learning"
+        },
+        {
+          "text": "Discover mentorship",
+          "height": 44,
+          "href": "#mentorship"
+        },
+        {
+          "text": "Scroll to discover",
+          "height": 44,
+          "href": "#learning"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "width": 1920,
+      "viewport": 1920,
+      "documentWidth": 1920,
+      "headlineTextRight": 963,
+      "imageLoaded": true,
+      "controls": [
+        {
+          "text": "Explore learning paths",
+          "height": 52,
+          "href": "#learning"
+        },
+        {
+          "text": "Discover mentorship",
+          "height": 44,
+          "href": "#mentorship"
+        },
+        {
+          "text": "Scroll to discover",
+          "height": 44,
+          "href": "#learning"
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "accessibility": [
+    {
+      "width": 390,
+      "violations": []
+    },
+    {
+      "width": 1440,
+      "violations": []
+    }
+  ],
+  "motion": {
+    "lines": [
+      "1",
+      "1",
+      "1"
+    ],
+    "mediaOpacity": "1"
+  }
+}

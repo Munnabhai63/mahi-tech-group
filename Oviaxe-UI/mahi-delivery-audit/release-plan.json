@@ -1,0 +1,58 @@
+{
+  "include": [
+    "docs/application-completion-report.md",
+    "docs/application-implementation-plan.md",
+    "docs/application-qa-summary.json",
+    "docs/release-readiness-report.md",
+    "docs/ui-inventory.md",
+    "public/app.html",
+    "public/assets/brand/favicon.svg",
+    "public/assets/fonts/bricolage-grotesque-latin.woff2",
+    "public/assets/fonts/instrument-serif-italic-latin.woff2",
+    "public/assets/fonts/instrument-serif-latin.woff2",
+    "public/assets/fonts/manrope-latin.woff2",
+    "public/assets/images/mahi-hero-studio.webp",
+    "public/assets/images/mahi-mentorship.webp",
+    "public/css/application.css",
+    "public/css/hero-studio.css",
+    "public/css/homepage-studio.css",
+    "public/css/site.css",
+    "public/index.html",
+    "public/js/app/data.js",
+    "public/js/app/index.js",
+    "public/js/app/shell.js",
+    "public/js/app/store.js",
+    "public/js/app/ui.js",
+    "public/js/app/views/admin.js",
+    "public/js/app/views/disputes.js",
+    "public/js/app/views/ideas.js",
+    "public/js/app/views/meetings.js",
+    "public/js/app/views/member.js",
+    "public/js/app/views/projects.js",
+    "public/js/app/views/public.js",
+    "public/js/app/views/signing.js",
+    "public/js/app/views/superadmin.js",
+    "public/js/data/home.js",
+    "public/js/data/site.js",
+    "public/js/pages/home.js"
+  ],
+  "includeCount": 35,
+  "exclude": [
+    "public/assets/images/mahi-hero.webp"
+  ],
+  "workingTreeInventoryCount": 36,
+  "staged": [],
+  "deleted": [],
+  "secretFindings": [],
+  "backendChanges": 0,
+  "localPreview": {
+    "command": "python3 -m http.server 4000 --bind 0.0.0.0 --directory public",
+    "homepage": "http://localhost:4000/",
+    "application": "http://localhost:4000/app.html"
+  },
+  "targetedChecks": {
+    "passed": 32,
+    "total": 32
+  },
+  "dependencyReferences": 70
+}

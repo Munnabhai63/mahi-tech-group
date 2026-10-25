@@ -1,0 +1,293 @@
+{
+  "modified": [
+    "public/index.html"
+  ],
+  "untracked": [
+    "docs/application-completion-report.md",
+    "docs/application-implementation-plan.md",
+    "docs/application-qa-summary.json",
+    "docs/ui-inventory.md",
+    "public/app.html",
+    "public/assets/brand/favicon.svg",
+    "public/assets/fonts/bricolage-grotesque-latin.woff2",
+    "public/assets/fonts/instrument-serif-italic-latin.woff2",
+    "public/assets/fonts/instrument-serif-latin.woff2",
+    "public/assets/fonts/manrope-latin.woff2",
+    "public/assets/images/mahi-hero-studio.webp",
+    "public/assets/images/mahi-hero.webp",
+    "public/assets/images/mahi-mentorship.webp",
+    "public/css/application.css",
+    "public/css/hero-studio.css",
+    "public/css/homepage-studio.css",
+    "public/css/site.css",
+    "public/js/app/data.js",
+    "public/js/app/index.js",
+    "public/js/app/shell.js",
+    "public/js/app/store.js",
+    "public/js/app/ui.js",
+    "public/js/app/views/admin.js",
+    "public/js/app/views/disputes.js",
+    "public/js/app/views/ideas.js",
+    "public/js/app/views/meetings.js",
+    "public/js/app/views/member.js",
+    "public/js/app/views/projects.js",
+    "public/js/app/views/public.js",
+    "public/js/app/views/signing.js",
+    "public/js/app/views/superadmin.js",
+    "public/js/data/home.js",
+    "public/js/data/site.js",
+    "public/js/pages/home.js"
+  ],
+  "deleted": [],
+  "staged": [],
+  "files": [
+    {
+      "path": "public/index.html",
+      "bytes": 25454,
+      "sha256": "0164f691c7cbb06f58c4e42c0701398c44bf88585a750522a83a5295ceb70d53",
+      "kind": ".html",
+      "symlink": false
+    },
+    {
+      "path": "docs/application-completion-report.md",
+      "bytes": 18348,
+      "sha256": "fb71008c3425adb481d0e5d84d7f25a21365e943b1298768fd299eb297f945dd",
+      "kind": ".md",
+      "symlink": false
+    },
+    {
+      "path": "docs/application-implementation-plan.md",
+      "bytes": 9631,
+      "sha256": "78ec9c79127819a6d55b3e6fe343cc7aa19d8bfa377fdf108397b1a1eda3cbf6",
+      "kind": ".md",
+      "symlink": false
+    },
+    {
+      "path": "docs/application-qa-summary.json",
+      "bytes": 1576,
+      "sha256": "a6a1622355ef215019f0258aa9839d230d691c19295ebfccc40702153b53c329",
+      "kind": ".json",
+      "symlink": false
+    },
+    {
+      "path": "docs/ui-inventory.md",
+      "bytes": 8285,
+      "sha256": "0124aa67388238dad97c2dfccf173e0a8ab1320d82348c5fbc0a21e8ec0c3acf",
+      "kind": ".md",
+      "symlink": false
+    },
+    {
+      "path": "public/app.html",
+      "bytes": 8951,
+      "sha256": "d84116b169f9e436c6bf792155ba411ed3a4b078004d64b1c982b01272827236",
+      "kind": ".html",
+      "symlink": false
+    },
+    {
+      "path": "public/assets/brand/favicon.svg",
+      "bytes": 308,
+      "sha256": "0099125cbee72c71eee5bff084a04cf36080fe0f581ce9376c549d1457b38c97",
+      "kind": ".svg",
+      "symlink": false
+    },
+    {
+      "path": "public/assets/fonts/bricolage-grotesque-latin.woff2",
+      "bytes": 76888,
+      "sha256": "a79fdb52d4a5c76552452f69202add96e287401fff03d3e8c0e38b4dcb5a99cd",
+      "kind": ".woff2",
+      "symlink": false
+    },
+    {
+      "path": "public/assets/fonts/instrument-serif-italic-latin.woff2",
+      "bytes": 22128,
+      "sha256": "5a51946dfffa82972bc98745359c46761515641fda557c25116459a9f83da4a7",
+      "kind": ".woff2",
+      "symlink": false
+    },
+    {
+      "path": "public/assets/fonts/instrument-serif-latin.woff2",
+      "bytes": 21032,
+      "sha256": "5eb09b5ac0e28b67c2f041c8ba6d244604ca0c0980d65912ab2d47fed84ddc31",
+      "kind": ".woff2",
+      "symlink": false
+    },
+    {
+      "path": "public/assets/fonts/manrope-latin.woff2",
+      "bytes": 24836,
+      "sha256": "a30ddcd349703aff7464c34bef3fffdff405ee50c113440d7c8693c02d210972",
+      "kind": ".woff2",
+      "symlink": false
+    },
+    {
+      "path": "public/assets/images/mahi-hero-studio.webp",
+      "bytes": 188068,
+      "sha256": "9bb7e40fddaec8ba62e588c75494a895880952c1c9881120d18a90d6fa76a314",
+      "kind": ".webp",
+      "symlink": false
+    },
+    {
+      "path": "public/assets/images/mahi-hero.webp",
+      "bytes": 77342,
+      "sha256": "ac4109f57a97d39bc430041db676ca21295e58bff39aef9d74330a970ce1b819",
+      "kind": ".webp",
+      "symlink": false
+    },
+    {
+      "path": "public/assets/images/mahi-mentorship.webp",
+      "bytes": 142862,
+      "sha256": "a405e9cc8a5439dbf0707f31fb68f7751a66fafafba252d0bb497ea884b866c1",
+      "kind": ".webp",
+      "symlink": false
+    },
+    {
+      "path": "public/css/application.css",
+      "bytes": 73769,
+      "sha256": "2ef03646224cf5d0e6cc27cc6e507b34a33a1fdacc989826162dd285b5ef5816",
+      "kind": ".css",
+      "symlink": false
+    },
+    {
+      "path": "public/css/hero-studio.css",
+      "bytes": 14121,
+      "sha256": "ebcea565fadea173266b9ff0c76a7b7f6937bf94dabf73fa107537c1ccf79e5f",
+      "kind": ".css",
+      "symlink": false
+    },
+    {
+      "path": "public/css/homepage-studio.css",
+      "bytes": 24404,
+      "sha256": "39c755914e7d773bd0e87b5e9b7d11950ada59f649fe9b1c8f0fcb4995af79d7",
+      "kind": ".css",
+      "symlink": false
+    },
+    {
+      "path": "public/css/site.css",
+      "bytes": 54502,
+      "sha256": "f0c203c6b4a2acc8613e954a8a3bc167a9b27a22019f61a989f404bfb666b419",
+      "kind": ".css",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/data.js",
+      "bytes": 39124,
+      "sha256": "9573862f07623624d6a8d02fc727b0bcfae6ef96861f2358c337507fb157fea8",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/index.js",
+      "bytes": 10128,
+      "sha256": "fdaf7a95f864bd46f60ec05c03d965f53448daf330eba09948c0fbd12356a72a",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/shell.js",
+      "bytes": 19092,
+      "sha256": "7958dd87eb9368fb18ade55842f131f107fda821892f14aa389a5cc437655189",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/store.js",
+      "bytes": 8418,
+      "sha256": "36be90bb03b945fc79fa237602048abd07e44dffb3dda7df835a9572ad8c1547",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/ui.js",
+      "bytes": 13654,
+      "sha256": "ea5b338f985af9e047077beda53fbc6ad49cb21a909a2145313cf7798ca1422f",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/views/admin.js",
+      "bytes": 61530,
+      "sha256": "7d1edbc9edb0242f201c879b94bdedb60c83a35078f66e307d763c7f6b87bb51",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/views/disputes.js",
+      "bytes": 31106,
+      "sha256": "af280aae1cd300757dc60a95bc3ff5da03d463b81bc28e28c67cbddee62ec8eb",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/views/ideas.js",
+      "bytes": 32184,
+      "sha256": "3d495dc85ae97ac356fc93864b73a85c59454fd5e730d1840609639c31c759f9",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/views/meetings.js",
+      "bytes": 40730,
+      "sha256": "1e99a7888037b3897279272895724855757e37c1d2c1393638814773ab8ef71d",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/views/member.js",
+      "bytes": 59194,
+      "sha256": "5d6a18e598c6076fb902da2fb56417115597b1786ea6aeb2ca3935499f17dd2e",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/views/projects.js",
+      "bytes": 34818,
+      "sha256": "b9d1a8b16267225be197784cda5958b2b0d262ed6e60d69aa7bf357c4846814c",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/views/public.js",
+      "bytes": 22766,
+      "sha256": "c9ca1d5f7dc4f490acbeaa91b2f6d964017c59c00d9ca1e10a2c85b1367486b6",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/views/signing.js",
+      "bytes": 16543,
+      "sha256": "33d446a1402c0bf62ebec6f7283d0dc0d2a121e517454f974bf1b560dbe1b888",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/app/views/superadmin.js",
+      "bytes": 63087,
+      "sha256": "aaee55fe1d406d4db67533d86b22338c7cd99a323c5444f1123579eaf36fca7d",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/data/home.js",
+      "bytes": 6757,
+      "sha256": "18a09355f534f3c610e99ca378c46addbf4de46d1f59dc2dcab8e7a070c1e66d",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/data/site.js",
+      "bytes": 216,
+      "sha256": "5cfa36facb2ee699ffe4caf633f97b1629b989db513ee2c0e33c9309e66b0359",
+      "kind": ".js",
+      "symlink": false
+    },
+    {
+      "path": "public/js/pages/home.js",
+      "bytes": 12844,
+      "sha256": "f800da428a0403d32d01fe4beff211fe6ba4106ff3fe247e3e3e4a7d4e7f7aa0",
+      "kind": ".js",
+      "symlink": false
+    }
+  ],
+  "totalBytes": 1264696,
+  "secretPatternFindings": [],
+  "suspiciousNames": []
+}

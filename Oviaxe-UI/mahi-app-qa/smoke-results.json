@@ -1,0 +1,416 @@
+{
+  "results": [
+    {
+      "route": "/admin",
+      "h1": "Operational control, with a record.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nOVERVIEW\nAdmin dashboard\nOPERATIONS\nApplications\n2\nMembers\nIdea decisions\nProject gates\nMeeting control\nFINANCE & LIFECYCLE\nRevenue & payouts\n2\nOffboarding\nSYSTEM\nConfiguration\nAccess log\nSWITCH AREA\nMember workspace\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN OPERATIONS\nAdmin dashboard\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/admin/applications",
+      "h1": "Membership applications",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nOVERVIEW\nAdmin dashboard\nOPERATIONS\nApplications\n2\nMembers\nIdea decisions\nProject gates\nMeeting control\nFINANCE & LIFECYCLE\nRevenue & payouts\n2\nOffboarding\nSYSTEM\nConfiguration\nAccess log\nSWITCH AREA\nMember workspace\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN OPERATIONS\nApplications\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview in",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/admin/members",
+      "h1": "Member administration",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nOVERVIEW\nAdmin dashboard\nOPERATIONS\nApplications\n2\nMembers\nIdea decisions\nProject gates\nMeeting control\nFINANCE & LIFECYCLE\nRevenue & payouts\n2\nOffboarding\nSYSTEM\nConfiguration\nAccess log\nSWITCH AREA\nMember workspace\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN OPERATIONS\nMember administration\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nP",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/admin/ideas",
+      "h1": "Idea governance",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nOVERVIEW\nAdmin dashboard\nOPERATIONS\nApplications\n2\nMembers\nIdea decisions\nProject gates\nMeeting control\nFINANCE & LIFECYCLE\nRevenue & payouts\n2\nOffboarding\nSYSTEM\nConfiguration\nAccess log\nSWITCH AREA\nMember workspace\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN OPERATIONS\nIdea governance\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/admin/projects",
+      "h1": "Project pipeline & final gates",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nOVERVIEW\nAdmin dashboard\nOPERATIONS\nApplications\n2\nMembers\nIdea decisions\nProject gates\nMeeting control\nFINANCE & LIFECYCLE\nRevenue & payouts\n2\nOffboarding\nSYSTEM\nConfiguration\nAccess log\nSWITCH AREA\nMember workspace\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN OPERATIONS\nProject gates\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview i",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/admin/revenue",
+      "h1": "Revenue & payout administration",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nOVERVIEW\nAdmin dashboard\nOPERATIONS\nApplications\n2\nMembers\nIdea decisions\nProject gates\nMeeting control\nFINANCE & LIFECYCLE\nRevenue & payouts\n2\nOffboarding\nSYSTEM\nConfiguration\nAccess log\nSWITCH AREA\nMember workspace\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN OPERATIONS\nRevenue & payouts\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPrevi",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/admin/offboarding",
+      "h1": "Offboarding & settlements",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nOVERVIEW\nAdmin dashboard\nOPERATIONS\nApplications\n2\nMembers\nIdea decisions\nProject gates\nMeeting control\nFINANCE & LIFECYCLE\nRevenue & payouts\n2\nOffboarding\nSYSTEM\nConfiguration\nAccess log\nSWITCH AREA\nMember workspace\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN OPERATIONS\nOffboarding\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview int",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/admin/config",
+      "h1": "System configuration",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nOVERVIEW\nAdmin dashboard\nOPERATIONS\nApplications\n2\nMembers\nIdea decisions\nProject gates\nMeeting control\nFINANCE & LIFECYCLE\nRevenue & payouts\n2\nOffboarding\nSYSTEM\nConfiguration\nAccess log\nSWITCH AREA\nMember workspace\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN OPERATIONS\nConfiguration\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview i",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/admin/meetings",
+      "h1": "Meeting administration & AI governance",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nOVERVIEW\nAdmin dashboard\nOPERATIONS\nApplications\n2\nMembers\nIdea decisions\nProject gates\nMeeting control\nFINANCE & LIFECYCLE\nRevenue & payouts\n2\nOffboarding\nSYSTEM\nConfiguration\nAccess log\nSWITCH AREA\nMember workspace\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN OPERATIONS\nMeeting administration\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\n",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/admin/audit",
+      "h1": "Compliance & access logs",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nOVERVIEW\nAdmin dashboard\nOPERATIONS\nApplications\n2\nMembers\nIdea decisions\nProject gates\nMeeting control\nFINANCE & LIFECYCLE\nRevenue & payouts\n2\nOffboarding\nSYSTEM\nConfiguration\nAccess log\nSWITCH AREA\nMember workspace\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN OPERATIONS\nAccess log\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview inte",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/superadmin",
+      "h1": "Organization intelligence.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nCOMMAND\nOverview\nINTELLIGENCE\nMember directory\nPerformance\nSupport operations\n2\nIdeation controls\nRISK & FINANCE\nDisputes & waivers\n2\nGateway controls\n2\nData governance\nRECORDS\nUnified audit\nSWITCH AREA\nMember workspace\nCore Admin\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nELEVATED ADMIN\nElevated overview\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/superadmin/members",
+      "h1": "Member directory",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nCOMMAND\nOverview\nINTELLIGENCE\nMember directory\nPerformance\nSupport operations\n2\nIdeation controls\nRISK & FINANCE\nDisputes & waivers\n2\nGateway controls\n2\nData governance\nRECORDS\nUnified audit\nSWITCH AREA\nMember workspace\nCore Admin\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nELEVATED ADMIN\nMember intelligence\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPrevi",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/superadmin/performance",
+      "h1": "Performance intelligence",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nCOMMAND\nOverview\nINTELLIGENCE\nMember directory\nPerformance\nSupport operations\n2\nIdeation controls\nRISK & FINANCE\nDisputes & waivers\n2\nGateway controls\n2\nData governance\nRECORDS\nUnified audit\nSWITCH AREA\nMember workspace\nCore Admin\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nELEVATED ADMIN\nPerformance intelligence\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\n",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/superadmin/support",
+      "h1": "Support operations",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nCOMMAND\nOverview\nINTELLIGENCE\nMember directory\nPerformance\nSupport operations\n2\nIdeation controls\nRISK & FINANCE\nDisputes & waivers\n2\nGateway controls\n2\nData governance\nRECORDS\nUnified audit\nSWITCH AREA\nMember workspace\nCore Admin\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nELEVATED ADMIN\nSupport operations\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPrevie",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/superadmin/ideas",
+      "h1": "Ideation controls",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nCOMMAND\nOverview\nINTELLIGENCE\nMember directory\nPerformance\nSupport operations\n2\nIdeation controls\nRISK & FINANCE\nDisputes & waivers\n2\nGateway controls\n2\nData governance\nRECORDS\nUnified audit\nSWITCH AREA\nMember workspace\nCore Admin\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nELEVATED ADMIN\nIdeation controls\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/superadmin/disputes",
+      "h1": "Resolution with a formal record.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nCOMMAND\nOverview\nINTELLIGENCE\nMember directory\nPerformance\nSupport operations\n2\nIdeation controls\nRISK & FINANCE\nDisputes & waivers\n2\nGateway controls\n2\nData governance\nRECORDS\nUnified audit\nSWITCH AREA\nMember workspace\nCore Admin\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nELEVATED ADMIN\nDisputes & waivers\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPrevie",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/superadmin/gateway",
+      "h1": "Payment gateway controls",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nCOMMAND\nOverview\nINTELLIGENCE\nMember directory\nPerformance\nSupport operations\n2\nIdeation controls\nRISK & FINANCE\nDisputes & waivers\n2\nGateway controls\n2\nData governance\nRECORDS\nUnified audit\nSWITCH AREA\nMember workspace\nCore Admin\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nELEVATED ADMIN\nGateway controls\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview ",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/superadmin/governance",
+      "h1": "User data governance",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nCOMMAND\nOverview\nINTELLIGENCE\nMember directory\nPerformance\nSupport operations\n2\nIdeation controls\nRISK & FINANCE\nDisputes & waivers\n2\nGateway controls\n2\nData governance\nRECORDS\nUnified audit\nSWITCH AREA\nMember workspace\nCore Admin\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nELEVATED ADMIN\nData governance\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview i",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/superadmin/audit",
+      "h1": "Unified audit",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nCOMMAND\nOverview\nINTELLIGENCE\nMember directory\nPerformance\nSupport operations\n2\nIdeation controls\nRISK & FINANCE\nDisputes & waivers\n2\nGateway controls\n2\nData governance\nRECORDS\nUnified audit\nSWITCH AREA\nMember workspace\nCore Admin\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nELEVATED ADMIN\nUnified audit\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview int",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/dashboard",
+      "h1": "Good morning, Ananya.Here’s what needs your attention.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nDashboard\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading sta",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/workspace",
+      "h1": "Your discipline, in shared context.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nMy discipline\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/tasks",
+      "h1": "Every task. Every prerequisite.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nTask queue\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading st",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/projects",
+      "h1": "Pipeline, not a black box.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nProject pipeline\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoad",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/projects/p-arogya",
+      "h1": "Arogya Queue",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nProject detail\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoadin",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/projects/p-repair",
+      "h1": "Repair Circle",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nProject detail\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoadin",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/ideas",
+      "h1": "Ideas with a decision trail.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nIdeation\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading stat",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/ideas/new",
+      "h1": "Give the team something clear to consider.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nIdea editor\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading s",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/ideas/i-clinic",
+      "h1": "Clinic waiting, without the uncertainty",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nIdea detail\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading s",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/voting",
+      "h1": "Your vote, with your reasoning.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nVoting queue\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading ",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/meetings",
+      "h1": "Meet in the context of the work.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nMeetings\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading stat",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/meetings/m-repair",
+      "h1": "Repair Circle — operations retrospective",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nMeeting room\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading ",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/meetings/m-qa",
+      "h1": "Mess Mate — QA readout",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nMeeting room\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading ",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/coworking/p-arogya",
+      "h1": "Think on the same canvas.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nCo-working canvas\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoa",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/notifications",
+      "h1": "Notifications",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nNotifications\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/support",
+      "h1": "Help without losing the thread.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nMember support\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoadin",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/support/t-1001",
+      "h1": "Ticket unavailable",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nSupport thread\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoadin",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/profile",
+      "h1": "Your contribution history.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nMy profile\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading st",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/members/u-former",
+      "h1": "Member profile & attribution",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nMember profile\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoadin",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/wallet",
+      "h1": "Your earnings, with a visible review gate.",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nWallet & settlements\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\n",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/app/settings",
+      "h1": "Settings",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nCOLLABORATIVE WORKSPACE\nWORKSPACE\nDashboard\nMy discipline\nTask queue\n16\nCOLLABORATION\nProjects\nIdeas\nVoting\n1\nMeetings\nACCOUNT\nNotifications\n2\nSupport\nProfile\nWallet\nSettings\nADMINISTRATION\nAdmin operations\nElevated zone\nMAHI TECH GROUP homepage\nFRONTEND INVENTORY · LOCAL MOCK DATA\nADMIN WORKSPACE\nSettings\nDEMO DATA\nQuick search\n⌘ K\nAR\nAnanya Rao\nAdmin\nFrontend-only preview · mutations stay in this browser.\nPreview interface state\nNormal state\nLoading stat",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    },
+    {
+      "route": "/sign/disputes/d-302?document=ag-302&signature=sig-302-front&token=local-demo-sig-302-front",
+      "h1": "Signatory mismatch",
+      "text": "Skip to main content\nM/\nMAHI TECH GROUP\nDOCUMENT REVIEW\nFRONTEND-ONLY DEMONSTRATION\nNo production signing service\nMAHI TECH GROUP\nSignatory mismatch\nDocument access\n\nThis token belongs to Kabir Shah. The authenticated demo identity cannot view or sign this document.\n\nAuthenticated as\nAnanya Rao\nRequired signatory\nKabir Shah\nSwitch to intended demo identity\nReturn to workspace\nAUTHENTICATED SIGNING CONTRACT\nIdentity, token, decision.\n\nThe production contract requires an authenticated signatory, a",
+      "main": true,
+      "overflow": 0,
+      "renderError": false,
+      "dialogs": 0,
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "failed": []
+}

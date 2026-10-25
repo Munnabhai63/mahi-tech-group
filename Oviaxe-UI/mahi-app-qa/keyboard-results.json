@@ -1,0 +1,42 @@
+{
+  "passed": 9,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Skip link moves focus to main without changing the SPA route",
+      "status": "passed"
+    },
+    {
+      "name": "Ctrl+K opens focused search and Escape restores focus",
+      "status": "passed"
+    },
+    {
+      "name": "Notification drawer traps focus, closes with Escape, and returns focus",
+      "status": "passed"
+    },
+    {
+      "name": "Arrow keys activate and focus adjacent project tabs",
+      "status": "passed"
+    },
+    {
+      "name": "Invalid idea submission focuses the failing field and announces an error",
+      "status": "passed"
+    },
+    {
+      "name": "Closed mobile navigation is inert and removed from the accessibility tree",
+      "status": "passed"
+    },
+    {
+      "name": "Mobile navigation receives focus, closes with Escape, and restores trigger focus",
+      "status": "passed"
+    },
+    {
+      "name": "Open mobile navigation wraps Tab focus within the sidebar",
+      "status": "passed"
+    },
+    {
+      "name": "Reduced motion disables cursor animation and simulated cursor movement",
+      "status": "passed"
+    }
+  ]
+}

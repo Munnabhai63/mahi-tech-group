@@ -1,0 +1,2105 @@
+{
+  "checks": 242,
+  "overflow": [],
+  "renderErrors": [],
+  "failed": [],
+  "errors": [],
+  "results": [
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Operational control, with a record.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/applications",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Membership applications",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/members",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Member administration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/ideas",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Idea governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/projects",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Project pipeline & final gates",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/revenue",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Revenue & payout administration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/offboarding",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Offboarding & settlements",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/config",
+      "width": 360,
+      "overflow": 0,
+      "h1": "System configuration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/meetings",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Meeting administration & AI governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/audit",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Compliance & access logs",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Organization intelligence.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/members",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Member directory",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/performance",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Performance intelligence",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/support",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Support operations",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/ideas",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Ideation controls",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/disputes",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Resolution with a formal record.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/gateway",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Payment gateway controls",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/governance",
+      "width": 360,
+      "overflow": 0,
+      "h1": "User data governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/audit",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Unified audit",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/dashboard",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Good morning, Ananya.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/workspace",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/tasks",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Every task. Every prerequisite.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Pipeline, not a black box.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects/p-arogya",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Arogya Queue",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects/p-repair",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Repair Circle",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Ideas with a decision trail.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas/new",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Give the team something clear to consider.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas/i-clinic",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Clinic waiting, without the uncertainty",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/voting",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Your vote, with your reasoning.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Meet in the context of the work.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings/m-repair",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Repair Circle — operations retrospective",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings/m-qa",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Mess Mate — QA readout",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/coworking/p-arogya",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Think on the same canvas.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/notifications",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Notifications",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/support",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Help without losing the thread.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/support/t-1042",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Ticket unavailable",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/profile",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Your contribution history.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/members/u-former",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Member profile & attribution",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/wallet",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Your earnings, with a visible review gate.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/settings",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Settings",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Operational control, with a record.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/applications",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Membership applications",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/members",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Member administration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/ideas",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Idea governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/projects",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Project pipeline & final gates",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/revenue",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Revenue & payout administration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/offboarding",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Offboarding & settlements",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/config",
+      "width": 768,
+      "overflow": 0,
+      "h1": "System configuration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/meetings",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Meeting administration & AI governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/audit",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Compliance & access logs",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Organization intelligence.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/members",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Member directory",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/performance",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Performance intelligence",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/support",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Support operations",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/ideas",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Ideation controls",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/disputes",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Resolution with a formal record.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/gateway",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Payment gateway controls",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/governance",
+      "width": 768,
+      "overflow": 0,
+      "h1": "User data governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/audit",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Unified audit",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/dashboard",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Good morning, Ananya.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/workspace",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/tasks",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Every task. Every prerequisite.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Pipeline, not a black box.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects/p-arogya",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Arogya Queue",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects/p-repair",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Repair Circle",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Ideas with a decision trail.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas/new",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Give the team something clear to consider.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas/i-clinic",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Clinic waiting, without the uncertainty",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/voting",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Your vote, with your reasoning.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Meet in the context of the work.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings/m-repair",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Repair Circle — operations retrospective",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings/m-qa",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Mess Mate — QA readout",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/coworking/p-arogya",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Think on the same canvas.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/notifications",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Notifications",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/support",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Help without losing the thread.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/support/t-1042",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Ticket unavailable",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/profile",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Your contribution history.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/members/u-former",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Member profile & attribution",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/wallet",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Your earnings, with a visible review gate.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/settings",
+      "width": 768,
+      "overflow": 0,
+      "h1": "Settings",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Operational control, with a record.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/applications",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Membership applications",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/members",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Member administration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/ideas",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Idea governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/projects",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Project pipeline & final gates",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/revenue",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Revenue & payout administration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/offboarding",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Offboarding & settlements",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/config",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "System configuration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/meetings",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Meeting administration & AI governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/audit",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Compliance & access logs",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Organization intelligence.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/members",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Member directory",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/performance",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Performance intelligence",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/support",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Support operations",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/ideas",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Ideation controls",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/disputes",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Resolution with a formal record.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/gateway",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Payment gateway controls",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/governance",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "User data governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/audit",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Unified audit",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/dashboard",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Good morning, Ananya.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/workspace",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/tasks",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Every task. Every prerequisite.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Pipeline, not a black box.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects/p-arogya",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Arogya Queue",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects/p-repair",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Repair Circle",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Ideas with a decision trail.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas/new",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Give the team something clear to consider.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas/i-clinic",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Clinic waiting, without the uncertainty",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/voting",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Your vote, with your reasoning.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Meet in the context of the work.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings/m-repair",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Repair Circle — operations retrospective",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings/m-qa",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Mess Mate — QA readout",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/coworking/p-arogya",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Think on the same canvas.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/notifications",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Notifications",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/support",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Help without losing the thread.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/support/t-1042",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Ticket unavailable",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/profile",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Your contribution history.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/members/u-former",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Member profile & attribution",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/wallet",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Your earnings, with a visible review gate.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/settings",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Settings",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Operational control, with a record.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/applications",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Membership applications",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/members",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Member administration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/ideas",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Idea governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/projects",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Project pipeline & final gates",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/revenue",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Revenue & payout administration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/offboarding",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Offboarding & settlements",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/config",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "System configuration",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/meetings",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Meeting administration & AI governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/admin/audit",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Compliance & access logs",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Organization intelligence.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/members",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Member directory",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/performance",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Performance intelligence",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/support",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Support operations",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/ideas",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Ideation controls",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/disputes",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Resolution with a formal record.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/gateway",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Payment gateway controls",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/governance",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "User data governance",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/superadmin/audit",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Unified audit",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/dashboard",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Good morning, Ananya.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/workspace",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/tasks",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Every task. Every prerequisite.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Pipeline, not a black box.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects/p-arogya",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Arogya Queue",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/projects/p-repair",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Repair Circle",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Ideas with a decision trail.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas/new",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Give the team something clear to consider.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/ideas/i-clinic",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Clinic waiting, without the uncertainty",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/voting",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Your vote, with your reasoning.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Meet in the context of the work.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings/m-repair",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Repair Circle — operations retrospective",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/meetings/m-qa",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Mess Mate — QA readout",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/coworking/p-arogya",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Think on the same canvas.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/notifications",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Notifications",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/support",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Help without losing the thread.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/support/t-1042",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Ticket unavailable",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/profile",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Your contribution history.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/members/u-former",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Member profile & attribution",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/wallet",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Your earnings, with a visible review gate.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "admin-route-matrix",
+      "route": "/app/settings",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Settings",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "mobile-navigation",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/app/dashboard",
+      "mode": "loading",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/app/dashboard",
+      "mode": "empty",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/app/dashboard",
+      "mode": "error",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/app/dashboard",
+      "mode": "normal",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/app/projects/p-arogya",
+      "mode": "loading",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/app/projects/p-arogya",
+      "mode": "empty",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/app/projects/p-arogya",
+      "mode": "error",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/app/projects/p-arogya",
+      "mode": "normal",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/superadmin/performance",
+      "mode": "loading",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/superadmin/performance",
+      "mode": "empty",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/superadmin/performance",
+      "mode": "error",
+      "pass": true
+    },
+    {
+      "group": "preview-states",
+      "route": "/superadmin/performance",
+      "mode": "normal",
+      "pass": true
+    },
+    {
+      "group": "role-researcher",
+      "route": "/app/dashboard",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Good morning, Mira.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-researcher",
+      "route": "/app/workspace",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-researcher",
+      "route": "/app/dashboard",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Good morning, Mira.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-researcher",
+      "route": "/app/workspace",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-researcher",
+      "route": "/app/dashboard",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Good morning, Mira.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-researcher",
+      "route": "/app/workspace",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-guard",
+      "role": "researcher",
+      "pass": true
+    },
+    {
+      "group": "role-designer",
+      "route": "/app/dashboard",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Good morning, Arjun.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-designer",
+      "route": "/app/workspace",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-designer",
+      "route": "/app/dashboard",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Good morning, Arjun.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-designer",
+      "route": "/app/workspace",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-designer",
+      "route": "/app/dashboard",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Good morning, Arjun.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-designer",
+      "route": "/app/workspace",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-guard",
+      "role": "designer",
+      "pass": true
+    },
+    {
+      "group": "role-developer",
+      "route": "/app/dashboard",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Good morning, Kabir.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-developer",
+      "route": "/app/workspace",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-developer",
+      "route": "/app/dashboard",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Good morning, Kabir.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-developer",
+      "route": "/app/workspace",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-developer",
+      "route": "/app/dashboard",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Good morning, Kabir.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-developer",
+      "route": "/app/workspace",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-guard",
+      "role": "developer",
+      "pass": true
+    },
+    {
+      "group": "role-producer",
+      "route": "/app/dashboard",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Good morning, Sana.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-producer",
+      "route": "/app/workspace",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-producer",
+      "route": "/app/dashboard",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Good morning, Sana.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-producer",
+      "route": "/app/workspace",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-producer",
+      "route": "/app/dashboard",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Good morning, Sana.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-producer",
+      "route": "/app/workspace",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-guard",
+      "role": "producer",
+      "pass": true
+    },
+    {
+      "group": "role-admin",
+      "route": "/app/dashboard",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Good morning, Ananya.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-admin",
+      "route": "/app/workspace",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-admin",
+      "route": "/app/dashboard",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Good morning, Ananya.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-admin",
+      "route": "/app/workspace",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-admin",
+      "route": "/app/dashboard",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Good morning, Ananya.Here’s what needs your attention.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-admin",
+      "route": "/app/workspace",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Your discipline, in shared context.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "role-guard",
+      "role": "admin",
+      "pass": true
+    },
+    {
+      "group": "public",
+      "route": "/login",
+      "width": 360,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/role-selection",
+      "width": 360,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/signup",
+      "width": 360,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/application-status?status=pending",
+      "width": 360,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/about",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Work is shared.Context stays visible.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/contact",
+      "width": 360,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/mentorship",
+      "width": 360,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/legal/terms",
+      "width": 360,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/legal/privacy",
+      "width": 360,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/login",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/role-selection",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/signup",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/application-status?status=pending",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/about",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "Work is shared.Context stays visible.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/contact",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/mentorship",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/legal/terms",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/legal/privacy",
+      "width": 1024,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/login",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/role-selection",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/signup",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/application-status?status=pending",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/about",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Work is shared.Context stays visible.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/contact",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/mentorship",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/legal/terms",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "public",
+      "route": "/legal/privacy",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "One team.Many disciplines.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "signing",
+      "width": 360,
+      "overflow": 0
+    },
+    {
+      "group": "signing",
+      "width": 768,
+      "overflow": 0
+    },
+    {
+      "group": "signing",
+      "width": 1024,
+      "overflow": 0
+    },
+    {
+      "group": "signing",
+      "width": 1440,
+      "overflow": 0
+    },
+    {
+      "group": "former",
+      "route": "/app/former-member",
+      "width": 360,
+      "overflow": 0,
+      "h1": "Access ends. Attribution does not.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "former",
+      "route": "/app/former-member",
+      "width": 1440,
+      "overflow": 0,
+      "h1": "Access ends. Attribution does not.",
+      "renderError": false,
+      "main": true
+    },
+    {
+      "group": "former-wallet",
+      "pass": true
+    }
+  ]
+}

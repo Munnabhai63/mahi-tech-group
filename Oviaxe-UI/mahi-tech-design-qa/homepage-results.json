@@ -1,0 +1,622 @@
+{
+  "responsive": [
+    {
+      "width": 360,
+      "status": 200,
+      "documentWidth": 360,
+      "bodyWidth": 360,
+      "viewportWidth": 360,
+      "title": "Turn ideas into working products, together.",
+      "brand": "MAHITECH GROUP",
+      "capabilities": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "missingTargets": [],
+      "emptyLinks": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "smallButtons": [],
+      "textOutOfBounds": [],
+      "unsupportedCopy": false,
+      "externalContactActions": 0,
+      "workspaceLinks": true
+    },
+    {
+      "width": 390,
+      "status": 200,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "title": "Turn ideas into working products, together.",
+      "brand": "MAHITECH GROUP",
+      "capabilities": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "missingTargets": [],
+      "emptyLinks": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "smallButtons": [],
+      "textOutOfBounds": [],
+      "unsupportedCopy": false,
+      "externalContactActions": 0,
+      "workspaceLinks": true
+    },
+    {
+      "width": 768,
+      "status": 200,
+      "documentWidth": 768,
+      "bodyWidth": 768,
+      "viewportWidth": 768,
+      "title": "Turn ideas into working products, together.",
+      "brand": "MAHITECH GROUP",
+      "capabilities": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "missingTargets": [],
+      "emptyLinks": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "smallButtons": [],
+      "textOutOfBounds": [],
+      "unsupportedCopy": false,
+      "externalContactActions": 0,
+      "workspaceLinks": true
+    },
+    {
+      "width": 1024,
+      "status": 200,
+      "documentWidth": 1024,
+      "bodyWidth": 1024,
+      "viewportWidth": 1024,
+      "title": "Turn ideas into working products, together.",
+      "brand": "MAHITECH GROUP",
+      "capabilities": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "missingTargets": [],
+      "emptyLinks": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "smallButtons": [],
+      "textOutOfBounds": [],
+      "unsupportedCopy": false,
+      "externalContactActions": 0,
+      "workspaceLinks": true
+    },
+    {
+      "width": 1440,
+      "status": 200,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "title": "Turn ideas into working products, together.",
+      "brand": "MAHITECH GROUP",
+      "capabilities": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "missingTargets": [],
+      "emptyLinks": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "smallButtons": [],
+      "textOutOfBounds": [],
+      "unsupportedCopy": false,
+      "externalContactActions": 0,
+      "workspaceLinks": true
+    },
+    {
+      "width": 1920,
+      "status": 200,
+      "documentWidth": 1920,
+      "bodyWidth": 1920,
+      "viewportWidth": 1920,
+      "title": "Turn ideas into working products, together.",
+      "brand": "MAHITECH GROUP",
+      "capabilities": 4,
+      "faqs": 5,
+      "imagesLoaded": true,
+      "missingTargets": [],
+      "emptyLinks": 0,
+      "visibleReveals": 28,
+      "totalReveals": 28,
+      "smallButtons": [],
+      "textOutOfBounds": [],
+      "unsupportedCopy": false,
+      "externalContactActions": 0,
+      "workspaceLinks": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "homepage 360px has no horizontal overflow",
+      "pass": true,
+      "details": {
+        "documentWidth": 360,
+        "bodyWidth": 360,
+        "viewportWidth": 360,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 360px content and assets",
+      "pass": true,
+      "details": {
+        "width": 360,
+        "status": 200,
+        "documentWidth": 360,
+        "bodyWidth": 360,
+        "viewportWidth": 360,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 360px reveals complete",
+      "pass": true,
+      "details": {
+        "visible": 28,
+        "total": 28
+      }
+    },
+    {
+      "name": "homepage 360px key text stays in bounds",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "homepage 360px buttons meet 24px minimum",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "homepage 390px has no horizontal overflow",
+      "pass": true,
+      "details": {
+        "documentWidth": 390,
+        "bodyWidth": 390,
+        "viewportWidth": 390,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 390px content and assets",
+      "pass": true,
+      "details": {
+        "width": 390,
+        "status": 200,
+        "documentWidth": 390,
+        "bodyWidth": 390,
+        "viewportWidth": 390,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 390px reveals complete",
+      "pass": true,
+      "details": {
+        "visible": 28,
+        "total": 28
+      }
+    },
+    {
+      "name": "homepage 390px key text stays in bounds",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "homepage 390px buttons meet 24px minimum",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "homepage 768px has no horizontal overflow",
+      "pass": true,
+      "details": {
+        "documentWidth": 768,
+        "bodyWidth": 768,
+        "viewportWidth": 768,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 768px content and assets",
+      "pass": true,
+      "details": {
+        "width": 768,
+        "status": 200,
+        "documentWidth": 768,
+        "bodyWidth": 768,
+        "viewportWidth": 768,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 768px reveals complete",
+      "pass": true,
+      "details": {
+        "visible": 28,
+        "total": 28
+      }
+    },
+    {
+      "name": "homepage 768px key text stays in bounds",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "homepage 768px buttons meet 24px minimum",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "homepage 1024px has no horizontal overflow",
+      "pass": true,
+      "details": {
+        "documentWidth": 1024,
+        "bodyWidth": 1024,
+        "viewportWidth": 1024,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 1024px content and assets",
+      "pass": true,
+      "details": {
+        "width": 1024,
+        "status": 200,
+        "documentWidth": 1024,
+        "bodyWidth": 1024,
+        "viewportWidth": 1024,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 1024px reveals complete",
+      "pass": true,
+      "details": {
+        "visible": 28,
+        "total": 28
+      }
+    },
+    {
+      "name": "homepage 1024px key text stays in bounds",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "homepage 1024px buttons meet 24px minimum",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "homepage 1440px has no horizontal overflow",
+      "pass": true,
+      "details": {
+        "documentWidth": 1440,
+        "bodyWidth": 1440,
+        "viewportWidth": 1440,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 1440px content and assets",
+      "pass": true,
+      "details": {
+        "width": 1440,
+        "status": 200,
+        "documentWidth": 1440,
+        "bodyWidth": 1440,
+        "viewportWidth": 1440,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 1440px reveals complete",
+      "pass": true,
+      "details": {
+        "visible": 28,
+        "total": 28
+      }
+    },
+    {
+      "name": "homepage 1440px key text stays in bounds",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "homepage 1440px buttons meet 24px minimum",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "homepage 1920px has no horizontal overflow",
+      "pass": true,
+      "details": {
+        "documentWidth": 1920,
+        "bodyWidth": 1920,
+        "viewportWidth": 1920,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 1920px content and assets",
+      "pass": true,
+      "details": {
+        "width": 1920,
+        "status": 200,
+        "documentWidth": 1920,
+        "bodyWidth": 1920,
+        "viewportWidth": 1920,
+        "title": "Turn ideas into working products, together.",
+        "brand": "MAHITECH GROUP",
+        "capabilities": 4,
+        "faqs": 5,
+        "imagesLoaded": true,
+        "missingTargets": [],
+        "emptyLinks": 0,
+        "visibleReveals": 28,
+        "totalReveals": 28,
+        "smallButtons": [],
+        "textOutOfBounds": [],
+        "unsupportedCopy": false,
+        "externalContactActions": 0,
+        "workspaceLinks": true
+      }
+    },
+    {
+      "name": "homepage 1920px reveals complete",
+      "pass": true,
+      "details": {
+        "visible": 28,
+        "total": 28
+      }
+    },
+    {
+      "name": "homepage 1920px key text stays in bounds",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "homepage 1920px buttons meet 24px minimum",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "desktop Platform navigation updates hash",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "capability dialog opens with evidenced workflow",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "capability dialog CTA enters workspace",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "capability dialog closes and restores focus",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "footer capability opens matching dialog",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "FAQ behaves as single-open accordion",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "mobile menu opens with correct state and focus",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "mobile Escape closes menu and restores focus",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "mobile navigation link closes menu and reaches section",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "reduced motion reveals all content without scrolling",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "reduced motion disables hero parallax",
+      "pass": true,
+      "details": null
+    },
+    {
+      "name": "no browser runtime errors",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "no external runtime requests",
+      "pass": true,
+      "details": []
+    },
+    {
+      "name": "all Axe scans are clean",
+      "pass": true,
+      "details": []
+    }
+  ],
+  "accessibility": [
+    {
+      "name": "homepage desktop capability dialog",
+      "violations": []
+    },
+    {
+      "name": "homepage desktop page",
+      "violations": []
+    },
+    {
+      "name": "homepage mobile menu",
+      "violations": []
+    },
+    {
+      "name": "homepage mobile page",
+      "violations": []
+    },
+    {
+      "name": "homepage mobile capability dialog",
+      "violations": []
+    }
+  ],
+  "errors": [],
+  "externalRequests": []
+}

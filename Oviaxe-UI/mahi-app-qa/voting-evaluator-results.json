@@ -1,0 +1,53 @@
+{
+  "passed": 10,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Before the deadline, evaluation makes no decision or extension",
+      "status": "passed"
+    },
+    {
+      "name": "Below-quorum first evaluation extends exactly 24 hours once",
+      "status": "passed",
+      "participation": 50,
+      "newDeadline": "2026-01-02T00:00:00.000Z"
+    },
+    {
+      "name": "Extended window cannot extend again and resolves at the new deadline",
+      "status": "passed",
+      "decision": "REVISE",
+      "green": 66.67
+    },
+    {
+      "name": "Exactly 70% participation meets quorum without extension",
+      "status": "passed",
+      "participation": 70
+    },
+    {
+      "name": "Exactly 70% green approves and creates the nine-task project fan-out",
+      "status": "passed",
+      "green": 70,
+      "tasks": 9
+    },
+    {
+      "name": "60% green produces REVISE without project fan-out",
+      "status": "passed"
+    },
+    {
+      "name": "40% green produces REJECTED without project fan-out",
+      "status": "passed"
+    },
+    {
+      "name": "An already-extended empty vote set rejects rather than extending again",
+      "status": "passed"
+    },
+    {
+      "name": "Terminal ideas are idempotent on later evaluations",
+      "status": "passed"
+    },
+    {
+      "name": "Missing ideas return an explicit not-found result",
+      "status": "passed"
+    }
+  ]
+}

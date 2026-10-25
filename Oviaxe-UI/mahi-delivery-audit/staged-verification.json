@@ -1,0 +1,15 @@
+{
+  "stagedCount": 35,
+  "addedCount": 34,
+  "modified": [
+    "M\tpublic/index.html"
+  ],
+  "excludedAssetStaged": false,
+  "excludedAssetRetained": true,
+  "backendStaged": 0,
+  "packageStaged": 0,
+  "unstagedTrackedChanges": 0,
+  "stagedWorkingBlobMismatches": 0,
+  "secretFindings": [],
+  "homepageStagedContentVerified": true
+}

@@ -1,0 +1,282 @@
+{
+  "responsive": [
+    {
+      "width": 360,
+      "httpStatus": 200,
+      "imagesLoaded": true,
+      "viewportWidth": 360,
+      "documentWidth": 360,
+      "bodyWidth": 360,
+      "courseCards": 4,
+      "faqItems": 5,
+      "emptyLinks": 0,
+      "missingHashTargets": [],
+      "visibleRevealCount": 18,
+      "totalRevealCount": 18,
+      "smallPrimaryButtons": [],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "httpStatus": 200,
+      "imagesLoaded": true,
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "courseCards": 4,
+      "faqItems": 5,
+      "emptyLinks": 0,
+      "missingHashTargets": [],
+      "visibleRevealCount": 18,
+      "totalRevealCount": 18,
+      "smallPrimaryButtons": [],
+      "errors": []
+    },
+    {
+      "width": 768,
+      "httpStatus": 200,
+      "imagesLoaded": true,
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "bodyWidth": 768,
+      "courseCards": 4,
+      "faqItems": 5,
+      "emptyLinks": 0,
+      "missingHashTargets": [],
+      "visibleRevealCount": 18,
+      "totalRevealCount": 18,
+      "smallPrimaryButtons": [],
+      "errors": []
+    },
+    {
+      "width": 1024,
+      "httpStatus": 200,
+      "imagesLoaded": true,
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "bodyWidth": 1024,
+      "courseCards": 4,
+      "faqItems": 5,
+      "emptyLinks": 0,
+      "missingHashTargets": [],
+      "visibleRevealCount": 18,
+      "totalRevealCount": 18,
+      "smallPrimaryButtons": [],
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "httpStatus": 200,
+      "imagesLoaded": true,
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "courseCards": 4,
+      "faqItems": 5,
+      "emptyLinks": 0,
+      "missingHashTargets": [],
+      "visibleRevealCount": 18,
+      "totalRevealCount": 18,
+      "smallPrimaryButtons": [],
+      "errors": []
+    },
+    {
+      "width": 1920,
+      "httpStatus": 200,
+      "imagesLoaded": true,
+      "viewportWidth": 1920,
+      "documentWidth": 1920,
+      "bodyWidth": 1920,
+      "courseCards": 4,
+      "faqItems": 5,
+      "emptyLinks": 0,
+      "missingHashTargets": [],
+      "visibleRevealCount": 18,
+      "totalRevealCount": 18,
+      "smallPrimaryButtons": [],
+      "errors": []
+    }
+  ],
+  "interactions": {
+    "mobileMenuOpened": "true",
+    "mobileMenuClosed": "false",
+    "dialogOpened": true,
+    "dialogTitle": "Research & Product Strategy",
+    "dialogModules": 4,
+    "dialogClosed": true,
+    "focusAfterDialog": "product-research",
+    "secondFaqExpanded": "true",
+    "firstFaqCollapsed": "false",
+    "footerDialogTitle": "UI/UX Design"
+  },
+  "accessibility": [
+    {
+      "width": 390,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".audience-strip__label"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.9pt (10.5px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".course-card--blue > .course-card__top > .course-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #b2bdcc, background color: #ffffff, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".course-card--violet > .course-card__top > .course-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #b2bdcc, background color: #ffffff, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".course-card--cyan > .course-card__top > .course-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #b2bdcc, background color: #ffffff, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".course-card--amber > .course-card__top > .course-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #b2bdcc, background color: #ffffff, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".approach-card--practice > .approach-card__top > .approach-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".approach-card--guidance > .approach-card__top > .approach-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.36 (foreground color: #98a2b3, background color: #eff6ff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".approach-card--connected > .approach-card__top > .approach-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".footer__support-note"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".footer__bottom > p:nth-child(1)"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "#current-year"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".footer__bottom > p:nth-child(2)"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".audience-strip__label"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.9pt (10.5px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".course-card--blue > .course-card__top > .course-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #b2bdcc, background color: #ffffff, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".course-card--violet > .course-card__top > .course-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #b2bdcc, background color: #ffffff, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".course-card--cyan > .course-card__top > .course-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #b2bdcc, background color: #ffffff, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".course-card--amber > .course-card__top > .course-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.9 (foreground color: #b2bdcc, background color: #ffffff, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".approach-card--practice > .approach-card__top > .approach-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".approach-card--guidance > .approach-card__top > .approach-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.36 (foreground color: #98a2b3, background color: #eff6ff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".approach-card--connected > .approach-card__top > .approach-card__number"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".footer__support-note"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".footer__bottom > p:nth-child(1)"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "#current-year"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".footer__bottom > p:nth-child(2)"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.57 (foreground color: #98a2b3, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

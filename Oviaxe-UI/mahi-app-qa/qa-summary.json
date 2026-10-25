@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-25",
+  "application": "public/app.html",
+  "homepage": "public/index.html",
+  "previewPort": 4000,
+  "javascriptSyntax": {
+    "passed": true,
+    "scope": "public/js/pages/*.js, public/js/data/*.js, public/js/app/*.js, and public/js/app/views/*.js"
+  },
+  "homepageDesignTransfer": {
+    "passed": 44,
+    "total": 44,
+    "widths": [
+      360,
+      390,
+      768,
+      1024,
+      1440,
+      1920
+    ],
+    "capabilities": 4,
+    "faqs": 5,
+    "axeClean": 5,
+    "axeTotal": 5,
+    "runtimeErrors": 0,
+    "externalRequests": 0
+  },
+  "routeSmoke": {
+    "passed": 41,
+    "total": 41,
+    "errors": 0,
+    "overflow": 0
+  },
+  "workflows": {
+    "passed": 9,
+    "total": 9,
+    "apiCalls": 0
+  },
+  "boundaries": {
+    "passed": 5,
+    "total": 5,
+    "apiCalls": 0
+  },
+  "evaluator": {
+    "passed": 10,
+    "total": 10
+  },
+  "responsive": {
+    "checks": 242,
+    "overflow": 0,
+    "renderErrors": 0,
+    "failed": 0,
+    "browserErrors": 0,
+    "widths": [
+      360,
+      390,
+      768,
+      1024,
+      1440
+    ]
+  },
+  "keyboard": {
+    "passed": 9,
+    "total": 9
+  },
+  "accessibility": {
+    "clean": 42,
+    "total": 42,
+    "violations": 0,
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa"
+    ],
+    "note": "Automated scans are not a full accessibility audit."
+  },
+  "report": "docs/application-completion-report.md",
+  "artifacts": "/home/user/mahi-app-qa",
+  "homepageArtifacts": "/home/user/mahi-tech-design-qa",
+  "historicalVisualReferenceArtifacts": "/home/user/mahi-homepage-final"
+}

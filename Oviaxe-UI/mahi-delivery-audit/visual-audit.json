@@ -1,0 +1,134 @@
+[
+  {
+    "width": 1440,
+    "homepage": {
+      "brands": [
+        "MAHITECH GROUP",
+        "MAHITECH GROUP"
+      ],
+      "sections": [
+        "home",
+        "audience-strip",
+        "platform",
+        "collaboration",
+        "about",
+        "faq",
+        "final-cta"
+      ],
+      "capabilities": [
+        "Ideas & Voting",
+        "Project Delivery",
+        "Meetings & Co-working",
+        "Revenue & Governance"
+      ],
+      "trackColors": [
+        "rgb(35, 63, 229)",
+        "rgb(200, 244, 94)",
+        "rgb(248, 244, 234)",
+        "rgb(36, 36, 31)"
+      ],
+      "bodyFont": "Manrope, Arial, sans-serif",
+      "bodyColor": "rgb(17, 17, 15)",
+      "unsupportedCopy": false,
+      "overflow": 0,
+      "tokens": {
+        "--ink": "#11110f",
+        "--paper": "#f8f4ea",
+        "--ivory": "#f3efe5",
+        "--cobalt": "#233fe5",
+        "--lime": "#c8f45e",
+        "--font-body": "'Manrope', Arial, sans-serif",
+        "--font-display": "'Bricolage Grotesque', 'Arial Black', sans-serif",
+        "--font-serif": "'Instrument Serif', Georgia, serif"
+      }
+    },
+    "application": {
+      "title": "Admin — MAHI TECH GROUP",
+      "h1": "Operational control, with a record.",
+      "brand": "M/MAHI TECH GROUPCollaborative workspace",
+      "bodyFont": "Manrope, Arial, sans-serif",
+      "bodyColor": "rgb(24, 27, 23)",
+      "shell": true,
+      "sidebar": true,
+      "cards": 3,
+      "unsupportedCopy": false,
+      "overflow": 0,
+      "tokens": {
+        "--ink": "#181b17",
+        "--paper": "",
+        "--ivory": "",
+        "--cobalt": "#2d47dc",
+        "--lime": "#d2f36b",
+        "--font-body": "'Manrope',Arial,sans-serif",
+        "--font-display": "'Bricolage Grotesque',sans-serif",
+        "--font-serif": "'Instrument Serif',Georgia,serif"
+      }
+    }
+  },
+  {
+    "width": 390,
+    "homepage": {
+      "brands": [
+        "MAHITECH GROUP",
+        "MAHITECH GROUP"
+      ],
+      "sections": [
+        "home",
+        "audience-strip",
+        "platform",
+        "collaboration",
+        "about",
+        "faq",
+        "final-cta"
+      ],
+      "capabilities": [
+        "Ideas & Voting",
+        "Project Delivery",
+        "Meetings & Co-working",
+        "Revenue & Governance"
+      ],
+      "trackColors": [
+        "rgb(35, 63, 229)",
+        "rgb(200, 244, 94)",
+        "rgb(248, 244, 234)",
+        "rgb(36, 36, 31)"
+      ],
+      "bodyFont": "Manrope, Arial, sans-serif",
+      "bodyColor": "rgb(17, 17, 15)",
+      "unsupportedCopy": false,
+      "overflow": 0,
+      "tokens": {
+        "--ink": "#11110f",
+        "--paper": "#f8f4ea",
+        "--ivory": "#f3efe5",
+        "--cobalt": "#233fe5",
+        "--lime": "#c8f45e",
+        "--font-body": "'Manrope', Arial, sans-serif",
+        "--font-display": "'Bricolage Grotesque', 'Arial Black', sans-serif",
+        "--font-serif": "'Instrument Serif', Georgia, serif"
+      }
+    },
+    "application": {
+      "title": "Admin — MAHI TECH GROUP",
+      "h1": "Operational control, with a record.",
+      "brand": "M/MAHI TECH GROUPCollaborative workspace",
+      "bodyFont": "Manrope, Arial, sans-serif",
+      "bodyColor": "rgb(24, 27, 23)",
+      "shell": true,
+      "sidebar": true,
+      "cards": 3,
+      "unsupportedCopy": false,
+      "overflow": 0,
+      "tokens": {
+        "--ink": "#181b17",
+        "--paper": "",
+        "--ivory": "",
+        "--cobalt": "#2d47dc",
+        "--lime": "#d2f36b",
+        "--font-body": "'Manrope',Arial,sans-serif",
+        "--font-display": "'Bricolage Grotesque',sans-serif",
+        "--font-serif": "'Instrument Serif',Georgia,serif"
+      }
+    }
+  }
+]

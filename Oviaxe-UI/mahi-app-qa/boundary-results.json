@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Member role guards and Admin-only meeting controls",
+    "status": "passed",
+    "errors": [],
+    "apiCalls": []
+  },
+  {
+    "name": "Earnings ledgers and confirmed notes obey visibility boundaries",
+    "status": "passed",
+    "errors": [],
+    "apiCalls": []
+  },
+  {
+    "name": "Former-member routes stay read-only and frozen",
+    "status": "passed",
+    "errors": [],
+    "apiCalls": []
+  },
+  {
+    "name": "Offboarding preserves history, settles wallet, and never restores former access",
+    "status": "passed",
+    "errors": [],
+    "apiCalls": []
+  },
+  {
+    "name": "New dispute waiver creates a document-specific request and signs successfully",
+    "status": "passed",
+    "errors": [],
+    "apiCalls": []
+  }
+]
