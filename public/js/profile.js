@@ -76,6 +76,7 @@
     setupTabs();
     switchTab(activeTab);
     setupUpiIdField(currentProfileData);
+    setupGithubField(currentProfileData);
   }
 
   /**
@@ -111,6 +112,50 @@
       } else {
         feedback.style.color = '#f87171';
         feedback.textContent = `✗ ${res.data?.error || 'Save failed'}`;
+      }
+    });
+  }
+
+  /**
+   * GitHub username (Settings tab) — self-serve: save + auto-provision org access.
+   */
+  function setupGithubField(profileData) {
+    const ghInput = document.getElementById('ghUserInput');
+    const ghBtn = document.getElementById('saveGhBtn');
+    const ghFeedback = document.getElementById('ghSaveFeedback');
+    if (!ghInput || !ghBtn) return;
+
+    const me = JSON.parse(localStorage.getItem('user') || '{}');
+    if (profileData?.user?.id !== me.id) return;
+
+    if (profileData?.user?.github_username) ghInput.value = profileData.user.github_username;
+
+    ghBtn.addEventListener('click', async () => {
+      const value = ghInput.value.trim();
+      ghFeedback.style.display = 'block';
+      ghFeedback.style.color = '#94a3b8';
+      ghFeedback.textContent = 'Saving & requesting access...';
+
+      const res = await apiFetch('/api/users/me/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ github_username: value })
+      });
+
+      if (res.ok) {
+        const gh = res.data.github;
+        if (gh && gh.provisioned) {
+          ghFeedback.style.color = '#10b981';
+          ghFeedback.textContent = `✓ Saved! GitHub org invite sent — check your GitHub notifications/email for @${gh.org}${gh.team ? ` (team: ${gh.team})` : ''}.`;
+        } else if (gh) {
+          ghFeedback.style.color = '#fbbf24';
+          ghFeedback.textContent = `Saved, but access needs Admin help: ${gh.message || gh.reason}`;
+        } else {
+          ghFeedback.style.color = '#10b981';
+          ghFeedback.textContent = '✓ Username saved.';
+        }
+      } else {
+        ghFeedback.style.color = '#f87171';
+        ghFeedback.textContent = `✗ ${res.data?.error || 'Save failed'}`;
       }
     });
   }

@@ -9,6 +9,7 @@ import { logAccess } from '../services/auditService.js';
 import { loginLimiter, signupLimiter } from '../middleware/rateLimiter.js';
 import { issueWsTicket } from '../services/wsService.js';
 import { getActiveDocuments, signDocument } from '../services/legalService.js';
+import { emailService } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -108,10 +109,34 @@ router.post('/signup', signupLimiter, async (req, res) => {
     }
   }
 
+  // EMAIL VERIFICATION: link valid 24h; the Admin's approval gate requires it
+  const verifyToken = crypto.randomBytes(32).toString('hex');
+  const signupVerifyExpiresAt = new Date(Date.now() + VERIFY_TTL_HOURS * 60 * 60 * 1000).toISOString();
+  execute(`
+    INSERT INTO email_verifications (id, user_id, token, expires_at, created_at)
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+  `, [crypto.randomUUID(), userId, verifyToken, signupVerifyExpiresAt]);
+
+  let devVerifyUrl;
+  try {
+    const verifyUrl = `${appBaseUrl(req)}/api/auth/verify-email?token=${verifyToken}`;
+    const mail = await emailService.sendEmail({
+      to: normalizedEmail,
+      subject: 'Verify your email — Mahi Tech Group application',
+      text: `Hello ${name.trim()},\n\nYour application is in. Verify your email so the Administrator can approve it (link valid ${VERIFY_TTL_HOURS} hours):\n${verifyUrl}\n\n— Mahi Tech Group`,
+      userId
+    });
+    if (process.env.NODE_ENV !== 'production' && !mail.delivered) devVerifyUrl = verifyUrl;
+  } catch (e) {
+    console.error('[SIGNUP VERIFY EMAIL] dispatch failed:', e.message);
+  }
+
   return res.status(201).json({
     message: 'Application submitted successfully. Your account is pending Administrator approval.',
     status: 'pending',
     legal_documents_signed: legalSigned,
+    email_verification_sent: true,
+    ...(devVerifyUrl ? { dev_verify_url: devVerifyUrl } : {}),
     user: {
       id: userId,
       name: name.trim(),
@@ -260,6 +285,154 @@ router.post('/refresh', authenticate, (req, res) => {
 router.post('/ws-ticket', authenticate, (req, res) => {
   const { ticket, expiresInMs } = issueWsTicket(req.user.id, req.session.id);
   return res.status(201).json({ ticket, expires_in_ms: expiresInMs });
+});
+
+// ===================================================================
+// AUTH UX: self-serve password reset + email verification
+// ===================================================================
+
+const RESET_TTL_MINUTES = 30;
+const VERIFY_TTL_HOURS = 24;
+
+function sha256(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
+
+function appBaseUrl(req) {
+  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.get('host') || `127.0.0.1:${config.PORT}`;
+  return `${proto}://${host}`;
+}
+
+// 5. POST /api/auth/forgot-password (Public, rate-limited)
+// Always responds 200 — response never reveals whether the account exists.
+router.post('/forgot-password', loginLimiter, async (req, res) => {
+  const { email } = req.body || {};
+  const generic = {
+    message: 'If that email belongs to a registered member, a password reset link has been sent.'
+  };
+  if (!email) return res.status(200).json(generic);
+
+  const user = queryOne('SELECT id, name, email, status FROM users WHERE email = ?', [email.toLowerCase().trim()]);
+  if (!user || user.status === 'inactive' || user.status === 'suspended') {
+    return res.status(200).json(generic);
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + RESET_TTL_MINUTES * 60 * 1000).toISOString();
+  execute(`
+    INSERT INTO password_resets (id, user_id, token_hash, ip_address, expires_at, created_at)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+  `, [crypto.randomUUID(), user.id, sha256(token), req.ip || req.socket.remoteAddress, expiresAt]);
+
+  const resetUrl = `${appBaseUrl(req)}/reset-password.html?token=${token}`;
+  try {
+    const mail = await emailService.sendEmail({
+      to: user.email,
+      subject: 'Reset your Mahi Tech Group password',
+      text: `Hello ${user.name},\n\nUse this link within ${RESET_TTL_MINUTES} minutes to set a new password:\n${resetUrl}\n\nIf you did not request this, ignore this email — your current password keeps working.\n\n— Mahi Tech Group`,
+      userId: user.id
+    });
+    // Dev convenience (never in production): SMTP is usually unconfigured locally,
+    // so surface the link directly instead of a dead end.
+    const devResetUrl = (process.env.NODE_ENV !== 'production' && !mail.delivered) ? resetUrl : undefined;
+    return res.status(200).json({ ...generic, ...(devResetUrl ? { dev_reset_url: devResetUrl } : {}) });
+  } catch (err) {
+    console.error('[FORGOT PASSWORD] email dispatch failed:', err.message);
+    return res.status(200).json(generic);
+  }
+});
+
+// 6. POST /api/auth/reset-password (Public)
+router.post('/reset-password', loginLimiter, async (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token || !password) {
+    return res.status(400).json({ error: 'Token and new password are required' });
+  }
+  if (String(password).length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+  }
+
+  const row = queryOne(`
+    SELECT pr.id, pr.user_id, pr.expires_at, pr.used_at, u.email, u.name
+    FROM password_resets pr JOIN users u ON pr.user_id = u.id
+    WHERE pr.token_hash = ?
+    ORDER BY pr.created_at DESC LIMIT 1
+  `, [sha256(token)]);
+
+  if (!row || row.used_at || new Date(row.expires_at) <= new Date()) {
+    return res.status(400).json({ error: 'Reset link is invalid or has expired. Request a new one.' });
+  }
+
+  const passwordHash = await bcrypt.hash(password, config.BCRYPT_SALT_ROUNDS);
+  execute('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [passwordHash, row.user_id]);
+  execute('UPDATE password_resets SET used_at = CURRENT_TIMESTAMP WHERE id = ?', [row.id]);
+  // Security: kill every existing session of this account
+  execute('UPDATE sessions SET is_revoked = 1 WHERE user_id = ?', [row.user_id]);
+
+  logAccess({ userId: row.user_id, action: 'password_reset_completed', resource: '/api/auth/reset-password', ipAddress: req.ip });
+  try {
+    await emailService.sendEmail({
+      to: row.email,
+      subject: 'Your Mahi Tech Group password was changed',
+      text: `Hello ${row.name},\n\nYour password was just changed. All active sessions were signed out.\nIf this wasn't you, contact the Administrator immediately.\n\n— Mahi Tech Group`,
+      userId: row.user_id
+    });
+  } catch (e) { /* best-effort notification */ }
+
+  return res.status(200).json({ message: 'Password updated successfully. Sign in with your new password.' });
+});
+
+// 7. GET /api/auth/verify-email?token=... (Public — email link target)
+router.get('/verify-email', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ error: 'Verification token is required' });
+
+  const row = queryOne(`
+    SELECT ev.id, ev.expires_at, ev.verified_at, u.email
+    FROM email_verifications ev JOIN users u ON ev.user_id = u.id
+    WHERE ev.token = ? ORDER BY ev.created_at DESC LIMIT 1
+  `, [String(token)]);
+
+  if (!row) return res.status(400).json({ error: 'Invalid verification link' });
+  if (row.verified_at) return res.status(200).json({ message: 'Email already verified. You can sign in once approved.', email: row.email });
+  if (new Date(row.expires_at) <= new Date()) {
+    return res.status(400).json({ error: 'Verification link has expired. Apply again or contact the Administrator.' });
+  }
+
+  execute('UPDATE email_verifications SET verified_at = CURRENT_TIMESTAMP WHERE id = ?', [row.id]);
+  execute("UPDATE users SET email_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE email = ?", [row.email]);
+  logAccess({ action: 'email_verified', resource: `/api/auth/verify-email (${row.email})`, ipAddress: req.ip });
+  return res.status(200).json({ message: 'Email verified successfully. Your application can now be approved.', email: row.email });
+});
+
+// 8. POST /api/auth/resend-verification (Public, rate-limited)
+router.post('/resend-verification', loginLimiter, async (req, res) => {
+  const { email } = req.body || {};
+  const generic = { message: 'If that email has a pending application, a new verification link has been sent.' };
+  const user = queryOne("SELECT id, name, email, email_verified FROM users WHERE email = ?", [String(email || '').toLowerCase().trim()]);
+  if (!user || user.email_verified) return res.status(200).json(generic);
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const verifyExpiresAt = new Date(Date.now() + VERIFY_TTL_HOURS * 60 * 60 * 1000).toISOString();
+  execute(`
+    INSERT INTO email_verifications (id, user_id, token, expires_at, created_at)
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+  `, [crypto.randomUUID(), user.id, token, verifyExpiresAt]);
+
+  const verifyUrl = `${appBaseUrl(req)}/api/auth/verify-email?token=${token}`;
+  try {
+    const mail = await emailService.sendEmail({
+      to: user.email,
+      subject: 'Verify your email — Mahi Tech Group',
+      text: `Hello ${user.name},\n\nVerify your email to complete your membership application (link valid ${VERIFY_TTL_HOURS} hours):\n${verifyUrl}\n\n— Mahi Tech Group`,
+      userId: user.id
+    });
+    const devUrl = (process.env.NODE_ENV !== 'production' && !mail.delivered) ? verifyUrl : undefined;
+    return res.status(200).json({ ...generic, ...(devUrl ? { dev_verify_url: devUrl } : {}) });
+  } catch (err) {
+    return res.status(200).json(generic);
+  }
 });
 
 export default router;

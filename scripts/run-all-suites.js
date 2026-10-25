@@ -36,6 +36,7 @@ const SUITES = [
   { file: 'test-security-enhancements.js', liveServer: false },   // Rate limiter, headers, email
   { file: 'test-youpi-integration.js', liveServer: false },       // YouPI webhook + manual UPI payouts
   { file: 'test-legal-gate.js', liveServer: false },              // Legal onboarding gate + e-signatures
+  { file: 'test-auth-ux.js', liveServer: false },             // Auth UX: reset, verification, self-serve
   { file: 'test-github-lifecycle.js', liveServer: false },        // GitHub access lifecycle (mock API stub)
   { file: 'test-github-webhook.js', liveServer: false },          // GitHub PR↔task webhook pipeline
   // ---- live-server suites (real server on port 4000, booted fresh per suite) ----

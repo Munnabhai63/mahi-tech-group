@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { authenticate } from '../middleware/auth.js';
 import { logAccess } from '../services/auditService.js';
 import { getUserQuotaStatus } from '../services/quotaService.js';
+import { provisionMemberAccess } from '../services/githubService.js';
 import { getUserWallet, getUserEarnings } from '../services/revenueService.js';
 import {
   createTicket,
@@ -84,10 +85,10 @@ router.patch('/me/password', authenticate, async (req, res) => {
   return res.status(200).json({ message: 'Password updated successfully' });
 });
 
-// 8b. PATCH /api/users/me/profile (Authenticated - Edit own photo/bio/UPI)
-router.patch('/me/profile', authenticate, (req, res) => {
+// 8b. PATCH /api/users/me/profile (Authenticated - Edit own photo/bio/UPI/GitHub)
+router.patch('/me/profile', authenticate, async (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
-  const { profile_photo_url, bio, upi_id } = req.body || {};
+  const { profile_photo_url, bio, upi_id, github_username } = req.body || {};
 
   const currentUser = queryOne('SELECT status FROM users WHERE id = ?', [req.user.id]);
   if (!currentUser) {
@@ -108,8 +109,32 @@ router.patch('/me/profile', authenticate, (req, res) => {
     }
   }
 
-  if (profile_photo_url === undefined && bio === undefined && upi_id === undefined) {
-    return res.status(400).json({ error: "At least one of 'profile_photo_url', 'bio' or 'upi_id' must be provided" });
+  let ghChanged = false;
+  let ghProvision = null;
+  if (github_username !== undefined) {
+    const gh = String(github_username).trim();
+    if (gh.length === 0) {
+      execute('UPDATE users SET github_username = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [req.user.id]);
+      ghChanged = true;
+    } else if (/^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/.test(gh)) {
+      execute('UPDATE users SET github_username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [gh, req.user.id]);
+      ghChanged = true;
+      // Self-serve provisioning: attempt best-effort org invite + role team
+      try {
+        ghProvision = await provisionMemberAccess({
+          userId: req.user.id, githubUsername: gh, role: req.user.role,
+          adminId: req.user.id, ipAddress
+        });
+      } catch (e) {
+        ghProvision = { provisioned: false, reason: 'error', message: e.message };
+      }
+    } else {
+      return res.status(400).json({ error: 'Invalid GitHub username format. Expected 1-39 chars: letters, digits, hyphens' });
+    }
+  }
+
+  if (profile_photo_url === undefined && bio === undefined && upi_id === undefined && !ghChanged) {
+    return res.status(400).json({ error: "At least one of 'profile_photo_url', 'bio', 'upi_id' or 'github_username' must be provided" });
   }
 
   execute(
@@ -125,18 +150,19 @@ router.patch('/me/profile', authenticate, (req, res) => {
   logAccess({
     userId: req.user.id,
     action: 'profile_updated',
-    resource: `/api/users/me/profile${upi_id !== undefined ? ' (upi_id changed)' : ''}`,
+    resource: `/api/users/me/profile${upi_id !== undefined ? ' (upi_id changed)' : ''}${ghChanged ? ' (github_username changed)' : ''}`,
     ipAddress
   });
 
   const updatedUser = queryOne(
-    'SELECT id, name, email, role, sub_role, status, profile_photo_url, bio, upi_id, rating_avg, updated_at FROM users WHERE id = ?',
+    'SELECT id, name, email, role, sub_role, status, profile_photo_url, bio, upi_id, github_username, rating_avg, updated_at FROM users WHERE id = ?',
     [req.user.id]
   );
 
   return res.status(200).json({
     message: 'Profile updated successfully',
-    user: updatedUser
+    user: updatedUser,
+    ...(ghProvision ? { github: ghProvision } : {})
   });
 });
 

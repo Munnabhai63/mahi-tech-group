@@ -67,6 +67,14 @@ export function runMigration() {
     console.log('>>> Added github_repo column to projects table.');
   }
 
+  // Auth UX: email verification flag (seeded/demo users are pre-verified)
+  const hasEmailVerified = userColumns.some(c => c.name === 'email_verified');
+  if (!hasEmailVerified) {
+    execRaw('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0;');
+    execRaw("UPDATE users SET email_verified = 1 WHERE email LIKE '%@mahitechgroup.com';");
+    console.log('>>> Added email_verified column to users table (seeded users pre-verified).');
+  }
+
   // Step 14 Layer 2: target_id and created_at on access_log table
   const accessLogCols = queryAll('PRAGMA table_info(access_log);');
   const hasTargetId = accessLogCols.some(c => c.name === 'target_id');

@@ -21,6 +21,7 @@ import { runSeed } from '../src/db/seed.js';
 import { queryOne, queryAll, execute } from '../src/db/database.js';
 import { initWebSocketServer } from '../src/services/wsService.js';
 import { withLegalAcceptance } from './lib/legal-helper.js';
+import { verifyEmailFor } from './lib/legal-helper.js';
 
 const TEST_PORT = 4992;
 const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
@@ -93,6 +94,7 @@ async function runStep01AmendmentTests() {
 
     const signupRes = await req('POST', '/api/auth/signup', null, await withLegalAcceptance(req, signupPayload));
     console.log(`   -> HTTP Status: ${signupRes.status}`);
+    await verifyEmailFor(req, signupRes.data.user.id); // email gate: verify before approval
     console.log(`   -> Response message: "${signupRes.data.message}"`);
 
     if (signupRes.status !== 201) {

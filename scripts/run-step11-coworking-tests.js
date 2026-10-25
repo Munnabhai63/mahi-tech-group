@@ -22,6 +22,7 @@ import { createApp } from '../src/app.js';
 import { initWebSocketServer } from '../src/services/wsService.js';
 import { withLegalAcceptance } from './lib/legal-helper.js';
 import { queryOne, queryAll, execute } from '../src/db/database.js';
+import { verifyEmailFor } from './lib/legal-helper.js';
 import { cleanupTestData, CANONICAL_TEAM } from './cleanup-test-data.js';
 
 const PORT = 4994;
@@ -214,6 +215,7 @@ async function runStep11Tests() {
       password: 'OutsiderPass123!',
       desired_role: 'developer'
     }));
+    await verifyEmailFor(req, outsiderSignup.data.user.id);
     await req('PATCH', `/api/admin/applications/${outsiderSignup.data.user.id}/decide`, adminToken, {
       decision: 'approve',
       assigned_role: 'developer'
@@ -524,6 +526,7 @@ async function runStep11Tests() {
       password: 'TempPassword123!',
       desired_role: 'developer'
     }));
+    await verifyEmailFor(req, tempDevSignup.data.user.id);
     await req('PATCH', `/api/admin/applications/${tempDevSignup.data.user.id}/decide`, adminToken, {
       decision: 'approve',
       assigned_role: 'developer'

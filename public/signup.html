@@ -351,9 +351,16 @@
 
         if (response.status === 201) {
           showStatus(
-            data.message || 'Application submitted successfully! Your account is PENDING administrator review. Once approved, you can sign in from the Login page.',
+            (data.message || 'Application submitted successfully!') + ' Verify your email via the link we sent — approval needs it.',
             'success'
           );
+          if (data.dev_verify_url) {
+            const a = document.createElement('a');
+            a.href = data.dev_verify_url;
+            a.textContent = '[dev] Verify your email now →';
+            a.style.cssText = 'display:block;margin-top:8px;color:#93c5fd;';
+            statusBanner.appendChild(a);
+          }
           signupForm.reset();
           subRoleGroup.style.display = 'none';
         } else {

@@ -31,6 +31,7 @@ import { config } from '../src/config.js';
 import { runMigration } from '../src/db/migrate.js';
 import { runSeed } from '../src/db/seed.js';
 import { queryOne, queryAll, execute } from '../src/db/database.js';
+import { verifyEmailFor } from './lib/legal-helper.js';
 import { initWebSocketServer } from '../src/services/wsService.js';
 import { withLegalAcceptance } from './lib/legal-helper.js';
 import { cleanupTestData } from './cleanup-test-data.js';
@@ -227,6 +228,7 @@ async function runStep10AdminTests() {
     }));
     console.log(`   -> Public Signup submitted: HTTP ${signupRes.status}`);
     const applicantId = signupRes.data.user.id;
+    await verifyEmailFor(req, applicantId); // email gate
 
     // Verify login is blocked while pending
     const blockedLogin = await req('POST', '/api/auth/login', null, {

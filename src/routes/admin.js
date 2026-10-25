@@ -223,6 +223,13 @@ router.patch('/applications/:id/decide', authenticate, requirePermission('applic
       });
     }
 
+    // EMAIL GATE: the member must verify their email address first
+    if (!application.email_verified) {
+      return res.status(400).json({
+        error: 'Email gate: member has not verified their email address. Ask them to use the verification link sent at signup (or the Resend verification option).'
+      });
+    }
+
     const assignedRole = finalRole || application.desired_role;
     if (!assignedRole || !validRoles.includes(assignedRole)) {
       return res.status(400).json({

@@ -801,3 +801,29 @@ CREATE TABLE IF NOT EXISTS github_config (
     created_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+-- ===================================================================
+-- AUTH UX: self-serve password reset + email verification
+-- ===================================================================
+CREATE TABLE IF NOT EXISTS password_resets (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash  TEXT NOT NULL,
+    ip_address  TEXT,
+    expires_at  TIMESTAMP NOT NULL,
+    used_at     TIMESTAMP NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
+
+CREATE TABLE IF NOT EXISTS email_verifications (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token       TEXT NOT NULL,
+    expires_at  TIMESTAMP NOT NULL,
+    verified_at TIMESTAMP NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user ON email_verifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_token ON email_verifications(token);

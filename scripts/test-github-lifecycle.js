@@ -110,6 +110,16 @@ async function runGithubTests() {
 
   try {
     const login = async (email, pass) => (await req('POST', '/api/auth/login', null, { email, password: pass })).data;
+
+  // Email gate helper: verify a freshly signed-up applicant via local DB token
+  async function verifyEmailFor(userId) {
+    const row = queryOne(
+      "SELECT token FROM email_verifications WHERE user_id = ? AND verified_at IS NULL ORDER BY created_at DESC LIMIT 1",
+      [userId]
+    );
+    if (!row) return;
+    await fetch(`${BASE_URL}/api/auth/verify-email?token=${row.token}`);
+  }
     const admin = await login('admin@mahitechgroup.com', 'AdminPassword@2026');
 
     // -----------------------------------------------------------------
@@ -124,6 +134,7 @@ async function runGithubTests() {
       name: 'No GH User', email: email1, password: 'Password@123', desired_role: 'researcher',
       legal_typed_name: 'No GH User', legal_accepted_doc_ids: docs
     });
+    await verifyEmailFor(su1.data.user.id);
     const ap1 = await req('PATCH', `/api/admin/applications/${su1.data.user.id}/decide`, admin.token, { decision: 'approve' });
     assert(ap1.status === 200, 'Approval proceeds when GitHub unconfigured');
     assert(ap1.data.github?.provisioned === false && ['not_configured', 'no_github_username'].includes(ap1.data.github?.reason), 'github field honestly reports why provisioning was skipped');
@@ -150,6 +161,7 @@ async function runGithubTests() {
       legal_typed_name: 'GH Dev', legal_accepted_doc_ids: docs
     });
     assert(su2.status === 201, 'Signup with github_username accepted');
+    await verifyEmailFor(su2.data.user.id);
     const ap2 = await req('PATCH', `/api/admin/applications/${su2.data.user.id}/decide`, admin.token, { decision: 'approve' });
     assert(ap2.status === 200, 'Approval succeeds with GitHub configured');
     assert(ap2.data.github?.provisioned === true, 'github.provisioned === true');
@@ -167,6 +179,7 @@ async function runGithubTests() {
       github_username: 'ghdesigner-alias',
       legal_typed_name: 'GH Designer', legal_accepted_doc_ids: docs
     });
+    await verifyEmailFor(su3.data.user.id);
     const ap3 = await req('PATCH', `/api/admin/applications/${su3.data.user.id}/decide`, admin.token, { decision: 'approve' });
     assert(ap3.data.github?.team === 'mtg-designers', 'Designer mapped to mtg-designers (privacy separation)');
 

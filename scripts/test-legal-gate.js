@@ -148,6 +148,11 @@ async function runLegalGateTests() {
       password: 'Password@123', desired_role: 'producer',
       legal_typed_name: 'Second Applicant', legal_accepted_doc_ids: docs2
     });
+    const verifyTokenRow = queryOne(
+      "SELECT token FROM email_verifications WHERE user_id = ? AND verified_at IS NULL ORDER BY created_at DESC LIMIT 1",
+      [signup2.data.user.id]
+    );
+    if (verifyTokenRow) await req('GET', '/api/auth/verify-email?token=' + verifyTokenRow.token);
     const approveOk = await req('PATCH', `/api/admin/applications/${signup2.data.user.id}/decide`, admin.token, { decision: 'approve' });
     assert(approveOk.status === 200, `Fully-signed applicant approved (got ${approveOk.status})`);
 
