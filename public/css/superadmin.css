@@ -1381,3 +1381,51 @@ body {
   color: #fff;
 }
 
+
+/* ==========================================================================
+   FIX: modal class alias — HTML uses sa-modal-backdrop/sa-modal-card but CSS
+   only had sa-modal-overlay/sa-modal. Without these the dispute/ticket modals
+   rendered unpositioned, overflowing under the sidebar on narrow screens.
+   ========================================================================== */
+.sa-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.sa-modal-card {
+  background: #1e293b;
+  border: 1px solid var(--sa-card-border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  width: 100%;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+.sa-modal-card h3 {
+  font-size: 18px;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.sa-modal-card .sa-modal-close {
+  background: none;
+  border: none;
+  color: var(--sa-text-muted);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.sa-modal-card .sa-modal-close:hover {
+  color: #fff;
+}

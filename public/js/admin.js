@@ -46,6 +46,13 @@
     if (body) opts.body = JSON.stringify(body);
     try {
       const res = await fetch(path, opts);
+      // Stale/expired session: redirect to login instead of failing silently
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.replace('/login.html');
+        return { status: 401, ok: false, data: { error: 'Session expired — sign in again' } };
+      }
       const data = await res.json().catch(() => ({}));
       return { status: res.status, ok: res.ok, data };
     } catch (err) {
