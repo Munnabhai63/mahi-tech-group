@@ -190,12 +190,14 @@ export async function provisionMemberAccess({ userId, githubUsername, role, admi
   const team = ROLE_TEAM_MAP[role];
 
   try {
-    // 1) Org membership (invite)
+    // 1) Org membership (invite) — owners/admins already in the org cannot be
+    //    re-PUT as members (GitHub self-demotion guard); that is a success path
     const invite = await ghFetch(`/orgs/${encodeURIComponent(getConnection().org)}/memberships/${encodeURIComponent(username)}`, {
       method: 'PUT',
       body: { role: 'member' }
     });
-    if (!invite.ok && invite.status !== 200 && invite.status !== 201) {
+    const alreadyMember = invite.status === 403 && /demote yourself/i.test(String(invite.data?.message || ''));
+    if (!invite.ok && !alreadyMember) {
       logAccess({ userId: adminId, action: 'github_provision_failed', resource: `org invite for ${username}: HTTP ${invite.status} ${JSON.stringify(invite.data).slice(0, 120)}`, ipAddress });
       return { provisioned: false, reason: 'invite_failed', http_status: invite.status, message: invite.data?.message || 'GitHub org invite failed' };
     }
@@ -211,7 +213,7 @@ export async function provisionMemberAccess({ userId, githubUsername, role, admi
     logAccess({
       userId: adminId,
       action: 'github_access_provisioned',
-      resource: `org: ${getConnection().org} user: ${username}${team ? ` team: ${team} (added: ${teamAdded})` : ''}`,
+      resource: `org: ${getConnection().org} user: ${username}${team ? ` team: ${team} (added: ${teamAdded})` : ''}${alreadyMember ? ' (already org member/owner — membership unchanged)' : ''}`,
       ipAddress
     });
 
@@ -220,7 +222,8 @@ export async function provisionMemberAccess({ userId, githubUsername, role, admi
       username,
       org: getConnection().org,
       team: team || null,
-      team_added: teamAdded
+      team_added: teamAdded,
+      already_org_member: alreadyMember
     };
   } catch (e) {
     logAccess({ userId: adminId, action: 'github_provision_error', resource: `${username}: ${e.message}`, ipAddress });
