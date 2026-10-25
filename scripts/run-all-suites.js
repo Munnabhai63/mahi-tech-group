@@ -39,6 +39,8 @@ const SUITES = [
   { file: 'test-auth-ux.js', liveServer: false },             // Auth UX: reset, verification, self-serve
   { file: 'test-github-lifecycle.js', liveServer: false },        // GitHub access lifecycle (mock API stub)
   { file: 'test-github-webhook.js', liveServer: false },          // GitHub PR↔task webhook pipeline
+  { file: 'test-chat.js', liveServer: false },                    // Project chat: REST + WS live sync
+  { file: 'test-2fa.js', liveServer: false },                     // 2FA TOTP + anomaly alerts
   // ---- live-server suites (real server on port 4000, booted fresh per suite) ----
   { file: 'run-step5-tests.js', liveServer: true },               // Offboarding kill-switch
   { file: 'run-step6-tests.js', liveServer: true },               // Revenue split engine
