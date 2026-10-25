@@ -81,7 +81,7 @@
     if (viewTitle) viewTitle.textContent = titles[viewName] || 'Admin Control Panel';
 
     // Lazy load view data
-    if (viewName === 'overview') loadOverview();
+    if (viewName === 'overview') { loadOverview(); loadAnalytics(); }
     else if (viewName === 'members') loadMembersView();
     else if (viewName === 'ideas') loadIdeasView();
     else if (viewName === 'projects') loadProjectsView();
@@ -118,6 +118,22 @@
   // ---------------------------------------------------------------------------
   // VIEW 1: DASHBOARD OVERVIEW
   // ---------------------------------------------------------------------------
+  async function loadAnalytics() {
+    if (typeof Chart === 'undefined') return;
+    const res = await apiCall('GET', '/api/admin/analytics');
+    if (!res.ok) return;
+    const d = res.data;
+    const opts = { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } };
+    const labels = (arr) => arr.map((x) => x.month);
+    if (window._analyticsCharts) window._analyticsCharts.forEach((c) => c.destroy());
+    window._analyticsCharts = [
+      new Chart(document.getElementById('chartRevenue'), { type: 'line', data: { labels: labels(d.revenue_by_month), datasets: [{ label: 'Revenue', data: d.revenue_by_month.map((x) => x.total), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)', fill: true, tension: 0.3 }] }, options: opts }),
+      new Chart(document.getElementById('chartPayouts'), { type: 'bar', data: { labels: labels(d.payouts_by_month), datasets: [{ label: 'Payouts', data: d.payouts_by_month.map((x) => x.total), backgroundColor: '#10b981' }] }, options: opts }),
+      new Chart(document.getElementById('chartIdeas'), { type: 'doughnut', data: { labels: d.ideas_by_status.map((x) => x.status), datasets: [{ data: d.ideas_by_status.map((x) => x.count), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b', '#ec4899'] }] }, options: { responsive: true, plugins: { legend: { position: 'right' } } } }),
+      new Chart(document.getElementById('chartTasks'), { type: 'doughnut', data: { labels: d.tasks_by_status.map((x) => x.status), datasets: [{ data: d.tasks_by_status.map((x) => x.count), backgroundColor: ['#64748b', '#f59e0b', '#3b82f6', '#10b981', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { position: 'right' } } } })
+    ];
+  }
+
   async function loadOverview() {
     const res = await apiCall('GET', '/api/admin/dashboard/overview');
     if (!res.ok) {

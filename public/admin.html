@@ -531,6 +531,17 @@
       <div class="admin-content">
         <!-- 1. DASHBOARD OVERVIEW -->
         <section id="view-overview" class="view-section active">
+          <div class="card" id="analyticsCard">
+            <div class="card-header">
+              <h3>📊 Platform Analytics</h3>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div><canvas id="chartRevenue" height="180"></canvas></div>
+              <div><canvas id="chartPayouts" height="180"></canvas></div>
+              <div><canvas id="chartIdeas" height="180"></canvas></div>
+              <div><canvas id="chartTasks" height="180"></canvas></div>
+            </div>
+          </div>
           <div class="metric-grid">
             <div class="metric-card">
               <span class="metric-label">Active Team Members</span>
@@ -1287,6 +1298,7 @@
 
   <div id="adminToast"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/admin.js"></script>
 </body>
 </html>
