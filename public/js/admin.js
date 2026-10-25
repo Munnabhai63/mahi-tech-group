@@ -981,6 +981,8 @@
           if (isEnded && m.recording_enabled) {
             if (!m.recording_file_path) {
               actions += `<button class="btn-action btn-upload-recording" data-id="${m.id}" data-title="${escapeHtml(m.title)}">Upload Recording</button> `;
+            } else {
+              actions += `<button class="btn-action btn-play-recording" data-id="${m.id}" data-title="${escapeHtml(m.title)}">▶ Play Recording</button> `;
             }
           }
 
@@ -1040,6 +1042,17 @@
             } else {
               showToast(cRes.data.error || 'Failed to cancel meeting', true);
             }
+          });
+        });
+
+        document.querySelectorAll('.btn-play-recording').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.getElementById('playRecTitle').textContent = 'Recording — ' + btn.dataset.title;
+            const player = document.getElementById('recordingPlayer');
+            player.src = `/api/meetings/${btn.dataset.id}/recording`;
+            document.getElementById('recordingDownloadLink').href = player.src;
+            openModal('adminPlayRecordingModal');
+            player.play().catch(() => {});
           });
         });
 

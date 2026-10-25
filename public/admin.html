@@ -1240,6 +1240,20 @@
     </div>
   </div>
 
+  <div id="adminPlayRecordingModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="playRecTitle">Meeting Recording</h3>
+        <button class="btn-action close-modal">&times;</button>
+      </div>
+      <audio id="recordingPlayer" controls style="width: 100%; margin-bottom: 12px;"></audio>
+      <div class="modal-actions">
+        <a id="recordingDownloadLink" class="btn-primary" href="#" download style="text-decoration: none; display: inline-block; text-align: center;">Download Recording</a>
+        <button type="button" class="btn-action close-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
   <div id="adminToast"></div>
 
   <script src="/js/admin.js"></script>

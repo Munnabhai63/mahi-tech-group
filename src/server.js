@@ -5,6 +5,7 @@ import { runSeed } from './db/seed.js';
 import { execute } from './db/database.js';
 import { startScheduledQuotaReset, stopScheduledQuotaReset } from './jobs/quotaResetJob.js';
 import { startScheduledVotingDecision, stopScheduledVotingDecision } from './jobs/votingDecisionJob.js';
+import { startScheduledVotingReminder, stopScheduledVotingReminder } from './jobs/votingReminderJob.js';
 import { initWebSocketServer } from './services/wsService.js';
 
 async function startServer() {
@@ -20,6 +21,7 @@ async function startServer() {
     // Start automated background jobs
     startScheduledQuotaReset();
     startScheduledVotingDecision();
+    startScheduledVotingReminder();
 
     const app = createApp();
 
@@ -40,6 +42,7 @@ async function startServer() {
       console.log('\n>>> Gracefully shutting down server...');
       stopScheduledQuotaReset();
       stopScheduledVotingDecision();
+      stopScheduledVotingReminder();
       wss.close();
       server.close(() => {
         console.log('>>> Server closed cleanly.');
