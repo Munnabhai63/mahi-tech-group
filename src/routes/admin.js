@@ -858,6 +858,30 @@ router.get('/revenue/ledger', authenticate, requirePermission('revenue.manual_en
   return res.status(200).json(result);
 });
 
+// 21b. GET /api/admin/analytics (Admin only)
+// Compact metrics for the admin dashboard charts.
+router.get('/analytics', authenticate, requirePermission('project.view_all'), (req, res) => {
+  const revenueByMonth = queryAll(`
+    SELECT strftime('%Y-%m', event_date) as month, SUM(amount) as total, COUNT(*) as events
+    FROM revenue_events GROUP BY month ORDER BY month DESC LIMIT 6
+  `);
+  const ideasByStatus = queryAll("SELECT status, COUNT(*) as count FROM ideas GROUP BY status");
+  const tasksByStatus = queryAll("SELECT status, COUNT(*) as count FROM project_tasks GROUP BY status");
+  const membersByRole = queryAll("SELECT role, COUNT(*) as count FROM users WHERE status = 'active' GROUP BY role");
+  const payouts = queryAll(`
+    SELECT strftime('%Y-%m', paid_at) as month, SUM(amount) as total
+    FROM withdrawals WHERE status = 'PAID' AND paid_at IS NOT NULL
+    GROUP BY month ORDER BY month DESC LIMIT 6
+  `);
+  return res.status(200).json({
+    revenue_by_month: revenueByMonth.reverse(),
+    payouts_by_month: payouts.reverse(),
+    ideas_by_status: ideasByStatus,
+    tasks_by_status: tasksByStatus,
+    members_by_role: membersByRole
+  });
+});
+
 // 22. GET /api/admin/withdrawals/pending (Admin only - RBAC: payout.approve)
 router.get('/withdrawals/pending', authenticate, requirePermission('payout.approve'), (req, res) => {
   const pending = getPendingWithdrawals();
