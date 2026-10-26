@@ -76,7 +76,7 @@ function route(path, params) {
   if (match) { if (match[3] && !params.has('token')) params.set('token', match[3]); return renderSigning(match[1], match[2], params); }
   return { html: `${pageHead('404 · Route not found', 'This screen is not in the application map.', 'Use the navigation or quick search to return to an implemented workspace screen.')}${emptyState('Unknown application route', 'The route may be incomplete or no longer available.', '<a class="btn btn--primary" href="#/app/dashboard">Return to dashboard</a>', 'search')}` };
 }
-function isPublic(path) { return ['/login', '/signup', '/application-status', '/about', '/contact', '/mentorship', '/legal/terms', '/legal/privacy'].includes(path); }
+function isPublic(path) { return ['/login', '/role-selection', '/signup', '/application-status', '/about', '/contact', '/mentorship', '/legal/terms', '/legal/privacy'].includes(path); }
 function isSigning(path) { return path.startsWith('/sign/'); }
 function render() {
   if (rendering) return;
@@ -84,6 +84,7 @@ function render() {
   try {
     if (!location.hash) { const user = currentUser(); location.hash = user ? (user.role === 'admin' ? '#/admin' : user.status === 'inactive' ? '#/app/former-member' : '#/app/dashboard') : '#/login'; return; }
     const raw = location.hash.slice(1); const [rawPath, query = ''] = raw.split('?'); const path = (`/${rawPath.replace(/^\/+/, '')}`).replace(/\/$/, '') || '/'; const params = new URLSearchParams(query);
+    if (path === '/role-selection') { location.hash = '#/login'; return; }
     const user = currentUser();
     const token = getAuthToken();
     if (!isPublic(path) && !isSigning(path) && (!user || !token)) { state.ui.returnTo = location.hash; location.hash = '#/login'; return; }

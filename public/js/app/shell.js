@@ -30,6 +30,7 @@ const elevatedNav = [
 const formerNav = [['Former member', [['#/app/former-member', 'Read-only overview', 'lock'], ['#/app/members/u-former', 'Historical profile', 'user'], ['#/app/wallet', 'Wallet history', 'wallet'], ['#/app/notifications', 'Notifications', 'bell', 'notifications']]]];
 function countFor(key) {
   const user = currentUser();
+  if (!user) return 0;
   const counts = {
     tasks: userTasks().filter(task => task.status !== 'DONE').length,
     votes: pendingVotesFor().length,
@@ -48,7 +49,7 @@ function activeHref(href, path) {
   return path === route || path.startsWith(`${route}/`);
 }
 function navigation(path) {
-  const user = currentUser();
+  const user = currentUser() || { id: 'guest', name: 'Member', role: 'developer', status: 'active' };
   const sections = user.status === 'inactive' ? formerNav.map(([label, links]) => [label, links.map(([href, text, iconName, countKey]) => [href.replace('u-former', user.id), text, iconName, countKey])]) : path.startsWith('/superadmin') ? elevatedNav : path.startsWith('/admin') ? adminNav : memberNav;
   return sections.map(([label, links]) => `<div class="nav-label">${label}</div>${links.map(([href, text, iconName, countKey]) => { const active = activeHref(href, path); const count = countKey ? countFor(countKey) : 0; return `<a class="nav-link ${active ? 'is-active' : ''}" href="${href}" ${active ? 'aria-current="page"' : ''}>${icon(iconName)}<span>${text}</span>${countKey && count ? `<span class="nav-link__count" aria-label="${count} items">${count}</span>` : ''}</a>`; }).join('')}`).join('');
 }
@@ -68,7 +69,7 @@ function titleFor(path) {
   return 'MAHI workspace';
 }
 export function shellHTML(view, path) {
-  const user = currentUser(); const elevated = path.startsWith('/superadmin'); const admin = path.startsWith('/admin');
+  const user = currentUser() || { id: 'guest', name: 'Member', role: 'developer', status: 'active' }; const elevated = path.startsWith('/superadmin'); const admin = path.startsWith('/admin');
   const zone = elevated ? 'Elevated Admin' : admin ? 'Admin operations' : user.status === 'inactive' ? 'Read-only history' : `${roleMeta[user.role]?.label || titleCase(user.role)} workspace`;
   return `<div class="app-shell"><aside class="sidebar ${state.ui.sidebarOpen ? 'is-open' : ''}" id="app-sidebar" aria-label="Application navigation"><div class="sidebar__brand"><a class="access-brand" href="/" aria-label="MAHI TECH GROUP homepage"><span class="brand-mark">M/</span><span class="brand-copy"><strong>MAHI TECH GROUP</strong><span>Collaborative workspace</span></span></a><button class="btn btn--ghost btn--icon btn--sm sidebar__close" id="close-sidebar" aria-label="Close navigation">${icon('x')}</button></div><nav class="sidebar__nav">${navigation(path)}${user.role === 'admin' && !path.startsWith('/admin') && !path.startsWith('/superadmin') ? `<div class="nav-label">Administration</div><a class="nav-link" href="#/admin">${icon('shield')}<span>Admin operations</span></a><a class="nav-link nav-link--elevated" href="#/superadmin">${icon('key')}<span>Elevated zone</span></a>` : ''}${path.startsWith('/admin') || path.startsWith('/superadmin') ? `<div class="nav-label">Switch area</div><a class="nav-link" href="#/app/dashboard">${icon('grid')}<span>Member workspace</span></a>${path.startsWith('/admin') ? `<a class="nav-link nav-link--elevated" href="#/superadmin">${icon('key')}<span>Elevated zone</span></a>` : `<a class="nav-link" href="#/admin">${icon('shield')}<span>Core Admin</span></a>`}` : ''}</nav><div class="sidebar__foot"><a class="sidebar__home" href="/">${icon('home')} MAHI TECH GROUP homepage</a><div class="sidebar__version">FRONTEND INVENTORY · LOCAL MOCK DATA</div></div></aside><button class="mobile-overlay ${state.ui.sidebarOpen ? 'is-open' : ''}" id="sidebar-overlay" aria-label="Close navigation"></button><div class="shell-body"><header class="topbar"><button class="btn btn--outline btn--icon btn--sm topbar__menu" id="open-sidebar" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="${state.ui.sidebarOpen}">${icon('menu')}</button><div class="topbar__title"><span class="crumb">${escapeHTML(zone)}</span><strong>${escapeHTML(titleFor(path))}</strong></div><div class="topbar__actions"><span class="prototype-badge">Demo data</span><button class="quick-search" id="quick-search" aria-label="Search workspace">${icon('search')}<span>Quick search</span><kbd>⌘ K</kbd></button><button class="btn btn--outline btn--icon btn--sm notification-btn" data-open-notifications aria-label="Open notifications">${icon('bell', 'icon--sm')}${unreadNotifications().length ? '<span class="notification-dot"></span>' : ''}</button><button class="account-button" id="account-menu" aria-label="Open account menu">${avatar(user, 'sm')}<span class="account-button__copy"><strong>${escapeHTML(user.name)}</strong><span>${escapeHTML(user.subRole || user.role)}</span></span>${icon('chevron-down')}</button></div></header><main class="workspace" id="main-content" tabindex="-1"><div class="prototype-strip">${icon('info')}<span>Frontend-only preview · mutations stay in this browser.</span><label class="sr-only" for="preview-mode">Preview interface state</label><select class="select preview-select" id="preview-mode"><option value="normal" ${state.ui.preview === 'normal' ? 'selected' : ''}>Normal state</option><option value="loading" ${state.ui.preview === 'loading' ? 'selected' : ''}>Loading state</option><option value="empty" ${state.ui.preview === 'empty' ? 'selected' : ''}>Empty state</option><option value="error" ${state.ui.preview === 'error' ? 'selected' : ''}>Error state</option></select></div>${view.html}</main></div></div>`;
 }
@@ -135,6 +136,7 @@ export function openNotificationsDrawer() {
 }
 function openAccountDrawer() {
   const user = currentUser();
+  if (!user) return;
   const token = getAuthToken();
   openDrawer({
     title: token ? 'User Account' : 'Demo account',
@@ -151,7 +153,9 @@ function openAccountDrawer() {
   });
 }
 function searchItems() {
-  const user = currentUser(); const admin = user.role === 'admin';
+  const user = currentUser();
+  if (!user) return [];
+  const admin = user.role === 'admin';
   const routes = (admin ? [...memberNav, ...adminNav, ...elevatedNav] : memberNav).flatMap(([, links]) => links).map(([href, label, iconName]) => ({ label, meta: 'Workspace screen', href, icon: iconName, search: `${label} screen` }));
   const projects = state.data.projects.filter(project => admin || project.ownerId === user.id || project.tasks.some(task => task.assignedTo === user.id)).map(project => ({ label: project.title, meta: `Project · ${project.code}`, href: `#/app/projects/${project.id}`, icon: 'folder', search: `${project.title} ${project.code}` }));
   const ideas = state.data.ideas.map(idea => ({ label: idea.title, meta: `Idea · ${titleCase(idea.status)}`, href: `#/app/ideas/${idea.id}`, icon: 'bulb', search: `${idea.title} ${idea.status}` }));
