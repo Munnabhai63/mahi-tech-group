@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Admin Command Center — Mahi Tech Group</title>
+  
+  <!-- Immediate Synchronous Role Verification -->
+  <script>
+    (function() {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.role !== 'admin') {
+        alert('Access Denied — Insufficient Privileges');
+        window.location.href = '/';
+      }
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/superadmin.css">
+</head>
+<body>
+
+<div class="sa-layout">
+
+  <!-- 8-Section Sidebar Navigation (Deep Indigo #4338ca) -->
+  <aside class="sa-sidebar">
+    <div class="sa-brand">
+      <div class="sa-brand-badge">SUPER</div>
+      <div class="sa-brand-text">
+        <h1>Mahi Tech Group</h1>
+        <span>Admin Governance</span>
+      </div>
+    </div>
+
+    <nav class="sa-nav">
+      <a class="sa-nav-item active" data-pane="paneOverview">
+        <svg viewBox="0 0 24 24"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
+        <span>1. Command Center</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneDirectory">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>2. Member Directory</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="panePerformance">
+        <svg viewBox="0 0 24 24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        <span>3. Performance Intelligence</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneTickets">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>4. Support Ticket Inbox</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneIdeation">
+        <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span>5. Ideation Engine Command</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneDisputes">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>6. Dispute Resolution</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneGateway">
+        <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        <span>7. Payment Gateway</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneGovernance">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>8. Full Data Governance</span>
+      </a>
+
+      <a class="sa-nav-item" data-pane="paneAudit">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>9. Unified Audit Stream</span>
+      </a>
+    </nav>
+
+    <div class="sa-sidebar-footer">
+      <div class="sa-admin-pill">
+        <div class="sa-admin-avatar" id="adminAvatarInitial">A</div>
+        <div class="sa-admin-info">
+          <h4 id="adminName">Admin User</h4>
+          <p id="adminEmail">admin@mahitechgroup.com</p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <a href="/admin.html" class="sa-btn-back" style="flex: 1;" title="Switch to Step 10 Operational Admin Panel">Admin Panel</a>
+        <a href="/" class="sa-btn-back" style="flex: 1;" title="Return to Center Dashboard">Dashboard</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Workspace -->
+  <main class="sa-main">
+
+    <!-- Section 1: Command Center (Overview Dashboard) -->
+    <section class="sa-pane active" id="paneOverview">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Command Center Overview</h2>
+          <p id="overviewLastUpdated">Real-time organizational telemetry and system status.</p>
+        </div>
+        <div class="sa-header-actions">
+          <button class="sa-btn-refresh" id="btnRefreshOverview">
+            <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Refresh Telemetry
+          </button>
+        </div>
+      </div>
+
+      <!-- 9 Real-Time Overview Metrics Grid -->
+      <div class="sa-overview-grid">
+        
+        <!-- 1. Active Members -->
+        <div class="sa-stat-card accent-indigo">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Active Members</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statActiveMembers">--</div>
+          <div class="sa-stat-sub">Verified & Active on Platform</div>
+        </div>
+
+        <!-- 2. Pending Applications -->
+        <div class="sa-stat-card accent-amber">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Pending Applications</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statPendingApps">--</div>
+          <div class="sa-stat-sub">Awaiting Admin Onboarding Review</div>
+        </div>
+
+        <!-- 3. Open Tickets -->
+        <div class="sa-stat-card accent-rose">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Open Support Tickets</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statOpenTickets">--</div>
+          <div class="sa-stat-sub">Tickets Requiring Staff Attention</div>
+        </div>
+
+        <!-- 4. Active Projects -->
+        <div class="sa-stat-card accent-blue">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Active Projects</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statActiveProjects">--</div>
+          <div class="sa-stat-sub">Projects in Research, Dev, or QA</div>
+        </div>
+
+        <!-- 5. Revenue This Month -->
+        <div class="sa-stat-card accent-emerald">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Revenue (This Month)</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statRevMonth">--</div>
+          <div class="sa-stat-sub">Total Credited Enterprise Earnings</div>
+        </div>
+
+        <!-- 6. Pending Payout Requests -->
+        <div class="sa-stat-card accent-amber">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Pending Payout Requests</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statPendingPayouts">--</div>
+          <div class="sa-stat-sub">Awaiting Executive Approval</div>
+        </div>
+
+        <!-- 7. Pending Payouts Value -->
+        <div class="sa-stat-card accent-amber">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Pending Payouts Total</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statPendingPayoutsTotal">--</div>
+          <div class="sa-stat-sub">Gross Outflow Pending Approval</div>
+        </div>
+
+        <!-- 8. Open Disputes -->
+        <div class="sa-stat-card accent-rose">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Open Disputes</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statOpenDisputes">--</div>
+          <div class="sa-stat-sub">Mediation & Waiver Cases Pending</div>
+        </div>
+
+        <!-- 9. Total Accounts -->
+        <div class="sa-stat-card accent-indigo">
+          <div class="sa-stat-header">
+            <span class="sa-stat-title">Total Database Users</span>
+            <div class="sa-stat-icon">
+              <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+          </div>
+          <div class="sa-stat-value" id="statTotalUsers">--</div>
+          <div class="sa-stat-sub">All Lifecycle Statuses Combined</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Section 2: Full Member Directory (Layer 2) -->
+    <section class="sa-pane" id="paneDirectory">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Full Member Directory</h2>
+          <p>Comprehensive roster with multi-vector histories, audit access, and profile drawers.</p>
+        </div>
+        <div class="sa-header-actions">
+          <button class="sa-btn-refresh" id="btnExportMembersCSV">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Directory (CSV)
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter / Search Toolbar -->
+      <div class="sa-toolbar">
+        <div class="sa-search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="dirSearchInput" placeholder="Search by name, email, phone...">
+        </div>
+        <div class="sa-filters">
+          <select id="dirRoleFilter">
+            <option value="">All Roles</option>
+            <option value="researcher">Researcher</option>
+            <option value="developer">Developer</option>
+            <option value="designer">Designer</option>
+            <option value="producer">Producer</option>
+            <option value="admin">Admin</option>
+          </select>
+          <select id="dirStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="pending">Pending</option>
+            <option value="suspended">Suspended</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <select id="dirSortBy">
+            <option value="created_at">Joined Date</option>
+            <option value="name">Name</option>
+            <option value="total_earnings">Total Earnings</option>
+            <option value="projects_count">Projects Built</option>
+            <option value="ideas_count">Ideas Submitted</option>
+            <option value="last_active_at">Last Active</option>
+          </select>
+          <select id="dirSortOrder">
+            <option value="DESC">Descending</option>
+            <option value="ASC">Ascending</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Members Table -->
+      <div class="sa-table-container">
+        <table class="sa-table" id="dirMembersTable">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Ideas</th>
+              <th>Projects</th>
+              <th>Total Earnings</th>
+              <th>Last Active</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="dirMembersTbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 3: Performance Intelligence (Layer 2) -->
+    <section class="sa-pane" id="panePerformance">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Performance Intelligence</h2>
+          <p>Stealth team productivity telemetry, composite ranking, and activity trends.</p>
+        </div>
+        <div class="sa-header-actions">
+          <button class="sa-btn-refresh" id="btnToggleWeightsPanel">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Configure Weights
+          </button>
+        </div>
+      </div>
+
+      <!-- Weights Configuration Panel (Expandable) -->
+      <div class="sa-config-card" id="weightsConfigCard" style="display: none;">
+        <div class="sa-config-header">
+          <h3>Composite Score Weight Percentages</h3>
+          <span class="sa-sum-badge" id="weightsSumBadge">Total: 100%</span>
+        </div>
+        <div class="sa-weights-grid">
+          <div class="sa-weight-input-group">
+            <label>Task Completion Rate</label>
+            <input type="number" step="0.05" min="0" max="1" id="weightTaskInput" value="0.30">
+          </div>
+          <div class="sa-weight-input-group">
+            <label>Idea Approval Rate</label>
+            <input type="number" step="0.05" min="0" max="1" id="weightIdeaInput" value="0.25">
+          </div>
+          <div class="sa-weight-input-group">
+            <label>Voting Participation Rate</label>
+            <input type="number" step="0.05" min="0" max="1" id="weightVotingInput" value="0.20">
+          </div>
+          <div class="sa-weight-input-group">
+            <label>Meeting Attendance Rate</label>
+            <input type="number" step="0.05" min="0" max="1" id="weightMeetingInput" value="0.15">
+          </div>
+          <div class="sa-weight-input-group">
+            <label>Revenue Relative Cut</label>
+            <input type="number" step="0.05" min="0" max="1" id="weightRevenueInput" value="0.10">
+          </div>
+        </div>
+        <div class="sa-config-actions">
+          <button class="sa-btn-primary" id="btnSaveWeights">Save Weight Configuration</button>
+        </div>
+      </div>
+
+      <!-- Performance Layout: Leaderboard & Detail Inspector -->
+      <div class="sa-perf-layout">
+        <!-- Leaderboard (Left) -->
+        <div class="sa-card sa-perf-left">
+          <div class="sa-card-header">
+            <h3>Active Member Leaderboard</h3>
+            <span class="sa-badge-indigo" id="leaderboardCount">0 Members</span>
+          </div>
+          <table class="sa-table sa-leaderboard-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Member</th>
+                <th>Role</th>
+                <th>Score</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardTbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Detail Inspector (Right) -->
+        <div class="sa-card sa-perf-right" id="perfDetailContainer">
+          <div class="sa-card-header">
+            <h3 id="perfDetailMemberName">Select a Member</h3>
+            <span class="sa-trend-pill" id="perfDetailTrend">--</span>
+          </div>
+
+          <div id="perfDetailEmpty" style="padding: 40px; text-align: center; color: var(--sa-text-muted);">
+            Click on any member in the leaderboard to inspect stealth performance metrics, monthly breakdowns, and activity heatmaps.
+          </div>
+
+          <div id="perfDetailContent" style="display: none;">
+            <!-- KPI Mini Cards -->
+            <div class="sa-kpi-grid">
+              <div class="sa-kpi-box">
+                <span class="sa-kpi-lbl">Task Completion</span>
+                <span class="sa-kpi-val" id="perfKpiTaskRate">0%</span>
+                <span class="sa-kpi-sub" id="perfKpiTasksCount">0/0 done</span>
+              </div>
+              <div class="sa-kpi-box">
+                <span class="sa-kpi-lbl">Idea Approval</span>
+                <span class="sa-kpi-val" id="perfKpiIdeaRate">0%</span>
+                <span class="sa-kpi-sub" id="perfKpiIdeasCount">0 submitted</span>
+              </div>
+              <div class="sa-kpi-box">
+                <span class="sa-kpi-lbl">Voting Participation</span>
+                <span class="sa-kpi-val" id="perfKpiVotingRate">0%</span>
+                <span class="sa-kpi-sub" id="perfKpiVotesCount">0 votes</span>
+              </div>
+              <div class="sa-kpi-box">
+                <span class="sa-kpi-lbl">Meeting Attendance</span>
+                <span class="sa-kpi-val" id="perfKpiMeetingRate">0%</span>
+                <span class="sa-kpi-sub" id="perfKpiMeetingsCount">0 attended</span>
+              </div>
+            </div>
+
+            <!-- Month by Month Activity Bar Chart (CSS-only) -->
+            <div class="sa-chart-container">
+              <h4 class="sa-section-subtitle">Monthly Output Velocity (Last 6 Months)</h4>
+              <div class="sa-bar-chart" id="perfBarChart">
+                <!-- Dynamically populated bars -->
+              </div>
+            </div>
+
+            <!-- Activity Heatmap (CSS Grid, GitHub-Style) -->
+            <div class="sa-heatmap-container">
+              <h4 class="sa-section-subtitle">Historical Activity Distribution (Heatmap)</h4>
+              <div class="sa-heatmap-grid" id="perfHeatmapGrid">
+                <!-- Dynamically generated grid cells -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Support Ticket Command Center (Layer 3) -->
+    <section class="sa-pane" id="paneTickets">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Support Ticket Command Center</h2>
+          <p>SLA monitoring, two-way resolution threads, and stealth internal notes.</p>
+        </div>
+        <div class="sa-header-actions">
+          <button class="sa-btn-primary" id="btnOpenNewTicketModal">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create Ticket
+          </button>
+        </div>
+      </div>
+
+      <!-- Ticket Filters Toolbar -->
+      <div class="sa-toolbar">
+        <div class="sa-search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="ticketSearchInput" placeholder="Search ticket #, subject, reporter...">
+        </div>
+        <div class="sa-filters">
+          <select id="ticketStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+          <select id="ticketPriorityFilter">
+            <option value="">All Priorities</option>
+            <option value="urgent">Urgent</option>
+            <option value="high">High</option>
+            <option value="normal">Normal</option>
+            <option value="low">Low</option>
+          </select>
+          <select id="ticketCategoryFilter">
+            <option value="">All Categories</option>
+            <option value="bug">Bug</option>
+            <option value="feature_request">Feature Request</option>
+            <option value="access_issue">Access Issue</option>
+            <option value="billing">Billing</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tickets Main Container -->
+      <div class="sa-card-table-wrap">
+        <table class="sa-table">
+          <thead>
+            <tr>
+              <th>Ticket #</th>
+              <th>Subject</th>
+              <th>Reporter</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Assigned To</th>
+              <th>Updated</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="ticketsTableBody">
+            <tr><td colspan="8" class="sa-loading-cell">Loading support tickets...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 5: Ideation Engine Command Center (Layer 3) -->
+    <section class="sa-pane" id="paneIdeation">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Ideation Engine Command Center</h2>
+          <p>Governance control, submission quota management, and admin kill switches.</p>
+        </div>
+      </div>
+
+      <!-- Quota Configuration Card -->
+      <div style="background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-lg); margin-bottom: 24px; padding: 22px;">
+        <h3 style="font-size: 16px; margin-bottom: 6px; color:#fff;">Idea Submission Quota Controls</h3>
+        <p style="font-size: 13px; color: var(--sa-text-muted); margin-bottom: 16px;">
+          Global constraints governing idea creation frequency per member.
+        </p>
+        <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+          <div class="sa-modal-field" style="margin-bottom:0; min-width:160px;">
+            <label for="quotaLimitInput">Ideas Limit per Cycle</label>
+            <input type="number" id="quotaLimitInput" min="1" value="4">
+          </div>
+          <div class="sa-modal-field" style="margin-bottom:0; min-width:180px;">
+            <label for="quotaWindowInput">Window Days (7 to 30)</label>
+            <input type="number" id="quotaWindowInput" min="7" max="30" value="10">
+          </div>
+          <button class="sa-btn-primary" id="btnSaveQuota" style="padding:9px 18px;">
+            Save Quota Config
+          </button>
+        </div>
+      </div>
+
+      <!-- Ideas Table Card -->
+      <div class="sa-card-table-wrap">
+        <table class="sa-table">
+          <thead>
+            <tr>
+              <th>Idea Title</th>
+              <th>Owner</th>
+              <th>Status</th>
+              <th>Votes</th>
+              <th>Fan-Out Progress</th>
+              <th>Revenue Clock</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ideationTableBody">
+            <tr><td colspan="7" class="sa-loading-cell">Loading ideas command roster...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 5: Dispute Resolution Center (Layer 4) -->
+    <section class="sa-pane" id="paneDisputes">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Dispute Resolution Center</h2>
+          <p>Multi-party agreement mediation, digital signature ceremonies, and financial settlement.</p>
+        </div>
+        <div class="sa-header-actions">
+          <button class="sa-btn-primary" id="btnOpenCreateDisputeModal">
+            <span>+</span> Open New Dispute
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters Bar -->
+      <div class="sa-filter-bar" style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+        <input type="text" id="disputeSearchInput" placeholder="Search dispute #, description, parties..." style="flex: 1; min-width: 240px; background: var(--sa-card-bg); border: 1px solid var(--sa-card-border); border-radius: var(--radius-sm); padding: 8px 12px; color: #fff; font-size: 13px;">
+        <select id="disputeStatusFilter" style="background: var(--sa-card-bg); border: 1px solid var(--sa-card-border); border-radius: var(--radius-sm); padding: 8px 12px; color: #fff; font-size: 13px;">
+          <option value="">All Statuses</option>
+          <option value="open">Open</option>
+          <option value="under_review">Under Review</option>
+          <option value="negotiation">Negotiation</option>
+          <option value="pending_signatures">Pending Signatures</option>
+          <option value="settled">Settled</option>
+          <option value="resolved">Resolved</option>
+          <option value="escalated_legal">Escalated Legal</option>
+          <option value="closed">Closed</option>
+        </select>
+        <select id="disputeTypeFilter" style="background: var(--sa-card-bg); border: 1px solid var(--sa-card-border); border-radius: var(--radius-sm); padding: 8px 12px; color: #fff; font-size: 13px;">
+          <option value="">All Types</option>
+          <option value="financial_settlement">Financial Settlement</option>
+          <option value="ip_ownership">IP Ownership</option>
+          <option value="contribution_disagreement">Contribution Disagreement</option>
+          <option value="offboarding_settlement">Offboarding Settlement</option>
+          <option value="formal_complaint">Formal Complaint</option>
+          <option value="legal_matter">Legal Matter</option>
+          <option value="other">Other</option>
+        </select>
+        <button class="sa-btn-refresh" id="btnRefreshDisputes">
+          <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Refresh
+        </button>
+      </div>
+
+      <!-- Disputes Table Card -->
+      <div class="sa-card-table-wrap">
+        <table class="sa-table">
+          <thead>
+            <tr>
+              <th>Dispute #</th>
+              <th>Type</th>
+              <th>Raised By</th>
+              <th>Against Party</th>
+              <th>Status</th>
+              <th>Days Open</th>
+              <th>Settlement Amount</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="disputesTableBody">
+            <tr><td colspan="8" class="sa-loading-cell">Loading dispute ledger...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 6: Payment Gateway Control (Layer 5) -->
+    <section class="sa-pane" id="paneGateway">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Payment Gateway Configuration</h2>
+          <p>Payment provider settings, encryption parameters, and simulated gateway testing.</p>
+        </div>
+        <div class="sa-header-actions" style="display:flex; align-items:center; gap:12px;">
+          <span id="gatewayModeBadge" class="sa-badge" style="padding:6px 14px; font-weight:700; letter-spacing:0.05em; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid #10b981; border-radius:var(--radius-sm);">SANDBOX</span>
+          <button class="sa-btn-primary" id="btnTestGatewayConnection">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Test Connection
+          </button>
+        </div>
+      </div>
+
+      <!-- Test Connection Result Notification Banner -->
+      <div id="gatewayTestResultBanner" style="display:none; margin-bottom:20px; padding:12px 18px; border-radius:var(--radius-sm); font-size:13px; font-weight:500;"></div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:24px;">
+        <!-- Card 1: Active Gateway Parameters -->
+        <div class="sa-card" style="padding:22px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-lg);">
+          <h3 style="font-size:16px; font-weight:700; color:#fff; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="#818cf8" stroke-width="2" fill="none"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Active Parameters
+          </h3>
+          <div style="display:flex; flex-direction:column; gap:14px; font-size:13px;">
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:10px;">
+              <span style="color:var(--sa-text-muted);">Operation Mode:</span>
+              <span id="displayGatewayMode" style="font-weight:600; text-transform:uppercase; color:#fff;">sandbox</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:10px;">
+              <span style="color:var(--sa-text-muted);">Gateway Name:</span>
+              <span id="displayGatewayName" style="font-weight:600; color:#a5b4fc;">SIMULATED_GATEWAY_STUB</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:10px;">
+              <span style="color:var(--sa-text-muted);">API Key Configured:</span>
+              <span id="displayApiKey" style="font-family:monospace; letter-spacing:0.1em; color:#94a3b8;">••••••••</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:10px;">
+              <span style="color:var(--sa-text-muted);">Webhook Secret:</span>
+              <span id="displayWebhookSecret" style="font-family:monospace; letter-spacing:0.1em; color:#94a3b8;">••••••••</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:10px;">
+              <span style="color:var(--sa-text-muted);">Auto-Approval Policy:</span>
+              <span style="color:var(--sa-danger); font-weight:600;">Disabled (0 INR)</span>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+              <span style="color:var(--sa-text-muted);">Last Updated:</span>
+              <span id="displayGatewayUpdatedAt" style="color:var(--sa-text-dim);">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Security & Encryption Telemetry -->
+        <div class="sa-card" style="padding:22px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-lg);">
+          <h3 style="font-size:16px; font-weight:700; color:#fff; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="#34d399" stroke-width="2" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Cryptographic Vault
+          </h3>
+          <p style="font-size:13px; color:var(--sa-text-muted); line-height:1.6; margin-bottom:14px;">
+            Sensitive gateway credentials (API keys and webhook secrets) are encrypted using authenticated
+            <strong style="color:#fff;">AES-256-GCM</strong>. Plaintext keys are never stored in SQLite and are strictly scrubbed from GET API responses.
+          </p>
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); padding:12px 14px; font-size:12px; color:var(--sa-text-dim);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+              <span>Cipher Algorithm:</span>
+              <span style="color:#6ee7b7; font-family:monospace;">AES-256-GCM</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+              <span>Payload Envelope:</span>
+              <span style="color:#93c5fd; font-family:monospace;">iv:authTag:ciphertext</span>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+              <span>Key Derivation:</span>
+              <span style="color:#c4b5fd; font-family:monospace;">process.env.ENCRYPTION_KEY</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gateway Configuration Update Form -->
+      <div class="sa-card" style="padding:22px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-lg);">
+        <h3 style="font-size:16px; font-weight:700; color:#fff; margin-bottom:8px;">Update Gateway Settings</h3>
+        <p style="font-size:13px; color:var(--sa-text-muted); margin-bottom:20px;">
+          Modify connection parameters. Switching to LIVE mode requires explicit confirmation.
+        </p>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+          <div class="sa-modal-field">
+            <label for="gatewayModeSelect">Operating Mode</label>
+            <select id="gatewayModeSelect" style="width:100%; padding:10px; background:var(--sa-bg-main); color:#fff; border:1px solid var(--sa-card-border); border-radius:var(--radius-sm);">
+              <option value="sandbox">Sandbox (Simulated Test Environment)</option>
+              <option value="live">Live (Production Payment Environment)</option>
+            </select>
+          </div>
+          <div class="sa-modal-field">
+            <label for="gatewayNameInput">Gateway Name</label>
+            <input type="text" id="gatewayNameInput" value="SIMULATED_GATEWAY_STUB" style="width:100%; padding:10px; background:var(--sa-bg-main); color:#fff; border:1px solid var(--sa-card-border); border-radius:var(--radius-sm);">
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+          <div class="sa-modal-field">
+            <label for="gatewayApiKeyInput">API Key (Password Field — Plaintext Never Exposed)</label>
+            <input type="password" id="gatewayApiKeyInput" placeholder="Leave blank to preserve current encrypted key" style="width:100%; padding:10px; background:var(--sa-bg-main); color:#fff; border:1px solid var(--sa-card-border); border-radius:var(--radius-sm);">
+          </div>
+          <div class="sa-modal-field">
+            <label for="gatewayWebhookSecretInput">Webhook Secret (Password Field)</label>
+            <input type="password" id="gatewayWebhookSecretInput" placeholder="Leave blank to preserve current encrypted secret" style="width:100%; padding:10px; background:var(--sa-bg-main); color:#fff; border:1px solid var(--sa-card-border); border-radius:var(--radius-sm);">
+          </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; border-top:1px solid var(--sa-card-border); padding-top:16px;">
+          <span style="font-size:12px; color:var(--sa-warning);">
+            * Auto-approval is permanently locked to 0 by system policy.
+          </span>
+          <button class="sa-btn-primary" id="btnSaveGatewayConfig">Save Gateway Configuration</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 7: Full Data Governance (Layer 5) -->
+    <section class="sa-pane" id="paneGovernance">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>User Data Governance & Compliance</h2>
+          <p>Append-only GDPR lifecycle auditing, platform restriction enforcement, and data exports.</p>
+        </div>
+        <div class="sa-header-actions" style="display:flex; gap:10px;">
+          <button class="sa-btn-refresh" id="btnExportGovernanceCSV">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Log (CSV)
+          </button>
+          <button class="sa-btn-primary" id="btnOpenAddGovernanceModal">
+            <span>+</span> Add Governance Entry
+          </button>
+        </div>
+      </div>
+
+      <!-- Member Governance Selection Toolbar -->
+      <div style="background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-lg); padding:18px 22px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+        <div style="display:flex; align-items:center; gap:14px; flex:1; min-width:300px;">
+          <label for="governanceMemberSelect" style="font-size:13px; font-weight:600; color:#fff; white-space:nowrap;">Select Member:</label>
+          <select id="governanceMemberSelect" style="flex:1; padding:9px 14px; font-size:13px; background:var(--sa-bg-main); color:#fff; border:1px solid var(--sa-card-border); border-radius:var(--radius-sm);">
+            <option value="">Choose a member to inspect governance ledger...</option>
+          </select>
+          <span id="governanceMemberStatusBadge" class="sa-badge" style="display:none; padding:4px 10px; font-size:11px;">--</span>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="sa-btn-outline sa-btn-danger" id="btnBlockMember" disabled>
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            Restrict / Block Member
+          </button>
+          <button class="sa-btn-outline sa-btn-success" id="btnUnblockMember" disabled>
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Lift Restriction / Unblock
+          </button>
+        </div>
+      </div>
+
+      <!-- Append-Only Governance Ledger Table -->
+      <div class="sa-card-table-wrap">
+        <table class="sa-table">
+          <thead>
+            <tr>
+              <th>Action Type</th>
+              <th>Requested By</th>
+              <th>Notes / Regulatory Justification</th>
+              <th>Status</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="governanceTableBody">
+            <tr><td colspan="5" class="sa-loading-cell">Select a member above to inspect append-only governance ledger.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 8: Unified Audit Stream Placeholder (Layer 6) -->
+    <section class="sa-pane" id="paneAudit">
+      <div class="sa-header">
+        <div class="sa-header-title">
+          <h2>Unified Audit Stream</h2>
+          <p>Consolidated administrative forensic timeline across all modules.</p>
+        </div>
+      </div>
+      <div class="sa-placeholder-card">
+        <h3>Section 8: Unified Audit Stream</h3>
+        <p>Consolidated timeline, severity tagging (Critical/Warning/Info), and CSV audit stream export.</p>
+        <span class="sa-layer-tag">Scheduled for Layer 6 Implementation</span>
+      </div>
+    </section>
+
+  </main>
+
+</div>
+
+<!-- Member Detail Drawer & Overlay -->
+<div class="sa-drawer-overlay" id="drawerOverlay"></div>
+<aside class="sa-drawer" id="memberDrawer" aria-hidden="true">
+  <div class="sa-drawer-header">
+    <div class="sa-drawer-user-info">
+      <div class="sa-drawer-avatar" id="drawerAvatar">MD</div>
+      <div>
+        <h3 id="drawerUserName">Member Name</h3>
+        <span class="sa-drawer-email" id="drawerUserEmail">user@mahitechgroup.com</span>
+      </div>
+    </div>
+    <button class="sa-drawer-close-btn" id="closeDrawerBtn" aria-label="Close drawer">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="sa-drawer-quick-actions">
+    <button class="sa-btn-outline" id="drawerEditRoleBtn">Edit Role</button>
+    <button class="sa-btn-outline sa-btn-warning" id="drawerOpenDisputeBtn" title="Layer 4 feature">Open Dispute</button>
+    <button class="sa-btn-outline sa-btn-danger" id="drawerBlockBtn" title="Layer 5 feature">Initiate Block</button>
+  </div>
+
+  <div class="sa-drawer-tabs">
+    <button class="sa-tab-btn active" data-tab="tabIdeas">Ideas History</button>
+    <button class="sa-tab-btn" data-tab="tabProjects">Projects &amp; Tasks</button>
+    <button class="sa-tab-btn" data-tab="tabEarnings">Earnings Ledger</button>
+    <button class="sa-tab-btn" data-tab="tabAccess">Access History</button>
+  </div>
+
+  <div class="sa-drawer-body">
+    <!-- Tab 1: Ideas History -->
+    <div class="sa-tab-content active" id="tabIdeas">
+      <div class="sa-drawer-table-wrap">
+        <table class="sa-drawer-table">
+          <thead>
+            <tr>
+              <th>Idea ID</th>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="drawerIdeasBody">
+            <tr><td colspan="4" class="sa-loading-cell">Loading ideas...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 2: Projects & Tasks -->
+    <div class="sa-tab-content" id="tabProjects">
+      <div class="sa-drawer-table-wrap">
+        <table class="sa-drawer-table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Role</th>
+              <th>Tasks Assigned</th>
+              <th>Tasks Completed</th>
+            </tr>
+          </thead>
+          <tbody id="drawerProjectsBody">
+            <tr><td colspan="4" class="sa-loading-cell">Loading projects...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 3: Earnings Ledger -->
+    <div class="sa-tab-content" id="tabEarnings">
+      <div class="sa-drawer-table-wrap">
+        <table class="sa-drawer-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Event ID</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="drawerEarningsBody">
+            <tr><td colspan="4" class="sa-loading-cell">Loading earnings...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 4: Access History -->
+    <div class="sa-tab-content" id="tabAccess">
+      <div class="sa-drawer-table-wrap">
+        <table class="sa-drawer-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Action</th>
+              <th>IP Address</th>
+            </tr>
+          </thead>
+          <tbody id="drawerAccessBody">
+            <tr><td colspan="3" class="sa-loading-cell">Loading access history...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- Simple Role Edit Modal -->
+<div class="sa-modal-overlay" id="roleModalOverlay" style="display:none;">
+  <div class="sa-modal">
+    <h3>Edit Member Role</h3>
+    <p id="roleModalUser">Updating role for user</p>
+    <div class="sa-modal-field">
+      <label for="newRoleSelect">Role</label>
+      <select id="newRoleSelect">
+        <option value="researcher">Researcher</option>
+        <option value="developer">Developer</option>
+        <option value="designer">Designer</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="sa-modal-field">
+      <label for="newSubRoleInput">Sub Role</label>
+      <input type="text" id="newSubRoleInput" placeholder="e.g. Frontend Lead, UI/UX">
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn-outline" id="cancelRoleModalBtn">Cancel</button>
+      <button class="sa-btn-primary" id="saveRoleModalBtn">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Support Ticket Thread Slide-Out Drawer -->
+<div class="sa-drawer-overlay" id="ticketDrawerOverlay"></div>
+<aside class="sa-drawer" id="ticketDrawer" aria-hidden="true" style="width: 580px;">
+  <div class="sa-drawer-header">
+    <div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+        <span class="sa-badge-role" id="drawerTicketNumber">TKT-0000</span>
+        <span class="sa-badge-status" id="drawerTicketStatus">open</span>
+        <span class="sa-trend-pill" id="drawerTicketPriority">normal</span>
+      </div>
+      <h3 id="drawerTicketSubject" style="font-size: 16px; margin: 0;">Ticket Subject</h3>
+      <span class="sa-drawer-email" id="drawerTicketReporter">Reporter: Name (email@domain.com)</span>
+    </div>
+    <button class="sa-drawer-close-btn" id="closeTicketDrawerBtn" aria-label="Close ticket drawer">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- Ticket Status & Escalation Controls -->
+  <div class="sa-drawer-quick-actions" style="justify-content: space-between; align-items:center;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <select id="threadStatusSelect" style="padding:6px 10px; font-size:12px; background:var(--sa-card-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+        <option value="in_progress">Mark In Progress</option>
+        <option value="resolved">Mark Resolved</option>
+        <option value="closed">Mark Closed</option>
+      </select>
+      <button class="sa-btn-primary" id="btnUpdateThreadStatus" style="padding:6px 12px; font-size:12px;">Update</button>
+    </div>
+    <button class="sa-btn-outline sa-btn-danger" id="btnEscalateThreadUrgent" style="padding:6px 12px; font-size:12px;">
+      Escalate to Urgent
+    </button>
+  </div>
+
+  <!-- Messages Timeline -->
+  <div class="sa-drawer-body" id="ticketMessagesContainer" style="display:flex; flex-direction:column; gap:14px;">
+    <div class="sa-loading-cell">Loading conversation thread...</div>
+  </div>
+
+  <!-- Admin Reply Form -->
+  <div style="padding:16px 20px; background:#131c31; border-top:1px solid var(--sa-card-border);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <label style="font-size:12px; font-weight:600; color:var(--sa-text-dim);">ADMIN RESPONSE</label>
+      <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--sa-warning); cursor:pointer;">
+        <input type="checkbox" id="ticketThreadInternalCheck">
+        <span>Mark as Internal Note</span>
+      </label>
+    </div>
+    <textarea id="ticketThreadReplyInput" rows="3" placeholder="Type response or internal staff note..." style="width:100%; padding:10px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); color:#fff; font-size:13px; outline:none; resize:vertical;"></textarea>
+    <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+      <button class="sa-btn-primary" id="btnSendThreadReply">Send Message</button>
+    </div>
+  </div>
+</aside>
+
+<!-- Kill Idea Confirmation Modal -->
+<div class="sa-modal-overlay" id="killIdeaModalOverlay" style="display:none;">
+  <div class="sa-modal">
+    <h3 style="color:var(--sa-danger);">Confirm Idea Kill Switch</h3>
+    <p id="killIdeaTargetTitle" style="margin-bottom:12px; font-weight:600; color:#fff;">Killing idea...</p>
+    <div style="padding:10px 14px; background:rgba(239,68,68,0.12); border-left:3px solid var(--sa-danger); border-radius:4px; font-size:12px; color:#fca5a5; margin-bottom:16px;">
+      Warning: Killing this idea will permanently stop ideation governance and cancel all pending &amp; active fan-out tasks.
+    </div>
+    <div class="sa-modal-field">
+      <label for="killIdeaReasonInput">Reason for Kill Switch (Required)</label>
+      <textarea id="killIdeaReasonInput" rows="3" placeholder="Provide justification (e.g. Policy violation, Unfeasible roadmap)" style="padding:8px 12px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); color:#fff; font-size:13px;"></textarea>
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn-outline" id="btnCancelKillIdea">Cancel</button>
+      <button class="sa-btn-primary sa-btn-danger" id="btnConfirmKillIdea" style="background:var(--sa-danger); border-color:var(--sa-danger);">Confirm Kill Switch</button>
+    </div>
+  </div>
+</div>
+
+<!-- Restore Idea Confirmation Modal -->
+<div class="sa-modal-overlay" id="restoreIdeaModalOverlay" style="display:none;">
+  <div class="sa-modal">
+    <h3 style="color:var(--sa-success);">Restore Killed Idea</h3>
+    <p id="restoreIdeaTargetTitle" style="margin-bottom:12px; font-weight:600; color:#fff;">Restoring idea...</p>
+    <div class="sa-modal-field">
+      <label for="restoreIdeaReasonInput">Reason for Restoration (Required)</label>
+      <textarea id="restoreIdeaReasonInput" rows="3" placeholder="Explain why idea is being restored..." style="padding:8px 12px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); color:#fff; font-size:13px;"></textarea>
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn-outline" id="btnCancelRestoreIdea">Cancel</button>
+      <button class="sa-btn-primary" id="btnConfirmRestoreIdea">Confirm Restore</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Support Ticket Modal -->
+<div class="sa-modal-overlay" id="createTicketModalOverlay" style="display:none;">
+  <div class="sa-modal" style="width: 480px;">
+    <h3>Open Support Ticket</h3>
+    <p style="margin-bottom:16px;">Submit a new ticket on behalf of a team member or system request.</p>
+    <div class="sa-modal-field">
+      <label for="newTicketReporterSelect">Reporter</label>
+      <select id="newTicketReporterSelect"></select>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+      <div class="sa-modal-field">
+        <label for="newTicketCategorySelect">Category</label>
+        <select id="newTicketCategorySelect">
+          <option value="bug">Bug</option>
+          <option value="feature_request">Feature Request</option>
+          <option value="access_issue">Access Issue</option>
+          <option value="billing">Billing</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="sa-modal-field">
+        <label for="newTicketPrioritySelect">Priority</label>
+        <select id="newTicketPrioritySelect">
+          <option value="low">Low</option>
+          <option value="normal" selected>Normal</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+    </div>
+    <div class="sa-modal-field">
+      <label for="newTicketSubjectInput">Subject</label>
+      <input type="text" id="newTicketSubjectInput" placeholder="Brief issue summary...">
+    </div>
+    <div class="sa-modal-field">
+      <label for="newTicketBodyInput">Description / Message</label>
+      <textarea id="newTicketBodyInput" rows="3" placeholder="Detailed description of the issue..." style="padding:8px 12px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); color:#fff; font-size:13px;"></textarea>
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn-outline" id="btnCancelCreateTicket">Cancel</button>
+      <button class="sa-btn-primary" id="btnSubmitCreateTicket">Create Ticket</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================================
+     STEP 14 LAYER 4: Dispute Resolution Modals
+     =================================================================== -->
+
+<!-- 1. Open New Dispute Modal -->
+<div class="sa-modal-backdrop" id="modalCreateDispute">
+  <div class="sa-modal-card" style="max-width: 580px;">
+    <div class="sa-modal-header">
+      <h3>Initiate Formal Dispute</h3>
+      <button class="sa-modal-close" id="btnCloseCreateDispute">&times;</button>
+    </div>
+    <div class="sa-modal-grid">
+      <div class="sa-modal-field">
+        <label for="newDisputeTypeSelect">Dispute Type</label>
+        <select id="newDisputeTypeSelect">
+          <option value="financial_settlement">Financial Settlement</option>
+          <option value="ip_ownership">IP Ownership</option>
+          <option value="contribution_disagreement">Contribution Disagreement</option>
+          <option value="offboarding_settlement">Offboarding Settlement</option>
+          <option value="formal_complaint">Formal Complaint</option>
+          <option value="legal_matter">Legal Matter</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="sa-modal-field">
+        <label for="newDisputeRaisedBySelect">Raised By (Complainant)</label>
+        <select id="newDisputeRaisedBySelect">
+          <option value="">Select Member...</option>
+        </select>
+      </div>
+    </div>
+    <div class="sa-modal-grid">
+      <div class="sa-modal-field">
+        <label for="newDisputeAgainstPartySelect">Against Member (Optional)</label>
+        <select id="newDisputeAgainstPartySelect">
+          <option value="">None / External Party</option>
+        </select>
+      </div>
+      <div class="sa-modal-field">
+        <label for="newDisputeAgainstExtInput">External Party Name (If not a member)</label>
+        <input type="text" id="newDisputeAgainstExtInput" placeholder="e.g. Acme Corp / Third-party Vendor">
+      </div>
+    </div>
+    <div class="sa-modal-field">
+      <label for="newDisputeDescInput">Detailed Description of Disagreement / Dispute</label>
+      <textarea id="newDisputeDescInput" rows="4" placeholder="Comprehensive background, context, and claim..."></textarea>
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn-outline" id="btnCancelCreateDispute">Cancel</button>
+      <button class="sa-btn-primary" id="btnSubmitCreateDispute">Open Dispute</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Dispute Mediation & Detail Modal -->
+<div class="sa-modal-backdrop" id="modalDisputeDetail">
+  <div class="sa-modal-card" style="max-width: 860px; max-height: 90vh; overflow-y: auto;">
+    <div class="sa-modal-header">
+      <div>
+        <h3 id="detailDisputeTitle">Dispute DSP-0001</h3>
+        <p id="detailDisputeSub" style="font-size: 12px; color: var(--sa-text-muted); margin: 4px 0 0;"></p>
+      </div>
+      <button class="sa-modal-close" id="btnCloseDisputeDetail">&times;</button>
+    </div>
+
+    <!-- Dispute Status Controller -->
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--sa-card-border); border-radius: var(--radius-sm); padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <span style="font-size: 12px; color: var(--sa-text-muted); text-transform: uppercase;">Current Status:</span>
+        <span class="sa-badge" id="detailDisputeStatusBadge" style="margin-left: 8px;">OPEN</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <label for="detailDisputeStatusSelect" style="font-size: 12px; color: var(--sa-text-muted);">Transition:</label>
+        <select id="detailDisputeStatusSelect" style="padding: 4px 8px; font-size: 12px; background: var(--sa-card-bg); color: #fff; border: 1px solid var(--sa-card-border); border-radius: 4px;">
+          <option value="under_review">Under Review</option>
+          <option value="negotiation">Negotiation</option>
+          <option value="pending_signatures">Pending Signatures</option>
+          <option value="settled">Settled</option>
+          <option value="resolved">Resolved</option>
+          <option value="escalated_legal">Escalate Legal</option>
+          <option value="closed">Formally Close</option>
+        </select>
+        <button class="sa-btn-outline" id="btnApplyDisputeStatus" style="padding: 4px 10px; font-size: 12px;">Update Status</button>
+      </div>
+    </div>
+
+    <!-- Description & Context -->
+    <div style="margin-bottom: 20px;">
+      <h4 style="font-size: 13px; color: var(--sa-text-muted); text-transform: uppercase; margin-bottom: 6px;">Dispute Statement</h4>
+      <div id="detailDisputeDesc" style="background: var(--sa-bg); padding: 12px 16px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.6; border: 1px solid var(--sa-card-border); white-space: pre-wrap;"></div>
+    </div>
+
+    <!-- Parties Involved -->
+    <div style="margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h4 style="font-size: 13px; color: var(--sa-text-muted); text-transform: uppercase; margin: 0;">Parties & Signers</h4>
+        <button class="sa-btn-outline" id="btnToggleAddParty" style="padding: 3px 8px; font-size: 11px;">+ Add Party</button>
+      </div>
+      <div id="addPartyFormWrap" style="display:none; background:rgba(255,255,255,0.02); border:1px solid var(--sa-card-border); border-radius:6px; padding:12px; margin-bottom:12px;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <input type="text" id="partyNameInput" placeholder="Party Name" style="flex:1; padding:6px 10px; font-size:12px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+          <select id="partyRoleSelect" style="padding:6px 10px; font-size:12px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+            <option value="complainant">Complainant</option>
+            <option value="respondent">Respondent</option>
+            <option value="witness">Witness</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button class="sa-btn-primary" id="btnSubmitAddParty" style="padding:6px 14px; font-size:12px;">Save Party</button>
+        </div>
+      </div>
+      <div id="detailDisputePartiesList" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+    </div>
+
+    <!-- Agreements & Liability Waivers Tabs -->
+    <div style="border-top: 1px solid var(--sa-card-border); padding-top: 18px; margin-bottom: 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="font-size:14px; margin:0; color:#fff;">Agreements & Legal Waivers</h4>
+        <div style="display:flex; gap:8px;">
+          <button class="sa-btn-outline" id="btnOpenDraftAgreement">+ Draft Agreement</button>
+          <button class="sa-btn-outline" id="btnOpenDraftWaiver">+ Draft Waiver</button>
+        </div>
+      </div>
+
+      <!-- Agreement Drafting Panel -->
+      <div id="draftAgreementPanel" style="display:none; background:#0b1120; border:1px solid rgba(99,102,241,0.3); border-radius:8px; padding:16px; margin-bottom:16px;">
+        <h5 style="margin:0 0 8px; color:#a5b4fc; font-size:13px;">Draft Formal Dispute Agreement</h5>
+        <textarea id="draftAgreementText" rows="5" placeholder="Enter terms of agreement, mutual obligations, release provisions..." style="width:100%; box-sizing:border-box; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:6px; color:#fff; font-size:13px; padding:10px; margin-bottom:10px;"></textarea>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="sa-btn-outline" id="btnCancelDraftAgreement" style="font-size:12px;">Cancel</button>
+          <button class="sa-btn-primary" id="btnDispatchAgreement" style="font-size:12px;">Dispatch for Digital Signatures</button>
+        </div>
+      </div>
+
+      <!-- Waiver Drafting Panel -->
+      <div id="draftWaiverPanel" style="display:none; background:#0b1120; border:1px solid rgba(16,185,129,0.3); border-radius:8px; padding:16px; margin-bottom:16px;">
+        <h5 style="margin:0 0 8px; color:#6ee7b7; font-size:13px;">Draft Liability Waiver</h5>
+        <div style="display:flex; gap:12px; margin-bottom:10px; flex-wrap:wrap;">
+          <select id="draftWaiverType" style="flex:1; padding:6px 10px; font-size:12px; background:var(--sa-card-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+            <option value="full_release">Full Release of Claims</option>
+            <option value="partial_release">Partial Release</option>
+            <option value="nda_extension">NDA & Confidentiality Extension</option>
+            <option value="ip_assignment">IP Assignment & Transfer</option>
+            <option value="financial_final_settlement">Financial Final Settlement</option>
+          </select>
+          <select id="draftWaiverScope" style="width:160px; padding:6px 10px; font-size:12px; background:var(--sa-card-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+            <option value="global">Global (Platform-Wide)</option>
+            <option value="project">Project Scope</option>
+            <option value="individual">Individual Parties</option>
+          </select>
+        </div>
+        <textarea id="draftWaiverText" rows="4" placeholder="Enter explicit liability waiver text, waivers of claims..." style="width:100%; box-sizing:border-box; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:6px; color:#fff; font-size:13px; padding:10px; margin-bottom:10px;"></textarea>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="sa-btn-outline" id="btnCancelDraftWaiver" style="font-size:12px;">Cancel</button>
+          <button class="sa-btn-primary" id="btnDispatchWaiver" style="font-size:12px; background:#10b981;">Dispatch Liability Waiver</button>
+        </div>
+      </div>
+
+      <!-- Signatures Stream -->
+      <div id="detailDisputeSignaturesList"></div>
+    </div>
+
+    <!-- Financial Settlement Panel -->
+    <div style="border-top:1px solid var(--sa-card-border); padding-top:18px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h4 style="font-size:14px; margin:0; color:#fff;">Financial Settlement Execution</h4>
+        <span id="settlementStatusIndicator" style="font-size:12px; color:var(--sa-text-muted);">Amount: ₹0.00</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--sa-card-border); border-radius:8px; padding:14px;">
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+          <input type="number" id="settleAmountInput" placeholder="Amount (₹)" min="0" step="0.01" style="flex:1; min-width:140px; padding:8px 12px; font-size:13px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+          <select id="settleActionSelect" style="flex:1; min-width:180px; padding:8px 12px; font-size:13px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+            <option value="wallet_credit">Wallet Credit (Award to Party)</option>
+            <option value="wallet_debit">Wallet Debit (Deduction)</option>
+            <option value="external">External Bank/Escrow Wire</option>
+          </select>
+          <select id="settleTargetUserSelect" style="flex:1; min-width:180px; padding:8px 12px; font-size:13px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px;">
+            <option value="">Target Beneficiary...</option>
+          </select>
+        </div>
+        <input type="text" id="settleNotesInput" placeholder="Settlement reference notes (e.g. Mutual release agreement clause 4.2)..." style="width:100%; box-sizing:border-box; padding:8px 12px; font-size:13px; background:var(--sa-bg); color:#fff; border:1px solid var(--sa-card-border); border-radius:4px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:flex-end;">
+          <button class="sa-btn-primary" id="btnExecuteSettlement" style="background:#10b981;">Confirm & Execute Settlement</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Governance Entry Modal (Layer 5) -->
+<div class="sa-modal-backdrop" id="modalAddGovernance">
+  <div class="sa-modal-card" style="max-width: 540px;">
+    <div class="sa-modal-header">
+      <h3>Record Regulatory Governance Entry</h3>
+      <button class="sa-modal-close" id="btnCloseAddGovernance">&times;</button>
+    </div>
+    <div class="sa-modal-field">
+      <label for="govModalUserSelect">Target Member</label>
+      <select id="govModalUserSelect" style="width:100%; padding:10px; background:var(--sa-bg-main); color:#fff; border:1px solid var(--sa-card-border); border-radius:var(--radius-sm);">
+        <option value="">Select a member...</option>
+      </select>
+    </div>
+    <div class="sa-modal-field">
+      <label for="govModalActionSelect">Governance Action</label>
+      <select id="govModalActionSelect" style="width:100%; padding:10px; background:var(--sa-bg-main); color:#fff; border:1px solid var(--sa-card-border); border-radius:var(--radius-sm);">
+        <option value="consent_given">consent_given — User provided GDPR/Data consent</option>
+        <option value="consent_revoked">consent_revoked — User revoked data processing consent</option>
+        <option value="data_export_requested">data_export_requested — Data subject requested archive export</option>
+        <option value="data_export_delivered">data_export_delivered — Data archive provided to subject</option>
+        <option value="data_deletion_requested">data_deletion_requested — Right to erasure requested</option>
+        <option value="data_deletion_reviewed">data_deletion_reviewed — Erasure review conducted</option>
+        <option value="right_to_restrict">right_to_restrict — Processing restriction / account block enforced</option>
+        <option value="restriction_lifted">restriction_lifted — Account restriction lifted / reactivated</option>
+      </select>
+    </div>
+    <div class="sa-modal-field">
+      <label for="govModalNotesInput">Notes / Compliance Justification (Optional)</label>
+      <textarea id="govModalNotesInput" rows="3" placeholder="Context, justification, or regulatory reference..." style="width:100%; padding:10px; background:var(--sa-bg-main); color:#fff; border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); font-size:13px;"></textarea>
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn-outline" id="btnCancelAddGovernance">Cancel</button>
+      <button class="sa-btn-primary" id="btnSubmitAddGovernance">Commit Governance Row</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIFO Toast Notifications Container -->
+<div id="toastContainer"></div>
+
+<!-- Core Super Admin Logic -->
+<script src="/js/superadmin.js"></script>
+</body>
+</html>

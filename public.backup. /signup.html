@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up - Mahi Tech Team Application</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #080b11;
+      --card-bg: #151c2f;
+      --border-color: #1e2840;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success-bg: rgba(16, 185, 129, 0.15);
+      --success-border: #10b981;
+      --error-bg: rgba(239, 68, 68, 0.15);
+      --error-border: #ef4444;
+      --warning-bg: rgba(245, 158, 11, 0.15);
+      --warning-border: #f59e0b;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    .signup-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.75rem;
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+      color: #cbd5e1;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: #0b1120;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      border-color: var(--primary);
+    }
+    .hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 0.85rem;
+      background-color: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-top: 0.5rem;
+    }
+    .submit-btn:hover {
+      background-color: var(--primary-hover);
+    }
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .status-banner {
+      display: none;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+    .status-banner.success {
+      display: block;
+      background: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      color: #fde68a;
+    }
+    .status-banner.error {
+      display: block;
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: #fca5a5;
+    }
+    .links-footer {
+      margin-top: 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .links-footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .links-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="signup-card">
+    <h1>Team Application</h1>
+    <p class="subtitle">Join the Mahi Tech Team. All applications undergo administrator review.</p>
+
+    <div id="statusBanner" class="status-banner" role="alert"></div>
+
+    <form id="signupForm" novalidate>
+      <div class="form-group">
+        <label for="name">Full Name *</label>
+        <input type="text" id="name" name="name" placeholder="e.g. Maya Lin" required autocomplete="name">
+      </div>
+
+      <div class="form-group">
+        <label for="email">Work Email *</label>
+        <input type="email" id="email" name="email" placeholder="name@company.com" required autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label for="phoneNumber">Phone Number</label>
+        <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="+1 (555) 012-3456" autocomplete="tel">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password *</label>
+        <input type="password" id="password" name="password" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password">
+        <div class="hint">Must contain at least 8 characters (server policy).</div>
+      </div>
+
+      <div class="form-group">
+        <label for="desiredRole">Desired Role *</label>
+        <select id="desiredRole" name="desiredRole" required>
+          <option value="" disabled selected>Select the role you are applying for...</option>
+          <option value="researcher">Researcher</option>
+          <option value="designer">UI/UX Designer</option>
+          <option value="developer">Developer</option>
+          <option value="producer">Producer / Tester</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="subRoleGroup" style="display: none;">
+        <label for="desiredSubRole">Developer Specialization (Optional)</label>
+        <select id="desiredSubRole" name="desiredSubRole">
+          <option value="">General Developer (No preference)</option>
+          <option value="frontend">Frontend Specialist</option>
+          <option value="backend">Backend Specialist</option>
+        </select>
+      </div>
+
+      <!-- LEGAL GATE: every active document must be read + accepted -->
+      <div class="form-group" id="legalDocsGroup" style="display: none;">
+        <label>Legal Agreements <span style="color:#f87171;">*</span></label>
+        <p style="font-size: 0.78rem; color: #94a3b8; margin: 4px 0 10px;">
+          Big-company style onboarding: read each document and tick acceptance. Your typed name below becomes your
+          legally valid electronic signature (IT Act 2000 §3A) and is stored tamper-proof.
+        </p>
+        <div id="legalDocsList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        <div style="margin-top: 12px;">
+          <label for="legalTypedName" style="font-size: 0.8rem;">Type your FULL NAME exactly to sign electronically</label>
+          <input type="text" id="legalTypedName" placeholder="Must exactly match the Name field above" style="width: 100%; margin-top: 4px;">
+        </div>
+      </div>
+
+      <button type="submit" id="submitBtn" class="submit-btn">Submit Application</button>
+      <div style="margin-top: 14px; text-align: center; font-size: 0.85rem;">
+        Already a member? <a href="/login.html" style="color: #93c5fd;">Sign in here</a>
+      </div>
+    </form>
+
+    <div class="links-footer">
+      Already have an active account? <a href="/">Return to Dashboard</a>
+    </div>
+  </div>
+
+  <script>
+    const signupForm = document.getElementById('signupForm');
+
+    // LEGAL GATE: load active legal documents and render acceptance cards
+    (async function loadLegalDocuments() {
+      const group = document.getElementById('legalDocsGroup');
+      const list = document.getElementById('legalDocsList');
+      if (!group || !list) return;
+      try {
+        const res = await fetch('/api/legal/documents/active');
+        const data = await res.json();
+        if (!res.ok || !data.documents || data.documents.length === 0) return;
+        group.style.display = 'block';
+        list.innerHTML = data.documents.map((doc) => `
+          <div style="border: 1px solid #2a3754; border-radius: 8px; padding: 10px 12px; background: rgba(255,255,255,0.02);">
+            <label style="display: flex; gap: 8px; align-items: flex-start; cursor: pointer;">
+              <input type="checkbox" class="legal-doc-check" data-doc-id="${doc.id}" style="margin-top: 3px;">
+              <span>
+                <strong style="font-size: 0.85rem;">${doc.title}</strong>
+                <span style="font-size: 0.7rem; color: #7c8db5;"> (v${doc.version})</span>
+                <details style="margin-top: 6px;" class="legal-doc-details" data-doc-id="${doc.id}">
+                  <summary style="font-size: 0.75rem; color: #93c5fd; cursor: pointer;">Read document</summary>
+                  <pre class="legal-doc-body" style="display:none; white-space: pre-wrap; font-size: 0.72rem; color: #cbd5e1; max-height: 260px; overflow-y: auto; border: 1px solid #1e2840; border-radius: 6px; padding: 8px; margin-top: 6px;">Loading…</pre>
+                </details>
+              </span>
+            </label>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.warn('Legal documents could not be loaded:', e);
+      }
+
+      // Lazy-load document bodies when a document is expanded
+      list.querySelectorAll('.legal-doc-details').forEach((details) => {
+        details.addEventListener('toggle', async () => {
+          if (!details.open) return;
+          const pre = details.querySelector('.legal-doc-body');
+          if (pre.dataset.loaded) return;
+          try {
+            const res = await fetch(`/api/legal/documents/${details.dataset.docId}`);
+            const data = await res.json();
+            pre.textContent = data.document?.body || 'Document body unavailable.';
+            pre.dataset.loaded = '1';
+          } catch (e) {
+            pre.textContent = 'Could not load document body.';
+          }
+        });
+      });
+    })();
+
+    const desiredRoleSelect = document.getElementById('desiredRole');
+    const subRoleGroup = document.getElementById('subRoleGroup');
+    const desiredSubRoleSelect = document.getElementById('desiredSubRole');
+    const statusBanner = document.getElementById('statusBanner');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Show/hide developer specialization field
+    desiredRoleSelect.addEventListener('change', () => {
+      if (desiredRoleSelect.value === 'developer') {
+        subRoleGroup.style.display = 'block';
+      } else {
+        subRoleGroup.style.display = 'none';
+        desiredSubRoleSelect.value = '';
+      }
+    });
+
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusBanner.className = 'status-banner';
+      statusBanner.style.display = 'none';
+      statusBanner.textContent = '';
+
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const phoneNumber = document.getElementById('phoneNumber').value.trim();
+      const password = document.getElementById('password').value;
+      const desiredRole = desiredRoleSelect.value;
+      const desiredSubRole = desiredRole === 'developer' && desiredSubRoleSelect.value ? desiredSubRoleSelect.value : null;
+
+      if (!name || !email || !password || !desiredRole) {
+        showStatus('Please fill in all required fields.', 'error');
+        return;
+      }
+
+      if (password.length < 8) {
+        showStatus('Password must be at least 6 characters long.', 'error');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting Application...';
+
+      try {
+        // Legal gate: collect accepted document ids before submitting
+        const legalGroup = document.getElementById('legalDocsGroup');
+        let legalTypedName = null;
+        let legalAcceptedIds = [];
+        if (legalGroup && legalGroup.style.display !== 'none') {
+          legalTypedName = document.getElementById('legalTypedName').value.trim();
+          legalAcceptedIds = Array.from(document.querySelectorAll('.legal-doc-check:checked')).map((cb) => cb.dataset.docId);
+          if (legalTypedName.toLowerCase() !== name.toLowerCase()) {
+            showStatus('Typed signature name must exactly match your full name.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Application';
+            return;
+          }
+          const allChecks = document.querySelectorAll('.legal-doc-check');
+          if (legalAcceptedIds.length !== allChecks.length) {
+            showStatus('Please read and accept ALL legal documents before applying.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Application';
+            return;
+          }
+        }
+
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+            phone_number: phoneNumber || null,
+            desired_role: desiredRole,
+            desired_sub_role: desiredSubRole,
+            legal_typed_name: legalTypedName,
+            legal_accepted_doc_ids: legalAcceptedIds
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.status === 201) {
+          showStatus(
+            (data.message || 'Application submitted successfully!') + ' Verify your email via the link we sent — approval needs it.',
+            'success'
+          );
+          if (data.dev_verify_url) {
+            const a = document.createElement('a');
+            a.href = data.dev_verify_url;
+            a.textContent = '[dev] Verify your email now →';
+            a.style.cssText = 'display:block;margin-top:8px;color:#93c5fd;';
+            statusBanner.appendChild(a);
+          }
+          signupForm.reset();
+          subRoleGroup.style.display = 'none';
+        } else {
+          showStatus(data.error || 'Failed to submit application. Please check your inputs.', 'error');
+        }
+      } catch (err) {
+        showStatus('Network error while connecting to server. Please try again.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Application';
+      }
+    });
+
+    function showStatus(message, type) {
+      statusBanner.className = `status-banner ${type}`;
+      statusBanner.textContent = message;
+      statusBanner.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

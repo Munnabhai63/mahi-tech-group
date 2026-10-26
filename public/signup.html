@@ -168,8 +168,8 @@
 
       <div class="form-group">
         <label for="password">Password *</label>
-        <input type="password" id="password" name="password" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password">
-        <div class="hint">Must contain at least 8 characters (server policy).</div>
+        <input type="password" id="password" name="password" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password">
+        <div class="hint">Must contain at least 6 characters.</div>
       </div>
 
       <div class="form-group">
@@ -192,24 +192,7 @@
         </select>
       </div>
 
-      <!-- LEGAL GATE: every active document must be read + accepted -->
-      <div class="form-group" id="legalDocsGroup" style="display: none;">
-        <label>Legal Agreements <span style="color:#f87171;">*</span></label>
-        <p style="font-size: 0.78rem; color: #94a3b8; margin: 4px 0 10px;">
-          Big-company style onboarding: read each document and tick acceptance. Your typed name below becomes your
-          legally valid electronic signature (IT Act 2000 §3A) and is stored tamper-proof.
-        </p>
-        <div id="legalDocsList" style="display: flex; flex-direction: column; gap: 10px;"></div>
-        <div style="margin-top: 12px;">
-          <label for="legalTypedName" style="font-size: 0.8rem;">Type your FULL NAME exactly to sign electronically</label>
-          <input type="text" id="legalTypedName" placeholder="Must exactly match the Name field above" style="width: 100%; margin-top: 4px;">
-        </div>
-      </div>
-
       <button type="submit" id="submitBtn" class="submit-btn">Submit Application</button>
-      <div style="margin-top: 14px; text-align: center; font-size: 0.85rem;">
-        Already a member? <a href="/login.html" style="color: #93c5fd;">Sign in here</a>
-      </div>
     </form>
 
     <div class="links-footer">
@@ -219,54 +202,6 @@
 
   <script>
     const signupForm = document.getElementById('signupForm');
-
-    // LEGAL GATE: load active legal documents and render acceptance cards
-    (async function loadLegalDocuments() {
-      const group = document.getElementById('legalDocsGroup');
-      const list = document.getElementById('legalDocsList');
-      if (!group || !list) return;
-      try {
-        const res = await fetch('/api/legal/documents/active');
-        const data = await res.json();
-        if (!res.ok || !data.documents || data.documents.length === 0) return;
-        group.style.display = 'block';
-        list.innerHTML = data.documents.map((doc) => `
-          <div style="border: 1px solid #2a3754; border-radius: 8px; padding: 10px 12px; background: rgba(255,255,255,0.02);">
-            <label style="display: flex; gap: 8px; align-items: flex-start; cursor: pointer;">
-              <input type="checkbox" class="legal-doc-check" data-doc-id="${doc.id}" style="margin-top: 3px;">
-              <span>
-                <strong style="font-size: 0.85rem;">${doc.title}</strong>
-                <span style="font-size: 0.7rem; color: #7c8db5;"> (v${doc.version})</span>
-                <details style="margin-top: 6px;" class="legal-doc-details" data-doc-id="${doc.id}">
-                  <summary style="font-size: 0.75rem; color: #93c5fd; cursor: pointer;">Read document</summary>
-                  <pre class="legal-doc-body" style="display:none; white-space: pre-wrap; font-size: 0.72rem; color: #cbd5e1; max-height: 260px; overflow-y: auto; border: 1px solid #1e2840; border-radius: 6px; padding: 8px; margin-top: 6px;">Loading…</pre>
-                </details>
-              </span>
-            </label>
-          </div>
-        `).join('');
-      } catch (e) {
-        console.warn('Legal documents could not be loaded:', e);
-      }
-
-      // Lazy-load document bodies when a document is expanded
-      list.querySelectorAll('.legal-doc-details').forEach((details) => {
-        details.addEventListener('toggle', async () => {
-          if (!details.open) return;
-          const pre = details.querySelector('.legal-doc-body');
-          if (pre.dataset.loaded) return;
-          try {
-            const res = await fetch(`/api/legal/documents/${details.dataset.docId}`);
-            const data = await res.json();
-            pre.textContent = data.document?.body || 'Document body unavailable.';
-            pre.dataset.loaded = '1';
-          } catch (e) {
-            pre.textContent = 'Could not load document body.';
-          }
-        });
-      });
-    })();
-
     const desiredRoleSelect = document.getElementById('desiredRole');
     const subRoleGroup = document.getElementById('subRoleGroup');
     const desiredSubRoleSelect = document.getElementById('desiredSubRole');
@@ -301,7 +236,7 @@
         return;
       }
 
-      if (password.length < 8) {
+      if (password.length < 6) {
         showStatus('Password must be at least 6 characters long.', 'error');
         return;
       }
@@ -310,28 +245,6 @@
       submitBtn.textContent = 'Submitting Application...';
 
       try {
-        // Legal gate: collect accepted document ids before submitting
-        const legalGroup = document.getElementById('legalDocsGroup');
-        let legalTypedName = null;
-        let legalAcceptedIds = [];
-        if (legalGroup && legalGroup.style.display !== 'none') {
-          legalTypedName = document.getElementById('legalTypedName').value.trim();
-          legalAcceptedIds = Array.from(document.querySelectorAll('.legal-doc-check:checked')).map((cb) => cb.dataset.docId);
-          if (legalTypedName.toLowerCase() !== name.toLowerCase()) {
-            showStatus('Typed signature name must exactly match your full name.', 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Submit Application';
-            return;
-          }
-          const allChecks = document.querySelectorAll('.legal-doc-check');
-          if (legalAcceptedIds.length !== allChecks.length) {
-            showStatus('Please read and accept ALL legal documents before applying.', 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Submit Application';
-            return;
-          }
-        }
-
         const response = await fetch('/api/auth/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -341,9 +254,7 @@
             password,
             phone_number: phoneNumber || null,
             desired_role: desiredRole,
-            desired_sub_role: desiredSubRole,
-            legal_typed_name: legalTypedName,
-            legal_accepted_doc_ids: legalAcceptedIds
+            desired_sub_role: desiredSubRole
           })
         });
 
@@ -351,16 +262,9 @@
 
         if (response.status === 201) {
           showStatus(
-            (data.message || 'Application submitted successfully!') + ' Verify your email via the link we sent — approval needs it.',
+            data.message || 'Application submitted successfully! Your account is currently PENDING review by an administrator. You will be able to log in once an admin approves your request.',
             'success'
           );
-          if (data.dev_verify_url) {
-            const a = document.createElement('a');
-            a.href = data.dev_verify_url;
-            a.textContent = '[dev] Verify your email now →';
-            a.style.cssText = 'display:block;margin-top:8px;color:#93c5fd;';
-            statusBanner.appendChild(a);
-          }
           signupForm.reset();
           subRoleGroup.style.display = 'none';
         } else {

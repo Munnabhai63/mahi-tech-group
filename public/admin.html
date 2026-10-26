@@ -489,11 +489,6 @@
           </button>
         </li>
         <li>
-          <button class="nav-btn" data-view="legal" id="nav-legal">
-            <span>📜</span> Legal Center
-          </button>
-        </li>
-        <li>
           <button class="nav-btn" data-view="config" id="nav-config">
             <span>⚙️</span> System Configuration
           </button>
@@ -531,17 +526,6 @@
       <div class="admin-content">
         <!-- 1. DASHBOARD OVERVIEW -->
         <section id="view-overview" class="view-section active">
-          <div class="card" id="analyticsCard">
-            <div class="card-header">
-              <h3>📊 Platform Analytics</h3>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <div><canvas id="chartRevenue" height="180"></canvas></div>
-              <div><canvas id="chartPayouts" height="180"></canvas></div>
-              <div><canvas id="chartIdeas" height="180"></canvas></div>
-              <div><canvas id="chartTasks" height="180"></canvas></div>
-            </div>
-          </div>
           <div class="metric-grid">
             <div class="metric-card">
               <span class="metric-label">Active Team Members</span>
@@ -708,49 +692,6 @@
         <section id="view-revenue" class="view-section">
           <div class="card">
             <div class="card-header">
-              <h3>YouPI UPI Collections (0% Fee)</h3>
-            </div>
-            <form id="youpiCollectForm" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end;">
-              <div class="form-group" style="margin:0;">
-                <label>Select Project</label>
-                <select id="ypiProjectSelect" class="form-select" required>
-                  <option value="">-- Choose Project --</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin:0;">
-                <label>Collect Amount (₹)</label>
-                <input type="number" id="ypiAmountInput" class="form-input" min="1" step="0.01" placeholder="e.g. 10000" required>
-              </div>
-              <div class="form-group" style="margin:0;">
-                <label>Payer Name (optional)</label>
-                <input type="text" id="ypiCustomerInput" class="form-input" placeholder="e.g. Acme Client">
-              </div>
-              <button type="submit" class="btn-primary" style="height: 42px;">Create UPI QR</button>
-            </form>
-            <p style="font-size: 0.78rem; color: #7c8db5; margin: 10px 0 0;">
-              Creates a YouPI payment session (UPI QR / WhatsApp OTP checkout). Payment confirmation arrives via
-              HMAC-signed webhook and is auto-credited to the project with instant splits. Configure the gateway in
-              Super Admin → Gateway.
-            </p>
-            <table class="data-table" style="margin-top: 12px;">
-              <thead>
-                <tr>
-                  <th>Order</th>
-                  <th>Project</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                  <th>UTR</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="youpiCollectionsBody">
-                <tr><td colspan="6" style="text-align:center;">No collections yet.</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
               <h3>Enter Project Revenue</h3>
             </div>
             <form id="enterRevenueForm" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end;">
@@ -788,20 +729,6 @@
               </thead>
               <tbody id="withdrawalsTableBody">
                 <tr><td colspan="5" style="text-align:center;">No pending withdrawals.</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <h3>Payout Queue (awaiting UPI transfer)</h3>
-            </div>
-            <table class="data-table">
-              <thead>
-                <tr><th>Member</th><th>Amount</th><th>UPI ID</th><th>Paid At</th><th>Action</th></tr>
-              </thead>
-              <tbody id="payoutQueueBody">
-                <tr><td colspan="5" style="text-align:center;">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -867,67 +794,6 @@
               </thead>
               <tbody id="offboardingHistoryTableBody">
                 <tr><td colspan="6" style="text-align:center;">Loading offboarding history...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- 6b. LEGAL CENTER -->
-        <section id="view-legal" class="view-section">
-          <div class="card">
-            <div class="card-header">
-              <h3>Active Legal Documents</h3>
-            </div>
-            <p style="font-size: 0.8rem; color: #7c8db5; margin-bottom: 12px;">
-              Every member must electronically sign all active documents before their application can be approved.
-              Publishing a new version requires existing members to re-sign (IT Act 2000 §3A e-signatures, append-only records).
-            </p>
-            <table class="data-table">
-              <thead>
-                <tr><th>Type</th><th>Title</th><th>Version</th><th>SHA-256</th><th>Published</th></tr>
-              </thead>
-              <tbody id="legalDocsTableBody">
-                <tr><td colspan="5" style="text-align:center;">Loading…</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <h3>Publish New Document Version</h3>
-            </div>
-            <form id="legalPublishForm" style="display:grid; grid-template-columns: 180px 1fr; gap: 12px; align-items: start;">
-              <div class="form-group" style="margin:0;">
-                <label>Document Type</label>
-                <select id="legalDocType" class="form-select" required>
-                  <option value="terms">Terms &amp; Conditions</option>
-                  <option value="privacy">Privacy Policy (DPDP)</option>
-                  <option value="nda">NDA</option>
-                  <option value="ip_assignment">IP Assignment</option>
-                  <option value="liability">Liability &amp; Indemnity</option>
-                  <option value="conduct">Code of Conduct</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin:0;">
-                <label>Title</label>
-                <input type="text" id="legalDocTitle" class="form-input" placeholder="Document title" required>
-                <label style="margin-top:8px;">Body</label>
-                <textarea id="legalDocBody" class="form-input" rows="8" placeholder="Full document text (plain text)…" required></textarea>
-                <button type="submit" class="btn-primary" style="margin-top:10px;">Publish Version</button>
-              </div>
-            </form>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <h3>Member Compliance (unsigned documents)</h3>
-            </div>
-            <table class="data-table">
-              <thead>
-                <tr><th>Member</th><th>Status</th><th>Missing Documents</th></tr>
-              </thead>
-              <tbody id="legalComplianceBody">
-                <tr><td colspan="3" style="text-align:center;">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -1265,40 +1131,8 @@
     </div>
   </div>
 
-  <div id="youpiCheckoutModal" class="modal-backdrop">
-    <div class="modal-card" style="max-width: 520px;">
-      <div class="modal-header">
-        <h3>Complete UPI Payment</h3>
-        <button class="btn-action close-modal">&times;</button>
-      </div>
-      <p style="font-size: 0.78rem; color: #7c8db5; margin-bottom: 8px;">
-        Scan the QR or pay via any UPI app in this window. Revenue is credited automatically when the bank confirms.
-      </p>
-      <iframe id="youpiCheckoutFrame" src="" style="width: 100%; height: 480px; border: 1px solid #1e2840; border-radius: 10px; background: #fff;"></iframe>
-      <div class="modal-actions">
-        <a id="youpiCheckoutOpenNew" href="#" target="_blank" class="btn-primary" style="text-decoration: none;">Open in new tab ↗</a>
-        <button type="button" class="btn-action close-modal">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="adminPlayRecordingModal" class="modal-backdrop">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 id="playRecTitle">Meeting Recording</h3>
-        <button class="btn-action close-modal">&times;</button>
-      </div>
-      <audio id="recordingPlayer" controls style="width: 100%; margin-bottom: 12px;"></audio>
-      <div class="modal-actions">
-        <a id="recordingDownloadLink" class="btn-primary" href="#" download style="text-decoration: none; display: inline-block; text-align: center;">Download Recording</a>
-        <button type="button" class="btn-action close-modal">Close</button>
-      </div>
-    </div>
-  </div>
-
   <div id="adminToast"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/admin.js"></script>
 </body>
 </html>

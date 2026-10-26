@@ -10,11 +10,7 @@
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  if (!token) {
-    window.location.replace('/login.html');
-    return;
-  }
-  if (user.role !== 'admin') {
+  if (!token || user.role !== 'admin') {
     alert('Access Denied: Administrator role required to access Governance Control Panel.');
     window.location.href = '/';
     return;
@@ -46,13 +42,6 @@
     if (body) opts.body = JSON.stringify(body);
     try {
       const res = await fetch(path, opts);
-      // Stale/expired session: redirect to login instead of failing silently
-      if (res.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.replace('/login.html');
-        return { status: 401, ok: false, data: { error: 'Session expired — sign in again' } };
-      }
       const data = await res.json().catch(() => ({}));
       return { status: res.status, ok: res.ok, data };
     } catch (err) {
@@ -72,7 +61,6 @@
     projects: 'Project Pipeline & Final Review Gates',
     revenue: 'Revenue Entry & Disbursal Ledger',
     offboarding: 'Offboarding Center & Wallet Settlements',
-    legal: 'Legal Center — Documents & Signatures',
     config: 'System Configuration Parameters',
     meetings: 'Meeting Management & AI Governance',
     audit: 'Immutable Compliance & Audit Logs'
@@ -88,13 +76,12 @@
     if (viewTitle) viewTitle.textContent = titles[viewName] || 'Admin Control Panel';
 
     // Lazy load view data
-    if (viewName === 'overview') { loadOverview(); loadAnalytics(); }
+    if (viewName === 'overview') loadOverview();
     else if (viewName === 'members') loadMembersView();
     else if (viewName === 'ideas') loadIdeasView();
     else if (viewName === 'projects') loadProjectsView();
     else if (viewName === 'revenue') loadRevenueView();
     else if (viewName === 'offboarding') loadOffboardingView();
-    else if (viewName === 'legal') loadLegalView();
     else if (viewName === 'config') loadConfigView();
     else if (viewName === 'meetings') loadMeetingsView();
     else if (viewName === 'audit') loadAuditLogs();
@@ -125,22 +112,6 @@
   // ---------------------------------------------------------------------------
   // VIEW 1: DASHBOARD OVERVIEW
   // ---------------------------------------------------------------------------
-  async function loadAnalytics() {
-    if (typeof Chart === 'undefined') return;
-    const res = await apiCall('GET', '/api/admin/analytics');
-    if (!res.ok) return;
-    const d = res.data;
-    const opts = { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } };
-    const labels = (arr) => arr.map((x) => x.month);
-    if (window._analyticsCharts) window._analyticsCharts.forEach((c) => c.destroy());
-    window._analyticsCharts = [
-      new Chart(document.getElementById('chartRevenue'), { type: 'line', data: { labels: labels(d.revenue_by_month), datasets: [{ label: 'Revenue', data: d.revenue_by_month.map((x) => x.total), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)', fill: true, tension: 0.3 }] }, options: opts }),
-      new Chart(document.getElementById('chartPayouts'), { type: 'bar', data: { labels: labels(d.payouts_by_month), datasets: [{ label: 'Payouts', data: d.payouts_by_month.map((x) => x.total), backgroundColor: '#10b981' }] }, options: opts }),
-      new Chart(document.getElementById('chartIdeas'), { type: 'doughnut', data: { labels: d.ideas_by_status.map((x) => x.status), datasets: [{ data: d.ideas_by_status.map((x) => x.count), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b', '#ec4899'] }] }, options: { responsive: true, plugins: { legend: { position: 'right' } } } }),
-      new Chart(document.getElementById('chartTasks'), { type: 'doughnut', data: { labels: d.tasks_by_status.map((x) => x.status), datasets: [{ data: d.tasks_by_status.map((x) => x.count), backgroundColor: ['#64748b', '#f59e0b', '#3b82f6', '#10b981', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { position: 'right' } } } })
-    ];
-  }
-
   async function loadOverview() {
     const res = await apiCall('GET', '/api/admin/dashboard/overview');
     if (!res.ok) {
@@ -560,51 +531,13 @@
   // VIEW 5: REVENUE & PAYOUTS
   // ---------------------------------------------------------------------------
   async function loadRevenueView() {
-    // Populate project dropdown for revenue entry (+ YouPI collection form)
+    // Populate project dropdown for revenue entry
     const projRes = await apiCall('GET', '/api/admin/projects/all');
     const select = document.getElementById('revProjectSelect');
-    const ypiSelect = document.getElementById('ypiProjectSelect');
     if (projRes.ok && projRes.data.projects) {
-      const options = '<option value="">-- Choose Project --</option>' +
+      select.innerHTML = '<option value="">-- Choose Project --</option>' + 
         projRes.data.projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)} (${p.current_stage})</option>`).join('');
-      select.innerHTML = options;
-      if (ypiSelect) ypiSelect.innerHTML = options;
     }
-
-    // YouPI collections list
-    loadYoupiCollections();
-
-    // Payout queue: PAID withdrawals awaiting manual UPI transfer + UTR
-    (async () => {
-      const body = document.getElementById('payoutQueueBody');
-      if (!body) return;
-      const res = await apiCall('GET', '/api/admin/withdrawals/payout-queue');
-      if (!res.ok) { body.innerHTML = '<tr><td colspan="5" style="text-align:center;">Failed to load queue.</td></tr>'; return; }
-      if (res.data.count === 0) {
-        body.innerHTML = '<tr><td colspan="5" style="text-align:center;">✓ No payouts awaiting transfer. All UTRs recorded.</td></tr>';
-        return;
-      }
-      body.innerHTML = res.data.queue.map((q) => `
-        <tr>
-          <td><strong>${escapeHtml(q.user_name)}</strong><br><span style="font-size:0.72rem;color:#7c8db5;">${escapeHtml(q.email)}</span></td>
-          <td>₹${q.amount.toFixed(2)}</td>
-          <td>${q.upi_id ? escapeHtml(q.upi_id) : '<span class="text-muted">not on file</span>'}</td>
-          <td>${q.paid_at ? q.paid_at.slice(0, 16) : '-'}</td>
-          <td>
-            ${q.upi_intent ? `<button class="btn-primary btn-pq-pay" data-intent="${escapeHtml(q.upi_intent)}" style="padding:4px 10px;font-size:0.75rem;">Pay via UPI</button>` : '<span class="text-muted text-xs">no upi</span>'}
-            <button class="btn-success btn-pq-utr" data-id="${q.id}" style="padding:4px 10px;font-size:0.75rem;">Record UTR</button>
-          </td>
-        </tr>`).join('');
-      body.parentElement.nextElementSibling?.classList.add('hidden');
-      document.querySelectorAll('.btn-pq-pay').forEach((b) => b.addEventListener('click', () => window.location.href = b.dataset.intent));
-      document.querySelectorAll('.btn-pq-utr').forEach((b) => b.addEventListener('click', async () => {
-        const utr = prompt('Enter bank UTR / reference number:');
-        if (!utr) return;
-        const r = await apiCall('PATCH', `/api/admin/withdrawals/${b.dataset.id}/utr`, { utr_reference: utr.trim() });
-        if (r.ok) { showToast('UTR recorded.'); loadRevenueView(); }
-        else showToast(r.data?.error || 'Failed', true);
-      }));
-    })();
 
     // Pending Withdrawals
     const withRes = await apiCall('GET', '/api/admin/withdrawals/pending');
@@ -627,21 +560,11 @@
 
         document.querySelectorAll('.btn-approve-with').forEach(btn => {
           btn.addEventListener('click', async () => {
-            const ok = confirm('Approve this withdrawal?\n\nWallet will be debited and the amount committed for MANUAL UPI transfer (no automatic gateway).');
+            const ok = confirm('Confirm approval for gateway disbursement?');
             if (!ok) return;
             const res = await apiCall('PATCH', `/api/admin/withdrawals/${btn.dataset.id}/approve`);
             if (res.ok) {
-              const gw = res.data.gateway || {};
-              if (gw.upi_intent && confirm('Member has a UPI ID on file.\n\nOpen your UPI app now to transfer? (Cancel = transfer manually later)')) {
-                window.location.href = gw.upi_intent;
-              }
-              const utr = prompt('Transfer done? Enter the bank UTR / reference number:\n(Leave blank to record it later via the ledger)', '');
-              if (utr && utr.trim()) {
-                const utrRes = await apiCall('PATCH', `/api/admin/withdrawals/${btn.dataset.id}/utr`, { utr_reference: utr.trim() });
-                if (utrRes.ok) showToast('UTR reference recorded.');
-                else showToast(utrRes.data?.error || 'UTR could not be recorded', true);
-              }
-              showToast('Withdrawal approved — manual UPI transfer pending UTR record.');
+              showToast('Withdrawal approved and disbursed via gateway!');
               loadRevenueView();
               loadOverview();
             } else {
@@ -708,134 +631,6 @@
         loadOverview();
       } else {
         showToast(res.data.error || 'Failed to record revenue', true);
-      }
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // YOUPI UPI COLLECTIONS (0% fee incoming payments)
-  // ---------------------------------------------------------------------------
-  async function loadYoupiCollections() {
-    const tbody = document.getElementById('youpiCollectionsBody');
-    if (!tbody) return;
-    const res = await apiCall('GET', '/api/payments/youpi/collections');
-    if (!res.ok) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">${escapeHtml(res.data?.error || 'Failed to load collections')}</td></tr>`;
-      return;
-    }
-    const collections = res.data.collections || [];
-    if (collections.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No collections yet.</td></tr>';
-      return;
-    }
-    const statusClass = { PAID: 'status-approved', FAILED: 'status-rejected', EXPIRED: 'status-rejected', CANCELLED: 'status-rejected' };
-    tbody.innerHTML = collections.map(c => `
-      <tr>
-        <td><strong>${escapeHtml(c.order_id)}</strong></td>
-        <td>${escapeHtml(c.project_title || '-')}</td>
-        <td>₹${Number(c.amount).toFixed(2)}</td>
-        <td><span class="status-badge ${statusClass[c.status] || 'status-pending'}">${c.status}</span></td>
-        <td>${escapeHtml(c.utr || '-')}</td>
-        <td>
-          ${c.status === 'CREATED' ? `<button class="btn-primary btn-ypi-sync" data-id="${c.id}" style="padding: 4px 10px; font-size: 0.75rem;">Sync Status</button>` : ''}
-        </td>
-      </tr>
-    `).join('');
-
-    document.querySelectorAll('.btn-ypi-sync').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        btn.textContent = 'Checking...';
-        const res = await apiCall('POST', `/api/payments/youpi/collections/${btn.dataset.id}/sync`);
-        if (res.ok) {
-          showToast(res.data.message || 'Status synced');
-          loadRevenueView();
-        } else {
-          showToast(res.data?.error || 'Sync failed', true);
-          btn.disabled = false;
-          btn.textContent = 'Sync Status';
-        }
-      });
-    });
-  }
-
-  const youpiCollectForm = document.getElementById('youpiCollectForm');
-  if (youpiCollectForm) {
-    youpiCollectForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const projectId = document.getElementById('ypiProjectSelect').value;
-      const amount = parseFloat(document.getElementById('ypiAmountInput').value);
-      const customerName = document.getElementById('ypiCustomerInput').value.trim();
-
-      const res = await apiCall('POST', '/api/payments/youpi/collections', { project_id: projectId, amount, customer_name: customerName || undefined });
-      if (res.ok) {
-        const url = res.data.checkoutUrl;
-        showToast('YouPI session created — complete the UPI payment in the checkout window.');
-        const frame = document.getElementById('youpiCheckoutFrame');
-        frame.src = url;
-        document.getElementById('youpiCheckoutOpenNew').href = url;
-        openModal('youpiCheckoutModal');
-        youpiCollectForm.reset();
-        loadRevenueView();
-      } else {
-        showToast(res.data?.error || 'YouPI collection failed', true);
-      }
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // VIEW 6b: LEGAL CENTER — documents, publish, compliance
-  // ---------------------------------------------------------------------------
-  async function loadLegalView() {
-    // Active documents
-    const docsRes = await apiCall('GET', '/api/legal/documents/active');
-    const docsBody = document.getElementById('legalDocsTableBody');
-    if (docsRes.ok && docsRes.data.documents) {
-      const docs = docsRes.data.documents;
-      docsBody.innerHTML = docs.length
-        ? docs.map((d) => `
-          <tr>
-            <td><strong>${escapeHtml(d.doc_type)}</strong></td>
-            <td>${escapeHtml(d.title)}</td>
-            <td>v${d.version}</td>
-            <td style="font-family: monospace; font-size: 0.7rem;">${escapeHtml(String(d.content_hash).slice(0, 16))}…</td>
-            <td>${d.created_at ? d.created_at.slice(0, 16) : '-'}</td>
-          </tr>`).join('')
-        : '<tr><td colspan="5" style="text-align:center;">No documents published yet.</td></tr>';
-    }
-
-    // Compliance
-    const compRes = await apiCall('GET', '/api/legal/compliance');
-    const compBody = document.getElementById('legalComplianceBody');
-    if (compRes.ok && compRes.data) {
-      const rows = compRes.data.non_compliant;
-      compBody.innerHTML = rows.length
-        ? rows.map((u) => `
-          <tr>
-            <td><strong>${escapeHtml(u.name)}</strong><br><span style="font-size:0.72rem;color:#7c8db5;">${escapeHtml(u.email)}</span></td>
-            <td><span class="status-badge status-pending">${u.status}</span></td>
-            <td>${u.missing.map((m) => escapeHtml(m.doc_type + ' v' + m.version)).join(', ')}</td>
-          </tr>`).join('')
-        : '<tr><td colspan="3" style="text-align:center;">✓ All members have signed every active document.</td></tr>';
-    }
-  }
-
-  const legalPublishForm = document.getElementById('legalPublishForm');
-  if (legalPublishForm) {
-    legalPublishForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const payload = {
-        doc_type: document.getElementById('legalDocType').value,
-        title: document.getElementById('legalDocTitle').value.trim(),
-        body: document.getElementById('legalDocBody').value
-      };
-      const res = await apiCall('POST', '/api/legal/documents', payload);
-      if (res.ok) {
-        showToast(res.data.message || 'Published!');
-        legalPublishForm.reset();
-        loadLegalView();
-      } else {
-        showToast(res.data?.error || 'Publish failed', true);
       }
     });
   }
@@ -1039,8 +834,6 @@
           if (isEnded && m.recording_enabled) {
             if (!m.recording_file_path) {
               actions += `<button class="btn-action btn-upload-recording" data-id="${m.id}" data-title="${escapeHtml(m.title)}">Upload Recording</button> `;
-            } else {
-              actions += `<button class="btn-action btn-play-recording" data-id="${m.id}" data-title="${escapeHtml(m.title)}">▶ Play Recording</button> `;
             }
           }
 
@@ -1100,17 +893,6 @@
             } else {
               showToast(cRes.data.error || 'Failed to cancel meeting', true);
             }
-          });
-        });
-
-        document.querySelectorAll('.btn-play-recording').forEach(btn => {
-          btn.addEventListener('click', () => {
-            document.getElementById('playRecTitle').textContent = 'Recording — ' + btn.dataset.title;
-            const player = document.getElementById('recordingPlayer');
-            player.src = `/api/meetings/${btn.dataset.id}/recording`;
-            document.getElementById('recordingDownloadLink').href = player.src;
-            openModal('adminPlayRecordingModal');
-            player.play().catch(() => {});
           });
         });
 

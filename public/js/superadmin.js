@@ -7,9 +7,7 @@
 const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 const authToken = localStorage.getItem('token');
 
-if (!authToken) {
-  window.location.replace('/login.html');
-} else if (!currentUser || currentUser.role !== 'admin') {
+if (!authToken || !currentUser || currentUser.role !== 'admin') {
   alert('Access Denied — Insufficient Privileges');
   window.location.href = '/';
 }
@@ -94,15 +92,6 @@ async function apiCall(endpoint, method = 'GET', body = null) {
     headers,
     body: body ? JSON.stringify(body) : undefined
   });
-
-  // Stale/expired session: clear credentials and send to login instead of
-  // leaving the panel full of failed requests
-  if (res.status === 401) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.replace('/login.html');
-    return { ok: false, status: 401, data: { error: 'Session expired — sign in again' } };
-  }
 
   if (res.status === 401 || res.status === 403) {
     if (res.status === 403) {

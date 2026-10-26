@@ -64,7 +64,7 @@ async function startServer() {
 }
 
 // When run directly
-if (process.argv[1] && process.argv[1].endsWith('server.js')) {
+if ((process.argv[1] && process.argv[1].endsWith('server.js')) || process.env.pm_id !== undefined || process.env.PM2_HOME !== undefined) {
   startServer();
 }
 

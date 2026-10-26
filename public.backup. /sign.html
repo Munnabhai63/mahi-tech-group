@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Signing Ceremony — Mahi Tech Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: rgba(255, 255, 255, 0.08);
+      --indigo: #4338ca;
+      --indigo-glow: rgba(99, 102, 241, 0.25);
+      --green: #10b981;
+      --red: #ef4444;
+      --text: #f8fafc;
+      --text-dim: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .signing-container {
+      width: 100%;
+      max-width: 760px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 36px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .signing-header {
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-badge {
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      color: #a5b4fc;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 1px;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0;
+    }
+    .doc-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .doc-badge {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+    }
+    .legal-card {
+      background: #0b1120;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 24px;
+      max-height: 380px;
+      overflow-y: auto;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      font-family: 'Inter', sans-serif;
+      margin-bottom: 24px;
+    }
+    .legal-notice {
+      background: rgba(245, 158, 11, 0.1);
+      border-left: 3px solid #f59e0b;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #fde68a;
+      margin-bottom: 24px;
+    }
+    .action-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      align-items: center;
+    }
+    .btn {
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-agree {
+      background: #10b981;
+      color: #ffffff;
+    }
+    .btn-agree:hover:not(:disabled) {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+    .btn-decline {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+    .btn-decline:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.25);
+    }
+    .status-box {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .status-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .status-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .status-msg {
+      color: var(--text-dim);
+      font-size: 14px;
+      max-width: 480px;
+      margin: 0 auto 24px;
+    }
+    .audit-stamp {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 16px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="signing-container" id="signingContainer">
+    <div id="loadingView" class="status-box">
+      <div class="status-icon">⏳</div>
+      <div class="status-title">Retrieving Legal Document</div>
+      <div class="status-msg">Verifying cryptographic signature token and identity...</div>
+    </div>
+
+    <div id="errorView" class="status-box" style="display: none;">
+      <div class="status-icon" id="errorIcon">⚠️</div>
+      <div class="status-title" id="errorTitle">Verification Error</div>
+      <div class="status-msg" id="errorMsg">The requested signature document could not be loaded.</div>
+      <a href="/" class="btn btn-agree" style="text-decoration:none;">Return to Center Dashboard</a>
+    </div>
+
+    <div id="successView" class="status-box" style="display: none;">
+      <div class="status-icon" id="successIcon">✓</div>
+      <div class="status-title" id="successTitle">Document Successfully Executed</div>
+      <div class="status-msg" id="successMsg">Your digital signature has been recorded in the immutable legal vault.</div>
+      <div class="audit-stamp" id="auditStamp"></div>
+      <div style="margin-top: 24px;">
+        <a href="/" class="btn btn-agree" style="text-decoration:none;">Return to Center Dashboard</a>
+      </div>
+    </div>
+
+    <div id="signingView" style="display: none;">
+      <div class="signing-header">
+        <div class="brand-mark">
+          <span class="brand-badge">LEGAL VAULT</span>
+          <h1 class="brand-title" id="docTypeTitle">Dispute Settlement Agreement</h1>
+        </div>
+        <div class="doc-meta">
+          <span class="doc-badge" id="docNumberBadge">DSP-0001</span>
+          <span class="doc-badge" id="docVersionBadge">v1.0</span>
+        </div>
+      </div>
+
+      <div class="legal-notice">
+        <strong>Digital Execution Notice:</strong> By clicking "I Agree & Sign", you are applying a legally binding digital signature under the Information Technology Act. This action is permanently recorded in the append-only audit trail with your IP address and timestamp.
+      </div>
+
+      <div class="legal-card" id="documentContent">Loading terms...</div>
+
+      <div class="action-row">
+        <button class="btn btn-decline" id="btnDecline">✕ I Decline</button>
+        <button class="btn btn-agree" id="btnAgree">✓ I Agree & Sign</button>
+      </div>
+
+      <div class="audit-stamp">
+        Cryptographic Token: <span id="tokenPreview">••••••••••••••••</span> | Powered by Mahi Tech Group Governance
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (async function () {
+      const urlParams = new URLSearchParams(window.location.search);
+      const docType = urlParams.get('type') || 'dispute'; // 'dispute' | 'waiver'
+      const docId = urlParams.get('id');
+      const token = urlParams.get('token');
+
+      const loadingView = document.getElementById('loadingView');
+      const errorView = document.getElementById('errorView');
+      const errorTitle = document.getElementById('errorTitle');
+      const errorMsg = document.getElementById('errorMsg');
+      const errorIcon = document.getElementById('errorIcon');
+      const successView = document.getElementById('successView');
+      const successTitle = document.getElementById('successTitle');
+      const successMsg = document.getElementById('successMsg');
+      const successIcon = document.getElementById('successIcon');
+      const auditStamp = document.getElementById('auditStamp');
+      const signingView = document.getElementById('signingView');
+
+      const authToken = localStorage.getItem('token');
+      if (!authToken) {
+        showError('Authentication Required', 'You must be logged into your Mahi Tech Group account to access this signing ceremony. Please log in on the main dashboard first.', '🔒');
+        return;
+      }
+
+      if (!docId || !token) {
+        showError('Invalid Signing Link', 'Document ID and Signature Token are required in the URL.', '⚠️');
+        return;
+      }
+
+      function showError(title, msg, icon = '⚠️') {
+        loadingView.style.display = 'none';
+        signingView.style.display = 'none';
+        successView.style.display = 'none';
+        errorTitle.textContent = title;
+        errorMsg.textContent = msg;
+        errorIcon.textContent = icon;
+        errorView.style.display = 'block';
+      }
+
+      function showSuccess(title, msg, stamp = '', isDeclined = false) {
+        loadingView.style.display = 'none';
+        signingView.style.display = 'none';
+        errorView.style.display = 'none';
+        successTitle.textContent = title;
+        successMsg.textContent = msg;
+        successIcon.textContent = isDeclined ? '✕' : '✓';
+        successIcon.style.color = isDeclined ? '#ef4444' : '#10b981';
+        auditStamp.textContent = stamp;
+        successView.style.display = 'block';
+      }
+
+      try {
+        const fetchUrl = docType === 'waiver'
+          ? `/api/sign/waivers/${encodeURIComponent(docId)}/${encodeURIComponent(token)}`
+          : `/api/sign/disputes/${encodeURIComponent(docId)}/${encodeURIComponent(token)}`;
+
+        const res = await fetch(fetchUrl, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          if (res.status === 403) {
+            showError('Access Forbidden (403)', 'You are logged in as a user who is not designated to sign this specific document.', '🚫');
+          } else if (res.status === 409) {
+            showSuccess('Document Already Signed', 'You have already formally executed this document.', `Signed on: ${data.data?.signed_at || 'Recorded'}`);
+          } else if (res.status === 410) {
+            showError('Signature Link Expired (410)', 'This signature link has expired. Please contact the administrator for a fresh signing invitation.', '⏳');
+          } else if (res.status === 404) {
+            showError('Document Not Found (404)', 'Invalid signature token or document reference.', '❓');
+          } else {
+            showError('Error Loading Document', data.error || 'Failed to retrieve legal document.', '⚠️');
+          }
+          return;
+        }
+
+        // Render signing view
+        loadingView.style.display = 'none';
+        signingView.style.display = 'block';
+
+        if (docType === 'waiver') {
+          document.getElementById('docTypeTitle').textContent = `Liability Waiver (${data.waiver_type || 'General'})`;
+          document.getElementById('docNumberBadge').textContent = `SCOPE: ${(data.scope || 'GLOBAL').toUpperCase()}`;
+          document.getElementById('docVersionBadge').textContent = 'FORMAL';
+          document.getElementById('documentContent').textContent = data.waiver_text;
+        } else {
+          document.getElementById('docTypeTitle').textContent = `Dispute Agreement (${data.dispute_number || 'DSP'})`;
+          document.getElementById('docNumberBadge').textContent = data.dispute_number || 'DISPUTE';
+          document.getElementById('docVersionBadge').textContent = `v${data.version || 1}.0`;
+          document.getElementById('documentContent').textContent = data.agreement_text;
+        }
+
+        document.getElementById('tokenPreview').textContent = token.substring(0, 16) + '...';
+
+        // Event Listeners
+        const submitSignature = async (agreed) => {
+          const actionWord = agreed ? 'sign and agree to' : 'formally decline';
+          if (!confirm(`Are you certain you wish to ${actionWord} this document?`)) {
+            return;
+          }
+
+          document.getElementById('btnAgree').disabled = true;
+          document.getElementById('btnDecline').disabled = true;
+
+          const postUrl = docType === 'waiver'
+            ? `/api/sign/waivers/${encodeURIComponent(docId)}`
+            : `/api/sign/disputes/${encodeURIComponent(docId)}`;
+
+          try {
+            const signRes = await fetch(postUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ token, agreed })
+            });
+
+            const signData = await signRes.json().catch(() => ({}));
+
+            if (!signRes.ok) {
+              alert(signData.error || 'Failed to submit signature');
+              document.getElementById('btnAgree').disabled = false;
+              document.getElementById('btnDecline').disabled = false;
+              return;
+            }
+
+            if (agreed) {
+              showSuccess(
+                'Document Digitally Signed',
+                'Your agreement has been permanently recorded in the append-only legal vault.',
+                `Signature Hash: ${token.substring(0, 24)}... | Timestamp: ${signData.signed_at || new Date().toISOString()}`,
+                false
+              );
+            } else {
+              showSuccess(
+                'Document Declined',
+                'You have declined the agreement. The dispute has been returned to negotiation status.',
+                `Recorded at: ${new Date().toISOString()}`,
+                true
+              );
+            }
+          } catch (err) {
+            alert('Network error while submitting signature: ' + err.message);
+            document.getElementById('btnAgree').disabled = false;
+            document.getElementById('btnDecline').disabled = false;
+          }
+        };
+
+        document.getElementById('btnAgree').addEventListener('click', () => submitSignature(true));
+        document.getElementById('btnDecline').addEventListener('click', () => submitSignature(false));
+
+      } catch (err) {
+        showError('Connection Error', err.message);
+      }
+    })();
+  </script>
+</body>
+</html>

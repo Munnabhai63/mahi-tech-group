@@ -1,0 +1,10 @@
+{
+  "name": "Mahi Tech Group",
+  "short_name": "MTG",
+  "description": "Decentralized team orchestration platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080b11",
+  "theme_color": "#3b82f6",
+  "icons": []
+}

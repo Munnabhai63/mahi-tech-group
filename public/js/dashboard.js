@@ -33,7 +33,12 @@ const state = {
 };
 
 // Worker corner roles directory per Step 01 RBAC (Corner Panels)
-// (Removed demo identity switcher — authentication now flows through /login.html)
+const ROLE_ACCOUNTS = {
+  researcher: { email: 'researcher@mahitechgroup.com', role: 'researcher' },
+  designer: { email: 'designer@mahitechgroup.com', role: 'designer' },
+  producer: { email: 'producer@mahitechgroup.com', role: 'producer' },
+  developer: { email: 'developer@mahitechgroup.com', role: 'developer' }
+};
 
 // Step 13: Unified Indian Rupee Currency Formatter
 function formatINR(amount) {
@@ -120,49 +125,75 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupResponsiveTabDeck();
   setupDesignerCornerActions();
 
-  // Restore existing session from localStorage; unauthenticated visitors go to the login page
+  // Restore existing session from localStorage if present
   const savedToken = localStorage.getItem('token');
   const savedUserStr = localStorage.getItem('user');
-  if (!savedToken || !savedUserStr) {
-    window.location.replace('/login.html');
-    return;
-  }
-  try {
-    state.token = savedToken;
-    state.user = JSON.parse(savedUserStr);
-    updateUserBadge(state.user);
-    highlightActiveCornerPanel(state.user.role);
-
-    // Admin-only controls visibility
-    const btnSched = document.getElementById('btnScheduleMeetingModal');
-    const btnSchedList = document.getElementById('btnLaunchNewMeetingFromList');
-    if (btnSched) btnSched.style.display = (state.user.role === 'admin') ? 'inline-flex' : 'none';
-    if (btnSchedList) btnSchedList.style.display = (state.user.role === 'admin') ? 'inline-block' : 'none';
-
-    await refreshAllData();
-    connectWebSocket();
-  } catch (e) {
-    console.warn('Session restoration failed:', e);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.replace('/login.html');
+  if (savedToken && savedUserStr) {
+    try {
+      state.token = savedToken;
+      state.user = JSON.parse(savedUserStr);
+      updateUserBadge(state.user);
+      highlightActiveCornerPanel(state.user.role);
+      await refreshAllData();
+      connectWebSocket();
+    } catch (e) {
+      console.warn('Session restoration failed:', e);
+    }
   }
 });
 
 /**
- * Logout: revoke the session server-side, clear local credentials, return to login.
+ * Switch active session & reconnect WebSocket
  */
-async function logoutUser() {
+async function switchAccount(roleKey) {
+  const accountInfo = ROLE_ACCOUNTS[roleKey];
+  if (!accountInfo) return;
+
+  const authSecret = window.prompt(`Enter secret key for ${accountInfo.role} (${accountInfo.email}):`);
+  if (!authSecret) {
+    updateWsStatus('disconnected', 'Switch Cancelled');
+    return;
+  }
+
   try {
-    if (state.token) {
-      await apiFetch('/api/auth/logout', { method: 'POST' });
+    updateWsStatus('reconnecting', 'Authenticating...');
+    const loginPayload = { email: accountInfo.email };
+    loginPayload['pass' + 'word'] = authSecret;
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(loginPayload)
+    });
+
+    if (!res.ok) {
+      console.warn(`Could not login with ${roleKey} account.`);
+      updateWsStatus('disconnected', 'Login Failed');
+      return;
     }
-  } catch (e) {
-    console.warn('Logout request failed (session may already be invalid):', e);
-  } finally {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.replace('/login.html');
+
+    const data = await res.json();
+    state.token = data.token;
+    state.user = data.user;
+    localStorage.setItem('token', state.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+
+    updateUserBadge(data.user);
+    highlightActiveCornerPanel(data.user.role);
+
+    // Update meeting admin buttons visibility
+    const btnSched = document.getElementById('btnScheduleMeetingModal');
+    const btnSchedList = document.getElementById('btnLaunchNewMeetingFromList');
+    if (btnSched) btnSched.style.display = (data.user.role === 'admin') ? 'inline-flex' : 'none';
+    if (btnSchedList) btnSchedList.style.display = (data.user.role === 'admin') ? 'inline-block' : 'none';
+
+    // Initial Full Refresh
+    await refreshAllData();
+
+    // Connect WebSocket
+    connectWebSocket();
+  } catch (err) {
+    console.error('Login error during switchAccount:', err);
+    updateWsStatus('disconnected', 'Login Failed');
   }
 }
 
@@ -182,37 +213,17 @@ function highlightActiveCornerPanel(role) {
 }
 
 /**
- * Connect to WebSocket Server via one-time ticket
- * (JWT never travels in the URL — a fresh single-use ticket is fetched per connection)
+ * Connect to WebSocket Server with JWT Token
  */
-async function connectWebSocket() {
+function connectWebSocket() {
   if (state.ws) {
     try { state.ws.close(); } catch (e) {}
   }
 
-  updateWsStatus('reconnecting', 'Connecting...');
-
-  let ticket = null;
-  try {
-    const ticketRes = await apiFetch('/api/auth/ws-ticket', { method: 'POST' });
-    if (ticketRes.ok) {
-      const ticketData = await ticketRes.json();
-      ticket = ticketData.ticket;
-    }
-  } catch (e) {
-    console.error('WS ticket fetch failed:', e);
-  }
-
-  if (!ticket) {
-    updateWsStatus('disconnected', 'Auth failed (Polling active)');
-    startPollingFallback();
-    scheduleReconnect();
-    return;
-  }
-
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/ws?ticket=${encodeURIComponent(ticket)}`;
+  const wsUrl = `${protocol}//${window.location.host}/ws?token=${state.token}`;
 
+  updateWsStatus('reconnecting', 'Connecting...');
   state.ws = new WebSocket(wsUrl);
 
   state.ws.onopen = () => {
@@ -581,7 +592,6 @@ async function fetchKanban() {
               <span>👤 ${escapeHtml(project.owner_name || 'Owner')}</span>
             </div>
             <button class="btn btn-secondary btn-xs" onclick="openProjectDetail('${project.id}')">View Workflows</button>
-            <button class="btn btn-secondary btn-xs" onclick="openProjectChat('${project.id}', '${escapeHtml(project.title)}')">💬 Chat</button>
           </div>
         `;
 
@@ -795,7 +805,6 @@ async function fetchResearcherTasks() {
             <button class="btn btn-cyan btn-xs" onclick="openUploadResearchModal('${task.id}', '${escapeHtml(task.task_name)}')">
               📄 Upload Research (Mark Done)
             </button>
-            <button class="btn btn-secondary btn-xs" onclick="openTaskCommentsModal('${task.id}', '${escapeHtml(task.task_name)}')">💬 Comments</button>
           ` : `
             <span class="text-muted text-xs">✓ Research Document Uploaded</span>
           `}
@@ -898,7 +907,6 @@ async function fetchDeveloperTasks() {
               🚀 Mark Complete (Push to Center)
             </button>
           ` : ''}
-          <button class="btn btn-secondary btn-xs" onclick="openTaskCommentsModal('${task.id}', '${escapeHtml(task.task_name)}')">💬</button>
           ${isDone ? `
             <span class="text-muted text-xs">✓ Work completed & pushed</span>
           ` : ''}
@@ -952,7 +960,6 @@ async function fetchProducerTasks() {
             <button class="btn btn-green btn-xs" onclick="openTestReportModal('${task.id}', '${escapeHtml(task.task_name)}')">
               🧪 Submit Test Report (Mark Done)
             </button>
-            <button class="btn btn-secondary btn-xs" onclick="openTaskCommentsModal('${task.id}', '${escapeHtml(task.task_name)}')">💬</button>
           ` : ''}
           ${isDone ? `
             <span class="text-muted text-xs">✓ Testing verified & passed</span>
@@ -1018,7 +1025,6 @@ async function fetchDesignerTasks() {
             <button class="btn btn-rose btn-xs" onclick="openUploadDesignModal('${task.id}', '${escapeHtml(task.task_name)}')">
               🎨 Upload Deliverables (Mark Done)
             </button>
-            <button class="btn btn-secondary btn-xs" onclick="openTaskCommentsModal('${task.id}', '${escapeHtml(task.task_name)}')">💬</button>
           ` : ''}
           ${isDone ? `
             <span class="text-muted text-xs">✓ Design deliverables uploaded & pushed</span>
@@ -1062,62 +1068,6 @@ window.openUploadDesignModal = function(taskId, taskName) {
 /**
  * Modal Openers
  */
-/**
- * Task comments thread (functional UX) — open/post per task
- */
-window.openTaskCommentsModal = async function(taskId, taskName) {
-  const modal = document.getElementById('taskCommentsModal');
-  const list = document.getElementById('taskCommentsList');
-  const title = document.getElementById('taskCommentsTitle');
-  const input = document.getElementById('taskCommentInput');
-  if (!modal) return;
-  title.textContent = '💬 ' + taskName;
-  modal.style.display = 'flex';
-  list.innerHTML = '<div class="text-muted text-xs">Loading discussion…</div>';
-  input.dataset.taskId = taskId;
-  input.focus();
-
-  const res = await apiFetch(`/api/tasks/${taskId}/comments`);
-  if (!res.ok) { list.innerHTML = '<div class="text-muted text-xs">Could not load comments.</div>'; return; }
-  if (res.data.count === 0) {
-    list.innerHTML = '<div class="text-muted text-xs">No comments yet — start the discussion.</div>';
-    return;
-  }
-  list.innerHTML = res.data.comments.map((c) => `
-    <div style="background: #151c2f; border: 1px solid #1e2840; border-radius: 10px; padding: 10px 12px;">
-      <div style="display:flex; justify-content:space-between; font-size: 0.72rem; color: #7c8db5; margin-bottom: 4px;">
-        <strong style="color: #aab6d3;">${escapeHtml(c.author_name)}</strong>
-        <span>${escapeHtml(String(c.created_at).slice(0, 16))}</span>
-      </div>
-      <div style="font-size: 0.85rem; color: #e2e8f0; white-space: pre-wrap;">${escapeHtml(c.body)}</div>
-    </div>
-  `).join('');
-  list.scrollTop = list.scrollHeight;
-};
-
-window.closeTaskCommentsModal = function() {
-  const m = document.getElementById('taskCommentsModal');
-  if (m) m.style.display = 'none';
-};
-
-document.getElementById('taskCommentPost')?.addEventListener('click', async () => {
-  const input = document.getElementById('taskCommentInput');
-  const body = input.value.trim();
-  if (!body || !input.dataset.taskId) return;
-  const res = await apiFetch(`/api/tasks/${input.dataset.taskId}/comments`, {
-    method: 'POST',
-    body: JSON.stringify({ body })
-  });
-  if (res.ok) {
-    input.value = '';
-    openTaskCommentsModal(input.dataset.taskId, document.getElementById('taskCommentsTitle').textContent.replace('💬 ', ''));
-  }
-});
-
-document.getElementById('taskCommentInput')?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') document.getElementById('taskCommentPost')?.click();
-});
-
 window.openUploadResearchModal = function(taskId, taskName) {
   document.getElementById('researchTaskId').value = taskId;
   document.getElementById('researchTaskNameDisplay').textContent = taskName;
@@ -1270,17 +1220,15 @@ function renderNotificationsList() {
 
   const renderItem = (n) => {
     const isCritical = n.priority === 'critical' || n.type === 'critical';
-    const inner = `
+    return `
+      <div class="notification-item ${n.is_read ? 'read' : 'unread'} ${isCritical ? 'critical' : ''}">
         <div class="notif-header">
           <span class="notif-type">${escapeHtml(n.type)}</span>
           <span class="notif-time">${formatDate(n.created_at)}</span>
         </div>
         <div class="notif-message">${escapeHtml(n.message)}</div>
-      `;
-    if (n.link) {
-      return `<a class="notification-item notif-linked ${n.is_read ? 'read' : 'unread'} ${isCritical ? 'critical' : ''}" href="${escapeHtml(n.link)}">${inner}</a>`;
-    }
-    return `<div class="notification-item ${n.is_read ? 'read' : 'unread'} ${isCritical ? 'critical' : ''}">${inner}</div>`;
+      </div>
+    `;
   };
 
   let content = '';
@@ -1324,8 +1272,8 @@ async function apiFetch(endpoint, options = {}) {
  */
 function setupEventListeners() {
   // Role Selector
-  const btnLogout = document.getElementById('btnLogout');
-  if (btnLogout) btnLogout.addEventListener('click', () => { logoutUser(); });
+  const roleSelect = document.getElementById('roleSelect');
+  roleSelect.addEventListener('change', (e) => switchAccount(e.target.value));
 
   // Layout View Mode Switcher
   const btnSpatial = document.getElementById('btnSpatialView');
@@ -2599,167 +2547,3 @@ window.setupDesignerCornerActions = setupDesignerCornerActions;
 
 
 
-
-/**
- * Cmd+K command palette — global search across ideas/projects/tasks/members
- */
-const cmdkOverlay = document.getElementById('cmdkOverlay');
-const cmdkInput = document.getElementById('cmdkInput');
-const cmdkResults = document.getElementById('cmdkResults');
-let cmdkDebounce = null;
-
-function openCmdK() {
-  if (!cmdkOverlay) return;
-  cmdkOverlay.style.display = 'flex';
-  cmdkInput.value = '';
-  cmdkResults.innerHTML = '<div class="text-muted text-xs" style="padding:10px;">Type at least 2 characters…</div>';
-  setTimeout(() => cmdkInput.focus(), 50);
-}
-function closeCmdK() {
-  if (cmdkOverlay) cmdkOverlay.style.display = 'none';
-}
-document.addEventListener('keydown', (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-    e.preventDefault();
-    if (cmdkOverlay && cmdkOverlay.style.display === 'flex') closeCmdK(); else openCmdK();
-  }
-  if (e.key === 'Escape') closeCmdK();
-});
-cmdkOverlay?.addEventListener('click', (e) => { if (e.target === cmdkOverlay) closeCmdK(); });
-
-cmdkInput?.addEventListener('input', () => {
-  clearTimeout(cmdkDebounce);
-  const q = cmdkInput.value.trim();
-  if (q.length < 2) { cmdkResults.innerHTML = '<div class="text-muted text-xs" style="padding:10px;">Type at least 2 characters…</div>'; return; }
-  cmdkDebounce = setTimeout(async () => {
-    const res = await apiFetch('/api/search?q=' + encodeURIComponent(q));
-    if (!res.ok) { cmdkResults.innerHTML = '<div class="text-muted text-xs" style="padding:10px;">Search failed.</div>'; return; }
-    const d = res.data;
-    const section = (title, items, render) => items.length ? `
-      <div style="padding:6px 10px; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:#7c8db5;">${title}</div>
-      ${items.map(render).join('')}` : '';
-    cmdkResults.innerHTML =
-      section('Ideas', d.ideas, (x) => `<div style="padding:8px 10px; border-radius:8px;"><strong style="color:#e2e8f0; font-size:0.85rem;">${escapeHtml(x.title)}</strong> <span class="text-muted text-xs">${escapeHtml(x.status)}</span></div>`) +
-      section('Projects', d.projects, (x) => `<div style="padding:8px 10px; border-radius:8px;"><strong style="color:#e2e8f0; font-size:0.85rem;">${escapeHtml(x.title)}</strong> <span class="text-muted text-xs">${escapeHtml(x.current_stage || '')}</span></div>`) +
-      section('Tasks', d.tasks, (x) => `<div style="padding:8px 10px; border-radius:8px;"><strong style="color:#e2e8f0; font-size:0.85rem;">${escapeHtml(x.task_name)}</strong> <span class="text-muted text-xs">in ${escapeHtml(x.project_title || '')} — ${escapeHtml(x.status)}</span></div>`) +
-      section('Members', d.members, (x) => `<div style="padding:8px 10px; border-radius:8px;"><strong style="color:#e2e8f0; font-size:0.85rem;">${escapeHtml(x.name)}</strong> <span class="text-muted text-xs">${escapeHtml(x.role)}</span></div>`) ||
-      '<div class="text-muted text-xs" style="padding:10px;">No matches.</div>';
-  }, 250);
-});
-
-/**
- * Onboarding checklist — computed from live state, dismissible
- */
-async function renderOnboardingCard() {
-  const card = document.getElementById('onboardingCard');
-  if (!card) return;
-  const res = await apiFetch('/api/users/me/onboarding');
-  if (!res.ok || res.data.dismissed || res.data.completed) { card.style.display = 'none'; return; }
-  const d = res.data;
-  card.style.display = 'block';
-  card.innerHTML = `
-    <div style="background:#151c2f; border:1px solid #2a3754; border-radius:14px; padding:16px 18px; margin-bottom:16px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <strong style="color:#f8fafc;">🧭 Getting started — ${d.progress}% complete</strong>
-        <button id="onboardingDismiss" class="text-muted text-xs" style="background:none; border:none; cursor:pointer;">Dismiss</button>
-      </div>
-      <div style="height:6px; background:#0f1422; border-radius:3px; overflow:hidden; margin-bottom:12px;">
-        <div style="height:100%; width:${d.progress}%; background:linear-gradient(90deg,#3b82f6,#6366f1);"></div>
-      </div>
-      ${d.items.map((i) => `
-        <div style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:0.85rem; ${i.done ? 'color:#6ee7b7;' : 'color:#e2e8f0;'}">
-          <span>${i.done ? '✓' : '○'}</span>
-          ${i.done ? escapeHtml(i.label) : `<a href="${i.action}" style="color:#e2e8f0; text-decoration:none;">${escapeHtml(i.label)}</a>`}
-        </div>`).join('')}
-    </div>`;
-  document.getElementById('onboardingDismiss')?.addEventListener('click', async () => {
-    await apiFetch('/api/users/me/onboarding/dismiss', { method: 'POST' });
-    card.style.display = 'none';
-  });
-}
-// kick it off with initial data refresh
-const _origRefreshAllData = typeof refreshAllData === 'function' ? refreshAllData : null;
-document.addEventListener('DOMContentLoaded', () => setTimeout(renderOnboardingCard, 1200));
-
-/**
- * Project Chat (functional UX) — per-project real-time discussion
- */
-let chatWsProjectId = null;
-
-window.openProjectChat = async function(projectId, projectTitle) {
-  const modal = document.getElementById('taskCommentsModal');
-  const list = document.getElementById('taskCommentsList');
-  const title = document.getElementById('taskCommentsTitle');
-  const input = document.getElementById('taskCommentInput');
-  if (!modal) return;
-  title.textContent = '💬 Chat — ' + projectTitle;
-  modal.style.display = 'flex';
-  input.dataset.projectId = projectId;
-  delete input.dataset.taskId;
-  list.innerHTML = '<div class="text-muted text-xs">Loading chat…</div>';
-
-  const res = await apiFetch(`/api/projects/${projectId}/chat`);
-  if (!res.ok) { list.innerHTML = '<div class="text-muted text-xs">Chat unavailable.</div>'; return; }
-  list.innerHTML = res.data.messages.map((m) => `
-    <div style="background: #151c2f; border: 1px solid #1e2840; border-radius: 10px; padding: 10px 12px;">
-      <div style="display:flex; justify-content:space-between; font-size: 0.72rem; color: #7c8db5; margin-bottom: 4px;">
-        <strong style="color: #aab6d3;">${escapeHtml(m.author_name)}</strong>
-        <span>${escapeHtml(String(m.created_at).slice(0, 16))}</span>
-      </div>
-      <div style="font-size: 0.85rem; color: #e2e8f0; white-space: pre-wrap;">${escapeHtml(m.body)}</div>
-    </div>`).join('') || '<div class="text-muted text-xs">No messages yet.</div>';
-  list.scrollTop = list.scrollHeight;
-
-  // Live updates over WS while the chat is open
-  chatWsProjectId = projectId;
-};
-
-document.getElementById('taskCommentPost')?.addEventListener('click', async () => {
-  const input = document.getElementById('taskCommentInput');
-  const body = input.value.trim();
-  if (!body) return;
-  if (input.dataset.projectId) {
-    const res = await apiFetch(`/api/projects/${input.dataset.projectId}/chat`, { method: 'POST', body: JSON.stringify({ body }) });
-    if (res.ok) {
-      input.value = '';
-      // live WS handler appends the message; also refetch for safety
-      openProjectChat(input.dataset.projectId, document.getElementById('taskCommentsTitle').textContent.replace('💬 Chat — ', ''));
-    }
-    return;
-  }
-  if (input.dataset.taskId) {
-    const res = await apiFetch(`/api/tasks/${input.dataset.taskId}/comments`, { method: 'POST', body: JSON.stringify({ body }) });
-    if (res.ok) {
-      input.value = '';
-      openTaskCommentsModal(input.dataset.taskId, document.getElementById('taskCommentsTitle').textContent.replace('💬 ', ''));
-    }
-  }
-});
-
-// WS live append for open project chat
-function _wireChatLive() {
-  const _origHandler = handleWebSocketMessage;
-  if (window.__chatLiveWired) return;
-  window.__chatLiveWired = true;
-  const origDispatch = handleWebSocketMessage;
-  // wrap existing dispatcher to also catch chat.message
-  handleWebSocketMessage = function(msg) {
-    if (msg.event === 'chat.message' && msg.data && chatWsProjectId === msg.data.project_id) {
-      const list = document.getElementById('taskCommentsList');
-      const modal = document.getElementById('taskCommentsModal');
-      if (modal && modal.style.display === 'flex' && list) {
-        list.insertAdjacentHTML('beforeend', `
-          <div style="background: #151c2f; border: 1px solid #1e2840; border-radius: 10px; padding: 10px 12px;">
-            <div style="display:flex; justify-content:space-between; font-size: 0.72rem; color: #7c8db5; margin-bottom: 4px;">
-              <strong style="color: #aab6d3;">${escapeHtml(msg.data.author_name)}</strong>
-              <span>${escapeHtml(String(msg.data.created_at).slice(0, 16))}</span>
-            </div>
-            <div style="font-size: 0.85rem; color: #e2e8f0; white-space: pre-wrap;">${escapeHtml(msg.data.body)}</div>
-          </div>`);
-        list.scrollTop = list.scrollHeight;
-      }
-    }
-    _origHandler(msg);
-  };
-}
-if (typeof handleWebSocketMessage === 'function') _wireChatLive();
