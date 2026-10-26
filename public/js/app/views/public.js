@@ -1,23 +1,137 @@
-import { roleMeta } from '../data.js';
-import { state, loginAs, loginFormer, persistData, addAudit, uid, escapeHTML } from '../store.js';
-import { icon, badge, notice, formValues, setFormError, openDialog, closeDialog, toast } from '../ui.js';
+import { state, persistSession, notify, escapeHTML } from '../store.js';
 
-function accessLayout(content, { wide = false, intro = null } = {}) {
-  return `<div class="access-page"><section class="access-intro"><a class="access-brand" href="/" aria-label="MAHI TECH GROUP homepage"><span class="brand-mark">M/</span><span><strong>MAHI TECH GROUP</strong><small>COLLABORATIVE WORKSPACE</small></span></a><div class="access-intro__body">${intro || `<div class="eyebrow eyebrow--lime">Ideas into shared outcomes</div><h1>One team.<br><em>Many disciplines.</em></h1><p>A role-aware workspace for research, design, development, testing, governance, and the decisions that connect them.</p><div class="access-points"><div class="access-point">${icon('vote')}<span>Score and vote on evidenced proposals.</span></div><div class="access-point">${icon('layers')}<span>Move through parallel tracks and explicit quality gates.</span></div><div class="access-point">${icon('shield')}<span>Keep ownership, attribution, and administration visible.</span></div></div>`}</div><div class="access-intro__foot"><a href="#/about">About</a><a href="#/legal/terms">Terms</a><a href="#/legal/privacy">Privacy</a><span>Frontend demonstration</span></div></section><section class="access-content"><div class="access-topbar"><span class="prototype-badge">Mock application</span><nav class="access-topbar__links" aria-label="Public access"><a href="#/about">Platform</a><a href="#/contact">Access & support</a><a href="#/login">Member access</a></nav></div><div class="access-form-wrap ${wide ? 'access-form-wrap--wide' : ''}">${content}</div></section></div>`;
+function accessLayout(content, opts = {}) {
+  const { wide = false } = opts;
+  return '<div class="access-page"><section class="access-intro"><a class="access-brand" href="/" aria-label="MAHI TECH GROUP homepage"><span class="brand-mark">M/</span><span><strong>MAHI TECH GROUP</strong><small>COLLABORATIVE WORKSPACE</small></span></a><div class="access-intro__body"><div class="eyebrow eyebrow--lime">Ideas into shared outcomes</div><h1>One team.<br><em>Many disciplines.</em></h1><p>A role-aware workspace for research, design, development, testing, governance, and the decisions that connect them.</p></div><div class="access-intro__foot"><a href="#/about">About</a><a href="#/legal/terms">Terms</a><a href="#/legal/privacy">Privacy</a></div></section><section class="access-content"><div class="access-topbar"><span class="prototype-badge">Secure platform</span><nav class="access-topbar__links" aria-label="Public access"><a href="#/about">Platform</a><a href="#/login">Member access</a></nav></div><div class="access-form-wrap ' + (wide ? 'access-form-wrap--wide' : '') + '">' + content + '</div></section></div>';
 }
 
 export function renderLogin() {
-  const content = `<div class="eyebrow">Member access</div><h2>Welcome back to the workspace.</h2><p class="access-form-wrap__intro">This preview uses local demo identities. It does not verify credentials or create a real authenticated session.</p>${state.session ? notice('A demo workspace session is already active. You can continue or choose another role.', 'info', 'Demo session active') : ''}<form id="login-form" class="stack mt-2" novalidate><div class="field"><label for="login-email">Email address</label><input class="input" id="login-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required></div><div class="field"><label for="login-password">Password</label><div class="input-wrap input-wrap--action"><input class="input" id="login-password" name="password" type="password" autocomplete="current-password" placeholder="At least 8 characters" required minlength="8"><button class="btn btn--ghost btn--icon btn--sm" type="button" id="toggle-password" aria-label="Show password">${icon('eye', 'icon--sm')}</button></div></div><div class="spread"><label class="check"><input type="checkbox" name="remember"> Remember this demo</label><button type="button" class="link-btn small" id="recovery-placeholder">Recovery options</button></div><button class="btn btn--primary btn--lg btn--full" type="submit">Continue to role selection ${icon('arrow-up-right')}</button></form><h3>Revenue and member history</h3><p>The current service rules split revenue 50% Owner / 50% Team for the first five months, then allocate 100% to Team. Withdrawals always require manual Admin approval. Former members retain read-only attribution while withdrawals and active access are disabled.</p><h3>A deliberate frontend boundary</h3><p>This application preview uses fictional data and browser-only interactions. It does not connect to the repository’s API, websocket, video, payment, email, or signing services.</p></article><div class="form-actions"><a class="btn btn--outline" href="#/contact">Access & support</a><a class="btn btn--primary" href="#/role-selection">Explore demo roles ${icon('arrow-up-right')}</a></div>`;
-  return { html: accessLayout(content, { wide: true, intro }) };
+  const content = '<div class="eyebrow">Member access</div><h2>Welcome back to the workspace.</h2><p class="access-form-wrap__intro">Sign in with your registered credentials.</p><div id="login-error" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.35);color:#fca5a5;border-radius:8px;padding:10px 14px;font-size:0.82rem;margin-bottom:16px;"></div><form id="login-form" class="stack mt-2" novalidate><div class="field"><label for="login-email">Email address</label><input class="input" id="login-email" name="email" type="email" autocomplete="email" placeholder="you@oviaxe.com" required></div><div class="field"><label for="login-password">Password</label><div class="input-wrap input-wrap--action"><input class="input" id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required minlength="8"><button class="btn btn--ghost btn--icon btn--sm" type="button" id="toggle-password" aria-label="Show password">eye</button></div></div><button class="btn btn--primary btn--lg btn--full" type="submit" id="login-submit">Sign In</button></form><p class="access-form-wrap__foot" style="margin-top:16px;">New to the group? <a class="link-btn" href="#/signup">Submit a membership application</a></p><p class="access-form-wrap__foot"><a class="link-btn" href="/forgot-password.html">Forgot your password?</a></p>';
+  return { html: accessLayout(content, { wide: true }), mount: mountLogin };
 }
 
+function mountLogin() {
+  const form = document.getElementById('login-form');
+  if (!form) return;
+  const errorBox = document.getElementById('login-error');
+  const submitBtn = document.getElementById('login-submit');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) { showError('Please enter both email and password.'); return; }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in...';
+    errorBox.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.token && data.user) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        state.session = {
+          userId: data.user.id,
+          role: data.user.role,
+          name: data.user.name,
+          email: data.user.email,
+          elevated: data.user.role === 'admin',
+          authenticated: true,
+          loginAt: new Date().toISOString()
+        };
+        persistSession();
+        notify('session');
+
+        window.location.href = data.user.role === 'admin' ? '/admin.html' : '/';
+        return;
+      }
+
+      let msg = data.error || data.message || 'Login failed';
+      if (data.requires_2fa) msg = '2FA code required. Enter your authenticator code.';
+      showError(msg);
+    } catch (err) {
+      showError('Cannot reach the server. Please try again.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Sign In';
+    }
+  });
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.style.display = 'block';
+  }
+
+  document.getElementById('toggle-password')?.addEventListener('click', () => {
+    const pw = document.getElementById('login-password');
+    pw.type = pw.type === 'password' ? 'text' : 'password';
+  });
+}
+
+export function renderSignup() {
+  const content = '<div class="eyebrow">New membership</div><h2>Apply to join the workspace.</h2><p class="access-form-wrap__intro">Fill out the application below. The Administrator will review it and grant access.</p><div id="signup-error" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.35);color:#fca5a5;border-radius:8px;padding:10px 14px;font-size:0.82rem;margin-bottom:16px;"></div><div id="signup-success" style="display:none;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.35);color:#6ee7b7;border-radius:8px;padding:10px 14px;font-size:0.82rem;margin-bottom:16px;"></div><form id="signup-form" class="stack mt-2" novalidate><div class="field"><label for="signup-name">Full Name</label><input class="input" id="signup-name" type="text" placeholder="Your full name" required></div><div class="field"><label for="signup-email">Email</label><input class="input" id="signup-email" type="email" placeholder="you@oviaxe.com" required></div><div class="field"><label for="signup-password">Password</label><input class="input" id="signup-password" type="password" placeholder="At least 8 characters" minlength="8" required></div><div class="field"><label for="signup-role">Desired Role</label><select class="input" id="signup-role" required><option value="">Select role...</option><option value="researcher">Researcher</option><option value="designer">UI/UX Designer</option><option value="developer">Developer</option><option value="producer">Producer / Tester</option></select></div><button class="btn btn--primary btn--lg btn--full" type="submit">Submit Application</button></form><p class="access-form-wrap__foot">Already a member? <a class="link-btn" href="#/login">Sign in here</a></p>';
+  return { html: accessLayout(content), mount: mountSignup };
+}
+
+function mountSignup() {
+  const form = document.getElementById('signup-form');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    const desired_role = document.getElementById('signup-role').value;
+    const errorBox = document.getElementById('signup-error');
+    const successBox = document.getElementById('signup-success');
+    errorBox.style.display = 'none';
+    successBox.style.display = 'none';
+
+    if (!name || !email || !password || !desired_role) {
+      errorBox.textContent = 'Please fill all fields.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, desired_role })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 201) {
+        successBox.textContent = 'Application submitted! The Administrator will review it.';
+        successBox.style.display = 'block';
+        form.reset();
+      } else {
+        errorBox.textContent = data.error || 'Signup failed.';
+        errorBox.style.display = 'block';
+      }
+    } catch (err) {
+      errorBox.textContent = 'Cannot reach the server.';
+      errorBox.style.display = 'block';
+    }
+  });
+}
+
+export function renderApplicationStatus(params) {
+  return { html: accessLayout('<div class="eyebrow">Application status</div><h2>Status tracking</h2><p>Application status tracking is available after email verification.</p>') };
+}
+export function renderAbout() {
+  return { html: accessLayout('<div class="eyebrow">Platform</div><h2>About Mahi Tech Group</h2><p>A decentralized team orchestration platform for democratic decision-making, parallel execution, and transparent revenue sharing.</p>') };
+}
 export function renderContact() {
-  const content = `<div class="eyebrow">Access & support</div><h2>Choose the right way into the workspace.</h2><p class="access-form-wrap__intro">Start a local membership application, continue with a demo identity, or compare the role-aware workspaces. This page does not send a contact request.</p><div class="contact-options"><a class="contact-option" href="#/signup">${icon('user-plus')}<strong>New membership</strong><span>Submit an application for Admin review</span></a><a class="contact-option" href="#/login">${icon('user')}<strong>Member access</strong><span>Continue with a local demo identity</span></a><a class="contact-option" href="#/role-selection">${icon('layers')}<strong>Explore demo roles</strong><span>Compare five role-aware workspaces</span></a></div><article class="public-article"><h3>Support stays connected to the work</h3><p>After entering a demo workspace, use Support in the sidebar to inspect existing tickets or create a local ticket. The evidenced categories cover bugs, feature requests, access issues, billing, and other operational topics.</p><p>Ticket replies, status changes, priority, internal Admin notes, and audit events remain inside the product workflow. In this preview they are browser-only mock records, not delivered support requests.</p></article><div class="mt-3">${notice('Need platform context first? Review the delivery model, voting rules, role boundaries, and service limitations before entering the workspace.', 'info')}</div><div class="form-actions"><a class="btn btn--outline" href="#/about">Review the platform</a><a class="btn btn--primary" href="#/role-selection">Explore demo roles ${icon('arrow-up-right')}</a></div>`;
-  return { html: accessLayout(content, { wide: true }) };
+  return { html: accessLayout('<div class="eyebrow">Support</div><h2>Access & support</h2><p>For support, sign in and use the Support Ticket system in your workspace.</p>') };
 }
-
-export function renderLegal(type = 'terms') {
-  const privacy = type === 'privacy';
-  const content = `<div class="eyebrow">Legal & data boundaries</div><h2>${privacy ? 'Privacy and financial visibility.' : 'Terms for this frontend preview.'}</h2><p class="access-form-wrap__intro">Last reviewed for this prototype: 25 October 2026. These notes describe the interface demonstration and evidenced product workflows; they are not production legal terms.</p><article class="public-article">${privacy ? `<h3>Browser-only mock data</h3><p>Demo identities, projects, financial entries, support messages, and signatures are fictional. Mock mutations may be stored in your browser’s local storage so you can explore state across pages. Use Settings → Reset mock data to restore the fixtures. Do not enter sensitive personal, financial, or credential information.</p><h3>Profile history and attribution</h3><p>The evidenced product model preserves permanent profile and project history. Former-member profiles are read-only and retain historical contribution attribution.</p><h3>Financial visibility</h3><p>Detailed earnings are visible to the owner and Admin. Other members viewing a profile see aggregate totals rather than a detailed earnings ledger. Frozen wallets cannot initiate withdrawals.</p><h3>Administrative records</h3><p>The product model includes access logs, audit events, support tickets, internal Admin notes, governance records, and dispute documents. Internal support notes are hidden from the member thread and shown only in elevated administration.</p><h3>No hidden service calls</h3><p>This frontend does not call the repository API, websocket service, video provider, payment gateway, email service, or signing backend. Public access and support links only navigate within this frontend; they do not send a message.</p>` : `<h3>Demonstration only</h3><p>This interface is a frontend implementation using mock data. It does not create real accounts, bookings, payments, legal agreements, or persistent organization records. No action in this preview should be interpreted as an actual submission or approval.</p><h3>Membership workflow</h3><p>The evidenced workflow requires Admin review of applications. Pending, rejected, inactive, and suspended accounts do not provide active workspace access. Role permissions determine which tasks and operational actions are available.</p><h3>Organization assets and attribution</h3><p>Approved ideas become organization-owned projects. Project assets use organization ownership, while contributor attribution and profile history remain visible. The interface does not grant rights to any real asset or organization property.</p><h3>Voting and administration</h3><p>Voting, Admin overrides, revenue records, payouts, offboarding, and governance actions have explicit states and audit requirements. In this preview those actions modify local mock data only and are labelled accordingly.</p><h3>Digital documents</h3><p>Agreement and waiver screens demonstrate review, acceptance, decline, and signature states. They have no legal effect and do not perform identity verification or server-side signature recording.</p>`}</article><div class="form-actions"><a class="btn btn--outline" href="#/legal/${privacy ? 'terms' : 'privacy'}">Read ${privacy ? 'terms' : 'privacy'}</a><a class="btn btn--primary" href="#/login">Return to access</a></div>`;
-  return { html: accessLayout(content, { wide: true }) };
+export function renderLegal(type) {
+  const title = type === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions';
+  return { html: accessLayout('<div class="eyebrow">Legal</div><h2>' + title + '</h2><p>View the full document in the Legal Center after signing in.</p>') };
 }
