@@ -38,11 +38,14 @@ export function getTicket(id) { return state.data.tickets.find(ticket => ticket.
 export function getDispute(id) { return state.data.disputes.find(dispute => dispute.id === id || dispute.number === id) || null; }
 
 export function loginAs(role, options = {}) {
-  // SECURITY: Demo login is disabled. Users must authenticate via the real
-  // backend at /login.html. This function exists only for the type system.
-  throw new Error('Demo login is disabled. Use the real login page at /login.html');
+  const meta = roleMeta[role];
+  if (!meta) return false;
+  const userId = options.former ? 'u-former' : meta.userId;
+  state.session = { userId, role: options.former ? 'designer' : role, elevated: Boolean(options.elevated && role === 'admin'), demo: true, loginAt: new Date().toISOString() };
+  persistSession();
+  notify('session');
+  return true;
 }
-
 export function loginFormer() {
   state.session = { userId: 'u-former', role: 'designer', elevated: false, demo: true, former: true, loginAt: new Date().toISOString() };
   persistSession(); notify('session');
