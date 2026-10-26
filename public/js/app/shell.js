@@ -1,6 +1,7 @@
 import { roleMeta } from './data.js';
 import { state, currentUser, getUser, userTasks, pendingVotesFor, visibleNotifications, unreadNotifications, persistData, logout, setPreview, formatDateTime, relativeTime, escapeHTML, titleCase } from './store.js';
 import { icon, badge, avatar, person, openDialog, closeDialog, openDrawer, closeDrawer, toast } from './ui.js';
+import { api, getAuthToken } from './api.js';
 
 const memberNav = [
   ['Workspace', [
@@ -100,8 +101,28 @@ export function mountShell(path) {
 export function openNotificationsDrawer() {
   const user = currentUser(); if (!user) return; const notes = visibleNotifications();
   openDrawer({ title: 'Notifications', subtitle: `${unreadNotifications().length} unread · local demo updates`, content: `${notes.length ? notes.map(note => { const unread = !note.readBy.includes(user.id); return `<article class="notification-item ${unread ? 'is-unread' : ''}"><span class="notification-item__icon">${icon(note.type === 'meeting' ? 'video' : note.type === 'vote' ? 'vote' : note.type === 'support' ? 'support' : note.type === 'signature' ? 'pen' : 'check-square')}</span><div class="list-row__main"><p>${escapeHTML(note.message)}</p><time title="${formatDateTime(note.at)}">${relativeTime(note.at)}</time><div class="cluster mt-1"><a class="link-btn small" href="${note.link}">Open related view</a>${unread ? `<button class="link-btn small" data-drawer-read="${note.id}">Mark read</button>` : ''}</div></div></article>`; }).join('') : '<div class="empty-state"><h3>No notifications</h3><p>Your local workspace is up to date.</p></div>'}`, footer: `<a class="btn btn--outline" href="#/app/notifications">Open full inbox</a><button class="btn btn--primary" id="drawer-read-all" ${unreadNotifications().length ? '' : 'disabled'}>Mark all read</button>`, onMount(drawer) {
-    drawer.querySelectorAll('[data-drawer-read]').forEach(button => button.addEventListener('click', () => { const note = notes.find(item => item.id === button.dataset.drawerRead); if (note && !note.readBy.includes(user.id)) note.readBy.push(user.id); persistData(); closeDrawer(); toast('Notification marked read locally.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); }));
-    drawer.querySelector('#drawer-read-all')?.addEventListener('click', () => { notes.forEach(note => { if (!note.readBy.includes(user.id)) note.readBy.push(user.id); }); persistData(); closeDrawer(); toast('All notifications marked read locally.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); });
+    drawer.querySelectorAll('[data-drawer-read]').forEach(button => button.addEventListener('click', async () => {
+      const noteId = button.dataset.drawerRead;
+      if (getAuthToken()) {
+        try { await api.patch(`/api/notifications/${noteId}/read`); } catch (e) {}
+      }
+      const note = notes.find(item => item.id === noteId);
+      if (note && !note.readBy.includes(user.id)) note.readBy.push(user.id);
+      persistData();
+      closeDrawer();
+      toast('Notification marked read.', 'info');
+      window.dispatchEvent(new CustomEvent('app:refresh'));
+    }));
+    drawer.querySelector('#drawer-read-all')?.addEventListener('click', async () => {
+      if (getAuthToken()) {
+        try { await api.post('/api/notifications/mark-all-read'); } catch (e) {}
+      }
+      notes.forEach(note => { if (!note.readBy.includes(user.id)) note.readBy.push(user.id); });
+      persistData();
+      closeDrawer();
+      toast('All notifications marked read.', 'info');
+      window.dispatchEvent(new CustomEvent('app:refresh'));
+    });
   } });
 }
 function openAccountDrawer() {

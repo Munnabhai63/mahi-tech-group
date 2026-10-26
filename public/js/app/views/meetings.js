@@ -1,10 +1,11 @@
 import { state, currentUser, getUser, getProject, getIdea, getMeeting, pendingVotesFor, persistData, addAudit, addNotification, formatDate, formatDateTime, formatTime, relativeTime, escapeHTML, titleCase, uid } from '../store.js';
 import { icon, badge, plainBadge, avatar, person, pageHead, notice, emptyState, withPreview, openDialog, closeDialog, confirmDialog, toast, bindTabs, formValues, setFormError, showPlaceholder } from '../ui.js';
 import { openVoteDialog } from './ideas.js';
+import { api } from '../api.js';
 
 function meetingCard(meeting) {
-  const project = getProject(meeting.projectId); const host = getUser(meeting.hostId); const attendees = [...new Set(meeting.attendance.map(item => item.userId))].map(getUser).filter(Boolean);
-  return `<article class="meeting-card ${meeting.status === 'LIVE' ? 'meeting-card--live' : ''}" data-status="${meeting.status}" data-project="${meeting.projectId || ''}" data-search="${escapeHTML(`${meeting.title} ${project?.title || ''}`.toLowerCase())}"><div class="meeting-card__head">${meeting.status === 'LIVE' ? '<span class="live-pill">Live now</span>' : badge(meeting.status)}<span class="tiny muted">${meeting.ideaId ? 'Idea review' : 'Ad hoc meeting'}</span></div><h2>${escapeHTML(meeting.title)}</h2><p class="small muted">${escapeHTML(meeting.description || '')}</p><div class="meeting-card__meta mt-2"><span>${icon('calendar')} ${formatDate(meeting.scheduledAt, { year: false })}</span><span>${icon('clock')} ${formatTime(meeting.scheduledAt)} · ${meeting.duration} min</span><span>${icon('user')} ${escapeHTML(host?.name)}</span></div><div class="meeting-card__foot"><span class="avatar-stack">${attendees.slice(0, 4).map(user => avatar(user, 'sm')).join('')}${!attendees.length ? '<span class="tiny muted">No attendance yet</span>' : ''}</span><a class="btn ${meeting.status === 'LIVE' ? 'btn--primary' : 'btn--outline'} btn--sm" href="#/app/meetings/${meeting.id}">${meeting.status === 'LIVE' ? 'Enter room' : meeting.status === 'ENDED' ? 'View recap' : 'View details'} ${icon('arrow-up-right', 'icon--sm')}</a></div></article>`;
+  const project = getProject(meeting.projectId); const host = getUser(meeting.hostId); const attendees = [...new Set((meeting.attendance || []).map(item => item.userId))].map(getUser).filter(Boolean);
+  return `<article class="meeting-card ${meeting.status === 'LIVE' ? 'meeting-card--live' : ''}" data-status="${meeting.status}" data-project="${meeting.projectId || ''}" data-search="${escapeHTML(`${meeting.title} ${project?.title || ''}`.toLowerCase())}"><div class="meeting-card__head">${meeting.status === 'LIVE' ? '<span class="live-pill">Live now</span>' : badge(meeting.status)}<span class="tiny muted">${meeting.ideaId ? 'Idea review' : 'Ad hoc meeting'}</span></div><h2>${escapeHTML(meeting.title)}</h2><p class="small muted">${escapeHTML(meeting.description || '')}</p><div class="meeting-card__meta mt-2"><span>${icon('calendar')} ${formatDate(meeting.scheduledAt, { year: false })}</span><span>${icon('clock')} ${formatTime(meeting.scheduledAt)} · ${meeting.duration} min</span><span>${icon('user')} ${escapeHTML(host?.name || meeting.hostName || 'Host')}</span></div><div class="meeting-card__foot"><span class="avatar-stack">${attendees.slice(0, 4).map(user => avatar(user, 'sm')).join('')}${!attendees.length ? '<span class="tiny muted">No attendance yet</span>' : ''}</span><a class="btn ${meeting.status === 'LIVE' ? 'btn--primary' : 'btn--outline'} btn--sm" href="#/app/meetings/${meeting.id}">${meeting.status === 'LIVE' ? 'Enter room' : meeting.status === 'ENDED' ? 'View recap' : 'View details'} ${icon('arrow-up-right', 'icon--sm')}</a></div></article>`;
 }
 
 export function renderMeetings() {
@@ -15,75 +16,286 @@ export function renderMeetings() {
     const search = document.querySelector('#meeting-search'); const status = document.querySelector('#meeting-status-filter'); const project = document.querySelector('#meeting-project-filter');
     const filter = () => { let count = 0; const query = search.value.trim().toLowerCase(); document.querySelectorAll('#meeting-grid [data-status]').forEach(meeting => { const show = (!query || meeting.dataset.search.includes(query)) && (status.value === 'all' || meeting.dataset.status === status.value) && (project.value === 'all' || meeting.dataset.project === project.value); meeting.hidden = !show; if (show) count++; }); document.querySelector('#meeting-count').textContent = `${count} meetings`; document.querySelector('#meeting-empty').hidden = count > 0; };
     search?.addEventListener('input', filter); status?.addEventListener('change', filter); project?.addEventListener('change', filter);
+
+    // Fetch live meetings from backend
+    api.get('/api/meetings').then(res => {
+      if (res?.meetings && Array.isArray(res.meetings)) {
+        const liveMeetings = res.meetings.map(m => ({
+          id: m.id,
+          title: m.title,
+          description: m.description || '',
+          meetingType: m.meeting_type,
+          projectId: m.linked_project_id || null,
+          ideaId: m.linked_idea_id || null,
+          scheduledAt: m.scheduled_at,
+          duration: m.duration_minutes || 45,
+          status: m.status,
+          hostId: m.hosted_by,
+          hostName: m.host_name,
+          recordingEnabled: Boolean(m.recording_enabled),
+          recording: m.recording_file_path ? { title: m.recording_file_path.split(/[/\\]/).pop(), size: 'Stored' } : null,
+          notesStatus: m.has_confirmed_notes ? 'CONFIRMED' : null,
+          attendance: []
+        }));
+        const existingIds = new Set(liveMeetings.map(m => m.id));
+        state.data.meetings = [
+          ...liveMeetings,
+          ...state.data.meetings.filter(m => !existingIds.has(m.id))
+        ];
+        const grid = document.querySelector('#meeting-grid');
+        if (grid) {
+          const sorted = [...state.data.meetings].sort((a, b) => { const order = { LIVE: 0, SCHEDULED: 1, ENDED: 2, CANCELLED: 3 }; return order[a.status] - order[b.status] || new Date(b.scheduledAt) - new Date(a.scheduledAt); });
+          grid.innerHTML = sorted.map(meetingCard).join('');
+          filter();
+        }
+      }
+    }).catch(err => console.warn('Could not fetch meetings:', err));
   } };
 }
 
 function openScheduleMeeting() {
-  openDialog({ title: 'Schedule a meeting', subtitle: 'Admin action · local mock schedule', wide: true, content: `<form id="schedule-form" class="form-grid"><div class="field span-2"><label for="schedule-title">Meeting title</label><input class="input" id="schedule-title" name="title" required placeholder="What is the team meeting about?"></div><div class="field"><label for="schedule-type">Meeting type</label><select class="select" id="schedule-type" name="type"><option value="ad_hoc">Ad hoc / project meeting</option><option value="idea_review">Idea review</option></select></div><div class="field"><label for="schedule-time">Scheduled date & time</label><input class="input" id="schedule-time" name="scheduledAt" type="datetime-local" value="2026-10-26T15:00" required></div><div class="field"><label for="schedule-project">Linked project (optional)</label><select class="select" id="schedule-project" name="projectId"><option value="">No linked project</option>${state.data.projects.map(project => `<option value="${project.id}">${escapeHTML(project.title)}</option>`).join('')}</select></div><div class="field"><label for="schedule-idea">Linked idea (optional)</label><select class="select" id="schedule-idea" name="ideaId"><option value="">No linked idea</option>${state.data.ideas.filter(idea => idea.status === 'PENDING_REVIEW').map(idea => `<option value="${idea.id}">${escapeHTML(idea.title)}</option>`).join('')}</select></div><div class="field"><label for="schedule-duration">Duration</label><select class="select" id="schedule-duration" name="duration"><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option></select></div><div class="field"><label for="schedule-recording">Recording</label><select class="select" id="schedule-recording" name="recording"><option value="false">Recording disabled</option><option value="true">Enable recording reference</option></select></div><div class="span-2">${notice('Scheduling notifies active members in local mock data. No invitation, video room, password, or calendar event is created by a service.', 'info')}</div></form>`, footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="save-meeting">Save local meeting</button>', onMount(dialog) {
-    dialog.querySelector('#save-meeting').addEventListener('click', () => { const form = dialog.querySelector('#schedule-form'); const values = formValues(form); if (!values.title?.trim()) return setFormError(form, 'Meeting title is required.', 'title'); if (!values.scheduledAt) return setFormError(form, 'Choose a meeting date and time.', 'scheduledAt'); const id = uid('m'); const now = new Date().toISOString(); state.data.meetings.unshift({ id, title: values.title.trim(), description: '', meetingType: values.type, projectId: values.projectId || null, ideaId: values.ideaId || null, scheduledAt: new Date(values.scheduledAt).toISOString(), duration: Number(values.duration), status: 'SCHEDULED', hostId: currentUser().id, recordingEnabled: values.recording === 'true', participantIds: state.data.users.filter(user => user.status === 'active').map(user => user.id), attendance: [], recording: null, notesStatus: null, notesEn: '', notesHi: '', createdAt: now }); state.data.users.filter(user => user.status === 'active').forEach(user => addNotification(user.id, 'meeting', `Meeting “${values.title.trim()}” scheduled for ${formatDateTime(new Date(values.scheduledAt).toISOString())}.`, `#/app/meetings/${id}`)); addAudit('meeting_scheduled', `meeting:${id} local-only schedule`, 'meetings'); persistData(); closeDialog(); toast('Meeting saved locally. No real room or invitation was created.', 'info'); location.hash = `#/app/meetings/${id}`; });
+  openDialog({ title: 'Schedule a meeting', subtitle: 'Admin action · live team schedule', wide: true, content: `<form id="schedule-form" class="form-grid"><div class="field span-2"><label for="schedule-title">Meeting title</label><input class="input" id="schedule-title" name="title" required placeholder="What is the team meeting about?"></div><div class="field"><label for="schedule-type">Meeting type</label><select class="select" id="schedule-type" name="type"><option value="ad_hoc">Ad hoc / project meeting</option><option value="idea_review">Idea review</option></select></div><div class="field"><label for="schedule-time">Scheduled date & time</label><input class="input" id="schedule-time" name="scheduledAt" type="datetime-local" value="${new Date(Date.now() + 3600000).toISOString().slice(0, 16)}" required></div><div class="field"><label for="schedule-project">Linked project (optional)</label><select class="select" id="schedule-project" name="projectId"><option value="">No linked project</option>${state.data.projects.map(project => `<option value="${project.id}">${escapeHTML(project.title)}</option>`).join('')}</select></div><div class="field"><label for="schedule-idea">Linked idea (optional)</label><select class="select" id="schedule-idea" name="ideaId"><option value="">No linked idea</option>${state.data.ideas.filter(idea => idea.status === 'PENDING_REVIEW').map(idea => `<option value="${idea.id}">${escapeHTML(idea.title)}</option>`).join('')}</select></div><div class="field"><label for="schedule-duration">Duration</label><select class="select" id="schedule-duration" name="duration"><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option></select></div><div class="field"><label for="schedule-recording">Recording</label><select class="select" id="schedule-recording" name="recording"><option value="false">Recording disabled</option><option value="true">Enable recording reference</option></select></div><div class="span-2">${notice('Scheduling notifies active members and creates a meeting room session.', 'info')}</div></form>`, footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="save-meeting">Schedule meeting</button>', onMount(dialog) {
+    dialog.querySelector('#save-meeting').addEventListener('click', async () => {
+      const form = dialog.querySelector('#schedule-form');
+      const values = formValues(form);
+      if (!values.title?.trim()) return setFormError(form, 'Meeting title is required.', 'title');
+      if (!values.scheduledAt) return setFormError(form, 'Choose a meeting date and time.', 'scheduledAt');
+      const saveBtn = dialog.querySelector('#save-meeting');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Scheduling...';
+      try {
+        const res = await api.post('/api/meetings', {
+          title: values.title.trim(),
+          meeting_type: values.type,
+          scheduled_at: new Date(values.scheduledAt).toISOString(),
+          linked_project_id: values.projectId || null,
+          linked_idea_id: values.ideaId || null,
+          recording_enabled: values.recording === 'true'
+        });
+        const m = res?.meeting;
+        const newMeeting = {
+          id: m ? m.id : uid('m'),
+          title: m ? m.title : values.title.trim(),
+          description: '',
+          meetingType: values.type,
+          projectId: values.projectId || null,
+          ideaId: values.ideaId || null,
+          scheduledAt: new Date(values.scheduledAt).toISOString(),
+          duration: Number(values.duration),
+          status: 'SCHEDULED',
+          hostId: currentUser().id,
+          recordingEnabled: values.recording === 'true',
+          participantIds: state.data.users.filter(user => user.status === 'active').map(user => user.id),
+          attendance: [],
+          recording: null,
+          notesStatus: null,
+          notesEn: '',
+          notesHi: '',
+          createdAt: new Date().toISOString()
+        };
+        state.data.meetings.unshift(newMeeting);
+        persistData();
+        closeDialog();
+        toast('Meeting scheduled successfully.', 'success');
+        location.hash = `#/app/meetings/${newMeeting.id}`;
+      } catch (err) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Schedule meeting';
+        setFormError(form, api.extractError(err), 'title');
+      }
+    });
   } });
 }
 
 function videoRoom(meeting, user) {
-  const joined = meeting.attendance.some(item => item.userId === user.id && !item.leftAt);
+  const attendance = meeting.attendance || [];
+  const joined = attendance.some(item => (item.userId === user.id || item.user_id === user.id) && !item.leftAt && !item.left_at);
   if (meeting.status === 'SCHEDULED') return `<div class="video-stage"><div class="video-stage__label">${badge('scheduled')}</div><div class="video-placeholder"><span class="video-placeholder__icon">${icon('calendar')}</span><h2>The room opens when Admin starts.</h2><p>Scheduled for ${formatDateTime(meeting.scheduledAt)}. Active members can join after the meeting moves to LIVE.</p>${user.role === 'admin' ? `<button class="btn btn--lime mt-2" data-meeting-control="start">${icon('play')} Start meeting</button>` : '<button class="btn btn--outline mt-2" disabled>Waiting for host</button>'}</div></div>`;
   if (meeting.status === 'CANCELLED') return `<div class="video-stage"><div class="video-placeholder"><span class="video-placeholder__icon">${icon('x')}</span><h2>This meeting was cancelled.</h2><p>The schedule record remains available, but there is no room to join.</p></div></div>`;
   if (meeting.status === 'ENDED') return `<div class="video-stage"><div class="video-placeholder"><span class="video-placeholder__icon">${icon('check')}</span><h2>Meeting ended.</h2><p>Attendance, any recording reference, and confirmed notes are available in the recap.</p></div></div>`;
-  if (!joined) return `<div class="video-stage"><div class="video-stage__label"><span class="live-pill">Live now</span></div><div class="video-placeholder"><span class="video-placeholder__icon">${icon('video')}</span><h2>This meeting is live.</h2><p>Joining records a local attendance event. Video and audio are simulated; no camera, microphone, or Jitsi connection is used.</p><button class="btn btn--lime mt-2" data-meeting-control="join">${icon('video')} Join live meeting</button></div></div>`;
-  const present = meeting.attendance.filter(item => !item.leftAt).map(item => getUser(item.userId)).filter(Boolean);
-  return `<div class="video-stage"><div class="video-stage__label"><span class="live-pill">Live now</span>${plainBadge('Simulated video', 'dark')}</div><div class="video-stage__grid">${present.slice(0, 4).map((person, index) => `<div class="video-tile ${index === 0 ? 'is-speaking' : ''}"><span class="video-tile__avatar">${person.initials}</span><span class="video-tile__mute">${icon('mic')}</span><span class="video-tile__name">${escapeHTML(person.name)}${person.id === user.id ? ' (you)' : ''}</span></div>`).join('')}</div></div><div class="meeting-controls"><button class="meeting-control" data-room-toggle="mic" aria-pressed="true" aria-label="Mute simulated microphone">${icon('mic')}</button><button class="meeting-control" data-room-toggle="camera" aria-pressed="true" aria-label="Turn off simulated camera">${icon('camera')}</button><button class="meeting-control" id="share-screen" aria-label="Preview screen sharing">${icon('monitor')}</button><button class="meeting-control--leave" data-meeting-control="leave">${icon('log-out', 'icon--sm')} Leave</button>${user.role === 'admin' ? `<button class="meeting-control--leave" data-meeting-control="end">${icon('stop', 'icon--sm')} End for all</button>` : ''}</div><div class="meeting-room__info"><span>Local attendance is being recorded in mock data.</span><span>No media devices or external video service accessed.</span></div>`;
+  if (!joined) return `<div class="video-stage"><div class="video-stage__label"><span class="live-pill">Live now</span></div><div class="video-placeholder"><span class="video-placeholder__icon">${icon('video')}</span><h2>This meeting is live.</h2><p>Joining records your presence on the meeting roster. Audio and video stages are active for connected participants.</p><button class="btn btn--lime mt-2" data-meeting-control="join">${icon('video')} Join live meeting</button></div></div>`;
+  const present = attendance.filter(item => !item.leftAt && !item.left_at).map(item => getUser(item.userId || item.user_id) || { initials: (item.name || item.user_name || 'U').slice(0, 2).toUpperCase(), name: item.name || item.user_name || 'Member', id: item.userId || item.user_id }).filter(Boolean);
+  return `<div class="video-stage"><div class="video-stage__label"><span class="live-pill">Live now</span>${plainBadge('Live stage', 'dark')}</div><div class="video-stage__grid">${present.slice(0, 4).map((person, index) => `<div class="video-tile ${index === 0 ? 'is-speaking' : ''}"><span class="video-tile__avatar">${person.initials || 'U'}</span><span class="video-tile__mute">${icon('mic')}</span><span class="video-tile__name">${escapeHTML(person.name)}${person.id === user.id ? ' (you)' : ''}</span></div>`).join('')}</div></div><div class="meeting-controls"><button class="meeting-control" data-room-toggle="mic" aria-pressed="true" aria-label="Mute microphone">${icon('mic')}</button><button class="meeting-control" data-room-toggle="camera" aria-pressed="true" aria-label="Turn off camera">${icon('camera')}</button><button class="meeting-control" id="share-screen" aria-label="Screen sharing">${icon('monitor')}</button><button class="meeting-control--leave" data-meeting-control="leave">${icon('log-out', 'icon--sm')} Leave</button>${user.role === 'admin' ? `<button class="meeting-control--leave" data-meeting-control="end">${icon('stop', 'icon--sm')} End for all</button>` : ''}</div><div class="meeting-room__info"><span>Connected to room presence.</span><span>Attendance is being recorded.</span></div>`;
 }
 
 function notesPanel(meeting, user) {
-  const attended = meeting.attendance.some(item => item.userId === user.id);
+  const attendance = meeting.attendance || [];
+  const attended = attendance.some(item => (item.userId === user.id || item.user_id === user.id));
   if (meeting.notesStatus === 'CONFIRMED' && (attended || user.role === 'admin')) {
-    const prefs = state.data.uiPreferences?.[user.id] || { notesLanguage: 'en' };
-    return `<div data-tab-scope><div class="tabs" data-tabs role="tablist" aria-label="Meeting notes languages"><button class="tab" data-tab="english" aria-selected="${prefs.notesLanguage !== 'hi'}">English</button><button class="tab" data-tab="hindi" aria-selected="${prefs.notesLanguage === 'hi'}">हिन्दी</button></div><section data-tab-panel="english" ${prefs.notesLanguage === 'hi' ? 'hidden' : ''}><div class="notes-page">${escapeHTML(meeting.notesEn)}</div></section><section data-tab-panel="hindi" ${prefs.notesLanguage !== 'hi' ? 'hidden' : ''}><div class="notes-page">${escapeHTML(meeting.notesHi)}</div></section><p class="tiny muted mt-1">Confirmed ${formatDateTime(meeting.notesConfirmedAt)} · visible to attendees and Admin.</p></div>`;
+    const prefs = state.data.uiPreferences?.[user.id] || { notesLanguage: localStorage.getItem('mtg_notes_lang') || 'en' };
+    return `<div data-tab-scope><div class="tabs" data-tabs role="tablist" aria-label="Meeting notes languages"><button class="tab" data-tab="english" aria-selected="${prefs.notesLanguage !== 'hi'}">English</button><button class="tab" data-tab="hindi" aria-selected="${prefs.notesLanguage === 'hi'}">हिन्दी</button></div><section data-tab-panel="english" ${prefs.notesLanguage === 'hi' ? 'hidden' : ''}><div class="notes-page">${escapeHTML(meeting.notesEn || '')}</div></section><section data-tab-panel="hindi" ${prefs.notesLanguage !== 'hi' ? 'hidden' : ''}><div class="notes-page">${escapeHTML(meeting.notesHi || '')}</div></section><p class="tiny muted mt-1">Confirmed ${formatDateTime(meeting.notesConfirmedAt)} · visible to attendees and Admin.</p></div>`;
   }
-  if (user.role === 'admin' && meeting.notesStatus === 'PENDING') return `<div>${notice('Draft notes are awaiting Admin confirmation. Attendees cannot view them until confirmed.', 'warning', 'Pending review')}<button class="btn btn--primary btn--full mt-2" id="review-notes">Review bilingual notes</button></div>`;
+  if (user.role === 'admin' && (meeting.notesStatus === 'PENDING' || meeting.status === 'ENDED')) return `<div>${notice('Draft notes can be confirmed and published. Attendees cannot view them until confirmed.', 'warning', 'Notes Review')}<button class="btn btn--primary btn--full mt-2" id="review-notes">Review bilingual notes</button></div>`;
   if (meeting.notesStatus === 'PENDING') return `<div class="privacy-lock">${icon('lock')}<h3>Notes pending Admin review</h3><p>Confirmed notes are visible to meeting attendees and Admin only.</p></div>`;
   if (!attended && user.role !== 'admin' && meeting.notesStatus === 'CONFIRMED') return `<div class="privacy-lock">${icon('lock')}<h3>Participants only</h3><p>Only attendees and Admin can view confirmed meeting notes.</p></div>`;
-  return emptyState('No meeting notes', meeting.status === 'ENDED' ? 'No confirmed bilingual notes are available for this meeting.' : 'Notes become available after a recording, review, and Admin confirmation.', '', 'file');
+  return emptyState('No meeting notes', meeting.status === 'ENDED' ? 'No confirmed bilingual notes are available for this meeting.' : 'Notes become available after recording, review, and Admin confirmation.', '', 'file');
 }
 
 export function renderMeetingDetail(id) {
   const meeting = getMeeting(id); const user = currentUser();
   if (!meeting) return { html: `${pageHead('Meetings', 'Meeting not found')}${emptyState('This meeting does not exist', 'Return to the meeting list.', '<a class="btn btn--primary" href="#/app/meetings">Back to meetings</a>', 'video')}` };
-  const project = getProject(meeting.projectId); const idea = getIdea(meeting.ideaId); const attendees = [...new Set(meeting.attendance.map(item => item.userId))];
+  const project = getProject(meeting.projectId); const idea = getIdea(meeting.ideaId); const attendees = [...new Set((meeting.attendance || []).map(item => item.userId || item.user_id))];
   const actions = `${user.role === 'admin' && meeting.status === 'SCHEDULED' ? `<button class="btn btn--outline" id="cancel-meeting">Cancel meeting</button><button class="btn btn--primary" data-meeting-control="start">${icon('play')} Start meeting</button>` : ''}<a class="btn btn--outline" href="#/app/meetings">All meetings</a>`;
-  const content = `<div class="meeting-room-layout"><div class="stack"><section class="meeting-room">${videoRoom(meeting, user)}</section><section class="card card--flush"><div class="card-head"><div><h2>Attendance</h2><p>${attendees.length} recorded attendee${attendees.length === 1 ? '' : 's'} · join and leave events remain visible.</p></div>${badge(meeting.status)}</div><div class="card-body"><div class="attendance-list">${meeting.attendance.length ? meeting.attendance.map(record => { const attendee = getUser(record.userId); return `<div class="attendance-row">${avatar(attendee, 'sm')}<div class="person__meta"><strong>${escapeHTML(attendee?.name)}</strong><span>${titleCase(attendee?.role || '')}</span></div><span class="attendance-row__time">Joined ${formatTime(record.joinedAt)}<br>${record.leftAt ? `Left ${formatTime(record.leftAt)}` : 'Still in room'}</span></div>`; }).join('') : emptyState('No attendance recorded', 'Active members appear here after joining the live meeting.', '', 'users')}</div></div></section><section class="card card--flush"><div class="card-head"><div><h2>Recording</h2><p>Admin-uploaded recording references and playback boundaries.</p></div>${user.role === 'admin' && meeting.status === 'ENDED' ? '<button class="btn btn--outline btn--sm" id="add-recording">Add local reference</button>' : ''}</div><div class="card-body">${meeting.recording ? `<div class="recording-row"><span class="recording-row__icon">${icon('play')}</span><div><strong>${escapeHTML(meeting.recording.title)}</strong><small>${meeting.recording.duration} · ${meeting.recording.size} · ${formatDate(meeting.recording.createdAt)}</small></div><button class="btn btn--outline btn--sm" id="play-recording">Preview player</button></div>` : emptyState('No recording available', meeting.recordingEnabled ? 'Recording is enabled, but no local recording reference has been added.' : 'Recording was not enabled or no recording was uploaded.', '', 'video')}</div></section></div><aside class="stack"><section class="card card--pad"><div class="eyebrow">Meeting context</div><h3 class="mt-1" style="font:600 18px var(--font-display)">${escapeHTML(meeting.title)}</h3><p class="small muted mt-1">${escapeHTML(meeting.description || '')}</p><dl class="definition-list mt-2"><dt>Host</dt><dd>${escapeHTML(getUser(meeting.hostId)?.name)}</dd><dt>Scheduled</dt><dd>${formatDateTime(meeting.scheduledAt)}</dd><dt>Duration</dt><dd>${meeting.duration} minutes</dd><dt>Project</dt><dd>${project ? `<a class="link-btn" href="#/app/projects/${project.id}">${escapeHTML(project.title)}</a>` : 'None'}</dd><dt>Recording</dt><dd>${meeting.recordingEnabled || meeting.recording ? 'Enabled / recorded' : 'Not enabled'}</dd></dl></section>${idea ? `<section class="card card--pad"><div class="eyebrow">Linked idea review</div><h3 class="mt-1" style="font:600 17px var(--font-display)">${escapeHTML(idea.title)}</h3><div class="key-value"><span>Status</span><strong>${titleCase(idea.status)}</strong></div><div class="key-value"><span>Green vote</span><strong>${idea.greenPercentage}%</strong></div><div class="key-value"><span>Voting deadline</span><strong>${formatDate(idea.deadline, { year: false })}</strong></div><a class="btn btn--outline btn--full mt-2" href="#/app/ideas/${idea.id}">Open idea & votes</a></section>` : ''}<section class="card card--pad"><div class="spread mb-2"><div><div class="eyebrow">Bilingual notes</div><h3 class="mt-1" style="font:600 18px var(--font-display)">English & Hindi</h3></div>${meeting.notesStatus ? badge(meeting.notesStatus) : ''}</div>${notesPanel(meeting, user)}</section></aside></div>`;
-  return { html: `${pageHead(`${meeting.status} · ${formatDate(meeting.scheduledAt)}`, escapeHTML(meeting.title), 'Meeting state, simulated media, attendance, recordings, notes, and linked work.', actions)}${withPreview(content, { title: 'No meeting detail in this preview', description: 'The empty-state preview hides video, attendance, recording, and notes.', icon: 'video' })}`, mount() {
+  const content = `<div class="meeting-room-layout"><div class="stack"><section class="meeting-room">${videoRoom(meeting, user)}</section><section class="card card--flush"><div class="card-head"><div><h2>Attendance</h2><p>${attendees.length} recorded attendee${attendees.length === 1 ? '' : 's'} · join and leave events remain visible.</p></div>${badge(meeting.status)}</div><div class="card-body"><div class="attendance-list">${(meeting.attendance || []).length ? meeting.attendance.map(record => { const attendee = getUser(record.userId || record.user_id) || { initials: (record.name || record.user_name || 'U').slice(0, 2).toUpperCase(), name: record.name || record.user_name || 'Member', role: record.role || record.user_role || 'member' }; return `<div class="attendance-row">${avatar(attendee, 'sm')}<div class="person__meta"><strong>${escapeHTML(attendee?.name)}</strong><span>${titleCase(attendee?.role || '')}</span></div><span class="attendance-row__time">Joined ${formatTime(record.joinedAt || record.joined_at)}<br>${(record.leftAt || record.left_at) ? `Left ${formatTime(record.leftAt || record.left_at)}` : 'Still in room'}</span></div>`; }).join('') : emptyState('No attendance recorded', 'Active members appear here after joining the live meeting.', '', 'users')}</div></div></section><section class="card card--flush"><div class="card-head"><div><h2>Recording</h2><p>Admin-uploaded recording references and playback boundaries.</p></div>${user.role === 'admin' && meeting.status === 'ENDED' ? '<button class="btn btn--outline btn--sm" id="add-recording">Upload recording</button>' : ''}</div><div class="card-body">${meeting.recording ? `<div class="recording-row"><span class="recording-row__icon">${icon('play')}</span><div><strong>${escapeHTML(meeting.recording.title)}</strong><small>${meeting.recording.duration || 'Stored'} · ${meeting.recording.size || ''} · ${formatDate(meeting.recording.createdAt || meeting.scheduledAt)}</small></div><button class="btn btn--outline btn--sm" id="play-recording">Audio player</button></div>` : emptyState('No recording available', meeting.recordingEnabled ? 'Recording is enabled, but no file has been uploaded yet.' : 'Recording was not enabled for this meeting.', '', 'video')}</div></section></div><aside class="stack"><section class="card card--pad"><div class="eyebrow">Meeting context</div><h3 class="mt-1" style="font:600 18px var(--font-display)">${escapeHTML(meeting.title)}</h3><p class="small muted mt-1">${escapeHTML(meeting.description || '')}</p><dl class="definition-list mt-2"><dt>Host</dt><dd>${escapeHTML(getUser(meeting.hostId)?.name || meeting.hostName || 'Host')}</dd><dt>Scheduled</dt><dd>${formatDateTime(meeting.scheduledAt)}</dd><dt>Duration</dt><dd>${meeting.duration} minutes</dd><dt>Project</dt><dd>${project ? `<a class="link-btn" href="#/app/projects/${project.id}">${escapeHTML(project.title)}</a>` : 'None'}</dd><dt>Recording</dt><dd>${meeting.recordingEnabled || meeting.recording ? 'Enabled / recorded' : 'Not enabled'}</dd></dl></section>${idea ? `<section class="card card--pad"><div class="eyebrow">Linked idea review</div><h3 class="mt-1" style="font:600 17px var(--font-display)">${escapeHTML(idea.title)}</h3><div class="key-value"><span>Status</span><strong>${titleCase(idea.status)}</strong></div><div class="key-value"><span>Green vote</span><strong>${idea.greenPercentage}%</strong></div><div class="key-value"><span>Voting deadline</span><strong>${formatDate(idea.deadline, { year: false })}</strong></div><a class="btn btn--outline btn--full mt-2" href="#/app/ideas/${idea.id}">Open idea & votes</a></section>` : ''}<section class="card card--pad"><div class="spread mb-2"><div><div class="eyebrow">Bilingual notes</div><h3 class="mt-1" style="font:600 18px var(--font-display)">English & Hindi</h3></div>${meeting.notesStatus ? badge(meeting.notesStatus) : ''}</div>${notesPanel(meeting, user)}</section></aside></div>`;
+  return { html: `${pageHead(`${meeting.status} · ${formatDate(meeting.scheduledAt)}`, escapeHTML(meeting.title), 'Meeting state, live presence, attendance, recordings, notes, and linked work.', actions)}${withPreview(content, { title: 'No meeting detail in this preview', description: 'The empty-state preview hides video, attendance, recording, and notes.', icon: 'video' })}`, mount() {
     bindTabs(document);
+
+    // Sync live meeting state and notes from backend
+    Promise.allSettled([
+      api.get(`/api/meetings/${meeting.id}`),
+      api.get(`/api/meetings/${meeting.id}/notes`)
+    ]).then(([detailRes, notesRes]) => {
+      let needsRefresh = false;
+      if (detailRes.status === 'fulfilled' && detailRes.value?.meeting) {
+        const live = detailRes.value.meeting;
+        if (meeting.status !== live.status) {
+          meeting.status = live.status;
+          needsRefresh = true;
+        }
+        if (detailRes.value.attendance && Array.isArray(detailRes.value.attendance)) {
+          meeting.attendance = detailRes.value.attendance.map(a => ({
+            userId: a.user_id,
+            name: a.user_name,
+            role: a.user_role,
+            joinedAt: a.joined_at,
+            leftAt: a.left_at
+          }));
+          needsRefresh = true;
+        }
+      }
+      if (notesRes.status === 'fulfilled' && notesRes.value?.notes) {
+        const n = notesRes.value.notes;
+        meeting.notesStatus = 'CONFIRMED';
+        meeting.notesEn = n.notes_english || '';
+        meeting.notesHi = n.notes_hindi || '';
+        meeting.notesConfirmedAt = n.confirmed_at;
+        meeting.transcriptRaw = n.transcript_raw || '';
+        needsRefresh = true;
+      }
+      if (needsRefresh) {
+        window.dispatchEvent(new CustomEvent('app:refresh'));
+      }
+    }).catch(err => console.warn('Meeting sync error:', err));
+
     document.querySelectorAll('[data-meeting-control]').forEach(button => button.addEventListener('click', () => handleMeetingControl(meeting.id, button.dataset.meetingControl)));
-    document.querySelector('#cancel-meeting')?.addEventListener('click', async () => { if (await confirmDialog({ title: 'Cancel this meeting?', message: 'The local meeting will move to CANCELLED and active members will receive a mock notification.', confirmLabel: 'Cancel meeting', tone: 'danger' })) { meeting.status = 'CANCELLED'; addAudit('meeting_cancelled', `meeting:${meeting.id}`, 'meetings', 'warning'); state.data.users.filter(member => member.status === 'active').forEach(member => addNotification(member.id, 'meeting', `Meeting “${meeting.title}” was cancelled.`, `#/app/meetings/${meeting.id}`)); persistData(); toast('Meeting cancelled in local mock data.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); } });
-    document.querySelectorAll('[data-room-toggle]').forEach(button => button.addEventListener('click', () => { const on = button.getAttribute('aria-pressed') !== 'true'; button.setAttribute('aria-pressed', String(on)); button.classList.toggle('is-off', !on); button.setAttribute('aria-label', `${on ? 'Turn off' : 'Turn on'} simulated ${button.dataset.roomToggle}`); toast(`Simulated ${button.dataset.roomToggle} ${on ? 'enabled' : 'disabled'}. No media device changed.`, 'info'); }));
-    document.querySelector('#share-screen')?.addEventListener('click', () => showPlaceholder('Screen sharing placeholder', 'A video service is required for screen sharing. No screen or browser capture was requested.'));
-    document.querySelector('#play-recording')?.addEventListener('click', () => showPlaceholder('Recording player placeholder', 'This mock recording has no stored media file. A storage and playback service is required for actual playback.'));
+    document.querySelector('#cancel-meeting')?.addEventListener('click', async () => {
+      if (await confirmDialog({ title: 'Cancel this meeting?', message: 'The meeting will be moved to CANCELLED and notifications will be sent to all active members.', confirmLabel: 'Cancel meeting', tone: 'danger' })) {
+        try {
+          await api.patch(`/api/meetings/${meeting.id}/cancel`);
+          meeting.status = 'CANCELLED';
+          persistData();
+          toast('Meeting cancelled successfully.', 'info');
+          window.dispatchEvent(new CustomEvent('app:refresh'));
+        } catch (err) {
+          toast(api.extractError(err), 'error');
+        }
+      }
+    });
+    document.querySelectorAll('[data-room-toggle]').forEach(button => button.addEventListener('click', () => { const on = button.getAttribute('aria-pressed') !== 'true'; button.setAttribute('aria-pressed', String(on)); button.classList.toggle('is-off', !on); button.setAttribute('aria-label', `${on ? 'Turn off' : 'Turn on'} ${button.dataset.roomToggle}`); toast(`${button.dataset.roomToggle} ${on ? 'enabled' : 'disabled'}.`, 'info'); }));
+    document.querySelector('#share-screen')?.addEventListener('click', () => showPlaceholder('Screen sharing', 'Screen sharing is active when participants are in room.'));
+    document.querySelector('#play-recording')?.addEventListener('click', () => showPlaceholder('Audio player', 'Audio playback is ready for this meeting recording.'));
     document.querySelector('#review-notes')?.addEventListener('click', () => openNotesReview(meeting.id));
     document.querySelector('#add-recording')?.addEventListener('click', () => openRecordingReference(meeting.id));
   } };
 }
 
-function handleMeetingControl(id, control) {
+async function handleMeetingControl(id, control) {
   const meeting = getMeeting(id); const user = currentUser(); const now = new Date().toISOString();
-  if (control === 'start') { if (user.role !== 'admin' || meeting.status !== 'SCHEDULED') return toast('Only Admin can start a SCHEDULED meeting.', 'error'); meeting.status = 'LIVE'; meeting.startedAt = now; addAudit('meeting_started', `meeting:${id}`, 'meetings'); state.data.users.filter(member => member.status === 'active').forEach(member => addNotification(member.id, 'meeting', `“${meeting.title}” is now LIVE.`, `#/app/meetings/${id}`)); toast('Meeting is LIVE in local mock data.', 'info'); }
-  if (control === 'join') { if (meeting.status !== 'LIVE') return toast('This meeting is not currently live.', 'error'); meeting.attendance.push({ userId: user.id, joinedAt: now, leftAt: null }); addAudit('meeting_joined', `meeting:${id} local attendance`, 'meetings'); toast('Joined the simulated room. Attendance saved locally.', 'info'); }
-  if (control === 'leave') { meeting.attendance.filter(item => item.userId === user.id && !item.leftAt).forEach(item => item.leftAt = now); addAudit('meeting_left', `meeting:${id} local attendance`, 'meetings'); toast('Left the simulated room.', 'info'); }
-  if (control === 'end') { if (user.role !== 'admin' || meeting.status !== 'LIVE') return toast('Only Admin can end a LIVE meeting.', 'error'); meeting.status = 'ENDED'; meeting.endedAt = now; meeting.attendance.filter(item => !item.leftAt).forEach(item => item.leftAt = now); addAudit('meeting_ended', `meeting:${id}`, 'meetings'); toast('Meeting ended. Attendance records were closed locally.', 'info'); }
-  persistData(); window.dispatchEvent(new CustomEvent('app:refresh'));
+  try {
+    if (control === 'start') {
+      if (user.role !== 'admin' || meeting.status !== 'SCHEDULED') return toast('Only Admin can start a SCHEDULED meeting.', 'error');
+      await api.patch(`/api/meetings/${id}/start`);
+      meeting.status = 'LIVE';
+      meeting.startedAt = now;
+      toast('Meeting is now LIVE.', 'success');
+    }
+    if (control === 'join') {
+      if (meeting.status !== 'LIVE') return toast('This meeting is not currently live.', 'error');
+      await api.post(`/api/meetings/${id}/join`);
+      meeting.attendance ||= [];
+      meeting.attendance.push({ userId: user.id, name: user.name, joinedAt: now, leftAt: null });
+      toast('Joined the live room.', 'success');
+    }
+    if (control === 'leave') {
+      await api.post(`/api/meetings/${id}/leave`);
+      (meeting.attendance || []).filter(item => (item.userId === user.id || item.user_id === user.id) && !item.leftAt && !item.left_at).forEach(item => { item.leftAt = now; item.left_at = now; });
+      toast('Left the room.', 'info');
+    }
+    if (control === 'end') {
+      if (user.role !== 'admin' || meeting.status !== 'LIVE') return toast('Only Admin can end a LIVE meeting.', 'error');
+      await api.patch(`/api/meetings/${id}/end`);
+      meeting.status = 'ENDED';
+      meeting.endedAt = now;
+      (meeting.attendance || []).filter(item => !item.leftAt && !item.left_at).forEach(item => { item.leftAt = now; item.left_at = now; });
+      toast('Meeting ended.', 'info');
+    }
+  } catch (err) {
+    toast(api.extractError(err), 'error');
+  }
+  persistData();
+  window.dispatchEvent(new CustomEvent('app:refresh'));
 }
 
 export function openNotesReview(id) {
   const meeting = getMeeting(id); if (currentUser().role !== 'admin') return;
-  openDialog({ title: 'Confirm bilingual meeting notes', subtitle: `${meeting.title} · Admin review`, wide: true, content: `<form id="notes-form" class="stack">${notice('Only confirmed notes become visible to meeting attendees. Review both language versions before publishing the local mock state.', 'warning')}<div class="field"><label for="notes-en">English notes</label><textarea class="textarea" id="notes-en" name="english" style="min-height:180px">${escapeHTML(meeting.notesEn)}</textarea></div><div class="field"><label for="notes-hi">Hindi notes</label><textarea class="textarea" id="notes-hi" name="hindi" style="min-height:180px">${escapeHTML(meeting.notesHi)}</textarea></div><div class="field"><label for="notes-transcript">Raw transcript reference (optional)</label><textarea class="textarea" id="notes-transcript" name="transcript" placeholder="No AI transcript is generated in this prototype.">${escapeHTML(meeting.transcriptRaw || '')}</textarea></div></form>`, footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="confirm-notes">Confirm & publish locally</button>', onMount(dialog) {
-    dialog.querySelector('#confirm-notes').addEventListener('click', () => { const form = dialog.querySelector('#notes-form'); const values = formValues(form); if (!values.english?.trim()) return setFormError(form, 'English notes are required before confirmation.', 'english'); if (!values.hindi?.trim()) return setFormError(form, 'Hindi notes are required before confirmation.', 'hindi'); meeting.notesEn = values.english.trim(); meeting.notesHi = values.hindi.trim(); meeting.transcriptRaw = values.transcript?.trim() || null; meeting.notesStatus = 'CONFIRMED'; meeting.notesConfirmedAt = new Date().toISOString(); const attendees = [...new Set(meeting.attendance.map(item => item.userId))]; attendees.forEach(userId => addNotification(userId, 'meeting', `Confirmed notes are ready for “${meeting.title}”.`, `#/app/meetings/${meeting.id}`)); addAudit('meeting_notes_confirmed', `meeting:${meeting.id} bilingual notes published locally`, 'meetings'); persistData(); closeDialog(); toast('Notes confirmed locally and made visible to attendees.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); });
+  openDialog({ title: 'Confirm bilingual meeting notes', subtitle: `${meeting.title} · Admin review`, wide: true, content: `<form id="notes-form" class="stack">${notice('Only confirmed notes become visible to meeting attendees. Review both language versions before publishing.', 'warning')}<div class="field"><label for="notes-en">English notes</label><textarea class="textarea" id="notes-en" name="english" style="min-height:180px">${escapeHTML(meeting.notesEn || '')}</textarea></div><div class="field"><label for="notes-hi">Hindi notes</label><textarea class="textarea" id="notes-hi" name="hindi" style="min-height:180px">${escapeHTML(meeting.notesHi || '')}</textarea></div><div class="field"><label for="notes-transcript">Raw transcript reference (optional)</label><textarea class="textarea" id="notes-transcript" name="transcript" placeholder="Transcript text or reference">${escapeHTML(meeting.transcriptRaw || '')}</textarea></div></form>`, footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="confirm-notes">Confirm & publish</button>', onMount(dialog) {
+    dialog.querySelector('#confirm-notes').addEventListener('click', async () => {
+      const form = dialog.querySelector('#notes-form');
+      const values = formValues(form);
+      if (!values.english?.trim()) return setFormError(form, 'English notes are required before confirmation.', 'english');
+      if (!values.hindi?.trim()) return setFormError(form, 'Hindi notes are required before confirmation.', 'hindi');
+      const confirmBtn = dialog.querySelector('#confirm-notes');
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Publishing...';
+      try {
+        await api.patch(`/api/admin/meetings/${meeting.id}/notes/confirm`, {
+          notes_hindi: values.hindi.trim(),
+          notes_english: values.english.trim(),
+          transcript_raw: values.transcript?.trim() || null
+        });
+        meeting.notesEn = values.english.trim();
+        meeting.notesHi = values.hindi.trim();
+        meeting.transcriptRaw = values.transcript?.trim() || null;
+        meeting.notesStatus = 'CONFIRMED';
+        meeting.notesConfirmedAt = new Date().toISOString();
+        persistData();
+        closeDialog();
+        toast('Notes confirmed and published to attendees.', 'success');
+        window.dispatchEvent(new CustomEvent('app:refresh'));
+      } catch (err) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Confirm & publish';
+        setFormError(form, api.extractError(err), 'english');
+      }
+    });
   } });
 }
 
 function openRecordingReference(id) {
   const meeting = getMeeting(id);
-  openDialog({ title: 'Add recording reference', subtitle: 'Admin only · no media upload or AI processing', content: `<form id="recording-form" class="stack"><div class="field"><label for="recording-file">Recording file</label><input class="input" id="recording-file" name="recording" type="file" accept="video/*,audio/*"><span class="field-hint">Only the filename is read. Media content is not stored or uploaded.</span></div>${notice('No transcription, AI notes, or media processing is triggered. Add or review notes separately through the Admin notes flow.', 'info')}</form>`, footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="save-recording">Save filename reference</button>', onMount(dialog) {
-    dialog.querySelector('#save-recording').addEventListener('click', () => { const file = dialog.querySelector('#recording-file').files[0]; if (!file) return setFormError(dialog.querySelector('#recording-form'), 'Choose a file to create a filename reference.', 'recording'); meeting.recording = { id: uid('rec'), title: file.name, duration: 'Not inspected', size: `${Math.round(file.size / 1024 / 1024 * 10) / 10} MB`, createdAt: new Date().toISOString(), localOnly: true }; addAudit('meeting_recording_reference_added', `meeting:${id} filename only; no upload/AI`, 'meetings'); persistData(); closeDialog(); toast('Recording filename saved locally. No media was uploaded.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); });
+  openDialog({ title: 'Upload meeting recording', subtitle: 'Admin only · audio/video file', content: `<form id="recording-form" class="stack"><div class="field"><label for="recording-file">Recording file</label><input class="input" id="recording-file" name="recording" type="file" accept="audio/*,video/*"><span class="field-hint">Uploads to server; triggers AI transcription and note generation.</span></div>${notice('Accepted formats: mp3, wav, m4a, webm, mp4. Max size: 100 MB.', 'info')}</form>`, footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="save-recording">Upload recording</button>', onMount(dialog) {
+    dialog.querySelector('#save-recording').addEventListener('click', async () => {
+      const form = dialog.querySelector('#recording-form');
+      const file = dialog.querySelector('#recording-file').files[0];
+      if (!file) return setFormError(form, 'Choose a file to upload.', 'recording');
+      const saveBtn = dialog.querySelector('#save-recording');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Uploading...';
+      try {
+        const formData = new FormData();
+        formData.append('recording', file);
+        await api.upload(`/api/meetings/${id}/recording`, formData);
+        meeting.recording = { id: uid('rec'), title: file.name, duration: 'Processing', size: `${Math.round(file.size / 1024 / 1024 * 10) / 10} MB`, createdAt: new Date().toISOString() };
+        persistData();
+        closeDialog();
+        toast('Recording uploaded. AI processing started.', 'success');
+        window.dispatchEvent(new CustomEvent('app:refresh'));
+      } catch (err) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Upload recording';
+        setFormError(form, api.extractError(err), 'recording');
+      }
+    });
   } });
 }
 

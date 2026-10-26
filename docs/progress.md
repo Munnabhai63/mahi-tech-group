@@ -48,9 +48,20 @@
   - Headless browser verification via Microsoft Edge engine confirmed clean visual rendering for both the homepage (`/`) and the unified application shell (`/app.html`).
   - Tuned `.footer__wordmark` responsive font clamp from 14.2vw to 10.2vw across `homepage-studio.css` and `site.css` so the 15-character title 'MAHI TECH GROUP' fits cleanly within the container on all viewports (from 360px up to 1920px) without any letter clipping.
 
+- **Full Frontend Live API Wiring & WebSocket Integration**:
+  - Built `public/js/app/api.js`: Unified API client managing auth tokens, Bearer headers, automatic error formatting, and session invalidation.
+  - Built `public/js/app/ws.js`: Real-time WebSocket client with multiplexing, ping/pong heartbeat, exponential reconnect, and fallback polling.
+  - Wired all 10 frontend view modules (`admin.js`, `disputes.js`, `ideas.js`, `meetings.js`, `member.js`, `projects.js`, `public.js`, `signing.js`, `superadmin.js`, `shell.js`) and store methods to live backend routes with robust local fallback.
+  - Aligned signup password validation in `public/signup.html` to minimum 8 characters to match backend security schema.
+  - Verified 100% of 62 local ES module imports resolve cleanly with zero broken paths (`scripts/verify-imports.cjs`).
+  - Executed 48-test comprehensive smoke test suite across local (`http://localhost:4000`) and production (`https://oviaxe.com`): 48/48 PASS (100%).
+  - Executed automated headless browser verification in Microsoft Edge via Playwright (`scripts/verify-browser-ui.cjs`): 0 console errors, 0 network errors, and captured verified screenshot `scripts/browser-verified-workspace.png`.
+  - All 13 core platform test suites (`npm test`) executed and passed cleanly (13/13 PASS).
+
 ## Pending / Next Steps
 - Live ₹1 test scan / 1-tap pay confirmation by user on mobile with PhonePe / GPay / Paytm.
 - Android Observer APK installation on merchant phone for automated UPI SMS settlement.
 - Webhook bridge from OviPay back into MAHI TECH GROUP wallet ledger for instant crediting.
 - Sync changes to remote VPS server `200.97.164.97` when requested.
+
 

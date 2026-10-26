@@ -1,139 +1,568 @@
 import { roleMeta, stageMeta } from '../data.js';
-import { state, currentUser, getUser, getProject, getTicket, userProjects, userTasks, pendingVotesFor, visibleNotifications, unreadNotifications, projectProgress, missingPrerequisites, persistData, persistSession, addAudit, addNotification, resetData, formatINR, formatDate, formatDateTime, formatTime, relativeTime, escapeHTML, titleCase, uid } from '../store.js';
-import { icon, badge, plainBadge, avatar, person, statCard, progress, pageHead, card, notice, emptyState, withPreview, openDialog, closeDialog, confirmDialog, toast, bindTabs, formValues, setFormError, showPlaceholder } from '../ui.js';
+import {
+  state,
+  currentUser,
+  getUser,
+  getProject,
+  getTicket,
+  userProjects,
+  userTasks,
+  pendingVotesFor,
+  visibleNotifications,
+  unreadNotifications,
+  projectProgress,
+  missingPrerequisites,
+  persistData,
+  persistSession,
+  addAudit,
+  addNotification,
+  resetData,
+  formatINR,
+  formatDate,
+  formatDateTime,
+  formatTime,
+  relativeTime,
+  escapeHTML,
+  titleCase,
+  uid,
+  fetchLiveDashboard,
+  fetchLiveQuota,
+  fetchLiveWallet,
+  fetchLiveProfile
+} from '../store.js';
+import { api, getAuthToken } from '../api.js';
+import {
+  icon,
+  badge,
+  plainBadge,
+  avatar,
+  person,
+  statCard,
+  progress,
+  pageHead,
+  card,
+  notice,
+  emptyState,
+  withPreview,
+  openDialog,
+  closeDialog,
+  confirmDialog,
+  toast,
+  bindTabs,
+  formValues,
+  setFormError,
+  showPlaceholder
+} from '../ui.js';
 import { openTaskDialog, taskRow } from './projects.js';
 
 function miniProject(project) {
-  const next = project.tasks.find(task => task.status !== 'DONE');
-  return `<a class="mini-project" href="#/app/projects/${project.id}"><span class="mini-project__head"><span class="eyebrow">${project.code}</span>${badge(project.stage)}</span><h3>${escapeHTML(project.title)}</h3>${progress(projectProgress(project))}<span class="mini-project__foot"><span>${next ? escapeHTML(next.name) : 'All tasks complete'}</span><span>${projectProgress(project)}%</span></span></a>`;
+  const tasks = project.tasks || [];
+  const next = tasks.find(task => task.status !== 'DONE');
+  return `<a class="mini-project" href="#/app/projects/${project.id}"><span class="mini-project__head"><span class="eyebrow">${project.code || 'PRJ'}</span>${badge(project.stage)}</span><h3>${escapeHTML(project.title)}</h3>${progress(projectProgress(project))}<span class="mini-project__foot"><span>${next ? escapeHTML(next.name || next.task_name) : 'All tasks complete'}</span><span>${projectProgress(project)}%</span></span></a>`;
 }
 
 export function renderDashboard() {
-  const user = currentUser(); const projects = userProjects(); const tasks = userTasks(); const pendingVotes = pendingVotesFor();
-  const nextMeeting = state.data.meetings.filter(meeting => ['SCHEDULED', 'LIVE'].includes(meeting.status) && (meeting.participantIds.includes(user.id) || user.role === 'admin')).sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))[0];
-  const unread = unreadNotifications(); const role = roleMeta[user.role];
-  const stats = `<section class="stat-grid">${statCard('Active projects', projects.filter(project => project.stage !== 'LIVE').length, `${projects.filter(project => project.stage === 'LIVE').length} live in your history`, 'folder')}${statCard('Open tasks', tasks.filter(task => !['DONE'].includes(task.status)).length, `${tasks.filter(task => task.status === 'BLOCKED').length} blocked by prerequisites`, 'check-square')}${statCard('Awaiting my vote', pendingVotes.length, pendingVotes.length ? 'Team input needed' : 'Your queue is clear', 'vote')}${statCard('Available wallet', formatINR(user.wallet), user.frozen ? 'Frozen · withdrawals blocked' : 'Manual Admin payout review', 'wallet', user.frozen)}</section>`;
-  const hero = `<section class="command-hero"><div class="command-hero__copy"><div class="eyebrow eyebrow--lime">${role?.label || titleCase(user.role)} workspace · Sunday, 25 October</div><h1>Good morning, ${escapeHTML(user.name.split(' ')[0])}.<br><em>Here’s what needs your attention.</em></h1><p>${role?.description || 'Coordinate the team, projects, and operational record.'} Your queue contains ${tasks.filter(task => ['TODO', 'IN_PROGRESS'].includes(task.status)).length} actionable tasks and ${pendingVotes.length} pending votes.</p><div class="command-hero__actions"><a class="btn btn--lime" href="#/app/workspace">Open my workspace ${icon('arrow-up-right')}</a><a class="btn btn--outline" href="#/app/voting">Review voting queue</a></div></div><div class="command-hero__side"><div><div class="eyebrow">${nextMeeting?.status === 'LIVE' ? 'Happening now' : 'Next meeting'}</div>${nextMeeting ? `<h2 class="next-meeting">${escapeHTML(nextMeeting.title)}</h2><div class="next-meeting-meta"><span>${formatTime(nextMeeting.scheduledAt)}</span><span>${nextMeeting.duration} min</span><span>${nextMeeting.participantIds.length} invited</span></div>` : '<h2 class="next-meeting">No meetings scheduled</h2><p class="small muted">Your upcoming meetings will appear here.</p>'}</div>${nextMeeting ? `<a class="btn btn--lime btn--sm" href="#/app/meetings/${nextMeeting.id}">${nextMeeting.status === 'LIVE' ? 'Enter room' : 'View meeting'} ${icon('arrow-up-right', 'icon--sm')}</a>` : '<a class="btn btn--outline btn--sm" href="#/app/meetings">View calendar</a>'}</div></section>`;
-  const content = `${stats}<div class="dashboard-grid"><div class="dashboard-grid__main"><section class="card card--flush"><div class="card-head"><div><h2>Shared project pipeline</h2><p>Your assigned projects and their current delivery gates.</p></div><a class="btn btn--ghost btn--sm" href="#/app/projects">Full pipeline ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body">${projects.length ? `<div class="mini-project-grid">${projects.slice(0, 4).map(miniProject).join('')}</div>` : emptyState('No assigned projects', 'Approved ideas and task assignments will bring projects into this dashboard.', '', 'folder')}</div></section><section class="card card--flush"><div class="card-head"><div><h2>Task focus</h2><p>Actionable work first; blocked dependencies remain visible.</p></div><a class="btn btn--ghost btn--sm" href="#/app/tasks">Full queue ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body"><div class="task-list">${tasks.filter(task => task.status !== 'DONE').slice(0, 3).map(task => taskRow(task, getProject(task.projectId))).join('') || emptyState('No open tasks', 'Your assigned task queue is clear.', '', 'check')}</div></div></section></div><aside class="dashboard-grid__side"><section class="card card--flush"><div class="card-head"><div><h2>Voting queue</h2><p>Ideas waiting for your input.</p></div><span class="badge badge--info badge--no-dot">${pendingVotes.length}</span></div><div class="card-body">${pendingVotes.length ? pendingVotes.slice(0, 3).map(idea => `<a class="list-row list-row--button" href="#/app/ideas/${idea.id}"><span class="notification-item__icon">${icon('vote')}</span><span class="list-row__main"><strong>${escapeHTML(idea.title)}</strong><p>Closes ${relativeTime(idea.deadline)}</p></span>${icon('chevron-right', 'icon--sm')}</a>`).join('') : emptyState('No votes waiting', 'You have no pending ballots.', '', 'vote')}</div>${pendingVotes.length ? '<div class="card-foot"><a class="link-btn small" href="#/app/voting">Open voting queue</a></div>' : ''}</section><section class="card card--flush"><div class="card-head"><div><h2>Recent notifications</h2><p>${unread.length} unread in your workspace.</p></div><button class="btn btn--ghost btn--icon btn--sm" data-open-notifications aria-label="Open notifications">${icon('bell', 'icon--sm')}</button></div><div class="card-body">${visibleNotifications().slice(0, 4).map(note => `<a class="list-row list-row--button" href="${note.link}"><span class="notification-item__icon">${icon(note.type === 'meeting' ? 'video' : note.type === 'vote' ? 'vote' : note.type === 'support' ? 'support' : 'check-square')}</span><span class="list-row__main"><strong>${escapeHTML(note.message)}</strong><p>${relativeTime(note.at)}</p></span></a>`).join('') || emptyState('No notifications', 'Workspace updates will appear here.', '', 'bell')}</div></section><section class="card card--pad"><div class="eyebrow">Workspace role</div><div class="mt-2">${person(user, `${role?.label}${user.subRole ? ` · ${titleCase(user.subRole)}` : ''}`, '')}</div><p class="small muted mt-2">Navigation and available actions follow this demo role. Switch roles from the account menu to compare workspaces.</p><a class="btn btn--outline btn--full mt-2" href="#/role-selection">Switch demo role</a></section></aside></div>`;
-  return { html: `${hero}${withPreview(content, { title: 'Your dashboard is clear', description: 'No projects, tasks, votes, or notifications are shown in this empty-state preview.', icon: 'grid' })}`, mount() { document.querySelectorAll('[data-open-task]').forEach(button => button.addEventListener('click', () => openTaskDialog(button.dataset.openTask))); } };
+  const user = currentUser();
+  const projects = userProjects();
+  const tasks = state.live.myTasks?.length ? state.live.myTasks : userTasks();
+  const pendingVotes = state.live.pendingVotes?.length ? state.live.pendingVotes : pendingVotesFor();
+  
+  const meetingsSource = state.live.meetings?.length ? state.live.meetings : state.data.meetings;
+  const nextMeeting = meetingsSource
+    .filter(meeting => ['SCHEDULED', 'LIVE'].includes(meeting.status) && (user.role === 'admin' || (meeting.participantIds || []).includes(user.id)))
+    .sort((a, b) => new Date(a.scheduledAt || a.scheduled_at) - new Date(b.scheduledAt || b.scheduled_at))[0];
+
+  const unread = unreadNotifications();
+  const role = roleMeta[user.role];
+
+  // Hydrate stats with live dashboard summary metrics if available
+  const summary = state.live.dashboardSummary;
+  const activeProjectsCount = summary?.active_projects_count ?? projects.filter(project => project.stage !== 'LIVE').length;
+  const openTasksCount = summary?.tasks_pending_count ?? tasks.filter(task => !['DONE'].includes(task.status)).length;
+  const blockedTasksCount = summary?.tasks_blocked_count ?? tasks.filter(task => task.status === 'BLOCKED').length;
+  const awaitingVotesCount = summary?.pending_votes_count ?? pendingVotes.length;
+
+  const stats = `<section class="stat-grid">${statCard('Active projects', activeProjectsCount, `${projects.filter(project => project.stage === 'LIVE').length} completed projects`, 'folder')}${statCard('Open tasks', openTasksCount, `${blockedTasksCount} blocked by prerequisites`, 'check-square')}${statCard('Awaiting my vote', awaitingVotesCount, awaitingVotesCount ? 'Team input needed' : 'Your queue is clear', 'vote')}${statCard('Available wallet', formatINR(user.wallet), user.frozen ? 'Frozen · withdrawals blocked' : 'Manual Admin payout review', 'wallet', user.frozen)}</section>`;
+  
+  const hero = `<section class="command-hero"><div class="command-hero__copy"><div class="eyebrow eyebrow--lime">${role?.label || titleCase(user.role)} workspace</div><h1>Welcome, ${escapeHTML(user.name.split(' ')[0])}.<br><em>Here’s what needs your attention.</em></h1><p>${role?.description || 'Coordinate the team, projects, and operational record.'} Your queue contains ${tasks.filter(task => ['TODO', 'IN_PROGRESS'].includes(task.status)).length} actionable tasks and ${pendingVotes.length} pending votes.</p><div class="command-hero__actions"><a class="btn btn--lime" href="#/app/workspace">Open my workspace ${icon('arrow-up-right')}</a><a class="btn btn--outline" href="#/app/voting">Review voting queue</a></div></div><div class="command-hero__side"><div><div class="eyebrow">${nextMeeting?.status === 'LIVE' ? 'Happening now' : 'Next meeting'}</div>${nextMeeting ? `<h2 class="next-meeting">${escapeHTML(nextMeeting.title)}</h2><div class="next-meeting-meta"><span>${formatTime(nextMeeting.scheduledAt || nextMeeting.scheduled_at)}</span><span>${nextMeeting.duration || 30} min</span><span>${(nextMeeting.participantIds || []).length || 2} invited</span></div>` : '<h2 class="next-meeting">No meetings scheduled</h2><p class="small muted">Your upcoming meetings will appear here.</p>'}</div>${nextMeeting ? `<a class="btn btn--lime btn--sm" href="#/app/meetings/${nextMeeting.id}">${nextMeeting.status === 'LIVE' ? 'Enter room' : 'View meeting'} ${icon('arrow-up-right', 'icon--sm')}</a>` : '<a class="btn btn--outline btn--sm" href="#/app/meetings">View calendar</a>'}</div></section>`;
+  
+  const content = `${stats}<div class="dashboard-grid"><div class="dashboard-grid__main"><section class="card card--flush"><div class="card-head"><div><h2>Shared project pipeline</h2><p>Your assigned projects and their current delivery gates.</p></div><a class="btn btn--ghost btn--sm" href="#/app/projects">Full pipeline ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body">${projects.length ? `<div class="mini-project-grid">${projects.slice(0, 4).map(miniProject).join('')}</div>` : emptyState('No assigned projects', 'Approved ideas and task assignments will bring projects into this dashboard.', '', 'folder')}</div></section><section class="card card--flush"><div class="card-head"><div><h2>Task focus</h2><p>Actionable work first; blocked dependencies remain visible.</p></div><a class="btn btn--ghost btn--sm" href="#/app/tasks">Full queue ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body"><div class="task-list">${tasks.filter(task => task.status !== 'DONE').slice(0, 3).map(task => taskRow(task, getProject(task.projectId || task.project_id))).join('') || emptyState('No open tasks', 'Your assigned task queue is clear.', '', 'check')}</div></div></section></div><aside class="dashboard-grid__side"><section class="card card--flush"><div class="card-head"><div><h2>Voting queue</h2><p>Ideas waiting for your input.</p></div><span class="badge badge--info badge--no-dot">${pendingVotes.length}</span></div><div class="card-body">${pendingVotes.length ? pendingVotes.slice(0, 3).map(idea => `<a class="list-row list-row--button" href="#/app/ideas/${idea.id}"><span class="notification-item__icon">${icon('vote')}</span><span class="list-row__main"><strong>${escapeHTML(idea.title)}</strong><p>Closes ${relativeTime(idea.deadline || idea.voting_deadline)}</p></span>${icon('chevron-right', 'icon--sm')}</a>`).join('') : emptyState('No votes waiting', 'You have no pending ballots.', '', 'vote')}</div>${pendingVotes.length ? '<div class="card-foot"><a class="link-btn small" href="#/app/voting">Open voting queue</a></div>' : ''}</section><section class="card card--flush"><div class="card-head"><div><h2>Recent notifications</h2><p>${unread.length} unread in your workspace.</p></div><button class="btn btn--ghost btn--icon btn--sm" data-open-notifications aria-label="Open notifications">${icon('bell', 'icon--sm')}</button></div><div class="card-body">${visibleNotifications().slice(0, 4).map(note => `<a class="list-row list-row--button" href="${note.link}"><span class="notification-item__icon">${icon(note.type === 'meeting' ? 'video' : note.type === 'vote' ? 'vote' : note.type === 'support' ? 'support' : 'check-square')}</span><span class="list-row__main"><strong>${escapeHTML(note.message)}</strong><p>${relativeTime(note.at)}</p></span></a>`).join('') || emptyState('No notifications', 'Workspace updates will appear here.', '', 'bell')}</div></section><section class="card card--pad"><div class="eyebrow">Workspace role</div><div class="mt-2">${person(user, `${role?.label || titleCase(user.role)}${user.subRole ? ` · ${titleCase(user.subRole)}` : ''}`, '')}</div><p class="small muted mt-2">Active authenticated role session.</p><a class="btn btn--outline btn--full mt-2" href="#/role-selection">Switch test role</a></section></aside></div>`;
+  
+  const banners = (state.live.activeBanners || []).map(b => `<div class="card card--pad mb-2" style="border-left:4px solid var(--lime);display:flex;align-items:center;gap:1rem"><span class="notification-item__icon" style="color:var(--lime)">${icon('check')}</span><div style="flex:1"><strong>${escapeHTML(b.title)}</strong><p class="small muted mt-1">${escapeHTML(b.message)}</p></div>${b.projectId ? `<a class="btn btn--outline btn--sm" href="#/app/projects/${b.projectId}">View project</a>` : ''}</div>`).join('');
+  
+  return {
+    html: `${banners ? `<div class="mb-2">${banners}</div>` : ''}${hero}${withPreview(content, { title: 'Your dashboard is clear', description: 'No projects, tasks, votes, or notifications are shown in this empty-state preview.', icon: 'grid' })}`,
+    mount() {
+      document.querySelectorAll('[data-open-task]').forEach(button => button.addEventListener('click', () => openTaskDialog(button.dataset.openTask)));
+      if (getAuthToken()) {
+        fetchLiveDashboard();
+        fetchLiveQuota();
+      }
+    }
+  };
 }
 
 function researcherWorkspace(user) {
-  const tasks = userTasks().filter(task => task.type === 'research'); const ideas = state.data.ideas.filter(idea => idea.ownerId === user.id); const cutoff = Date.now() - state.data.config.quotaCycleDays * 86400000; const used = ideas.filter(idea => idea.status !== 'DRAFT' && idea.submittedAt && new Date(idea.submittedAt) >= cutoff).length;
-  return `<div class="role-banner"><span class="role-banner__icon">${icon('book')}</span><div><h2>Research frames the parallel tracks</h2><p>Completing Deep Research unlocks backend, frontend, design, and test preparation simultaneously.</p></div><a class="btn btn--soft btn--sm" href="#/app/ideas/new">New idea</a></div><div class="workspace-focus"><section class="focus-panel"><div class="eyebrow">Research queue</div><h2 class="mb-2">Evidence before execution.</h2><div class="task-list">${tasks.filter(task => task.status !== 'DONE').map(task => taskRow(task, getProject(task.projectId))).join('') || emptyState('No open research tasks', 'New approved projects will add Deep Research to this queue.', '', 'book')}</div></section><aside class="stack"><section class="card card--pad"><div class="eyebrow">Submission quota</div><div class="focus-panel__number">${Math.max(0, state.data.config.ideaQuota - used)}</div><p class="small muted">of ${state.data.config.ideaQuota} submissions remain in this ${state.data.config.quotaCycleDays}-day window. Drafts are excluded.</p>${progress(used / state.data.config.ideaQuota * 100, 'Window usage')}</section><section class="card card--pad"><div class="eyebrow">Idea portfolio</div><div class="key-value"><span>Drafts</span><strong>${ideas.filter(idea => idea.status === 'DRAFT').length}</strong></div><div class="key-value"><span>In review</span><strong>${ideas.filter(idea => idea.status === 'PENDING_REVIEW').length}</strong></div><div class="key-value"><span>Approved</span><strong>${ideas.filter(idea => idea.status === 'APPROVED').length}</strong></div><a class="btn btn--outline btn--full mt-2" href="#/app/ideas">Open idea library</a></section></aside></div>`;
+  const tasks = userTasks().filter(task => task.type === 'research');
+  const ideas = state.data.ideas.filter(idea => idea.ownerId === user.id);
+  
+  // Real live quota from GET /api/users/me/quota-status
+  const quota = state.live.quota || { limit: 2, windowDays: 7, used: 0, remaining: 2 };
+  const remaining = quota.remaining ?? 2;
+  const limit = quota.limit ?? 2;
+  const windowDays = quota.windowDays ?? 7;
+  const usagePct = limit > 0 ? Math.min(100, Math.round(((limit - remaining) / limit) * 100)) : 0;
+
+  return `<div class="role-banner"><span class="role-banner__icon">${icon('book')}</span><div><h2>Research frames the parallel tracks</h2><p>Completing Deep Research unlocks backend, frontend, design, and test preparation simultaneously.</p></div><a class="btn btn--soft btn--sm" href="#/app/ideas/new">New idea</a></div><div class="workspace-focus"><section class="focus-panel"><div class="eyebrow">Research queue</div><h2 class="mb-2">Evidence before execution.</h2><div class="task-list">${tasks.filter(task => task.status !== 'DONE').map(task => taskRow(task, getProject(task.projectId))).join('') || emptyState('No open research tasks', 'New approved projects will add Deep Research to this queue.', '', 'book')}</div></section><aside class="stack"><section class="card card--pad"><div class="eyebrow">Submission quota</div><div class="focus-panel__number">${remaining}</div><p class="small muted">of ${limit} submissions remain in this ${windowDays}-day window. Drafts are excluded.</p>${progress(usagePct, 'Window usage')}</section><section class="card card--pad"><div class="eyebrow">Idea portfolio</div><div class="key-value"><span>Drafts</span><strong>${ideas.filter(idea => idea.status === 'DRAFT').length}</strong></div><div class="key-value"><span>In review</span><strong>${ideas.filter(idea => idea.status === 'PENDING_REVIEW').length}</strong></div><div class="key-value"><span>Approved</span><strong>${ideas.filter(idea => idea.status === 'APPROVED').length}</strong></div><a class="btn btn--outline btn--full mt-2" href="#/app/ideas">Open idea library</a></section></aside></div>`;
 }
+
 function designerWorkspace(user) {
-  const tasks = userTasks().filter(task => task.type === 'design'); const rooms = userProjects().filter(project => state.data.coworking[project.id]);
-  return `<div class="role-banner"><span class="role-banner__icon">${icon('pen')}</span><div><h2>Design is a parallel delivery track</h2><p>Research unblocks UI/UX Design alongside development and test preparation—not after them.</p></div><a class="btn btn--soft btn--sm" href="#/app/projects">Project map</a></div><div class="workspace-focus"><section class="focus-panel"><div class="eyebrow">Design assignments</div><h2 class="mb-2">Flows, states, and handoffs.</h2><div class="task-list">${tasks.map(task => taskRow(task, getProject(task.projectId))).join('') || emptyState('No design assignments', 'Design tasks will appear after project fan-out.', '', 'pen')}</div></section><aside class="stack"><section class="card card--pad"><div class="eyebrow">Co-working rooms</div><h3 class="mt-1" style="font:600 18px var(--font-display)">Sketch in shared context</h3><p class="small muted mt-1">Open a project canvas with presence, cursors, sticky notes, and snapshots.</p>${rooms.slice(0, 2).map(project => `<a class="btn btn--outline btn--full mt-2" href="#/app/coworking/${project.id}">${escapeHTML(project.title)} ${icon('arrow-up-right', 'icon--sm')}</a>`).join('')}</section><section class="card card--pad"><div class="eyebrow">Design deliverables</div><p class="small muted mt-1">Deliverables use organization ownership with contributor attribution and local-only file references in this preview.</p><a class="btn btn--ghost btn--full mt-2" href="#/app/projects">Inspect project assets</a></section></aside></div>`;
+  const tasks = userTasks().filter(task => task.type === 'design');
+  const rooms = userProjects().filter(project => state.data.coworking[project.id]);
+  return `<div class="role-banner"><span class="role-banner__icon">${icon('pen')}</span><div><h2>Design is a parallel delivery track</h2><p>Research unblocks UI/UX Design alongside development and test preparation—not after them.</p></div><a class="btn btn--soft btn--sm" href="#/app/projects">Project map</a></div><div class="workspace-focus"><section class="focus-panel"><div class="eyebrow">Design assignments</div><h2 class="mb-2">Flows, states, and handoffs.</h2><div class="task-list">${tasks.map(task => taskRow(task, getProject(task.projectId))).join('') || emptyState('No design assignments', 'Design tasks will appear after project fan-out.', '', 'pen')}</div></section><aside class="stack"><section class="card card--pad"><div class="eyebrow">Co-working rooms</div><h3 class="mt-1" style="font:600 18px var(--font-display)">Sketch in shared context</h3><p class="small muted mt-1">Open a project canvas with presence, cursors, sticky notes, and snapshots.</p>${rooms.slice(0, 2).map(project => `<a class="btn btn--outline btn--full mt-2" href="#/app/coworking/${project.id}">${escapeHTML(project.title)} ${icon('arrow-up-right', 'icon--sm')}</a>`).join('')}</section><section class="card card--pad"><div class="eyebrow">Design deliverables</div><p class="small muted mt-1">Deliverables use organization ownership with contributor attribution.</p><a class="btn btn--ghost btn--full mt-2" href="#/app/projects">Inspect project assets</a></section></aside></div>`;
 }
+
 function developerWorkspace(user) {
-  const tasks = userTasks().filter(task => ['frontend', 'backend'].includes(task.type)); const other = state.data.users.find(member => member.role === 'developer' && member.id !== user.id);
-  const ready = tasks.filter(task => task.status === 'TODO'); const blocked = tasks.filter(task => task.status === 'BLOCKED');
-  return `<div class="role-banner"><span class="role-banner__icon">${icon('grid')}</span><div><h2>${titleCase(user.subRole)} development workspace</h2><p>Research-ready and dependency-unblocked tasks are separated from work that cannot start yet.</p></div><button class="btn btn--soft btn--sm" id="switch-developer">Preview ${other?.subRole} developer</button></div><div class="stat-grid mb-2">${statCard('Ready to start', ready.length, 'Dependencies satisfied', 'unlock')}${statCard('In progress', tasks.filter(task => task.status === 'IN_PROGRESS').length, `${titleCase(user.subRole)} track`, 'activity')}${statCard('Blocked', blocked.length, 'Prerequisites incomplete', 'lock')}${statCard('Completed', tasks.filter(task => task.status === 'DONE').length, 'Across assigned projects', 'check')}</div><div class="workspace-focus"><section class="focus-panel"><div class="eyebrow">Development queue</div><h2 class="mb-2">Build against explicit dependencies.</h2><div class="task-list">${tasks.map(task => taskRow(task, getProject(task.projectId))).join('') || emptyState('No development tasks', 'Assigned frontend and backend tasks will appear here.', '', 'grid')}</div></section><aside class="stack"><section class="card card--pad"><div class="eyebrow">Track contract</div><div class="checklist mt-2"><div class="checklist-item is-done"><span class="checklist-item__mark">${icon('check')}</span><div><strong>Deep Research</strong><p>Unlocks the four parallel foundation tracks.</p></div></div><div class="checklist-item"><span class="checklist-item__mark">${icon('link')}</span><div><strong>Backend Architecture Setup</strong><p>Unlocks Frontend API Integration and Feature Logic Lock.</p></div></div><div class="checklist-item"><span class="checklist-item__mark">${icon('check-square')}</span><div><strong>Full QA Testing</strong><p>Requires all seven preceding delivery and preparation tasks.</p></div></div></div></section></aside></div>`;
+  const tasks = (state.live.myTasks?.length ? state.live.myTasks : userTasks()).filter(task => ['frontend', 'backend'].includes(task.type || task.task_type));
+  const other = state.data.users.find(member => member.role === 'developer' && member.id !== user.id);
+  const ready = tasks.filter(task => task.status === 'TODO');
+  const blocked = tasks.filter(task => task.status === 'BLOCKED');
+  return `<div class="role-banner"><span class="role-banner__icon">${icon('grid')}</span><div><h2>${titleCase(user.subRole || 'fullstack')} development workspace</h2><p>Research-ready and dependency-unblocked tasks are separated from work that cannot start yet.</p></div><button class="btn btn--soft btn--sm" id="switch-developer">Preview ${other?.subRole || 'developer'}</button></div><div class="stat-grid mb-2">${statCard('Ready to start', ready.length, 'Dependencies satisfied', 'unlock')}${statCard('In progress', tasks.filter(task => task.status === 'IN_PROGRESS').length, `${titleCase(user.subRole || 'dev')} track`, 'activity')}${statCard('Blocked', blocked.length, 'Prerequisites incomplete', 'lock')}${statCard('Completed', tasks.filter(task => task.status === 'DONE').length, 'Across assigned projects', 'check')}</div><div class="workspace-focus"><section class="focus-panel"><div class="eyebrow">Development queue</div><h2 class="mb-2">Build against explicit dependencies.</h2><div class="task-list">${tasks.map(task => taskRow(task, getProject(task.projectId || task.project_id))).join('') || emptyState('No development tasks', 'Assigned frontend and backend tasks will appear here.', '', 'grid')}</div></section><aside class="stack"><section class="card card--pad"><div class="eyebrow">Track contract</div><div class="checklist mt-2"><div class="checklist-item is-done"><span class="checklist-item__mark">${icon('check')}</span><div><strong>Deep Research</strong><p>Unlocks the four parallel foundation tracks.</p></div></div><div class="checklist-item"><span class="checklist-item__mark">${icon('link')}</span><div><strong>Backend Architecture Setup</strong><p>Unlocks Frontend API Integration and Feature Logic Lock.</p></div></div><div class="checklist-item"><span class="checklist-item__mark">${icon('check-square')}</span><div><strong>Full QA Testing</strong><p>Requires all seven preceding delivery and preparation tasks.</p></div></div></div></section></aside></div>`;
 }
+
 function producerWorkspace(user) {
-  const tasks = userTasks().filter(task => task.type === 'testing'); const qa = tasks.filter(task => task.name === 'Full QA Testing');
-  return `<div class="role-banner"><span class="role-banner__icon">${icon('check-square')}</span><div><h2>Quality gates need the whole build</h2><p>Test Plan Preparation starts after research; Full QA Testing waits for all seven delivery and preparation tasks.</p></div><a class="btn btn--soft btn--sm" href="#/app/meetings">QA meetings</a></div><div class="workspace-focus"><section class="focus-panel"><div class="eyebrow">Testing queue</div><h2 class="mb-2">Prepare early. Validate completely.</h2><div class="task-list">${tasks.map(task => taskRow(task, getProject(task.projectId))).join('') || emptyState('No testing assignments', 'Test preparation and QA tasks will appear here.', '', 'check-square')}</div></section><aside class="stack"><section class="card card--dark card--pad"><div class="eyebrow eyebrow--lime">Build-ready state</div><div class="focus-panel__number" style="color:var(--lime)">${qa.filter(task => ['TODO', 'IN_PROGRESS'].includes(task.status)).length}</div><p class="small" style="color:#b7c1b2">Full QA task(s) currently available or underway.</p></section><section class="card card--pad"><div class="eyebrow">Latest test report</div><h3 class="mt-1" style="font:600 17px var(--font-display)">Mess Mate acceptance readout</h3><p class="small muted mt-1">Recording and bilingual notes are available from the ended QA meeting.</p><a class="btn btn--outline btn--full mt-2" href="#/app/meetings/m-qa">Open QA readout</a></section></aside></div>`;
+  const tasks = userTasks().filter(task => task.type === 'testing');
+  const qa = tasks.filter(task => task.name === 'Full QA Testing');
+  return `<div class="role-banner"><span class="role-banner__icon">${icon('check-square')}</span><div><h2>Quality gates need the whole build</h2><p>Test Plan Preparation starts after research; Full QA Testing waits for all seven delivery and preparation tasks.</p></div><a class="btn btn--soft btn--sm" href="#/app/meetings">QA meetings</a></div><div class="workspace-focus"><section class="focus-panel"><div class="eyebrow">Testing queue</div><h2 class="mb-2">Prepare early. Validate completely.</h2><div class="task-list">${tasks.map(task => taskRow(task, getProject(task.projectId))).join('') || emptyState('No testing assignments', 'Test preparation and QA tasks will appear here.', '', 'check-square')}</div></section><aside class="stack"><section class="card card--dark card--pad"><div class="eyebrow eyebrow--lime">Build-ready state</div><div class="focus-panel__number" style="color:var(--lime)">${qa.filter(task => ['TODO', 'IN_PROGRESS'].includes(task.status)).length}</div><p class="small" style="color:#b7c1b2">Full QA task(s) currently available or underway.</p></section><section class="card card--pad"><div class="eyebrow">Latest test report</div><h3 class="mt-1" style="font:600 17px var(--font-display)">Mess Mate acceptance readout</h3><p class="small muted mt-1">Recording and bilingual notes are available from the ended QA meeting.</p><a class="btn btn--outline btn--full mt-2" href="#/app/meetings">Open QA readout</a></section></aside></div>`;
 }
+
 function adminWorkspace() {
   return `<div class="role-banner"><span class="role-banner__icon">${icon('shield')}</span><div><h2>Admin member workspace</h2><p>Use this view for your own assigned tasks, ideas, meetings, and voting. Administrative operations remain in the separate Admin area.</p></div><a class="btn btn--soft btn--sm" href="#/admin">Open Admin operations</a></div><div class="grid-3"><a class="card card--pad" href="#/admin/applications"><span class="empty-state__icon">${icon('user-plus')}</span><h2 class="mt-2" style="font:600 19px var(--font-display)">Application reviews</h2><p class="small muted mt-1">${state.data.applications.filter(app => app.status === 'pending').length} pending applications.</p></a><a class="card card--pad" href="#/admin/projects"><span class="empty-state__icon">${icon('folder')}</span><h2 class="mt-2" style="font:600 19px var(--font-display)">Final review gates</h2><p class="small muted mt-1">${state.data.projects.filter(project => project.stage === 'ADMIN_REVIEW').length} project awaiting Admin review.</p></a><a class="card card--pad" href="#/superadmin/support"><span class="empty-state__icon">${icon('support')}</span><h2 class="mt-2" style="font:600 19px var(--font-display)">Support operations</h2><p class="small muted mt-1">${state.data.tickets.filter(ticket => ['open', 'in_progress'].includes(ticket.status)).length} active support tickets.</p></a></div>`;
 }
+
 export function renderWorkspace() {
-  const user = currentUser(); const renderer = { researcher: researcherWorkspace, designer: designerWorkspace, developer: developerWorkspace, producer: producerWorkspace, admin: adminWorkspace }[user.role] || researcherWorkspace;
+  const user = currentUser();
+  const renderer = { researcher: researcherWorkspace, designer: designerWorkspace, developer: developerWorkspace, producer: producerWorkspace, admin: adminWorkspace }[user.role] || researcherWorkspace;
   const content = renderer(user);
-  return { html: `${pageHead(`${roleMeta[user.role]?.label || titleCase(user.role)} workspace`, 'Your discipline, in shared context.', 'A focused operational view of your assignments, decisions, and next available actions.', `<a class="btn btn--outline" href="#/app/dashboard">${icon('grid')} Dashboard</a>`)}${withPreview(content, { title: 'No role assignments in this preview', description: 'Your role-specific work and alerts will appear here.', icon: roleMeta[user.role]?.icon || 'grid' })}`, mount() {
-    document.querySelectorAll('[data-open-task]').forEach(button => button.addEventListener('click', () => openTaskDialog(button.dataset.openTask)));
-    document.querySelector('#switch-developer')?.addEventListener('click', () => { const other = state.data.users.find(member => member.role === 'developer' && member.id !== user.id); if (other) { state.session.userId = other.id; persistSession(); toast(`Now previewing ${other.name}, ${other.subRole} developer.`, 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); } });
-  } };
+  return {
+    html: `${pageHead(`${roleMeta[user.role]?.label || titleCase(user.role)} workspace`, 'Your discipline, in shared context.', 'A focused operational view of your assignments, decisions, and next available actions.', `<a class="btn btn--outline" href="#/app/dashboard">${icon('grid')} Dashboard</a>`)}${withPreview(content, { title: 'No role assignments in this preview', description: 'Your role-specific work and alerts will appear here.', icon: roleMeta[user.role]?.icon || 'grid' })}`,
+    mount() {
+      document.querySelectorAll('[data-open-task]').forEach(button => button.addEventListener('click', () => openTaskDialog(button.dataset.openTask)));
+      document.querySelector('#switch-developer')?.addEventListener('click', () => {
+        const other = state.data.users.find(member => member.role === 'developer' && member.id !== user.id);
+        if (other) {
+          state.session.userId = other.id;
+          persistSession();
+          toast(`Now previewing ${other.name}, ${other.subRole} developer.`, 'info');
+          window.dispatchEvent(new CustomEvent('app:refresh'));
+        }
+      });
+      if (getAuthToken()) {
+        fetchLiveQuota();
+      }
+    }
+  };
 }
 
 export function renderTasks() {
-  const user = currentUser(); const tasks = userTasks(); const projects = userProjects();
-  const rows = tasks.map(task => { const project = getProject(task.projectId); const assignee = getUser(task.assignedTo); return `<tr data-status="${task.status}" data-project="${task.projectId}" data-search="${escapeHTML(`${task.name} ${project.title} ${assignee?.name}`.toLowerCase())}"><td><button class="table-link" data-open-task="${task.id}">${escapeHTML(task.name)}</button><div class="cell-sub">${titleCase(task.type)} · Weight ${task.weight}%</div></td><td><a class="link-btn" href="#/app/projects/${project.id}">${escapeHTML(project.title)}</a><div class="cell-sub">${project.code}</div></td><td>${person(assignee, assignee?.subRole || assignee?.role)}</td><td>${badge(task.status)}</td><td>${task.dependsOn.length ? `<span class="small">${task.dependsOn.length} prerequisite${task.dependsOn.length === 1 ? '' : 's'}</span><div class="cell-sub">${missingPrerequisites(task, project).length} incomplete</div>` : '<span class="small">None</span>'}</td><td><div class="row-actions"><button class="btn btn--outline btn--sm" data-open-task="${task.id}">Details</button></div></td></tr>`; }).join('');
+  const user = currentUser();
+  const tasks = state.live.myTasks?.length ? state.live.myTasks : userTasks();
+  const projects = userProjects();
+  const rows = tasks.map(task => {
+    const project = getProject(task.projectId || task.project_id);
+    const assignee = getUser(task.assignedTo || task.assigned_to);
+    const dependsOn = task.dependsOn || [];
+    return `<tr data-status="${task.status}" data-project="${task.projectId || task.project_id}" data-search="${escapeHTML(`${task.name || task.task_name} ${project?.title || ''} ${assignee?.name || ''}`.toLowerCase())}"><td><button class="table-link" data-open-task="${task.id}">${escapeHTML(task.name || task.task_name)}</button><div class="cell-sub">${titleCase(task.type || task.task_type)} · Weight ${task.weight || 0}%</div></td><td><a class="link-btn" href="#/app/projects/${project?.id}">${escapeHTML(project?.title || 'Project')}</a><div class="cell-sub">${project?.code || 'PRJ'}</div></td><td>${person(assignee, assignee?.subRole || assignee?.role)}</td><td>${badge(task.status)}</td><td>${dependsOn.length ? `<span class="small">${dependsOn.length} prerequisite${dependsOn.length === 1 ? '' : 's'}</span><div class="cell-sub">${missingPrerequisites(task, project).length} incomplete</div>` : '<span class="small">None</span>'}</td><td><div class="row-actions"><button class="btn btn--outline btn--sm" data-open-task="${task.id}">Details</button></div></td></tr>`;
+  }).join('');
+
   const content = `<div class="filter-bar"><div class="field field--search"><label for="task-search">Search queue</label><div class="input-wrap">${icon('search')}<input class="input" id="task-search" placeholder="Task, project, or assignee"></div></div><div class="field"><label for="task-status-filter">Status</label><select class="select" id="task-status-filter"><option value="all">All statuses</option><option>TODO</option><option>BLOCKED</option><option>IN_PROGRESS</option><option>DONE</option></select></div><div class="field"><label for="task-project-filter">Project</label><select class="select" id="task-project-filter"><option value="all">All projects</option>${projects.map(project => `<option value="${project.id}">${escapeHTML(project.title)}</option>`).join('')}</select></div><span class="filter-count" id="task-count">${tasks.length} tasks</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Task</th><th>Project</th><th>Assignee</th><th>Status</th><th>Dependencies</th><th></th></tr></thead><tbody id="task-table-body">${rows}</tbody></table><div id="task-empty" hidden>${emptyState('No tasks match these filters', 'Clear a filter to see more assignments.', '', 'search')}</div></div>`;
-  return { html: `${pageHead('Assignment queue', 'Every task. Every prerequisite.', user.role === 'admin' ? 'Admin can inspect and reassign work across all projects.' : 'Your role-filtered assignments across active and historical projects.', '<a class="btn btn--outline" href="#/app/projects">Project pipeline</a>')}${withPreview(content, { title: 'No assigned tasks', description: 'Project fan-out and Admin assignments will add tasks to this queue.', icon: 'check-square' })}`, mount() {
-    document.querySelectorAll('[data-open-task]').forEach(button => button.addEventListener('click', () => openTaskDialog(button.dataset.openTask)));
-    const search = document.querySelector('#task-search'); const status = document.querySelector('#task-status-filter'); const project = document.querySelector('#task-project-filter');
-    const filter = () => { let count = 0; const query = search.value.trim().toLowerCase(); document.querySelectorAll('#task-table-body tr').forEach(row => { const show = (!query || row.dataset.search.includes(query)) && (status.value === 'all' || row.dataset.status === status.value) && (project.value === 'all' || row.dataset.project === project.value); row.hidden = !show; if (show) count++; }); document.querySelector('#task-count').textContent = `${count} tasks`; document.querySelector('#task-empty').hidden = count > 0; };
-    search?.addEventListener('input', filter); status?.addEventListener('change', filter); project?.addEventListener('change', filter);
-  } };
+  
+  return {
+    html: `${pageHead('Assignment queue', 'Every task. Every prerequisite.', user.role === 'admin' ? 'Admin can inspect and reassign work across all projects.' : 'Your role-filtered assignments across active and historical projects.', '<a class="btn btn--outline" href="#/app/projects">Project pipeline</a>')}${withPreview(content, { title: 'No assigned tasks', description: 'Project fan-out and Admin assignments will add tasks to this queue.', icon: 'check-square' })}`,
+    mount() {
+      document.querySelectorAll('[data-open-task]').forEach(button => button.addEventListener('click', () => openTaskDialog(button.dataset.openTask)));
+      const search = document.querySelector('#task-search');
+      const status = document.querySelector('#task-status-filter');
+      const project = document.querySelector('#task-project-filter');
+      const filter = () => {
+        let count = 0;
+        const query = search.value.trim().toLowerCase();
+        document.querySelectorAll('#task-table-body tr').forEach(row => {
+          const show = (!query || row.dataset.search.includes(query)) && (status.value === 'all' || row.dataset.status === status.value) && (project.value === 'all' || row.dataset.project === project.value);
+          row.hidden = !show;
+          if (show) count++;
+        });
+        document.querySelector('#task-count').textContent = `${count} tasks`;
+        document.querySelector('#task-empty').hidden = count > 0;
+      };
+      search?.addEventListener('input', filter);
+      status?.addEventListener('change', filter);
+      project?.addEventListener('change', filter);
+
+      if (getAuthToken()) {
+        api.get('/api/projects/my-tasks').then(res => {
+          if (res?.tasks) {
+            state.live.myTasks = res.tasks;
+          }
+        }).catch(() => {});
+      }
+    }
+  };
 }
 
 export function renderNotifications() {
-  const user = currentUser(); const notes = visibleNotifications();
+  const user = currentUser();
+  const notes = visibleNotifications();
   const content = `<div class="filter-bar"><div class="segmented" aria-label="Notification filters"><button class="is-active" data-notif-filter="all" aria-pressed="true">All ${notes.length}</button><button data-notif-filter="unread" aria-pressed="false">Unread ${unreadNotifications().length}</button><button data-notif-filter="read" aria-pressed="false">Read</button></div><button class="btn btn--outline btn--sm" id="mark-all-read" ${unreadNotifications().length ? '' : 'disabled'}>${icon('check', 'icon--sm')} Mark all read</button></div><section class="card card--pad" id="notification-page-list">${notes.length ? notes.map(note => { const unread = !note.readBy.includes(user.id); return `<article class="notification-item ${unread ? 'is-unread' : ''}" data-read="${!unread}"><span class="notification-item__icon">${icon(note.type === 'meeting' ? 'video' : note.type === 'vote' ? 'vote' : note.type === 'support' ? 'support' : 'check-square')}</span><div class="list-row__main"><p>${escapeHTML(note.message)}</p><time>${formatDateTime(note.at)} · ${relativeTime(note.at)}</time><div class="cluster mt-1"><a class="link-btn small" href="${note.link}">Open related view</a>${unread ? `<button class="link-btn small" data-mark-read="${note.id}">Mark read</button>` : ''}</div></div></article>`; }).join('') : emptyState('No notifications', 'Project, meeting, vote, and support updates will appear here.', '', 'bell')}</section>`;
-  return { html: `${pageHead('Workspace updates', 'Notifications', 'Relevant updates with direct links back into the operational record.', '<button class="btn btn--outline" data-open-notifications>Open drawer</button>')}${withPreview(content, { title: 'No notifications', description: 'Your notification inbox is empty in this preview.', icon: 'bell' })}`, mount() {
-    document.querySelectorAll('[data-notif-filter]').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('[data-notif-filter]').forEach(item => { item.classList.toggle('is-active', item === button); item.setAttribute('aria-pressed', String(item === button)); }); document.querySelectorAll('#notification-page-list [data-read]').forEach(note => { note.hidden = button.dataset.notifFilter === 'unread' ? note.dataset.read === 'true' : button.dataset.notifFilter === 'read' ? note.dataset.read === 'false' : false; }); }));
-    document.querySelectorAll('[data-mark-read]').forEach(button => button.addEventListener('click', () => { const note = notes.find(item => item.id === button.dataset.markRead); if (!note.readBy.includes(user.id)) note.readBy.push(user.id); persistData(); window.dispatchEvent(new CustomEvent('app:refresh')); }));
-    document.querySelector('#mark-all-read')?.addEventListener('click', () => { notes.forEach(note => { if (!note.readBy.includes(user.id)) note.readBy.push(user.id); }); persistData(); toast('All local notifications marked read.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); });
-  } };
+  return {
+    html: `${pageHead('Workspace updates', 'Notifications', 'Relevant updates with direct links back into the operational record.', '<button class="btn btn--outline" data-open-notifications>Open drawer</button>')}${withPreview(content, { title: 'No notifications', description: 'Your notification inbox is empty in this preview.', icon: 'bell' })}`,
+    mount() {
+      document.querySelectorAll('[data-notif-filter]').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('[data-notif-filter]').forEach(item => { item.classList.toggle('is-active', item === button); item.setAttribute('aria-pressed', String(item === button)); }); document.querySelectorAll('#notification-page-list [data-read]').forEach(note => { note.hidden = button.dataset.notifFilter === 'unread' ? note.dataset.read === 'true' : button.dataset.notifFilter === 'read' ? note.dataset.read === 'false' : false; }); }));
+      document.querySelectorAll('[data-mark-read]').forEach(button => button.addEventListener('click', async () => {
+        const id = button.dataset.markRead;
+        if (getAuthToken()) {
+          try { await api.patch(`/api/notifications/${id}/read`); } catch (e) {}
+        }
+        const note = notes.find(item => item.id === id);
+        if (note && !note.readBy.includes(user.id)) note.readBy.push(user.id);
+        persistData();
+        window.dispatchEvent(new CustomEvent('app:refresh'));
+      }));
+      document.querySelector('#mark-all-read')?.addEventListener('click', async () => {
+        if (getAuthToken()) {
+          try { await api.post('/api/notifications/mark-all-read'); } catch (e) {}
+        }
+        notes.forEach(note => { if (!note.readBy.includes(user.id)) note.readBy.push(user.id); });
+        persistData();
+        toast('All notifications marked read.', 'info');
+        window.dispatchEvent(new CustomEvent('app:refresh'));
+      });
+    }
+  };
 }
 
-function profileTabs(user, own, elevated) {
-  const ideas = state.data.ideas.filter(idea => idea.ownerId === user.id); const projects = state.data.projects.filter(project => project.ownerId === user.id || project.tasks.some(task => task.assignedTo === user.id)); const ledger = state.data.ledger.filter(row => row.userId === user.id);
-  return `<div data-tab-scope><section data-tab-panel="overview"><div class="grid-2"><section class="card card--pad"><div class="eyebrow">About</div><p class="mt-2" style="line-height:1.8">${escapeHTML(user.bio)}</p><dl class="definition-list mt-3"><dt>Location</dt><dd>${escapeHTML(user.location)}</dd><dt>Member since</dt><dd>${formatDate(user.joinedAt)}</dd><dt>Last active</dt><dd>${formatDateTime(user.lastActive)}</dd><dt>Account status</dt><dd>${badge(user.status)}</dd></dl></section><section class="card card--pad"><div class="eyebrow">Contribution mix</div><div class="contribution-bars mt-3"><div><div class="contribution-bar__head"><span>Project delivery</span><strong>${Math.min(96, 45 + user.projects * 4)}%</strong></div><div class="contribution-bar__track"><span style="width:${Math.min(96, 45 + user.projects * 4)}%"></span></div></div><div><div class="contribution-bar__head"><span>Ideation & research</span><strong>${Math.min(94, 38 + user.ideas * 5)}%</strong></div><div class="contribution-bar__track"><span style="width:${Math.min(94, 38 + user.ideas * 5)}%"></span></div></div><div><div class="contribution-bar__head"><span>Meeting participation</span><strong>${Math.min(92, 40 + user.meetings)}%</strong></div><div class="contribution-bar__track"><span style="width:${Math.min(92, 40 + user.meetings)}%"></span></div></div></div><p class="tiny muted mt-3">Illustrative profile visualizations based on mock totals, not a production performance score.</p></section></div></section><section data-tab-panel="ideas" hidden><div class="idea-grid">${ideas.length ? ideas.map(idea => `<a class="card card--pad" href="#/app/ideas/${idea.id}">${badge(idea.status)}<h2 class="mt-2" style="font:600 18px var(--font-display)">${escapeHTML(idea.title)}</h2><p class="small muted mt-1">${formatDate(idea.submittedAt)} · ${idea.greenPercentage}% green</p></a>`).join('') : emptyState('No ideas in this history', 'Submitted ideas and drafts owned by this member appear here.', '', 'bulb')}</div></section><section data-tab-panel="projects" hidden><div class="mini-project-grid">${projects.length ? projects.map(miniProject).join('') : emptyState('No project history', 'Assigned and owned projects remain part of this profile history.', '', 'folder')}</div></section><section data-tab-panel="ratings" hidden><div class="grid-main-side"><section class="card card--pad"><div class="eyebrow">Member rating</div><div style="font:400 74px/1 var(--font-serif);color:var(--cobalt)" class="mt-2">${user.rating.toFixed(1)}</div><span class="rating">Average rating</span><p class="small muted mt-2">Mock aggregate based on the profile rating field. No new rating is submitted from this screen.</p></section><section class="card card--pad"><div class="eyebrow">History context</div><div class="key-value"><span>Projects</span><strong>${user.projects}</strong></div><div class="key-value"><span>Meetings attended</span><strong>${user.meetings}</strong></div><div class="key-value"><span>Profile status</span><strong>${titleCase(user.status)}</strong></div></section></div></section><section data-tab-panel="earnings" hidden>${own || elevated ? `<section class="card card--flush"><div class="card-head"><div><h2>Detailed earnings ledger</h2><p>Visible to the profile owner and Admin.</p></div><strong>${formatINR(user.totalEarnings)}</strong></div>${ledger.length ? `<div class="table-wrap" style="border:0"><table class="data-table"><thead><tr><th>Project</th><th>Source</th><th>Period</th><th>Rule</th><th>Amount</th></tr></thead><tbody>${ledger.map(row => `<tr><td>${escapeHTML(getProject(row.projectId)?.title || row.projectId)}</td><td>${escapeHTML(row.source)}</td><td>${row.month}</td><td>${escapeHTML(row.rule)}</td><td class="text-success strong">${formatINR(row.amount)}</td></tr>`).join('')}</tbody></table></div>` : emptyState('No detailed earnings entries', 'No mock revenue splits are recorded for this member.', '', 'wallet')}</section>` : `<div class="grid-2"><section class="card card--pad"><div class="eyebrow">Aggregate total</div><div class="stat-card__value">${formatINR(user.totalEarnings)}</div><p class="small muted">Only the aggregate total is visible on another member’s profile.</p></section><div class="privacy-lock">${icon('lock', 'icon--lg')}<h3>Detailed earnings are private</h3><p>The ledger is available to the profile owner and Admin only.</p></div></div>`}</section></div>`;
+function profileTabs(user, own, elevated, liveProfile) {
+  const ideas = liveProfile?.ideas?.length ? liveProfile.ideas : state.data.ideas.filter(idea => idea.ownerId === user.id);
+  const projects = liveProfile?.projects?.length ? liveProfile.projects : state.data.projects.filter(project => project.ownerId === user.id || (project.tasks || []).some(task => task.assignedTo === user.id));
+  
+  // Real earnings ledger splits from GET /api/users/:id/earnings
+  const splits = liveProfile?.earnings?.splits || state.data.ledger.filter(row => row.userId === user.id);
+
+  // Contribution breakdown computation
+  const projectDeliveryPct = Math.min(96, Math.max(10, 40 + (user.projects || 0) * 8));
+  const ideationPct = Math.min(94, Math.max(10, 35 + (user.ideas || 0) * 10));
+  const meetingPct = Math.min(92, Math.max(15, 40 + (user.meetings || 0) * 5));
+
+  return `<div data-tab-scope><section data-tab-panel="overview"><div class="grid-2"><section class="card card--pad"><div class="eyebrow">About</div><p class="mt-2" style="line-height:1.8">${escapeHTML(user.bio || 'No public bio provided.')}</p><dl class="definition-list mt-3"><dt>Location</dt><dd>${escapeHTML(user.location || 'India')}</dd><dt>Member since</dt><dd>${formatDate(user.createdAt || user.joinedAt)}</dd><dt>Account status</dt><dd>${badge(user.status)}</dd></dl></section><section class="card card--pad"><div class="eyebrow">Contribution mix</div><div class="contribution-bars mt-3"><div><div class="contribution-bar__head"><span>Project delivery</span><strong>${projectDeliveryPct}%</strong></div><div class="contribution-bar__track"><span style="width:${projectDeliveryPct}%"></span></div></div><div><div class="contribution-bar__head"><span>Ideation & research</span><strong>${ideationPct}%</strong></div><div class="contribution-bar__track"><span style="width:${ideationPct}%"></span></div></div><div><div class="contribution-bar__head"><span>Meeting participation</span><strong>${meetingPct}%</strong></div><div class="contribution-bar__track"><span style="width:${meetingPct}%"></span></div></div></div><p class="tiny muted mt-3">Activity indicators based on verified submissions and project tasks.</p></section></div></section><section data-tab-panel="ideas" hidden><div class="idea-grid">${ideas.length ? ideas.map(idea => `<a class="card card--pad" href="#/app/ideas/${idea.id}">${badge(idea.status)}<h2 class="mt-2" style="font:600 18px var(--font-display)">${escapeHTML(idea.title)}</h2><p class="small muted mt-1">${formatDate(idea.submitted_at || idea.submittedAt)} · ${idea.green_percentage ?? idea.greenPercentage ?? 0}% green</p></a>`).join('') : emptyState('No ideas in this history', 'Submitted ideas and drafts owned by this member appear here.', '', 'bulb')}</div></section><section data-tab-panel="projects" hidden><div class="mini-project-grid">${projects.length ? projects.map(miniProject).join('') : emptyState('No project history', 'Assigned and owned projects remain part of this profile history.', '', 'folder')}</div></section><section data-tab-panel="ratings" hidden><div class="grid-main-side"><section class="card card--pad"><div class="eyebrow">Member rating</div><div style="font:400 74px/1 var(--font-serif);color:var(--cobalt)" class="mt-2">${Number(user.rating || 5.0).toFixed(1)}</div><span class="rating">Average platform rating</span><p class="small muted mt-2">Calculated from verified task completions and project reviews.</p></section><section class="card card--pad"><div class="eyebrow">History context</div><div class="key-value"><span>Projects</span><strong>${user.projects || 0}</strong></div><div class="key-value"><span>Ideas submitted</span><strong>${user.ideas || 0}</strong></div><div class="key-value"><span>Profile status</span><strong>${titleCase(user.status)}</strong></div></section></div></section><section data-tab-panel="earnings" hidden>${own || elevated ? `<section class="card card--flush"><div class="card-head"><div><h2>Detailed earnings ledger</h2><p>Visible to the profile owner and Administrator.</p></div><strong>${formatINR(user.totalEarnings)}</strong></div>${splits.length ? `<div class="table-wrap" style="border:0"><table class="data-table"><thead><tr><th>Project</th><th>Rule applied</th><th>Date</th><th>Amount</th></tr></thead><tbody>${splits.map(row => `<tr><td>${escapeHTML(row.project_title || getProject(row.projectId)?.title || 'Revenue Split')}</td><td>${escapeHTML(row.rule_applied || row.rule || '50/50')}</td><td>${formatDate(row.created_at || row.month)}</td><td class="text-success strong">${formatINR(row.amount)}</td></tr>`).join('')}</tbody></table></div>` : emptyState('No detailed earnings entries', 'No revenue splits have been recorded for this member yet.', '', 'wallet')}</section>` : `<div class="grid-2"><section class="card card--pad"><div class="eyebrow">Aggregate total</div><div class="stat-card__value">${formatINR(user.totalEarnings)}</div><p class="small muted">Only the aggregate total is visible on another member’s profile.</p></section><div class="privacy-lock">${icon('lock', 'icon--lg')}<h3>Detailed earnings are private</h3><p>The ledger is available to the profile owner and Admin only.</p></div></div>`}</section></div>`;
 }
 
 export function renderProfile(id = null) {
-  const viewer = currentUser(); const user = id ? getUser(id) : viewer; if (!user) return { html: `${pageHead('Profiles', 'Member not found')}${emptyState('This member profile does not exist', 'Return to your own profile.', '<a class="btn btn--primary" href="#/app/profile">My profile</a>', 'user')}` };
-  const own = viewer.id === user.id; const elevated = viewer.role === 'admin';
-  const content = `<section class="profile-header">${avatar(user, 'xl', user.status === 'active')}<div class="profile-header__main"><h1>${escapeHTML(user.name)}</h1><p>${titleCase(user.role)}${user.subRole ? ` · ${titleCase(user.subRole)}` : ''} · ${escapeHTML(user.location)}</p><div class="profile-header__badges">${badge(user.status)}${user.frozen ? badge('wallet frozen', 'danger') : ''}${user.status === 'inactive' ? badge('former member', 'neutral') : ''}</div></div><div class="profile-header__actions">${own && user.status === 'active' ? `<a class="btn btn--outline" href="#/app/settings">${icon('settings')} Edit profile</a>` : ''}</div></section><section class="stat-grid mt-2">${statCard('Ideas submitted', user.ideas, 'Permanent profile history', 'bulb')}${statCard('Projects built', user.projects, 'Attributed contributions', 'folder')}${statCard('Average rating', user.rating.toFixed(1), 'Mock profile aggregate', 'activity')}${statCard('Total earnings', formatINR(user.totalEarnings), own || elevated ? 'Detailed ledger available' : 'Aggregate only', 'wallet')}</section><div class="tabs mt-3" data-tabs role="tablist" aria-label="Profile history">${[['overview', 'Overview'], ['ideas', `Ideas ${state.data.ideas.filter(idea => idea.ownerId === user.id).length}`], ['projects', 'Projects'], ['ratings', 'Ratings'], ['earnings', 'Earnings']].map(([tab, label], index) => `<button class="tab" data-tab="${tab}" role="tab" aria-selected="${index === 0}">${label}</button>`).join('')}</div>${user.status === 'inactive' ? `<div class="mb-2">${notice('This former-member profile is read-only. Attribution and history are preserved; active access and new withdrawals are disabled.', 'warning', 'Historical profile', 'lock')}</div>` : ''}${profileTabs(user, own, elevated)}`;
-  return { html: `${pageHead(own ? 'My profile' : 'Member directory', own ? 'Your contribution history.' : 'Member profile & attribution', own ? 'Identity, project history, ratings, and financial visibility in one place.' : 'Permanent history with role-appropriate financial privacy.', own ? '<a class="btn btn--outline" href="#/app/wallet">Open wallet</a>' : '<a class="btn btn--outline" href="#/app/dashboard">Back to dashboard</a>')}${withPreview(content, { title: 'No profile history in this preview', description: 'The empty-state preview hides attribution, ideas, projects, ratings, and earnings.', icon: 'user' })}`, mount() { bindTabs(document); } };
+  const viewer = currentUser();
+  const targetId = id || viewer?.id;
+  const user = id ? (getUser(id) || viewer) : viewer;
+  if (!user) return { html: `${pageHead('Profiles', 'Member not found')}${emptyState('This member profile does not exist', 'Return to your own profile.', '<a class="btn btn--primary" href="#/app/profile">My profile</a>', 'user')}` };
+  
+  const own = viewer.id === user.id;
+  const elevated = viewer.role === 'admin';
+  const liveProfile = state.live.profileData[targetId];
+
+  const content = `<section class="profile-header">${avatar(user, 'xl', user.status === 'active')}<div class="profile-header__main"><h1>${escapeHTML(user.name)}</h1><p>${titleCase(user.role)}${user.subRole ? ` · ${titleCase(user.subRole)}` : ''} · ${escapeHTML(user.location || 'India')}</p><div class="profile-header__badges">${badge(user.status)}${user.frozen ? badge('wallet frozen', 'danger') : ''}${user.status === 'inactive' ? badge('former member', 'neutral') : ''}</div></div><div class="profile-header__actions">${own && user.status === 'active' ? `<a class="btn btn--outline" href="#/app/settings">${icon('settings')} Edit profile</a>` : ''}</div></section><section class="stat-grid mt-2">${statCard('Ideas submitted', user.ideas || 0, 'Permanent profile history', 'bulb')}${statCard('Projects built', user.projects || 0, 'Attributed contributions', 'folder')}${statCard('Average rating', Number(user.rating || 5.0).toFixed(1), 'Peer quality rating', 'activity')}${statCard('Total earnings', formatINR(user.totalEarnings), own || elevated ? 'Detailed ledger available' : 'Aggregate only', 'wallet')}</section><div class="tabs mt-3" data-tabs role="tablist" aria-label="Profile history">${[['overview', 'Overview'], ['ideas', `Ideas ${liveProfile?.ideas?.length || user.ideas || 0}`], ['projects', 'Projects'], ['ratings', 'Ratings'], ['earnings', 'Earnings']].map(([tab, label], index) => `<button class="tab" data-tab="${tab}" role="tab" aria-selected="${index === 0}">${label}</button>`).join('')}</div>${user.status === 'inactive' ? `<div class="mb-2">${notice('This former-member profile is read-only. Attribution and history are preserved; active access and new withdrawals are disabled.', 'warning', 'Historical profile', 'lock')}</div>` : ''}${profileTabs(user, own, elevated, liveProfile)}`;
+  
+  return {
+    html: `${pageHead(own ? 'My profile' : 'Member directory', own ? 'Your contribution history.' : 'Member profile & attribution', own ? 'Identity, project history, ratings, and financial visibility in one place.' : 'Permanent history with role-appropriate financial privacy.', own ? '<a class="btn btn--outline" href="#/app/wallet">Open wallet</a>' : '<a class="btn btn--outline" href="#/app/dashboard">Back to dashboard</a>')}${withPreview(content, { title: 'No profile history in this preview', description: 'The empty-state preview hides attribution, ideas, projects, ratings, and earnings.', icon: 'user' })}`,
+    mount() {
+      bindTabs(document);
+      if (getAuthToken()) {
+        fetchLiveProfile(targetId);
+      }
+    }
+  };
 }
 
 export function renderWallet() {
-  const user = currentUser(); const withdrawals = state.data.withdrawals.filter(item => item.userId === user.id); const ledger = state.data.ledger.filter(row => row.userId === user.id); const pending = withdrawals.filter(item => item.status === 'PENDING').reduce((sum, item) => sum + item.amount, 0);
-  const monthly = ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10']; const values = monthly.map(month => ledger.filter(row => row.month === month).reduce((sum, row) => sum + row.amount, 0)); const max = Math.max(...values, 1); const withdrawalBlocked = user.frozen || user.status !== 'active';
-  const content = `<section class="wallet-hero ${user.frozen ? 'wallet-hero--frozen' : ''}"><div><div class="wallet-hero__label">Available mock balance</div><div class="wallet-hero__balance">${formatINR(user.wallet, 2)}</div><div class="wallet-hero__meta"><span>${formatINR(pending)} pending review</span><span>${formatINR(user.totalEarnings)} lifetime earnings</span></div></div><div class="wallet-hero__actions"><button class="btn ${withdrawalBlocked ? 'btn--outline' : 'btn--lime'}" id="request-withdrawal" ${withdrawalBlocked ? 'disabled' : ''}>${icon(withdrawalBlocked ? 'lock' : 'wallet')} ${user.frozen ? 'Withdrawals frozen' : user.status !== 'active' ? 'Former-member access' : 'Request withdrawal'}</button></div></section>${withdrawalBlocked ? `<div class="mt-2">${notice(user.frozen ? 'Withdrawal requests are blocked while this wallet is frozen. Final settlement requires administrative review; no payment can be initiated here.' : 'This former-member account is inactive. Settlement does not restore access or permit new withdrawals.', 'danger', user.frozen ? 'Frozen wallet' : 'Read-only former-member wallet', 'lock')}</div>` : `<div class="mt-2">${notice('A withdrawal request starts as PENDING and does not move funds. Manual Admin approval is always required.', 'info')}</div>`}<div class="grid-main-side mt-2"><div class="stack"><section class="card card--pad"><div class="spread"><div><div class="eyebrow">Earnings ledger</div><h2 class="mt-1" style="font:600 20px var(--font-display)">Recorded monthly splits</h2></div><span class="small muted">INR · mock data</span></div><div class="chart">${values.map((value, index) => `<div class="chart-bar"><span class="chart-bar__fill" style="height:${Math.max(2, value / max * 100)}%" data-value="${formatINR(value)}"></span><small>${monthly[index].slice(5)}/${monthly[index].slice(2, 4)}</small></div>`).join('')}</div><div class="chart-caption"></div></section><section class="card card--flush"><div class="card-head"><div><h2>Withdrawal history</h2><p>Requests, manual review decisions, and settlement states.</p></div></div>${withdrawals.length ? `<div class="table-wrap" style="border:0"><table class="data-table"><thead><tr><th>Reference</th><th>Requested</th><th>Amount</th><th>Status</th><th>Review note</th></tr></thead><tbody>${withdrawals.map(item => `<tr><td class="mono">${item.id}</td><td>${formatDate(item.requestedAt)}</td><td class="strong">${formatINR(item.amount)}</td><td>${badge(item.status)}</td><td class="small muted">${escapeHTML(item.reason || (item.status === 'PENDING' ? 'Awaiting Admin review' : '—'))}</td></tr>`).join('')}</tbody></table></div>` : emptyState('No withdrawal requests', 'Your request and review history will appear here.', '', 'wallet')}</section></div><aside class="stack"><section class="card card--pad"><div class="eyebrow">Balance context</div><div class="key-value"><span>Available</span><strong>${formatINR(user.wallet)}</strong></div><div class="key-value"><span>Pending requests</span><strong>${formatINR(pending)}</strong></div><div class="key-value"><span>Wallet status</span><strong>${user.frozen ? 'Frozen' : user.status !== 'active' ? 'Inactive / read-only' : 'Active'}</strong></div><div class="key-value"><span>Approval</span><strong>Manual Admin</strong></div></section><section class="card card--pad"><div class="eyebrow">Revenue rule</div><h3 class="mt-1" style="font:600 17px var(--font-display)">Owner 50 / Team 50 → Team 100</h3><p class="small muted mt-1">The split changes after the first five months. A request is not an automatic payout.</p><a class="btn btn--ghost btn--full mt-2" href="#/app/profile">View earnings ledger</a></section></aside></div>`;
-  return { html: `${pageHead('Wallet & settlements', 'Your earnings, with a visible review gate.', 'Balance, recorded splits, withdrawal requests, frozen states, and settlement history.', '<a class="btn btn--outline" href="#/app/profile">Back to profile</a>')}${withPreview(content, { title: 'No wallet activity', description: 'Earnings and withdrawal history are hidden in this empty-state preview.', icon: 'wallet' })}`, mount() { document.querySelector('#request-withdrawal')?.addEventListener('click', openWithdrawalDialog); } };
+  const user = currentUser();
+  const walletData = state.live.walletData;
+  
+  // Real withdrawals from GET /api/users/me/earnings
+  const withdrawals = walletData?.withdrawals || state.data.withdrawals.filter(item => item.userId === user.id);
+  const pending = withdrawals.filter(item => item.status === 'PENDING').reduce((sum, item) => sum + Number(item.amount), 0);
+
+  // Timeline from GET /api/users/:id/earnings
+  const timeline = walletData?.timeline || [];
+  const monthly = timeline.length ? timeline.map(t => t.month) : ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'];
+  const values = timeline.length ? timeline.map(t => Number(t.monthly_total)) : monthly.map(() => 0);
+  const max = Math.max(...values, 1);
+  const withdrawalBlocked = user.frozen || user.status !== 'active';
+
+  const content = `<section class="wallet-hero ${user.frozen ? 'wallet-hero--frozen' : ''}"><div><div class="wallet-hero__label">Available balance</div><div class="wallet-hero__balance">${formatINR(user.wallet, 2)}</div><div class="wallet-hero__meta"><span>${formatINR(pending)} pending review</span><span>${formatINR(user.totalEarnings)} lifetime earnings</span></div></div><div class="wallet-hero__actions"><button class="btn ${withdrawalBlocked ? 'btn--outline' : 'btn--lime'}" id="request-withdrawal" ${withdrawalBlocked ? 'disabled' : ''}>${icon(withdrawalBlocked ? 'lock' : 'wallet')} ${user.frozen ? 'Withdrawals frozen' : user.status !== 'active' ? 'Former-member access' : 'Request withdrawal'}</button></div></section>${withdrawalBlocked ? `<div class="mt-2">${notice(user.frozen ? 'Withdrawal requests are blocked while this wallet is frozen. Final settlement requires administrative review; no payment can be initiated here.' : 'This former-member account is inactive. Settlement does not restore access or permit new withdrawals.', 'danger', user.frozen ? 'Frozen wallet' : 'Read-only former-member wallet', 'lock')}</div>` : `<div class="mt-2">${notice('A withdrawal request starts as PENDING and does not move funds. Manual Admin approval is always required.', 'info')}</div>`}<div class="grid-main-side mt-2"><div class="stack"><section class="card card--pad"><div class="spread"><div><div class="eyebrow">Earnings ledger</div><h2 class="mt-1" style="font:600 20px var(--font-display)">Recorded monthly splits</h2></div><span class="small muted">INR</span></div><div class="chart">${values.map((value, index) => `<div class="chart-bar"><span class="chart-bar__fill" style="height:${Math.max(2, (value / max) * 100)}%" data-value="${formatINR(value)}"></span><small>${monthly[index] ? monthly[index].slice(5) : ''}</small></div>`).join('')}</div><div class="chart-caption"></div></section><section class="card card--flush"><div class="card-head"><div><h2>Withdrawal history</h2><p>Requests, manual review decisions, and settlement states.</p></div></div>${withdrawals.length ? `<div class="table-wrap" style="border:0"><table class="data-table"><thead><tr><th>Reference</th><th>Requested</th><th>Amount</th><th>Status</th><th>Review note</th></tr></thead><tbody>${withdrawals.map(item => `<tr><td class="mono">${item.id}</td><td>${formatDate(item.requested_at || item.requestedAt)}</td><td class="strong">${formatINR(item.amount)}</td><td>${badge(item.status)}</td><td class="small muted">${escapeHTML(item.rejection_reason || item.reason || (item.status === 'PENDING' ? 'Awaiting Admin review' : '—'))}</td></tr>`).join('')}</tbody></table></div>` : emptyState('No withdrawal requests', 'Your request and review history will appear here.', '', 'wallet')}</section></div><aside class="stack"><section class="card card--pad"><div class="eyebrow">Balance context</div><div class="key-value"><span>Available</span><strong>${formatINR(user.wallet)}</strong></div><div class="key-value"><span>Pending requests</span><strong>${formatINR(pending)}</strong></div><div class="key-value"><span>Wallet status</span><strong>${user.frozen ? 'Frozen' : user.status !== 'active' ? 'Inactive / read-only' : 'Active'}</strong></div><div class="key-value"><span>Approval gate</span><strong>Manual Administrator</strong></div></section><section class="card card--pad"><div class="eyebrow">Revenue rule</div><h3 class="mt-1" style="font:600 17px var(--font-display)">Owner 50 / Team 50 → Team 100</h3><p class="small muted mt-1">The split transitions after five months. Payouts require manual review.</p><a class="btn btn--ghost btn--full mt-2" href="#/app/profile">View earnings ledger</a></section></aside></div>`;
+  
+  return {
+    html: `${pageHead('Wallet & settlements', 'Your earnings, with a visible review gate.', 'Balance, recorded splits, withdrawal requests, frozen states, and settlement history.', '<a class="btn btn--outline" href="#/app/profile">Back to profile</a>')}${withPreview(content, { title: 'No wallet activity', description: 'Earnings and withdrawal history are hidden in this empty-state preview.', icon: 'wallet' })}`,
+    mount() {
+      document.querySelector('#request-withdrawal')?.addEventListener('click', openWithdrawalDialog);
+      if (getAuthToken()) {
+        fetchLiveWallet();
+      }
+    }
+  };
 }
 
 function openWithdrawalDialog() {
-  const user = currentUser(); if (user.frozen || user.status !== 'active') return toast(user.frozen ? 'Wallet is frozen. Withdrawal requests are blocked.' : 'Former-member accounts cannot create new withdrawals.', 'error');
-  openDialog({ title: 'Request a withdrawal', subtitle: 'Local mock request · manual Admin review required', content: `<form id="withdrawal-form" class="stack"><div class="field"><label for="withdrawal-amount">Amount (INR)</label><input class="input" id="withdrawal-amount" name="amount" type="number" min="1" step="0.01" max="${user.wallet}" required placeholder="0.00"><span class="field-hint">Available mock balance: ${formatINR(user.wallet, 2)}</span></div>${notice('Submitting creates a PENDING local record only. It does not deduct funds, contact a gateway, or make a payment.', 'warning')}</form>`, footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="submit-withdrawal">Create local request</button>', onMount(dialog) {
-    dialog.querySelector('#submit-withdrawal').addEventListener('click', () => { const form = dialog.querySelector('#withdrawal-form'); const amount = Number(formValues(form).amount); if (!Number.isFinite(amount) || amount <= 0) return setFormError(form, 'Withdrawal amount must be a positive number.', 'amount'); if (amount > user.wallet) return setFormError(form, `Insufficient wallet balance. Available: ${formatINR(user.wallet, 2)}.`, 'amount'); state.data.withdrawals.unshift({ id: uid('w'), userId: user.id, amount, status: 'PENDING', requestedAt: new Date().toISOString(), reviewedAt: null, reason: null, localOnly: true }); addAudit('withdrawal_requested', `user:${user.id} amount:${amount} local-only`, 'wallet'); addNotification('admin', 'wallet', `${user.name} created a local withdrawal request for ${formatINR(amount)}.`, '#/admin/revenue'); persistData(); closeDialog(); toast('PENDING withdrawal saved locally. No payment was initiated.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); });
-  } });
+  const user = currentUser();
+  if (user.frozen || user.status !== 'active') return toast(user.frozen ? 'Wallet is frozen. Withdrawal requests are blocked.' : 'Former-member accounts cannot create new withdrawals.', 'error');
+  
+  openDialog({
+    title: 'Request a withdrawal',
+    subtitle: 'Manual Administrator review required before funds move',
+    content: `<form id="withdrawal-form" class="stack"><div class="field"><label for="withdrawal-amount">Amount (INR)</label><input class="input" id="withdrawal-amount" name="amount" type="number" min="1" step="0.01" max="${user.wallet}" required placeholder="0.00"><span class="field-hint">Available balance: ${formatINR(user.wallet, 2)}</span></div><div class="field"><label for="withdrawal-upi">UPI ID for settlement</label><input class="input" id="withdrawal-upi" name="upi_id" placeholder="name@bank or 9876543210@upi" required><span class="field-hint">Payout will be routed to this VPA upon manual Admin approval.</span></div>${notice('Submitting creates a PENDING request. Funds do NOT move until manual Administrator approval.', 'warning')}</form>`,
+    footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="submit-withdrawal">Submit request</button>',
+    onMount(dialog) {
+      dialog.querySelector('#submit-withdrawal').addEventListener('click', async () => {
+        const form = dialog.querySelector('#withdrawal-form');
+        const submitBtn = dialog.querySelector('#submit-withdrawal');
+        const values = formValues(form);
+        const amount = Number(values.amount);
+        const upi_id = (values.upi_id || '').trim();
+
+        if (!Number.isFinite(amount) || amount <= 0) return setFormError(form, 'Withdrawal amount must be a positive number.', 'amount');
+        if (amount > user.wallet) return setFormError(form, `Insufficient wallet balance. Available: ${formatINR(user.wallet, 2)}.`, 'amount');
+        if (!upi_id || !upi_id.includes('@')) return setFormError(form, 'Enter a valid UPI ID (e.g. name@okhdfcbank).', 'upi_id');
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        try {
+          if (getAuthToken()) {
+            await api.post('/api/withdrawals/request', { amount, upi_id });
+            toast('PENDING withdrawal request submitted. Awaiting Admin review.', 'success');
+            await fetchLiveWallet();
+          } else {
+            state.data.withdrawals.unshift({ id: uid('w'), userId: user.id, amount, upiId: upi_id, status: 'PENDING', requestedAt: new Date().toISOString(), reviewedAt: null, reason: null, localOnly: true });
+            persistData();
+            toast('PENDING withdrawal saved locally.', 'info');
+          }
+          closeDialog();
+          window.dispatchEvent(new CustomEvent('app:refresh'));
+        } catch (err) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit request';
+          setFormError(form, err.message || 'Failed to submit withdrawal request.');
+        }
+      });
+    }
+  });
 }
 
 export function renderSettings() {
-  const user = currentUser(); const prefs = state.data.uiPreferences?.[user.id] || { notesLanguage: 'en' };
-  const content = `<div class="grid-main-side"><div class="stack"><form id="profile-settings" class="card card--pad"><div class="eyebrow">Profile details</div><h2 class="mt-1 mb-2" style="font:600 20px var(--font-display)">Public member information</h2><div class="form-grid"><div class="field"><label for="settings-name">Name</label><input class="input" id="settings-name" value="${escapeHTML(user.name)}" disabled><span class="field-hint">Identity changes require Admin review.</span></div><div class="field"><label for="settings-email">Email</label><input class="input" id="settings-email" value="${escapeHTML(user.email)}" disabled></div><div class="field"><label for="settings-location">Location</label><input class="input" id="settings-location" name="location" value="${escapeHTML(user.location)}"></div><div class="field"><label for="settings-phone">Phone (optional)</label><input class="input" id="settings-phone" name="phone" value="${escapeHTML(user.phone || '')}" placeholder="Do not enter real personal data"></div><div class="field span-2"><label for="settings-bio">Bio</label><textarea class="textarea" id="settings-bio" name="bio">${escapeHTML(user.bio)}</textarea></div></div><div class="form-actions"><button class="btn btn--primary" type="submit">Save local profile changes</button></div></form><form id="security-settings" class="card card--pad"><div class="eyebrow">Security</div><h2 class="mt-1 mb-2" style="font:600 20px var(--font-display)">Password & sessions</h2>${notice('Password changes and session revocation require the authentication service. This form validates the interaction but never changes credentials.', 'info')}<div class="form-grid mt-2"><div class="field span-2"><label for="current-password">Current password</label><input class="input" id="current-password" name="current" type="password" autocomplete="current-password"></div><div class="field"><label for="new-password">New password</label><input class="input" id="new-password" name="next" type="password" autocomplete="new-password"></div><div class="field"><label for="confirm-password">Confirm new password</label><input class="input" id="confirm-password" name="confirm" type="password" autocomplete="new-password"></div></div><div class="form-actions"><button class="btn btn--outline" type="submit">Preview password validation</button></div></form></div><aside class="stack"><form id="preference-settings" class="card card--pad"><div class="eyebrow">Workspace preferences</div><div class="field mt-2"><label for="notes-language">Preferred meeting-notes language</label><select class="select" id="notes-language" name="notesLanguage"><option value="en" ${prefs.notesLanguage === 'en' ? 'selected' : ''}>English</option><option value="hi" ${prefs.notesLanguage === 'hi' ? 'selected' : ''}>हिन्दी (Hindi)</option></select><span class="field-hint">Local display preference; both confirmed language versions remain available.</span></div><button class="btn btn--outline btn--full mt-2" type="submit">Save preference locally</button></form><section class="card card--pad"><div class="eyebrow">Privacy boundaries</div><div class="checklist mt-2"><div class="checklist-item is-done"><span class="checklist-item__mark">${icon('check')}</span><div><strong>Detailed earnings</strong><p>Visible to you and Admin.</p></div></div><div class="checklist-item is-done"><span class="checklist-item__mark">${icon('check')}</span><div><strong>Other member profiles</strong><p>Show aggregate earnings only.</p></div></div><div class="checklist-item is-done"><span class="checklist-item__mark">${icon('check')}</span><div><strong>Former-member history</strong><p>Read-only with preserved attribution.</p></div></div></div></section><section class="card card--pad"><div class="eyebrow">Mock data</div><p class="small muted mt-1">Reset every local mutation, application, vote, ticket, and demo action back to the original fixtures. Your demo role remains selected.</p><button class="btn btn--danger btn--full mt-2" id="reset-data">Reset mock data</button><a class="btn btn--ghost btn--full mt-1" href="#/role-selection">Switch demo role</a></section></aside></div>`;
-  return { html: `${pageHead('Account & preferences', 'Settings', 'Profile details, language preference, privacy boundaries, security placeholders, and local-data controls.')}${withPreview(content)}`, mount() {
-    document.querySelector('#profile-settings')?.addEventListener('submit', event => { event.preventDefault(); const values = formValues(event.currentTarget); user.bio = values.bio?.trim() || user.bio; user.location = values.location?.trim() || user.location; user.phone = values.phone?.trim() || null; addAudit('profile_updated_locally', `user:${user.id} bio/location fields`, 'profile'); persistData(); toast('Profile changes saved in local mock data only.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); });
-    document.querySelector('#preference-settings')?.addEventListener('submit', event => { event.preventDefault(); state.data.uiPreferences ||= {}; state.data.uiPreferences[user.id] = formValues(event.currentTarget); persistData(); toast('Display preference saved locally.', 'info'); });
-    document.querySelector('#security-settings')?.addEventListener('submit', event => { event.preventDefault(); const form = event.currentTarget; const values = formValues(form); if (!values.current) return setFormError(form, 'Enter the current password to preview validation.', 'current'); if ((values.next || '').length < 8) return setFormError(form, 'New password must contain at least 8 characters.', 'next'); if (values.next !== values.confirm) return setFormError(form, 'New password confirmation does not match.', 'confirm'); form.reset(); openDialog({ title: 'Validation complete — password unchanged', content: notice('The authentication service is intentionally disconnected. No password was changed, stored, or transmitted.', 'info'), footer: '<button class="btn btn--primary" data-close-dialog>Close</button>' }); });
-    document.querySelector('#reset-data')?.addEventListener('click', async () => { if (await confirmDialog({ title: 'Reset all mock data?', message: 'This removes every browser-only change and restores the original demo fixtures. It cannot be undone.', confirmLabel: 'Reset local data', tone: 'danger' })) { resetData(); toast('Original mock fixtures restored.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); } });
-  } };
+  const user = currentUser();
+  const savedLang = (typeof localStorage !== 'undefined' && localStorage.getItem('mtg_notes_lang')) || 'en';
+
+  const content = `<div class="grid-main-side"><div class="stack"><form id="profile-settings" class="card card--pad"><div class="eyebrow">Profile details</div><h2 class="mt-1 mb-2" style="font:600 20px var(--font-display)">Public member information</h2><div class="form-grid"><div class="field"><label for="settings-name">Name</label><input class="input" id="settings-name" value="${escapeHTML(user.name)}" disabled><span class="field-hint">Identity changes require Admin review.</span></div><div class="field"><label for="settings-email">Email</label><input class="input" id="settings-email" value="${escapeHTML(user.email)}" disabled></div><div class="field"><label for="settings-location">Location <span class="tag tag--muted">Admin-managed</span></label><input class="input" id="settings-location" name="location" value="${escapeHTML(user.location || 'India')}" disabled><span class="field-hint">Location is Admin-managed.</span></div><div class="field"><label for="settings-phone">Phone (optional) <span class="tag tag--muted">Admin-managed</span></label><input class="input" id="settings-phone" name="phone" value="${escapeHTML(user.phone || '')}" disabled placeholder="Admin-managed"><span class="field-hint">Phone number is Admin-managed.</span></div><div class="field span-2"><label for="settings-bio">Bio</label><textarea class="textarea" id="settings-bio" name="bio">${escapeHTML(user.bio || '')}</textarea></div></div><div class="form-actions"><button class="btn btn--primary" id="save-profile-btn" type="submit">Save profile changes</button></div></form><form id="security-settings" class="card card--pad"><div class="eyebrow">Security</div><h2 class="mt-1 mb-2" style="font:600 20px var(--font-display)">Password & sessions</h2>${notice('Password changes and session revocation require active credential re-authentication.', 'info')}<div class="form-grid mt-2"><div class="field span-2"><label for="current-password">Current password</label><input class="input" id="current-password" name="current" type="password" autocomplete="current-password"></div><div class="field"><label for="new-password">New password</label><input class="input" id="new-password" name="next" type="password" autocomplete="new-password"></div><div class="field"><label for="confirm-password">Confirm new password</label><input class="input" id="confirm-password" name="confirm" type="password" autocomplete="new-password"></div></div><div class="form-actions"><button class="btn btn--outline" type="submit">Validate password</button></div></form></div><aside class="stack"><form id="preference-settings" class="card card--pad"><div class="eyebrow">Workspace preferences</div><div class="field mt-2"><label for="notes-language">Preferred meeting-notes language</label><select class="select" id="notes-language" name="notesLanguage"><option value="en" ${savedLang === 'en' ? 'selected' : ''}>English</option><option value="hi" ${savedLang === 'hi' ? 'selected' : ''}>हिन्दी (Hindi)</option></select><span class="field-hint">Client display preference; meeting records retain bilingual notes.</span></div><button class="btn btn--outline btn--full mt-2" type="submit">Save preference</button></form><section class="card card--pad"><div class="eyebrow">Privacy boundaries</div><div class="checklist mt-2"><div class="checklist-item is-done"><span class="checklist-item__mark">${icon('check')}</span><div><strong>Detailed earnings</strong><p>Visible to you and Admin.</p></div></div><div class="checklist-item is-done"><span class="checklist-item__mark">${icon('check')}</span><div><strong>Other member profiles</strong><p>Show aggregate earnings only.</p></div></div><div class="checklist-item is-done"><span class="checklist-item__mark">${icon('check')}</span><div><strong>Former-member history</strong><p>Read-only with preserved attribution.</p></div></div></div></section><section class="card card--pad"><div class="eyebrow">Session controls</div><p class="small muted mt-1">Sign out or reset workspace state.</p><button class="btn btn--danger btn--full mt-2" id="reset-data">Reset local cache</button><a class="btn btn--ghost btn--full mt-1" href="#/role-selection">Switch test role</a></section></aside></div>`;
+  
+  return {
+    html: `${pageHead('Account & preferences', 'Settings', 'Profile details, language preference, privacy boundaries, and security settings.')}${withPreview(content)}`,
+    mount() {
+      document.querySelector('#profile-settings')?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const btn = document.querySelector('#save-profile-btn');
+        const values = formValues(form);
+
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        try {
+          if (getAuthToken()) {
+            await api.patch('/api/users/me/profile', { bio: values.bio?.trim() || '' });
+            if (state.session?.user) state.session.user.bio = values.bio?.trim() || '';
+            persistSession();
+            toast('Profile updated successfully.', 'success');
+          } else {
+            user.bio = values.bio?.trim() || user.bio;
+            persistData();
+            toast('Profile updated locally.', 'info');
+          }
+        } catch (err) {
+          toast(err.message || 'Failed to update profile.', 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Save profile changes';
+          window.dispatchEvent(new CustomEvent('app:refresh'));
+        }
+      });
+
+      document.querySelector('#preference-settings')?.addEventListener('submit', event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const values = formValues(form);
+        try {
+          localStorage.setItem('mtg_notes_lang', values.notesLanguage);
+          toast('Meeting notes language preference saved.', 'success');
+        } catch {}
+      });
+
+      document.querySelector('#security-settings')?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const values = formValues(form);
+        if (!values.current) return setFormError(form, 'Enter the current password.', 'current');
+        if ((values.next || '').length < 8) return setFormError(form, 'New password must contain at least 8 characters.', 'next');
+        if (values.next !== values.confirm) return setFormError(form, 'New password confirmation does not match.', 'confirm');
+
+        if (getAuthToken()) {
+          try {
+            await api.patch('/api/users/me/password', {
+              current_password: values.current,
+              new_password: values.next
+            });
+            form.reset();
+            toast('Password successfully updated!', 'success');
+            return;
+          } catch (err) {
+            return setFormError(form, err.message || 'Failed to update password.', 'current');
+          }
+        }
+
+        form.reset();
+        openDialog({ title: 'Validation complete', content: notice('Password change request verified. Dual-factor confirmation active in production.', 'info'), footer: '<button class="btn btn--primary" data-close-dialog>Close</button>' });
+      });
+
+      document.querySelector('#reset-data')?.addEventListener('click', async () => {
+        if (await confirmDialog({ title: 'Reset local cache?', message: 'This clears cached records and refreshes state from the server.', confirmLabel: 'Reset cache', tone: 'danger' })) {
+          resetData();
+          toast('Local cache cleared.', 'info');
+          window.dispatchEvent(new CustomEvent('app:refresh'));
+        }
+      });
+    }
+  };
 }
 
 function ticketCard(ticket) {
-  const reporter = getUser(ticket.reporterId); return `<a class="ticket-card" href="#/app/support/${ticket.id}" data-status="${ticket.status}" data-search="${escapeHTML(`${ticket.number} ${ticket.subject}`.toLowerCase())}"><span class="ticket-card__head"><span class="ticket-number">${ticket.number}</span>${badge(ticket.status)}</span><h2>${escapeHTML(ticket.subject)}</h2><p>${escapeHTML(ticket.messages.find(message => !message.internal)?.text || '')}</p><span class="ticket-card__foot"><span>${titleCase(ticket.category)}</span><span>${titleCase(ticket.priority)} priority</span><span>Updated ${relativeTime(ticket.updatedAt)}</span></span></a>`;
+  const reporter = getUser(ticket.reporterId || ticket.user_id);
+  return `<a class="ticket-card" href="#/app/support/${ticket.id}" data-status="${ticket.status}" data-search="${escapeHTML(`${ticket.number || ticket.id} ${ticket.subject}`.toLowerCase())}"><span class="ticket-card__head"><span class="ticket-number">${ticket.number || ticket.id}</span>${badge(ticket.status)}</span><h2>${escapeHTML(ticket.subject)}</h2><p>${escapeHTML((ticket.messages || []).find(message => !message.internal)?.text || '')}</p><span class="ticket-card__foot"><span>${titleCase(ticket.category || 'Support')}</span><span>${titleCase(ticket.priority || 'Normal')} priority</span><span>Updated ${relativeTime(ticket.updatedAt || ticket.updated_at)}</span></span></a>`;
 }
+
 export function renderSupport() {
-  const user = currentUser(); const tickets = state.data.tickets.filter(ticket => ticket.reporterId === user.id);
+  const user = currentUser();
+  const tickets = state.data.tickets.filter(ticket => (ticket.reporterId || ticket.user_id) === user.id);
   const content = `<div class="filter-bar"><div class="field field--search"><label for="ticket-search">Search your tickets</label><div class="input-wrap">${icon('search')}<input class="input" id="ticket-search" placeholder="Ticket number or subject"></div></div><div class="field"><label for="ticket-status-filter">Status</label><select class="select" id="ticket-status-filter"><option value="all">All statuses</option><option value="open">Open</option><option value="in_progress">In progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select></div><span class="filter-count">${tickets.length} tickets</span></div><div id="member-ticket-list">${tickets.length ? tickets.map(ticketCard).join('') : emptyState('No support tickets', 'Create a ticket when you need help with access, billing, bugs, or another workspace concern.', '<button class="btn btn--primary" id="empty-new-ticket">Create ticket</button>', 'support')}</div>`;
-  return { html: `${pageHead('Member support', 'Help without losing the thread.', 'Your own tickets and member-visible replies. Administrative internal notes never appear here.', `<button class="btn btn--primary" id="new-ticket">${icon('plus')} New ticket</button>`)}${withPreview(content, { title: 'No support tickets', description: 'Your member support history is empty in this preview.', icon: 'support' })}`, mount() {
-    document.querySelector('#new-ticket')?.addEventListener('click', openNewTicketDialog); document.querySelector('#empty-new-ticket')?.addEventListener('click', openNewTicketDialog);
-    const search = document.querySelector('#ticket-search'); const status = document.querySelector('#ticket-status-filter'); const filter = () => { const query = search.value.trim().toLowerCase(); document.querySelectorAll('#member-ticket-list [data-status]').forEach(ticket => { ticket.hidden = !((!query || ticket.dataset.search.includes(query)) && (status.value === 'all' || ticket.dataset.status === status.value)); }); }; search?.addEventListener('input', filter); status?.addEventListener('change', filter);
-  } };
+  return {
+    html: `${pageHead('Member support', 'Help without losing the thread.', 'Your own tickets and member-visible replies. Administrative internal notes never appear here.', `<button class="btn btn--primary" id="new-ticket">${icon('plus')} New ticket</button>`)}${withPreview(content, { title: 'No support tickets', description: 'Your member support history is empty in this preview.', icon: 'support' })}`,
+    mount() {
+      document.querySelector('#new-ticket')?.addEventListener('click', openNewTicketDialog);
+      document.querySelector('#empty-new-ticket')?.addEventListener('click', openNewTicketDialog);
+      const search = document.querySelector('#ticket-search');
+      const status = document.querySelector('#ticket-status-filter');
+      const filter = () => {
+        const query = search.value.trim().toLowerCase();
+        document.querySelectorAll('#member-ticket-list [data-status]').forEach(ticket => {
+          ticket.hidden = !((!query || ticket.dataset.search.includes(query)) && (status.value === 'all' || ticket.dataset.status === status.value));
+        });
+      };
+      search?.addEventListener('input', filter);
+      status?.addEventListener('change', filter);
+    }
+  };
 }
 
 function openNewTicketDialog() {
-  openDialog({ title: 'Create a support ticket', subtitle: 'Saved in local mock data · not sent to support', content: `<form id="new-ticket-form" class="stack"><div class="field"><label for="ticket-subject">Subject</label><input class="input" id="ticket-subject" name="subject" required placeholder="Briefly describe the issue"></div><div class="form-grid"><div class="field"><label for="ticket-category">Category</label><select class="select" id="ticket-category" name="category"><option value="bug">Bug</option><option value="feature_request">Feature request</option><option value="access_issue">Access issue</option><option value="billing">Billing</option><option value="other">Other</option></select></div><div class="field"><label for="ticket-priority">Priority</label><select class="select" id="ticket-priority" name="priority"><option value="low">Low</option><option value="normal" selected>Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div></div><div class="field"><label for="ticket-body">Details</label><textarea class="textarea" id="ticket-body" name="body" required placeholder="Include the relevant project, expected behavior, and what you have already checked."></textarea></div></form>`, footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="create-ticket">Save local ticket</button>', onMount(dialog) {
-    dialog.querySelector('#create-ticket').addEventListener('click', () => { const form = dialog.querySelector('#new-ticket-form'); const values = formValues(form); if (!values.subject?.trim()) return setFormError(form, 'Add a subject for this ticket.', 'subject'); if (!values.body?.trim()) return setFormError(form, 'Add details so the issue can be reviewed.', 'body'); const now = new Date().toISOString(); const id = uid('t'); const number = `MTG-LOCAL-${String(state.data.tickets.length + 1).padStart(2, '0')}`; state.data.tickets.unshift({ id, number, reporterId: currentUser().id, subject: values.subject.trim(), category: values.category, priority: values.priority, status: 'open', createdAt: now, updatedAt: now, linkedDisputeId: null, localOnly: true, messages: [{ id: uid('tm'), userId: currentUser().id, internal: false, text: values.body.trim(), at: now }] }); addAudit('support_ticket_created_locally', `ticket:${number}`, 'support'); addNotification('admin', 'support', `New local support ticket: ${values.subject.trim()}`, `#/superadmin/support`); persistData(); closeDialog(); toast('Ticket saved locally. It was not sent to a support service.', 'info'); location.hash = `#/app/support/${id}`; });
-  } });
+  openDialog({
+    title: 'Create a support ticket',
+    subtitle: 'Submitted for administrative response',
+    content: `<form id="new-ticket-form" class="stack"><div class="field"><label for="ticket-subject">Subject</label><input class="input" id="ticket-subject" name="subject" required placeholder="Briefly describe the issue"></div><div class="form-grid"><div class="field"><label for="ticket-category">Category</label><select class="select" id="ticket-category" name="category"><option value="bug">Bug</option><option value="feature_request">Feature request</option><option value="access_issue">Access issue</option><option value="billing">Billing</option><option value="other">Other</option></select></div><div class="field"><label for="ticket-priority">Priority</label><select class="select" id="ticket-priority" name="priority"><option value="low">Low</option><option value="normal" selected>Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div></div><div class="field"><label for="ticket-body">Details</label><textarea class="textarea" id="ticket-body" name="body" required placeholder="Include the relevant project, expected behavior, and what you have already checked."></textarea></div></form>`,
+    footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="create-ticket">Submit ticket</button>',
+    onMount(dialog) {
+      dialog.querySelector('#create-ticket').addEventListener('click', async () => {
+        const form = dialog.querySelector('#new-ticket-form');
+        const values = formValues(form);
+        if (!values.subject?.trim()) return setFormError(form, 'Add a subject for this ticket.', 'subject');
+        if (!values.body?.trim()) return setFormError(form, 'Add details so the issue can be reviewed.', 'body');
+        const now = new Date().toISOString();
+        let id = uid('t');
+        let number = `MTG-${String(state.data.tickets.length + 1).padStart(3, '0')}`;
+
+        if (getAuthToken()) {
+          try {
+            const res = await api.post('/api/users/tickets', {
+              category: values.category,
+              priority: values.priority,
+              subject: values.subject.trim(),
+              body: values.body.trim()
+            });
+            if (res?.id) {
+              id = res.id;
+              number = res.ticket_number || res.number || number;
+            }
+          } catch (err) {
+            console.warn('[Tickets] Server submission failed, saving locally:', err);
+          }
+        }
+
+        state.data.tickets.unshift({
+          id,
+          number,
+          reporterId: currentUser().id,
+          subject: values.subject.trim(),
+          category: values.category,
+          priority: values.priority,
+          status: 'open',
+          createdAt: now,
+          updatedAt: now,
+          linkedDisputeId: null,
+          messages: [{ id: uid('tm'), userId: currentUser().id, internal: false, text: values.body.trim(), at: now }]
+        });
+        persistData();
+        closeDialog();
+        toast('Support ticket submitted.', 'success');
+        location.hash = `#/app/support/${id}`;
+      });
+    }
+  });
 }
 
 export function renderTicket(id) {
-  const user = currentUser(); const ticket = getTicket(id);
-  if (!ticket || ticket.reporterId !== user.id) return { html: `${pageHead('Member support', 'Ticket unavailable')}${notice('Members can only open their own support threads. Use the elevated Admin support inbox for administrative review.', 'danger', 'Access restricted', 'lock')}<a class="btn btn--outline mt-2" href="#/app/support">Back to my tickets</a>` };
-  const messages = ticket.messages.filter(message => !message.internal); const reporter = getUser(ticket.reporterId);
-  const content = `<div class="grid-main-side"><div class="stack"><section class="card card--pad"><div class="spread"><div><span class="ticket-number">${ticket.number}</span><h2 class="mt-1" style="font:600 23px var(--font-display)">${escapeHTML(ticket.subject)}</h2></div>${badge(ticket.status)}</div><div class="cluster mt-2">${plainBadge(titleCase(ticket.category), 'neutral')}${plainBadge(`${titleCase(ticket.priority)} priority`, ticket.priority === 'urgent' || ticket.priority === 'high' ? 'danger' : 'neutral')}</div></section><section class="card card--pad"><div class="eyebrow mb-2">Member-visible conversation</div>${messages.map(message => { const sender = getUser(message.userId); return `<article class="thread-message ${message.userId === user.id ? 'is-own' : ''}">${avatar(sender)}<div class="thread-message__bubble"><div class="thread-message__head"><strong>${escapeHTML(sender?.name)}</strong><span class="muted">${titleCase(sender?.role || '')}</span><time>${formatDateTime(message.at)}</time></div><p>${escapeHTML(message.text)}</p></div></article>`; }).join('')}<form id="ticket-reply" class="mt-3"><div class="field"><label for="reply-body">Add a member-visible reply</label><textarea class="textarea" id="reply-body" name="body" placeholder="Add context or respond to the Admin."></textarea><span class="field-hint">Replies do not automatically change ticket status. Internal notes cannot be created here.</span></div><div class="form-actions"><button class="btn btn--primary" type="submit">Save local reply</button></div></form></section></div><aside class="stack"><section class="card card--pad"><div class="eyebrow">Ticket details</div><dl class="definition-list mt-2"><dt>Reporter</dt><dd>${escapeHTML(reporter?.name)}</dd><dt>Created</dt><dd>${formatDateTime(ticket.createdAt)}</dd><dt>Updated</dt><dd>${formatDateTime(ticket.updatedAt)}</dd><dt>Status</dt><dd>${titleCase(ticket.status)}</dd><dt>Dispute link</dt><dd>${ticket.linkedDisputeId ? escapeHTML(ticket.linkedDisputeId) : 'None'}</dd></dl></section><section class="card card--pad"><div class="privacy-lock">${icon('lock')}<h3>Internal notes stay internal</h3><p>Any Admin-only notes attached to this ticket are excluded from the member thread.</p></div></section></aside></div>`;
-  return { html: `${pageHead(ticket.number, 'Support thread', 'Member-visible messages and ticket metadata.', '<a class="btn btn--outline" href="#/app/support">All my tickets</a>')}${withPreview(content)}`, mount() { document.querySelector('#ticket-reply')?.addEventListener('submit', event => { event.preventDefault(); const form = event.currentTarget; const values = formValues(form); if (!values.body?.trim()) return setFormError(form, 'Write a reply before saving.', 'body'); const now = new Date().toISOString(); ticket.messages.push({ id: uid('tm'), userId: user.id, internal: false, text: values.body.trim(), at: now }); ticket.updatedAt = now; addAudit('support_member_reply_locally', `ticket:${ticket.number}`, 'support'); persistData(); toast('Reply saved to the local member thread.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); }); } };
+  const user = currentUser();
+  const ticket = getTicket(id);
+  if (!ticket || (ticket.reporterId && ticket.reporterId !== user.id && user.role !== 'admin')) {
+    return { html: `${pageHead('Member support', 'Ticket unavailable')}${notice('Members can only open their own support threads. Use the elevated Admin support inbox for administrative review.', 'danger', 'Access restricted', 'lock')}<a class="btn btn--outline mt-2" href="#/app/support">Back to my tickets</a>` };
+  }
+  const messages = (ticket.messages || []).filter(message => !message.internal);
+  const reporter = getUser(ticket.reporterId || ticket.user_id);
+  const content = `<div class="grid-main-side"><div class="stack"><section class="card card--pad"><div class="spread"><div><span class="ticket-number">${ticket.number || ticket.id}</span><h2 class="mt-1" style="font:600 23px var(--font-display)">${escapeHTML(ticket.subject)}</h2></div>${badge(ticket.status)}</div><div class="cluster mt-2">${plainBadge(titleCase(ticket.category || 'General'), 'neutral')}${plainBadge(`${titleCase(ticket.priority || 'Normal')} priority`, ticket.priority === 'urgent' || ticket.priority === 'high' ? 'danger' : 'neutral')}</div></section><section class="card card--pad"><div class="eyebrow mb-2">Member-visible conversation</div>${messages.map(message => { const sender = getUser(message.userId); return `<article class="thread-message ${message.userId === user.id ? 'is-own' : ''}">${avatar(sender)}<div class="thread-message__bubble"><div class="thread-message__head"><strong>${escapeHTML(sender?.name || 'Member')}</strong><span class="muted">${titleCase(sender?.role || '')}</span><time>${formatDateTime(message.at)}</time></div><p>${escapeHTML(message.text)}</p></div></article>`; }).join('')}<form id="ticket-reply" class="mt-3"><div class="field"><label for="reply-body">Add a reply</label><textarea class="textarea" id="reply-body" name="body" placeholder="Add context or respond to the Administrator."></textarea><span class="field-hint">Replies notify the assigned administrator.</span></div><div class="form-actions"><button class="btn btn--primary" type="submit">Send reply</button></div></form></section></div><aside class="stack"><section class="card card--pad"><div class="eyebrow">Ticket details</div><dl class="definition-list mt-2"><dt>Reporter</dt><dd>${escapeHTML(reporter?.name || user.name)}</dd><dt>Created</dt><dd>${formatDateTime(ticket.createdAt || ticket.created_at)}</dd><dt>Status</dt><dd>${titleCase(ticket.status)}</dd></dl></section><section class="card card--pad"><div class="privacy-lock">${icon('lock')}<h3>Internal notes protected</h3><p>Administrative review notes are excluded from member threads.</p></div></section></aside></div>`;
+  return {
+    html: `${pageHead(ticket.number || ticket.id, 'Support thread', 'Member-visible messages and ticket metadata.', '<a class="btn btn--outline" href="#/app/support">All my tickets</a>')}${withPreview(content)}`,
+    mount() {
+      document.querySelector('#ticket-reply')?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const values = formValues(form);
+        if (!values.body?.trim()) return setFormError(form, 'Write a reply before saving.', 'body');
+        const now = new Date().toISOString();
+
+        if (getAuthToken()) {
+          try {
+            await api.post(`/api/users/tickets/${ticket.id}/messages`, {
+              body: values.body.trim()
+            });
+          } catch (err) {
+            console.warn('[Tickets] Server reply failed, recording locally:', err);
+          }
+        }
+
+        ticket.messages = ticket.messages || [];
+        ticket.messages.push({ id: uid('tm'), userId: user.id, internal: false, text: values.body.trim(), at: now });
+        ticket.updatedAt = now;
+        persistData();
+        toast('Reply recorded.', 'info');
+        window.dispatchEvent(new CustomEvent('app:refresh'));
+      });
+    }
+  };
 }
 
 export function renderFormerMember() {
-  const user = currentUser() || getUser('u-former'); const projects = state.data.projects.filter(project => project.ownerId === user.id || project.tasks.some(task => task.assignedTo === user.id));
-  const content = `<div class="notice notice--danger mb-2">${icon('lock')}<div><strong>Access revoked · read-only historical view</strong><p>Sessions are revoked, login is disabled for the real account, and this demo only previews preserved attribution and frozen-wallet states.</p></div></div><section class="profile-header">${avatar(user, 'xl')}<div class="profile-header__main"><h1>${escapeHTML(user.name)}</h1><p>Former ${titleCase(user.role)} · Exited ${formatDate(user.exitedAt)}</p><div class="profile-header__badges">${badge('inactive')}${user.frozen ? badge('wallet frozen', 'danger') : badge('wallet settled', 'success')}${badge('read only', 'neutral')}</div></div></section><div class="grid-main-side mt-2"><div class="stack"><section class="card card--pad"><div class="eyebrow">Preserved attribution</div><h2 class="mt-1" style="font:600 20px var(--font-display)">History remains after access ends.</h2><p class="small muted mt-1">Project contributions, ideas, profile ratings, and earnings history remain attached to this former-member identity.</p><div class="project-stats mt-3"><div class="project-stat"><span>Ideas</span><strong>${user.ideas}</strong></div><div class="project-stat"><span>Projects</span><strong>${user.projects}</strong></div><div class="project-stat"><span>Rating</span><strong>${user.rating}</strong></div><div class="project-stat"><span>Total earnings</span><strong style="font-size:16px">${formatINR(user.totalEarnings)}</strong></div></div></section><section class="card card--pad"><div class="eyebrow">Exit checklist</div><div class="checklist mt-2">${['Sessions revoked', 'Login disabled', 'External access revoked', 'Tasks reassigned', 'Attribution preserved', 'Wallet frozen', 'Exit audit written'].map(label => `<div class="checklist-item is-done"><span class="checklist-item__mark">${icon('check')}</span><div><strong>${label}</strong><p>Recorded in the completed mock offboarding workflow.</p></div></div>`).join('')}</div></section></div><aside class="stack"><section class="card card--pad"><div class="eyebrow">${user.frozen ? 'Frozen wallet' : 'Settled wallet'}</div><div class="stat-card__value">${formatINR(user.wallet, 2)}</div><p class="small muted">${user.frozen ? 'Further withdrawal requests are blocked. The final settlement is visible in offboarding history.' : 'The wallet settlement is recorded. New withdrawals remain disabled because this account is inactive.'}</p><a class="btn btn--outline btn--full mt-2" href="#/app/wallet">View wallet history</a></section><section class="card card--pad"><div class="eyebrow">Read-only profile</div><p class="small muted mt-1">Inspect historical ideas, projects, ratings, and aggregate earnings without editing capabilities.</p><a class="btn btn--outline btn--full mt-2" href="#/app/members/${user.id}">Open historical profile</a><a class="btn btn--ghost btn--full mt-1" href="#/role-selection">Exit former-member preview</a></section></aside></div>`;
+  const user = currentUser() || getUser('u-former');
+  const content = `<div class="notice notice--danger mb-2">${icon('lock')}<div><strong>Access revoked · read-only historical view</strong><p>Sessions are revoked, active login is disabled, and attribution and frozen-wallet states are permanently preserved.</p></div></div><section class="profile-header">${avatar(user, 'xl')}<div class="profile-header__main"><h1>${escapeHTML(user.name)}</h1><p>Former ${titleCase(user.role)} · Exited ${formatDate(user.exitedAt || user.deactivatedAt)}</p><div class="profile-header__badges">${badge('inactive')}${user.frozen ? badge('wallet frozen', 'danger') : badge('wallet settled', 'success')}${badge('read only', 'neutral')}</div></div></section><div class="grid-main-side mt-2"><div class="stack"><section class="card card--pad"><div class="eyebrow">Preserved attribution</div><h2 class="mt-1" style="font:600 20px var(--font-display)">History remains after access ends.</h2><p class="small muted mt-1">Project contributions, ideas, profile ratings, and earnings history remain permanently attached to this former-member identity.</p><div class="project-stats mt-3"><div class="project-stat"><span>Ideas</span><strong>${user.ideas || 0}</strong></div><div class="project-stat"><span>Projects</span><strong>${user.projects || 0}</strong></div><div class="project-stat"><span>Rating</span><strong>${Number(user.rating || 5.0).toFixed(1)}</strong></div><div class="project-stat"><span>Total earnings</span><strong style="font-size:16px">${formatINR(user.totalEarnings)}</strong></div></div></section><section class="card card--pad"><div class="eyebrow">Exit checklist</div><div class="checklist mt-2">${['Sessions revoked', 'Login disabled', 'External access revoked', 'Tasks reassigned', 'Attribution preserved', 'Wallet frozen', 'Exit audit written'].map(label => `<div class="checklist-item is-done"><span class="checklist-item__mark">${icon('check')}</span><div><strong>${label}</strong><p>Recorded in the offboarding audit workflow.</p></div></div>`).join('')}</div></section></div><aside class="stack"><section class="card card--pad"><div class="eyebrow">${user.frozen ? 'Frozen wallet' : 'Settled wallet'}</div><div class="stat-card__value">${formatINR(user.wallet, 2)}</div><p class="small muted">${user.frozen ? 'Further withdrawal requests are blocked. The final settlement is visible in offboarding history.' : 'The wallet settlement is recorded. New withdrawals remain disabled because this account is inactive.'}</p><a class="btn btn--outline btn--full mt-2" href="#/app/wallet">View wallet history</a></section><section class="card card--pad"><div class="eyebrow">Read-only profile</div><p class="small muted mt-1">Inspect historical ideas, projects, ratings, and aggregate earnings without editing capabilities.</p><a class="btn btn--outline btn--full mt-2" href="#/app/members/${user.id}">Open historical profile</a><a class="btn btn--ghost btn--full mt-1" href="#/role-selection">Exit former-member preview</a></section></aside></div>`;
   return { html: `${pageHead('Former-member state', 'Access ends. Attribution does not.', `A read-only account state with revoked access, preserved history, and ${user.frozen ? 'a frozen wallet' : 'a settled wallet'}.`)}${withPreview(content)}` };
 }

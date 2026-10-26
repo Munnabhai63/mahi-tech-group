@@ -31,3 +31,12 @@
 - **Context**: The template was originally designed for the 11-character title "MAHI SKILLS" using `clamp(82px, 14.2vw, 215px)`. The 15-character title "MAHI TECH GROUP" at 14.2vw was 1672px wide on 1440px viewports (352px wider than the 1320px container), causing the 'P' in "GROUP" to clip off at the right viewport edge.
 - **Decision**: Update `font-size: clamp(28px, 10.2vw, 152px)` on desktop and `clamp(28px, 10.2vw, 68px)` on mobile breakpoints in both `public/css/homepage-studio.css` and `public/css/site.css`.
 - **Consequences**: "MAHI TECH GROUP" fits seamlessly across all breakpoints (from 360px up to 1920px) without any letter clipping, retaining the oversized editorial poster aesthetic while eliminating horizontal overflow.
+
+## Decision 7: Full Frontend Live API Wiring with Resilient Local Fallback
+- **Context**: The `Oviaxe-UI` operational views relied on client-side state and mock data. To make the platform fully production-functional across all 14 layers without breaking existing preview or demo flows, a robust communication layer was required.
+- **Decision**: 
+  1. Author `public/js/app/api.js` for unified HTTP calls with automatic JWT Bearer token attachment, session revocation interception, and standardized error parsing.
+  2. Author `public/js/app/ws.js` for real-time WebSocket communication supporting multiplexed channel subscriptions, heartbeat keep-alive, and auto-reconnect with fallback polling.
+  3. Wire all 10 view modules (`admin.js`, `disputes.js`, `ideas.js`, `meetings.js`, `member.js`, `projects.js`, `public.js`, `signing.js`, `superadmin.js`, `shell.js`) so that authenticated users trigger live backend endpoints while unauthenticated/preview modes seamlessly fall back to local store state.
+- **Consequences**: 100% production functionality for real authenticated users, zero disruption to offline or demo modes, and full test pass rate across all 13 platform test suites and 48 smoke tests.
+

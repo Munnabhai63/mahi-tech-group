@@ -52,8 +52,13 @@ async function startServer() {
   }
 }
 
-// When run directly
-if (process.argv[1] && process.argv[1].endsWith('server.js')) {
+// When run directly or via PM2
+if (
+  (process.argv[1] && process.argv[1].endsWith('server.js')) ||
+  process.env.pm_id !== undefined ||
+  process.env.PM2_HOME !== undefined ||
+  (process.env.pm_exec_path && process.env.pm_exec_path.endsWith('server.js'))
+) {
   startServer();
 }
 
