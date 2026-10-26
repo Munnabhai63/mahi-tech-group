@@ -3,1029 +3,357 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mahi Tech Group — 4 Corner Panels & Center Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/dashboard.css">
+  <meta name="description" content="MAHI TECH GROUP connects ideas, democratic review, project delivery, meetings, co-working, revenue, and operational governance in one role-aware workspace.">
+  <meta name="theme-color" content="#f3efe5">
+  <title>MAHI TECH GROUP — Move ideas into delivery, together.</title>
+  <link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/assets/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/instrument-serif-italic-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/images/mahi-hero-studio.webp" as="image" type="image/webp">
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="stylesheet" href="/css/hero-studio.css">
+  <link rel="stylesheet" href="/css/homepage-studio.css">
+  <script>document.documentElement.classList.add('js');</script>
+  <script type="module" src="/js/pages/home.js"></script>
+  <noscript><style>[data-reveal], .studio-hero__title-line > span, .studio-hero__media, .studio-hero__eyebrow, .studio-hero__intro, .studio-hero__note, .studio-hero__marker, .studio-hero__footer { opacity: 1 !important; transform: none !important; clip-path: none !important; }</style></noscript>
 </head>
-<body class="dark-theme">
-  <!-- Top Navigation Header -->
-  <header class="app-header">
-    <div class="header-left">
-      <div class="brand-logo">
-        <span class="logo-icon">⚡</span>
-        <span class="brand-name">MAHI TECH GROUP</span>
-        <span class="center-badge">WORKSPACE HUB</span>
-      </div>
-    </div>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
 
-    <!-- Live Activity Ticker Strip -->
-    <div class="ticker-wrapper">
-      <div class="ticker-label">
-        <span class="pulse-dot"></span> LIVE ACTIVITY
-      </div>
-      <div class="ticker-container" id="tickerContainer">
-        <div class="ticker-content" id="tickerContent">
-          <span class="ticker-item">System operational — 4 Corner Panels + Center Real-time Engine Active</span>
-        </div>
-      </div>
-    </div>
+  <svg class="svg-sprite" aria-hidden="true" focusable="false">
+    <symbol id="icon-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="icon-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"/></symbol>
+    <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="icon-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></symbol>
+    <symbol id="icon-pen-tool" viewBox="0 0 24 24"><path d="m12 19 7-7-4-4-7 7-1 5 5-1ZM15 8l3-3 4 4-3 3M2 22l4-4M12 15l-3-3"/></symbol>
+    <symbol id="icon-code" viewBox="0 0 24 24"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M14 5l-4 14"/></symbol>
+    <symbol id="icon-search-check" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4 4M8 10.5l1.7 1.7 3.3-3.4"/></symbol>
+    <symbol id="icon-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16ZM20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5v-16Z"/></symbol>
+    <symbol id="icon-message" viewBox="0 0 24 24"><path d="M20 15a3 3 0 0 1-3 3H9l-5 3v-6a3 3 0 0 1-1-2V7a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3v8Z"/><path d="M8 9h8M8 13h5"/></symbol>
+    <symbol id="icon-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+    <symbol id="icon-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="icon-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h3a3 3 0 0 0 3-3V9a3 3 0 0 1 3-3h1"/></symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="icon-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="icon-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+    <symbol id="icon-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.8a2 2 0 0 1-.45 2.11L8.08 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.33 1.84.56 2.8.69A2 2 0 0 1 22 16.92Z"/></symbol>
+    <symbol id="icon-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4 20-7ZM11 13 22 2"/></symbol>
+    <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  </svg>
 
-    <div class="header-right">
-      <!-- Layout Mode Selector -->
-      <div class="view-mode-toggle" title="Switch workspace layout">
-        <button class="view-btn active" id="btnSpatialView" title="4-Corner Spatial Grid">📐 4-Corners Grid</button>
-        <button class="view-btn" id="btnFocusView" title="Focus My Active Corner">🎯 Role Focus</button>
-      </div>
-
-      <!-- WebSocket Connection Status Pill -->
-      <div class="ws-status-pill" id="wsStatusPill">
-        <span class="status-indicator live" id="wsIndicator"></span>
-        <span class="status-text" id="wsStatusText">Live Connected</span>
-      </div>
-
-      <!-- Quick Role Switcher (Authenticates Real Seed Users) -->
-      <div class="role-selector-wrap">
-        <label for="roleSelect" class="sr-only">Switch User Role</label>
-        <select id="roleSelect" class="role-select" title="Switch active test identity">
-          <option value="researcher">Researcher (Top-Left)</option>
-          <option value="designer" selected>UI/UX Designer (Top-Right)</option>
-          <option value="producer">Producer / Tester (Bottom-Left)</option>
-          <option value="developer">Developer (Bottom-Right)</option>
-        </select>
-      </div>
-
-      <!-- Public Sign Up Link -->
-      <a href="/signup.html" class="view-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 0.4rem 0.75rem; font-size: 0.8rem;" title="Public Signup Form">📝 Sign Up</a>
-
-      <!-- Step 12 Meeting Buttons -->
-      <button class="view-btn" id="btnOpenMeetingsModal" title="Meetings List" style="display: inline-flex; align-items: center; gap: 4px;">📹 Meetings</button>
-      <button class="view-btn" id="btnScheduleMeetingModal" style="display: none; background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; align-items: center; gap: 4px;" title="Schedule / Launch Meeting">➕ Launch Meeting</button>
-
-      <!-- Notifications Bell Dropdown -->
-      <div class="notifications-dropdown-wrap">
-        <button class="icon-button" id="notifBellBtn" title="Notifications">
-          <span class="icon">🔔</span>
-          <span class="badge" id="notifBadge" style="display: none;">0</span>
-        </button>
-        <div class="dropdown-menu" id="notifDropdown">
-          <div class="dropdown-header">
-            <h4>Notifications</h4>
-            <button class="text-btn" id="markAllReadBtn">Mark all as read</button>
-          </div>
-          <div class="dropdown-list" id="notifList">
-            <div class="empty-state">No notifications yet</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- User Profile Snapshot (Links to Full Profile) -->
-      <a href="/profile.html" class="user-profile-badge" style="text-decoration: none; cursor: pointer;" title="View Full Member Profile Page">
-        <div class="user-avatar" id="userAvatar">D</div>
-        <div class="user-info">
-          <span class="user-name" id="userNameDisplay">Diya Designer</span>
-          <span class="user-role-badge" id="userRoleDisplay">DESIGNER</span>
-        </div>
+  <header class="site-header" data-site-header>
+    <span class="scroll-progress" data-scroll-progress aria-hidden="true"></span>
+    <div class="container nav-shell">
+      <a class="brand" href="/" aria-label="MAHI TECH GROUP home">
+        <svg class="brand__mark" viewBox="0 0 40 40" aria-hidden="true">
+          <rect x="1" y="1" width="38" height="38" fill="currentColor" stroke="#11110f" stroke-width="2"/>
+          <path d="M9 28V12l11 10 11-10v16" fill="none" stroke="#f8f4ea" stroke-width="3.2" stroke-linecap="square" stroke-linejoin="miter"/>
+          <rect x="30" y="4" width="6" height="6" fill="#c8f45e"/>
+        </svg>
+        <span class="brand__type"><strong>MAHI</strong><span>TECH GROUP</span></span>
       </a>
+
+      <nav class="desktop-nav" aria-label="Primary navigation">
+        <a href="#platform" data-nav-link><span>01</span>Platform</a>
+        <a href="#collaboration" data-nav-link><span>02</span>Collaboration</a>
+        <a href="#about" data-nav-link><span>03</span>Delivery model</a>
+        <a href="#faq" data-nav-link><span>04</span>FAQs</a>
+      </nav>
+
+      <a class="button button--small nav-cta" href="/app.html#/role-selection" data-contact-link="workspace">Open workspace <svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg></a>
+      <button class="menu-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-navigation" data-menu-toggle>
+        <span>MENU</span><svg class="icon menu-icon" aria-hidden="true"><use href="#icon-menu"/></svg><svg class="icon close-icon" aria-hidden="true"><use href="#icon-close"/></svg>
+      </button>
     </div>
+
+    <nav class="mobile-nav" id="mobile-navigation" aria-label="Mobile navigation" aria-hidden="true" data-mobile-nav>
+      <div class="mobile-nav__masthead"><span>MAHI / NAVIGATION</span><span>OPERATIONS 001</span></div>
+      <div class="mobile-nav__links">
+        <a href="#platform"><span>01</span>Platform<svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg></a>
+        <a href="#collaboration"><span>02</span>Collaboration<svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg></a>
+        <a href="#about"><span>03</span>Delivery model<svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg></a>
+        <a href="#faq"><span>04</span>FAQs<svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg></a>
+      </div>
+      <div class="mobile-nav__footer"><span>Ready to explore?</span><a href="/app.html#/role-selection" data-contact-link="workspace">Open the workspace preview</a></div>
+    </nav>
   </header>
 
-  <!-- Step 12 Real-time Live Meeting Alert Banner -->
-  <div class="live-meeting-banner" id="liveMeetingBanner" style="display: none;">
-    <div style="display: flex; align-items: center; gap: 10px;">
-      <span class="status-indicator live"></span>
-      <span id="liveMeetingBannerText" style="font-weight: 600;">Meeting is now LIVE</span>
-    </div>
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <button class="btn btn-green btn-sm" id="btnJoinLiveMeetingBanner">Join Now →</button>
-      <button class="btn btn-secondary btn-sm" id="btnDismissLiveMeetingBanner" style="padding: 2px 8px; font-size: 11px;">✕</button>
-    </div>
-  </div>
+  <main id="main-content">
+    <section class="studio-hero" id="home" aria-labelledby="studio-hero-title">
+      <svg class="studio-hero__grid" viewBox="0 0 1440 900" preserveAspectRatio="none" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="1" vector-effect="non-scaling-stroke">
+          <path d="M120 0v900M360 0v900M600 0v900M840 0v900M1080 0v900M1320 0v900M0 180h1440M0 540h1440M0 810h1440"/>
+        </g>
+      </svg>
 
-  <!-- Step 13: Tablet & Mobile Responsive Tab Deck (<1024px) -->
-  <nav class="responsive-tab-deck" id="responsiveTabDeck" aria-label="Workspace Spatial Deck">
-    <button class="resp-tab-btn" data-panel="researcher" title="Researcher Corner">
-      <span class="tab-icon">🔬</span><span class="tab-label">Research</span>
-    </button>
-    <button class="resp-tab-btn" data-panel="designer" title="UI/UX Designer Corner">
-      <span class="tab-icon">🎨</span><span class="tab-label">Design</span>
-    </button>
-    <button class="resp-tab-btn active" data-panel="center" title="Shared Center Hub">
-      <span class="tab-icon">⚡</span><span class="tab-label">Center</span>
-    </button>
-    <button class="resp-tab-btn" data-panel="producer" title="Producer / QA Corner">
-      <span class="tab-icon">🧪</span><span class="tab-label">QA</span>
-    </button>
-    <button class="resp-tab-btn" data-panel="developer" title="Developer Corner">
-      <span class="tab-icon">💻</span><span class="tab-label">Dev</span>
-    </button>
-  </nav>
+      <div class="container studio-hero__container">
+        <div class="studio-hero__topline">
+          <span>MAHI TECH GROUP / OPERATIONS 001</span>
+          <span>Shared thinking × Visible delivery</span>
+          <span class="studio-hero__status"><i aria-hidden="true"></i>For product teams</span>
+        </div>
 
-  <!-- Main Workspace Canvas -->
-  <main class="dashboard-main spatial-workspace-layout" id="workspaceMain">
-    
-    <!-- ===================================================================
-         TOP CORNERS ROW (Researcher Top-Left & Developer Top-Right)
-         =================================================================== -->
-    <div class="corners-row top-corners">
-      
-      <!-- 2.1 RESEARCHER CORNER PANEL (Top-Left) -->
-      <section class="corner-panel researcher-corner" id="researcherCornerPanel" data-role="researcher">
-        <div class="corner-panel-header">
-          <div class="panel-tag cyan">
-            <span class="tag-icon">🔬</span>
-            <span class="tag-title">RESEARCHER CORNER</span>
-            <span class="spatial-badge">TOP-LEFT</span>
+        <div class="studio-hero__stage">
+          <div class="studio-hero__copy">
+            <p class="studio-hero__eyebrow"><span>MAHI / 001</span> Ideate with clarity. Deliver with evidence.</p>
+            <h1 id="studio-hero-title" aria-label="Turn ideas into working products, together.">
+              <span class="studio-hero__title-line studio-hero__title-line--one" aria-hidden="true"><span>Turn ideas</span></span>
+              <span class="studio-hero__title-line studio-hero__title-line--two" aria-hidden="true"><span><em>into working</em></span></span>
+              <span class="studio-hero__title-line studio-hero__title-line--three" aria-hidden="true"><span>products, <strong>together.</strong></span></span>
+            </h1>
+
+            <div class="studio-hero__intro">
+              <p class="studio-hero__lead">A role-aware workspace for multidisciplinary teams to propose, vote, build, meet, and govern delivery—with every decision connected to the work.</p>
+              <div class="studio-hero__actions">
+                <a class="button" href="#platform">Explore the platform <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></a>
+                <a class="text-link" href="/app.html#/role-selection" data-contact-link="workspace">Enter workspace preview <svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg></a>
+              </div>
+            </div>
           </div>
-          <div class="panel-header-actions">
-            <button class="btn btn-primary btn-xs" id="btnOpenSubmitIdeaModal" title="Submit idea respecting weekly quota">
-              + Submit Idea <span class="badge badge-quota" id="researcherQuotaBadge">0/3</span>
-            </button>
+
+          <div class="studio-hero__visual">
+            <span class="studio-hero__visual-word" aria-hidden="true">WORK</span>
+            <svg class="studio-hero__orbit" viewBox="0 0 540 540" aria-hidden="true">
+              <circle cx="270" cy="270" r="218"/>
+              <circle class="studio-hero__orbit-dashed" cx="270" cy="270" r="248"/>
+              <path d="M62 353c80 69 172 91 264 53 63-26 110-77 148-151M451 281l23-26 12 33"/>
+              <circle cx="95" cy="135" r="6" fill="currentColor"/>
+              <circle cx="445" cy="391" r="6" fill="currentColor"/>
+            </svg>
+
+            <figure class="studio-hero__media">
+              <div class="studio-hero__image-wrap">
+                <img src="/assets/images/mahi-hero-studio.webp" width="928" height="1152" alt="A product designer sketching a website wireframe beside a laptop on a cobalt-blue worktable" fetchpriority="high">
+                <span class="studio-hero__image-index" aria-hidden="true">01</span>
+              </div>
+              <figcaption><span>Work / made visible</span><span>MAHI TECH GROUP</span></figcaption>
+            </figure>
+
+            <div class="studio-hero__note">
+              <span>THE DELIVERY LOOP</span>
+              <strong>Ideate. Vote.<br>Build. Review.</strong>
+              <svg viewBox="0 0 80 40" aria-hidden="true"><path d="M2 29c21-19 42-22 69-9M61 9l11 11-13 8"/></svg>
+            </div>
+
+            <span class="studio-hero__marker" aria-hidden="true">PLAN /<br>BUILD /<br>SHIP</span>
           </div>
         </div>
 
-        <!-- Role Alert Banners Container -->
-        <div class="corner-banners-container" id="researcherBannersList"></div>
-
-        <!-- Shared Component: Profile Summary Mini-Card (Section 7) -->
-        <div class="profile-mini-card" id="researcherProfileCard">
-          <div class="profile-mini-header">
-            <div class="avatar-sm cyan-glow" id="researcherMiniAvatar">R</div>
-            <div class="profile-mini-meta">
-              <h4 class="profile-mini-name" id="researcherMiniName">Researcher</h4>
-              <span class="badge badge-role cyan">RESEARCHER</span>
-            </div>
-          </div>
-          <div class="profile-mini-metrics">
-            <div class="mini-metric">
-              <span class="metric-val" id="researcherIdeasCount">0</span>
-              <span class="metric-lbl">Ideas</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="researcherProjectsBuilt">0</span>
-              <span class="metric-lbl">Projects</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="researcherRatingAvg">5.0 ★</span>
-              <span class="metric-lbl">Rating</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="researcherWallet">₹0.00</span>
-              <span class="metric-lbl">Revenue</span>
-            </div>
-          </div>
+        <div class="studio-hero__footer">
+          <ul class="studio-hero__principles" aria-label="MAHI TECH GROUP delivery principles">
+            <li><span>01</span><strong>Share ownership</strong></li>
+            <li><span>02</span><strong>Keep decisions visible</strong></li>
+          </ul>
+          <a class="studio-hero__scroll" href="#platform"><span>Scroll to discover</span><svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></a>
         </div>
+      </div>
+    </section>
 
-        <!-- Researcher Workspace Tabs & Lists -->
-        <div class="corner-tabs-wrap">
-          <div class="corner-tab-buttons">
-            <button class="corner-tab active" data-tab="res-tasks">My Research Tasks</button>
-            <button class="corner-tab" data-tab="res-ideas">My Ideas Status</button>
-          </div>
+    <section class="audience-strip" aria-label="Who MAHI TECH GROUP is for">
+      <div class="container audience-strip__inner" data-reveal>
+        <span class="audience-strip__label">Built for multidisciplinary</span>
+        <ul>
+          <li><span>*</span>Researchers</li>
+          <li><span>*</span>UI/UX designers</li>
+          <li><span>*</span>Developers</li>
+          <li><span>*</span>Producers & Admins</li>
+        </ul>
+      </div>
+    </section>
 
-          <!-- Tab A: Research Tasks (Upload Research -> marks DONE -> unblocks Dev) -->
-          <div class="corner-tab-pane active" id="pane-res-tasks">
-            <div class="task-items-list" id="researcherTasksList">
-              <div class="loading-state">Loading assigned research tasks...</div>
-            </div>
-          </div>
-
-          <!-- Tab B: My Ideas List (Draft/Pending/Approved/Rejected tags) -->
-          <div class="corner-tab-pane" id="pane-res-ideas">
-            <div class="ideas-items-list" id="researcherMyIdeasList">
-              <div class="loading-state">Loading your submitted ideas...</div>
-            </div>
-          </div>
+    <section class="learning" id="platform" aria-labelledby="learning-title">
+      <div class="container learning__header-wrap">
+        <div class="section-index" data-reveal><span>01 / PLATFORM CAPABILITIES</span><span>ONE CONNECTED WORKFLOW</span></div>
+        <div class="learning__header" data-reveal>
+          <h2 id="learning-title"><span>Start with an idea.</span>Keep the work <em>connected.</em></h2>
+          <p>Explore the product workflows that carry a proposal through team review, parallel execution, collaboration, and operational governance.</p>
         </div>
-      </section>
-
-      <!-- 2.2 UI/UX DESIGNER CORNER PANEL (Top-Right) -->
-      <section class="corner-panel designer-corner" id="designerCornerPanel" data-role="designer">
-        <div class="corner-panel-header">
-          <div class="panel-tag rose">
-            <span class="tag-icon">🎨</span>
-            <span class="tag-title">UI/UX DESIGNER CORNER</span>
-            <span class="spatial-badge">TOP-RIGHT</span>
-          </div>
-          <div class="panel-header-actions">
-            <span class="badge badge-role rose">DESIGN QUEUE</span>
-          </div>
-        </div>
-
-        <!-- Role Alert Banners Container -->
-        <div class="corner-banners-container" id="designerBannersList"></div>
-
-        <!-- Shared Component: Profile Summary Mini-Card (Section 7) -->
-        <div class="profile-mini-card" id="designerProfileCard">
-          <div class="profile-mini-header">
-            <div class="avatar-sm rose-glow" id="designerMiniAvatar">D</div>
-            <div class="profile-mini-meta">
-              <h4 class="profile-mini-name" id="designerMiniName">UI/UX Designer</h4>
-              <span class="badge badge-role rose">UI/UX DESIGNER</span>
-            </div>
-          </div>
-          <div class="profile-mini-metrics">
-            <div class="mini-metric">
-              <span class="metric-val" id="designerIdeasCount">0</span>
-              <span class="metric-lbl">Ideas</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="designerProjectsBuilt">0</span>
-              <span class="metric-lbl">Projects</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="designerRatingAvg">5.0 ★</span>
-              <span class="metric-lbl">Rating</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="designerWallet">₹0.00</span>
-              <span class="metric-lbl">Revenue</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Design Task Queue (TODO / Blocked / In Progress / Done) -->
-        <div class="corner-task-queue">
-          <div class="queue-header">
-            <h4 class="queue-title">My Design Tasks</h4>
-            <span class="queue-count" id="designerTaskCount">0 active</span>
-          </div>
-          <div class="task-items-list" id="designerTasksList">
-            <div class="loading-state">Loading assigned design tasks...</div>
-          </div>
-        </div>
-
-        <!-- Designer Asset Upload Area (Figma / Wireframe / Design Spec) -->
-        <div class="corner-asset-upload-area" id="designerAssetArea" style="margin-top: 12px; background: rgba(244, 63, 94, 0.05); border: 1px dashed rgba(244, 63, 94, 0.3); border-radius: 8px; padding: 10px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 11.5px; font-weight: 600; color: #fda4af;">🎨 Design Spec & Asset Upload</span>
-            <span class="badge badge-xs rose" id="designReviewStatus">Review: In Sync</span>
-          </div>
-          <div style="display: flex; gap: 6px;">
-            <input type="url" id="designerAssetUrlInput" class="form-input" placeholder="Paste Figma, FigJam, or Prototype URL..." style="font-size: 11px; padding: 4px 8px; flex: 1;">
-            <button class="btn btn-rose btn-xs" id="btnUploadDesignAsset">Attach Spec</button>
-          </div>
-        </div>
-
-        <!-- Designer Co-working Canvas Quick Launcher -->
-        <div style="margin-top: 10px; display: flex; gap: 8px;">
-          <button class="btn btn-secondary btn-xs" id="btnDesignerOpenCanvas" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-color: rgba(244, 63, 94, 0.4); color: #fda4af;">
-            <span>🖌️</span> Launch Co-working Canvas
-          </button>
-        </div>
-      </section>
-
-    </div>
-
-    <!-- ===================================================================
-         CENTER DASHBOARD (Step 07 Pipeline, Voting Feeds & Stats)
-         =================================================================== -->
-    <div class="center-dashboard-container" id="centerDashboardContainer">
-      <div class="center-watermark-bar">
-        <span class="center-title">⚡ SHARED CONSENSUS & REVENUE ENGINE (CENTER DASHBOARD)</span>
-        <span class="center-hint">Real-time WebSocket Live Stream</span>
       </div>
 
-      <!-- Quick Stats Bar -->
-      <section class="quick-stats-bar">
-        <div class="stat-card">
-          <div class="stat-icon-wrap blue">📂</div>
-          <div class="stat-body">
-            <div class="stat-label">Active Projects</div>
-            <div class="stat-value" id="statActiveProjects">0</div>
-          </div>
-          <div class="stat-subtext">Across 5 lifecycle stages</div>
+      <div class="track-list" id="course-grid" aria-live="polite"></div>
+      <noscript><p class="noscript-note">Enable JavaScript to browse the interactive capability previews, or open the workspace preview at /app.html.</p></noscript>
+
+      <div class="container learning__footer-wrap">
+        <div class="learning__footer" data-reveal>
+          <p>Want to see how the pieces connect?</p>
+          <a class="text-link" href="#about">Follow the delivery model <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></a>
         </div>
-
-        <div class="stat-card">
-          <div class="stat-icon-wrap emerald">🗳️</div>
-          <div class="stat-body">
-            <div class="stat-label">Pending Votes</div>
-            <div class="stat-value" id="statPendingVotes">0</div>
-          </div>
-          <div class="stat-subtext">Awaiting evaluation</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon-wrap purple">🎯</div>
-          <div class="stat-body">
-            <div class="stat-label">Weekly Quota</div>
-            <div class="stat-value" id="statQuotaRemaining">0 / 0</div>
-          </div>
-          <div class="stat-subtext">Submissions left this cycle</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon-wrap amber">👥</div>
-          <div class="stat-body">
-            <div class="stat-label">Team Online</div>
-            <div class="stat-value" id="statTeamOnline">1</div>
-          </div>
-          <div class="stat-subtext">Active WebSocket presence</div>
-        </div>
-
-        <div class="stat-card highlight">
-          <div class="stat-icon-wrap gold">💰</div>
-          <div class="stat-body">
-            <div class="stat-label">My Wallet Balance</div>
-            <div class="stat-value" id="statWalletBalance">₹0.00</div>
-          </div>
-          <div class="stat-subtext" id="statWalletSubtext">Available for withdrawal</div>
-        </div>
-      </section>
-
-      <!-- Center Dashboard Grid (Kanban Board + Feeds) -->
-      <div class="dashboard-grid">
-        <!-- LEFT: Active Projects Kanban Board (PRD Section 3.1) -->
-        <section class="kanban-section">
-          <div class="section-header">
-            <div class="header-titles">
-              <h2 class="section-title">Active Projects Pipeline</h2>
-              <p class="section-subtitle">Real-time multi-track parallel fanout across all 5 stages</p>
-            </div>
-            <div class="header-actions">
-              <button class="btn btn-secondary btn-sm" id="refreshKanbanBtn">🔄 Refresh Board</button>
-            </div>
-          </div>
-
-          <div class="kanban-board-container" id="kanbanBoard">
-            <!-- 5 Stages Generated Dynamically -->
-            <div class="kanban-column" data-stage="RESEARCH_DEV_PARALLEL">
-              <div class="column-header">
-                <span class="column-title">1. Research & Dev</span>
-                <span class="column-count" id="count-RESEARCH_DEV_PARALLEL">0</span>
-              </div>
-              <div class="column-body" id="col-RESEARCH_DEV_PARALLEL"></div>
-            </div>
-
-            <div class="kanban-column" data-stage="INTEGRATION">
-              <div class="column-header">
-                <span class="column-title">2. Integration</span>
-                <span class="column-count" id="count-INTEGRATION">0</span>
-              </div>
-              <div class="column-body" id="col-INTEGRATION"></div>
-            </div>
-
-            <div class="kanban-column" data-stage="TESTING">
-              <div class="column-header">
-                <span class="column-title">3. Testing & QA</span>
-                <span class="column-count" id="count-TESTING">0</span>
-              </div>
-              <div class="column-body" id="col-TESTING"></div>
-            </div>
-
-            <div class="kanban-column" data-stage="ADMIN_REVIEW">
-              <div class="column-header">
-                <span class="column-title">4. Admin Review</span>
-                <span class="column-count" id="count-ADMIN_REVIEW">0</span>
-              </div>
-              <div class="column-body" id="col-ADMIN_REVIEW"></div>
-            </div>
-
-            <div class="kanban-column" data-stage="LIVE">
-              <div class="column-header">
-                <span class="column-title">5. Live & Monetizing</span>
-                <span class="column-count" id="count-LIVE">0</span>
-              </div>
-              <div class="column-body" id="col-LIVE"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- RIGHT: Side Feeds (Pending Votes + Live Notifications) -->
-        <aside class="side-feeds-section">
-          <!-- A. Pending Votes / Ideas Feed (PRD Section 3.2) -->
-          <div class="card feed-card">
-            <div class="card-header">
-              <div>
-                <h3 class="card-title">Pending Votes Feed</h3>
-                <p class="card-subtitle">Live green supermajority tracker</p>
-              </div>
-              <span class="badge badge-pulse" id="votesBadge">0 Awaiting</span>
-            </div>
-            <div class="card-body feed-body" id="votesFeedList">
-              <div class="empty-state">No ideas currently awaiting votes</div>
-            </div>
-          </div>
-
-          <!-- B. Real-Time Notifications Feed (PRD Section 3.3) -->
-          <div class="card feed-card">
-            <div class="card-header">
-              <div>
-                <h3 class="card-title">Live Notifications</h3>
-                <p class="card-subtitle">Direct push stream for tasks, votes & earnings</p>
-              </div>
-              <span class="badge" id="sideNotifCount">0 Unread</span>
-            </div>
-            <div class="card-body feed-body" id="sideNotifList">
-              <div class="empty-state">No notifications recorded</div>
-            </div>
-          </div>
-        </aside>
       </div>
-    </div>
+    </section>
 
-    <!-- ===================================================================
-         BOTTOM CORNERS ROW (Producer Bottom-Left & Developer Bottom-Right)
-         =================================================================== -->
-    <div class="corners-row bottom-corners">
-      
-      <!-- 2.3 PRODUCER/TESTER CORNER PANEL (Bottom-Left) -->
-      <section class="corner-panel producer-corner" id="producerCornerPanel" data-role="producer">
-        <div class="corner-panel-header">
-          <div class="panel-tag purple">
-            <span class="tag-icon">🧪</span>
-            <span class="tag-title">PRODUCER / QA CORNER</span>
-            <span class="spatial-badge">BOTTOM-LEFT</span>
-          </div>
-          <div class="panel-header-actions">
-            <span class="badge badge-role purple">TESTING QUEUE</span>
+    <section class="mentorship" id="collaboration">
+      <div class="container">
+        <div class="section-index" data-reveal><span>02 / CONNECTED COLLABORATION</span><span>THE WORK AND THE CONVERSATION</span></div>
+        <div class="mentorship__heading" data-reveal>
+          <h2>Keep thinking and making <em>in the same frame.</em></h2>
+          <span class="mentorship__handnote">Bring the whole team.</span>
+        </div>
+
+        <div class="mentorship__layout">
+          <figure class="mentorship__media" data-reveal>
+            <div class="mentorship__image-wrap">
+              <img src="/assets/images/mahi-mentorship.webp" width="1264" height="848" alt="Two product teammates reviewing work together beside a laptop and notebook" loading="lazy">
+              <span class="mentorship__image-tag">SHARED / WORKING CONTEXT</span>
+            </div>
+            <figcaption><span>EVERY HANDOFF KEEPS ITS CONTEXT</span><span>02 — MAHI TECH GROUP</span></figcaption>
+          </figure>
+
+          <div class="mentorship__content" data-reveal data-reveal-delay="1">
+            <span class="editorial-label">COLLABORATION, WITH A RECORD</span>
+            <p class="mentorship__lead">Move between project context, focused discussion, and a shared canvas without losing the attendance, decisions, notes, or snapshots that explain what happened.</p>
+            <ul class="mentorship__benefits">
+              <li><span>01</span><div><strong>Meet in context</strong><p>Connect scheduled and idea-review meetings to the relevant project, attendance, and follow-up.</p></div></li>
+              <li><span>02</span><div><strong>Make thinking visible</strong><p>Use sticky notes, text, shapes, drawing, presence, and named canvas snapshots.</p></div></li>
+              <li><span>03</span><div><strong>Keep a useful record</strong><p>Preserve bilingual notes, recording references, decisions, and operational history.</p></div></li>
+            </ul>
+            <a class="button" href="/app.html#/role-selection" data-contact-link="workspace">Preview the workspace <svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg></a>
+            <p class="mentorship__note">The design preview uses local demonstration data; it does not open a live video room or realtime session.</p>
           </div>
         </div>
 
-        <!-- Cross-Role Real-Time Banner: "Dev Build Ready" alert -->
-        <div class="corner-banners-container" id="producerBannersList"></div>
-
-        <!-- Shared Component: Profile Summary Mini-Card (Section 7) -->
-        <div class="profile-mini-card" id="producerProfileCard">
-          <div class="profile-mini-header">
-            <div class="avatar-sm purple-glow" id="producerMiniAvatar">P</div>
-            <div class="profile-mini-meta">
-              <h4 class="profile-mini-name" id="producerMiniName">Producer</h4>
-              <span class="badge badge-role purple">PRODUCER / TESTER</span>
-            </div>
+        <div class="session-agenda" data-reveal>
+          <div class="session-agenda__intro">
+            <span>FROM DISCUSSION TO DELIVERY</span>
+            <h3>A meeting<br><em>with a memory.</em></h3>
+            <svg class="icon" aria-hidden="true"><use href="#icon-message"/></svg>
           </div>
-          <div class="profile-mini-metrics">
-            <div class="mini-metric">
-              <span class="metric-val" id="producerIdeasCount">0</span>
-              <span class="metric-lbl">Ideas Submitted</span>
+          <ol class="session-agenda__steps">
+            <li><span>01</span><div><strong>Set the context</strong><p>Bring the project, proposal, schedule, and participants together.</p></div></li>
+            <li><span>02</span><div><strong>Work through it together</strong><p>Review the evidence, make decisions, and use the shared canvas.</p></div></li>
+            <li><span>03</span><div><strong>Preserve what comes next</strong><p>Confirm notes, record attendance, and keep actions attached to the work.</p></div></li>
+          </ol>
+          <div class="session-agenda__footer"><span>Connected work, without losing the thread.</span><strong>Meet. Make. Record. / Keep the context moving.</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="approach" id="about">
+      <div class="container approach__intro">
+        <div class="section-index" data-reveal><span>03 / THE DELIVERY MODEL</span><span>THREE WAYS WORK MOVES FORWARD</span></div>
+        <div class="approach__heading" data-reveal>
+          <h2>Less chasing.<br><em>More shared momentum.</em></h2>
+          <p>A clear operating model connects team judgment, disciplined execution, and the context every discipline needs.</p>
+        </div>
+      </div>
+
+      <article class="story story--practice">
+        <div class="container story__grid">
+          <div class="story__copy" data-reveal>
+            <span class="story__chapter">CHAPTER 01 / EXECUTION</span>
+            <h3>Ideas become<br><em>execution.</em></h3>
+            <p>Approved proposals fan out into nine connected tasks, with role-compatible ownership, explicit dependencies, deliverables, QA, and a final review gate.</p>
+          </div>
+          <div class="practice-board" data-reveal data-reveal-delay="1" role="img" aria-label="An abstract visual showing an idea moving through voting and project delivery">
+            <div class="practice-board__bar"><span>PROCESS / MADE VISIBLE</span><span>01—03</span></div>
+            <div class="practice-board__canvas" aria-hidden="true">
+              <span class="practice-block practice-block--one"></span>
+              <span class="practice-block practice-block--two"></span>
+              <span class="practice-block practice-block--three"></span>
+              <svg viewBox="0 0 400 250"><path d="M45 190c60-100 112-123 161-73 35 35 65 21 120-63M301 56l25-2-4 25"/></svg>
+              <span class="practice-note practice-note--one">IDEATE</span><span class="practice-note practice-note--two">VOTE</span><span class="practice-note practice-note--three">BUILD</span>
             </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="producerProjectsBuilt">0</span>
-              <span class="metric-lbl">Projects Built</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="producerRatingAvg">5.0 ★</span>
-              <span class="metric-lbl">Avg Rating</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="producerWallet">₹0.00</span>
-              <span class="metric-lbl">Total Revenue</span>
-            </div>
+            <div class="practice-board__footer"><span>PROPOSAL → REVIEW → FAN-OUT</span><svg class="icon" aria-hidden="true"><use href="#icon-pen-tool"/></svg></div>
           </div>
         </div>
+      </article>
 
-        <!-- Testing Task Queue (TODO / Blocked / In Progress / Done) -->
-        <div class="corner-task-queue">
-          <div class="queue-header">
-            <h4 class="queue-title">My Testing Tasks</h4>
-            <span class="queue-count" id="producerTaskCount">0 active</span>
+      <article class="story story--guidance">
+        <div class="container story--guidance__grid">
+          <span class="story__chapter" data-reveal>CHAPTER 02 / ACCOUNTABILITY</span>
+          <blockquote data-reveal>“Who owns the<br><em>next decision?</em>”</blockquote>
+          <div class="story--guidance__copy" data-reveal>
+            <h3>Accountability without losing context</h3>
+            <p>Role-aware queues, Admin review, decision history, and permanent attribution make responsibility clear without turning the work into a black box.</p>
           </div>
-          <div class="task-items-list" id="producerTasksList">
-            <div class="loading-state">Loading assigned testing tasks...</div>
+          <span class="story--guidance__mark" aria-hidden="true">?</span>
+        </div>
+      </article>
+
+      <article class="story story--connected">
+        <div class="container">
+          <div class="story--connected__top" data-reveal>
+            <div><span class="story__chapter">CHAPTER 03 / CONNECTION</span><h3>Connect every discipline</h3></div>
+            <p>Research, UI/UX design, development, production, and Admin review work from the same project context rather than isolated handoffs.</p>
+          </div>
+          <div class="connected-path" data-reveal aria-label="Research, design, and delivery are connected">
+            <span>Research</span><svg viewBox="0 0 160 40" aria-hidden="true"><path d="M2 20h150M137 6l15 14-15 14"/></svg>
+            <span><em>Design</em></span><svg viewBox="0 0 160 40" aria-hidden="true"><path d="M2 20h150M137 6l15 14-15 14"/></svg>
+            <span>Deliver</span><i aria-hidden="true">↗</i>
           </div>
         </div>
-      </section>
+      </article>
+    </section>
 
-      <!-- 2.4 DEVELOPER CORNER PANEL (Bottom-Right) -->
-      <section class="corner-panel developer-corner" id="developerCornerPanel" data-role="developer">
-        <div class="corner-panel-header">
-          <div class="panel-tag emerald">
-            <span class="tag-icon">💻</span>
-            <span class="tag-title">DEVELOPER CORNER</span>
-            <span class="spatial-badge">BOTTOM-RIGHT</span>
+    <section class="faq" id="faq">
+      <div class="container">
+        <div class="section-index" data-reveal><span>04 / FREQUENTLY ASKED QUESTIONS</span><span>BEFORE YOU ENTER THE WORKSPACE</span></div>
+        <div class="faq__grid">
+          <div class="faq__intro" data-reveal>
+            <h2>Questions,<br><em>answered.</em></h2>
+            <p>A little more clarity about the platform.<br>Ready to inspect the working views?</p>
+            <a class="text-link" href="/app.html#/role-selection" data-contact-link="workspace">Explore demo roles <svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg></a>
           </div>
-          <div class="panel-header-actions">
-            <!-- Sub-role filter tabs -->
-            <div class="subrole-toggle-group" id="devSubroleFilter">
-              <button class="subrole-btn active" data-filter="all">All</button>
-              <button class="subrole-btn" data-filter="frontend">Frontend</button>
-              <button class="subrole-btn" data-filter="backend">Backend</button>
-            </div>
+          <div class="faq__list" id="faq-list" data-reveal data-reveal-delay="1"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <div class="container final-cta__grid">
+        <div class="final-cta__index" data-reveal><span>05 / YOUR NEXT STEP</span><span>START WITH THE WORK</span></div>
+        <div class="final-cta__content" data-reveal>
+          <h2>Start with<br>one idea.<br><em>Move it forward.</em></h2>
+        </div>
+        <div class="final-cta__side" data-reveal data-reveal-delay="1">
+          <p>Bring a proposal into a shared delivery workflow with clear ownership, visible decisions, and a record of the outcome.</p>
+          <div class="final-cta__actions">
+            <a class="button button--lime" href="/app.html#/role-selection" data-contact-link="workspace">Open workspace preview <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></a>
+            <a class="button button--ink" href="#platform">Explore the platform <svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg></a>
           </div>
         </div>
-
-        <!-- Cross-Role Real-Time Banner: "Research Ready" alert -->
-        <div class="corner-banners-container" id="developerBannersList"></div>
-
-        <!-- Shared Component: Profile Summary Mini-Card (Section 7) -->
-        <div class="profile-mini-card" id="developerProfileCard">
-          <div class="profile-mini-header">
-            <div class="avatar-sm emerald-glow" id="developerMiniAvatar">D</div>
-            <div class="profile-mini-meta">
-              <h4 class="profile-mini-name" id="developerMiniName">Developer</h4>
-              <span class="badge badge-role emerald" id="developerSubRoleBadge">DEVELOPER</span>
-            </div>
-          </div>
-          <div class="profile-mini-metrics">
-            <div class="mini-metric">
-              <span class="metric-val" id="developerIdeasCount">0</span>
-              <span class="metric-lbl">Ideas Submitted</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="developerProjectsBuilt">0</span>
-              <span class="metric-lbl">Projects Built</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="developerRatingAvg">5.0 ★</span>
-              <span class="metric-lbl">Avg Rating</span>
-            </div>
-            <div class="mini-metric">
-              <span class="metric-val" id="developerWallet">₹0.00</span>
-              <span class="metric-lbl">Total Revenue</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Developer Task Queue (TODO / Blocked / In Progress / Done) -->
-        <div class="corner-task-queue">
-          <div class="queue-header">
-            <h4 class="queue-title">My Development Tasks</h4>
-            <span class="queue-count" id="devTaskCount">0 active</span>
-          </div>
-          <div class="task-items-list" id="developerTasksList">
-            <div class="loading-state">Loading assigned development tasks...</div>
-          </div>
-        </div>
-      </section>
-
-    </div>
-
+        <span class="final-cta__asterisk" aria-hidden="true">*</span>
+      </div>
+    </section>
   </main>
 
-  <!-- ===================================================================
-       MODALS SECTION
-       =================================================================== -->
-
-  <!-- 1. Submit Idea Modal (Researcher Corner) -->
-  <div class="modal-backdrop" id="submitIdeaModal" style="display: none;">
-    <div class="modal-dialog modal-sm">
-      <div class="modal-header">
-        <h3 class="modal-title">Submit New Project Idea</h3>
-        <button class="modal-close-btn" id="closeSubmitIdeaModalBtn">&times;</button>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer__wordmark" aria-hidden="true">MAHI <em>TECH GROUP</em></div>
+      <div class="footer__main">
+        <div class="footer__brand">
+          <a class="brand" href="/" aria-label="MAHI TECH GROUP home">
+            <svg class="brand__mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="1" y="1" width="38" height="38" fill="currentColor" stroke="#f8f4ea" stroke-width="2"/><path d="M9 28V12l11 10 11-10v16" fill="none" stroke="#f8f4ea" stroke-width="3.2"/><rect x="30" y="4" width="6" height="6" fill="#c8f45e"/></svg>
+            <span class="brand__type"><strong>MAHI</strong><span>TECH GROUP</span></span>
+          </a>
+          <p>A role-aware workspace for collaborative delivery, visible decisions, and shared operational context.</p>
+          <a class="footer__email" href="/app.html#/role-selection" data-contact-link="workspace">Open the workspace preview <svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg></a>
+        </div>
+        <div class="footer__links">
+          <div><h2>01 / Explore</h2><a href="#platform">Platform capabilities</a><a href="#collaboration">Collaboration</a><a href="#about">Delivery model</a><a href="#faq">FAQs</a></div>
+          <div><h2>02 / Capabilities</h2><a href="#platform" data-track-footer="ideas-voting">Ideas & voting</a><a href="#platform" data-track-footer="project-delivery">Project delivery</a><a href="#platform" data-track-footer="meetings-coworking">Meetings & co-working</a><a href="#platform" data-track-footer="revenue-governance">Revenue & governance</a></div>
+          <div><h2>03 / Workspace</h2><a href="/app.html#/login" data-contact-link="login">Member access</a><a href="/app.html#/signup" data-contact-link="signup">Membership application</a><a href="/app.html#/contact" data-contact-link="support">Access & support</a><span>Frontend demonstration with local mock data.</span></div>
+        </div>
       </div>
-      <div class="modal-body">
-        <p class="text-muted text-sm mb-3">Ideas require green supermajority approval before parallel fanout activates.</p>
-        <form id="submitIdeaForm">
-          <div class="form-group mb-3">
-            <label for="newIdeaTitle">Idea Title *</label>
-            <input type="text" id="newIdeaTitle" class="form-input" placeholder="e.g. Real-Time Telemetry SDK" required>
-          </div>
-          <div class="form-group mb-3">
-            <label for="newIdeaCategory">Category</label>
-            <input type="text" id="newIdeaCategory" class="form-input" placeholder="Developer Tools, AI, Fintech">
-          </div>
-          <div class="form-group mb-3">
-            <label for="newIdeaAttachment">Research Attachment URL (PDF/Doc)</label>
-            <input type="url" id="newIdeaAttachment" class="form-input" placeholder="https://storage.mahitechgroup.com/docs/spec.pdf">
-          </div>
-          <div class="form-group mb-4">
-            <label for="newIdeaDesc">Comprehensive Description *</label>
-            <textarea id="newIdeaDesc" class="form-input" rows="3" placeholder="Explain the problem, technical architecture, and value proposition..." required></textarea>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" id="btnCancelSubmitIdea">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="btnSaveSubmitIdea">Submit for Team Vote</button>
-          </div>
-        </form>
-      </div>
+      <div class="footer__bottom"><p>© <span id="current-year">2026</span> MAHI TECH GROUP. All rights reserved.</p><p>Shared thinking. Visible delivery.</p><a href="#home">Back to top ↑</a></div>
     </div>
-  </div>
+  </footer>
 
-  <!-- 2. Upload Research Modal (Researcher Corner) -->
-  <div class="modal-backdrop" id="uploadResearchModal" style="display: none;">
-    <div class="modal-dialog modal-sm">
-      <div class="modal-header">
-        <h3 class="modal-title">Upload Research Documentation</h3>
-        <button class="modal-close-btn" id="closeUploadResearchModalBtn">&times;</button>
+  <dialog class="course-dialog" id="course-dialog" aria-labelledby="course-dialog-title">
+    <div class="course-dialog__shell">
+      <div class="course-dialog__masthead"><span>MAHI / CAPABILITY PREVIEW</span><button class="dialog-close" type="button" aria-label="Close capability preview" data-dialog-close><svg class="icon" aria-hidden="true"><use href="#icon-close"/></svg></button></div>
+      <div class="course-dialog__icon" id="course-dialog-icon"></div>
+      <h2 id="course-dialog-title"></h2>
+      <p class="course-dialog__description" id="course-dialog-description"></p>
+      <div class="course-dialog__curriculum">
+        <h3>How this workflow connects</h3>
+        <ol id="course-dialog-modules"></ol>
       </div>
-      <div class="modal-body">
-        <p class="text-muted text-sm mb-3">Completing research unblocks dependent Developer tasks and triggers real-time notification.</p>
-        <form id="uploadResearchForm">
-          <input type="hidden" id="researchTaskId">
-          <div class="form-group mb-3">
-            <label>Task</label>
-            <div class="form-read-only" id="researchTaskNameDisplay">Task Name</div>
-          </div>
-          <div class="form-group mb-3">
-            <label for="researchFileUrl">Research Document / Spec URL (PDF/Doc) *</label>
-            <input type="url" id="researchFileUrl" class="form-input" placeholder="https://storage.mahitechgroup.com/research/arch-spec.pdf" required>
-          </div>
-          <div class="form-group mb-4">
-            <label for="researchNotes">Research Findings & Implementation Notes</label>
-            <textarea id="researchNotes" class="form-input" rows="3" placeholder="Key architecture decisions, API specs, schemas..."></textarea>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" id="btnCancelUploadResearch">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="btnConfirmUploadResearch">Upload & Push to Dev (Mark Done)</button>
-          </div>
-        </form>
-      </div>
+      <p class="prototype-note">Feature preview based on current MAHI TECH GROUP workflows. Public exploration does not create or modify live organization data.</p>
+      <a class="button course-dialog__cta" href="/app.html#/role-selection" id="course-dialog-contact">Open workspace preview <svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg></a>
     </div>
-  </div>
-
-  <!-- 3. Submit Test Report Modal (Producer Corner) -->
-  <div class="modal-backdrop" id="testReportModal" style="display: none;">
-    <div class="modal-dialog modal-sm">
-      <div class="modal-header">
-        <h3 class="modal-title">Submit QA Test Report</h3>
-        <button class="modal-close-btn" id="closeTestReportModalBtn">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p class="text-muted text-sm mb-3">Passing QA completes testing and advances project to Final Launch Review stage.</p>
-        <form id="testReportForm">
-          <input type="hidden" id="qaTaskId">
-          <div class="form-group mb-3">
-            <label>Testing Task</label>
-            <div class="form-read-only" id="qaTaskNameDisplay">Task Name</div>
-          </div>
-          <div class="form-group mb-3">
-            <label>Test Result Evaluation *</label>
-            <div class="radio-group-horizontal">
-              <label class="radio-label">
-                <input type="radio" name="qaVerdict" value="PASS" checked>
-                <span class="radio-text green">✅ All Tests Passed (Ready for Review)</span>
-              </label>
-            </div>
-          </div>
-          <div class="form-group mb-3">
-            <label for="qaReportUrl">QA Test Run / Coverage Report URL</label>
-            <input type="url" id="qaReportUrl" class="form-input" placeholder="https://reports.mahitechgroup.com/qa/run-1092.html">
-          </div>
-          <div class="form-group mb-4">
-            <label for="qaNotes">Test Checklist & Notes *</label>
-            <textarea id="qaNotes" class="form-input" rows="3" placeholder="Integration test suites: 100% pass. Performance under load: 12ms avg latency..." required></textarea>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" id="btnCancelTestReport">Cancel</button>
-            <button type="submit" class="btn btn-green" id="btnConfirmTestReport">Submit QA & Advance Project</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- 4. Upload Design Deliverables Modal (UI/UX Designer Corner) -->
-  <div class="modal-backdrop" id="uploadDesignModal" style="display: none;">
-    <div class="modal-dialog modal-sm">
-      <div class="modal-header">
-        <h3 class="modal-title">Upload UI/UX Design Deliverables</h3>
-        <button class="modal-close-btn" id="closeUploadDesignModalBtn">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p class="text-muted text-sm mb-3">Upload Figma spec, mockups, or UI asset pack to complete design track.</p>
-        <form id="uploadDesignForm">
-          <input type="hidden" id="designTaskId">
-          <div class="form-group mb-3">
-            <label>Task</label>
-            <div class="form-read-only" id="designTaskNameDisplay">Task Name</div>
-          </div>
-          <div class="form-group mb-3">
-            <label for="designFileUrl">Figma Mockup / Design Spec URL *</label>
-            <input type="url" id="designFileUrl" class="form-input" placeholder="https://www.figma.com/file/..." required>
-          </div>
-          <div class="form-group mb-4">
-            <label for="designNotes">Design Notes & System Specifications</label>
-            <textarea id="designNotes" class="form-input" rows="3" placeholder="Design tokens, component library, typography, and wireframe highlights..."></textarea>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" id="btnCancelUploadDesign">Cancel</button>
-            <button type="submit" class="btn btn-rose" id="btnConfirmUploadDesign">Upload & Complete Design (Mark Done)</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- 7. Project Detail Modal (Center Dashboard Step 07) -->
-  <div class="modal-backdrop" id="projectModalBackdrop" style="display: none;">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <span class="badge" id="modalProjectStage">STAGE</span>
-          <h3 class="modal-title" id="modalProjectTitle">Project Title</h3>
-        </div>
-        <button class="modal-close-btn" id="closeProjectModalBtn">&times;</button>
-      </div>
-      <div class="modal-body" id="modalProjectBody">
-        <div class="modal-meta-grid">
-          <div><strong>Idea Owner:</strong> <span id="modalOwnerName">...</span></div>
-          <div><strong>Status:</strong> <span id="modalProjectStatus">ACTIVE</span></div>
-          <div><strong>Clock Start:</strong> <span id="modalClockStart">N/A</span></div>
-          <div><strong>Overall Progress:</strong> <span id="modalProgressText">0%</span></div>
-        </div>
-
-        <div style="margin: 16px 0; display: flex; justify-content: flex-end;">
-          <button class="btn btn-primary" id="btnJoinCoworkingFromModal" style="display: inline-flex; align-items: center; gap: 8px;">
-            🎨 Join Co-working Room
-          </button>
-        </div>
-
-        <h4 class="mt-4 mb-2">Multi-Track Task List (8 Workflows)</h4>
-        <div class="task-table-wrap">
-          <table class="modal-table">
-            <thead>
-              <tr>
-                <th>Task Name</th>
-                <th>Type</th>
-                <th>Assigned To</th>
-                <th>Prerequisite</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="modalTasksTableBody"></tbody>
-          </table>
-        </div>
-
-        <h4 class="mt-4 mb-2">Assigned Contributors & Contribution Weights</h4>
-        <div class="task-table-wrap">
-          <table class="modal-table">
-            <thead>
-              <tr>
-                <th>Member</th>
-                <th>Role in Project</th>
-                <th>Weight</th>
-              </tr>
-            </thead>
-            <tbody id="modalMembersTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 8. Voting Modal (Center Dashboard Step 07) -->
-  <div class="modal-backdrop" id="voteModalBackdrop" style="display: none;">
-    <div class="modal-dialog modal-sm">
-      <div class="modal-header">
-        <h3 class="modal-title" id="voteModalIdeaTitle">Evaluate Idea</h3>
-        <button class="modal-close-btn" id="closeVoteModalBtn">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p class="text-muted" id="voteModalIdeaDesc">Description...</p>
-
-        <form id="voteForm" class="mt-3">
-          <input type="hidden" id="voteIdeaId">
-
-          <div class="form-group mb-3">
-            <label>Feasibility Score (0 to 10)</label>
-            <input type="number" id="voteFeasibility" min="0" max="10" value="8" class="form-input">
-          </div>
-
-          <div class="form-group mb-3">
-            <label>Market Score (0 to 10)</label>
-            <input type="number" id="voteMarket" min="0" max="10" value="8" class="form-input">
-          </div>
-
-          <div class="form-group mb-3">
-            <label>Capacity Score (0 to 10)</label>
-            <input type="number" id="voteCapacity" min="0" max="10" value="8" class="form-input">
-          </div>
-
-          <div class="form-group mb-4">
-            <label>Review Comment (Optional)</label>
-            <textarea id="voteComment" class="form-input" rows="2" placeholder="Constructive feedback..."></textarea>
-          </div>
-
-          <div class="vote-action-buttons">
-            <button type="button" class="btn btn-green w-100" id="btnVoteGreen">
-              👍 Vote Green (Approve)
-            </button>
-            <button type="button" class="btn btn-red w-100" id="btnVoteRed">
-              👎 Vote Red (Reject)
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- 9. Co-working Canvas Modal (Step 11 Shared Live Workspace) -->
-  <div class="canvas-modal-backdrop" id="coworkingModalBackdrop" style="display: none;">
-    <div class="canvas-dialog">
-      <div class="canvas-header">
-        <div class="canvas-header-left">
-          <div class="brand-logo" style="margin: 0;">
-            <span class="logo-icon">🎨</span>
-            <span class="brand-name" id="canvasProjectTitleDisplay">Co-working Canvas</span>
-          </div>
-          <span class="badge" id="canvasStageBadge">STAGE</span>
-          <span class="canvas-save-status" id="canvasSaveStatus">✓ Live Synced</span>
-        </div>
-
-        <!-- Live Presence Bar: "Who's Here" Avatar Strip -->
-        <div class="canvas-presence-bar" id="canvasPresenceBar">
-          <span class="presence-label">Who's Here:</span>
-          <div class="presence-avatars-wrap" id="canvasPresenceAvatars"></div>
-        </div>
-
-        <div class="canvas-header-right">
-          <button class="btn btn-danger btn-sm" id="btnExitCanvas">✕ Exit Room</button>
-        </div>
-      </div>
-
-      <!-- Canvas Toolbar & Controls -->
-      <div class="canvas-toolbar" id="canvasToolbar">
-        <div class="toolbar-group">
-          <button class="tool-btn" data-tool="sticky" data-color="#fef08a" id="btnAddYellowSticky">📝 Yellow Note</button>
-          <button class="tool-btn" data-tool="sticky" data-color="#bae6fd" id="btnAddBlueSticky">📝 Blue Note</button>
-          <button class="tool-btn" data-tool="sticky" data-color="#bbf7d0" id="btnAddGreenSticky">📝 Green Note</button>
-          <button class="tool-btn" data-tool="sticky" data-color="#fbcfe8" id="btnAddPinkSticky">📝 Pink Note</button>
-        </div>
-        <div class="toolbar-separator"></div>
-        <div class="toolbar-group">
-          <button class="tool-btn" data-tool="card" id="btnAddSpecCard">🗂️ Spec Card</button>
-          <button class="tool-btn" data-tool="shape" id="btnAddBoxShape">⬜ Box Shape</button>
-        </div>
-        <div class="toolbar-separator"></div>
-        <div class="toolbar-group">
-          <span class="canvas-capacity-pill" id="canvasCapacityPill">0 / 500 items</span>
-        </div>
-      </div>
-
-      <!-- Live Canvas Surface -->
-      <div class="canvas-surface-container" id="canvasSurfaceContainer">
-        <!-- Peer cursors layer -->
-        <div class="canvas-cursors-layer" id="canvasCursorsLayer"></div>
-        <!-- Board elements container -->
-        <div class="canvas-elements-layer" id="canvasElementsLayer"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================================
-       STEP 12: In-App Meeting Room Modal (Jitsi + Split-Screen Voting)
-       =================================================================== -->
-  <div class="meeting-modal-backdrop" id="meetingRoomModalBackdrop" style="display: none;">
-    <div class="meeting-dialog">
-      <div class="meeting-header">
-        <div class="meeting-header-left">
-          <span style="font-size: 1.3rem;">📹</span>
-          <div>
-            <h3 id="meetingRoomTitle" style="margin: 0; font-size: 1.1rem; color: #fff;">Team Meeting</h3>
-            <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: #94a3b8; margin-top: 2px;">
-              <span class="badge" id="meetingTypeBadge">ad_hoc</span>
-              <span id="meetingHostName">Host: Admin</span>
-              <span>•</span>
-              <span id="meetingLiveTimer">00:00</span>
-              <span>•</span>
-              <span id="meetingAttendeeCountPill" class="badge badge-outline">1 attendee</span>
-            </div>
-          </div>
-        </div>
-        <div class="meeting-header-right">
-          <button class="btn btn-secondary btn-sm" id="btnLeaveMeeting">Leave Meeting</button>
-          <button class="btn btn-danger btn-sm" id="btnEndMeetingForAll" style="display: none;">End Meeting for All</button>
-        </div>
-      </div>
-
-      <div class="meeting-split-container" id="meetingSplitContainer">
-        <!-- Jitsi IFrame Container (60% on split, 100% on ad-hoc) -->
-        <div class="meeting-jitsi-pane" id="meetingJitsiPane">
-          <div id="jitsiMeetingContainer" style="width: 100%; height: 100%;"></div>
-        </div>
-
-        <!-- Step 03 Split-Screen Voting Panel (Only rendered for idea_review meetings) -->
-        <div class="meeting-voting-pane" id="meetingVotingPane" style="display: none;">
-          <div class="meeting-split-header">
-            <h3>🗳️ Idea Governance & Real-Time Voting</h3>
-            <p style="margin: 0; font-size: 12px; color: #94a3b8;">Review linked proposal and cast your vote inline</p>
-          </div>
-          
-          <div id="splitVoteIdeaCard" style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 16px; border: 1px solid rgba(255,255,255,0.08);">
-            <h4 id="splitVoteIdeaTitle" style="color: #60a5fa; margin-top: 0; margin-bottom: 8px;">Loading Idea...</h4>
-            <p id="splitVoteIdeaDesc" style="font-size: 13px; color: #cbd5e1; line-height: 1.5; margin-bottom: 12px; max-height: 180px; overflow-y: auto;"></p>
-            <div style="display: flex; gap: 10px; font-size: 11px; color: #94a3b8; margin-bottom: 12px;">
-              <span>Submitted by: <strong id="splitVoteIdeaOwner" style="color: #f1f5f9;">--</strong></span>
-              <span>•</span>
-              <span>Voting window: <strong id="splitVoteDeadline" style="color: #f59e0b;">--</strong></span>
-            </div>
-            
-            <div class="form-group mb-3">
-              <label style="font-size: 12px; color: #cbd5e1; display: block; margin-bottom: 6px;">Feedback Comment (Optional)</label>
-              <textarea id="splitVoteComment" class="form-input" rows="2" placeholder="Constructive feedback..." style="width: 100%; font-size: 12px;"></textarea>
-            </div>
-
-            <div style="display: flex; gap: 10px;">
-              <button type="button" class="btn btn-green w-100" id="btnSplitVoteGreen" style="padding: 10px; font-weight: 600;">
-                👍 Vote Green (Approve)
-              </button>
-              <button type="button" class="btn btn-red w-100" id="btnSplitVoteRed" style="padding: 10px; font-weight: 600;">
-                👎 Vote Red (Reject)
-              </button>
-            </div>
-            <div id="splitVoteStatusMsg" style="font-size: 12px; text-align: center; margin-top: 10px; display: none;"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Meetings List Modal -->
-  <div class="canvas-modal-backdrop" id="meetingsListModalBackdrop" style="display: none;">
-    <div class="canvas-dialog" style="max-width: 760px; height: auto; max-height: 85vh; padding: 24px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h3 style="margin: 0; color: #fff; display: flex; align-items: center; gap: 8px;">
-          <span>📹</span> Team Meetings & Governance
-        </h3>
-        <button class="btn btn-secondary btn-sm" id="btnCloseMeetingsListModal">✕</button>
-      </div>
-
-      <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 12.5px; color: #94a3b8;">Scheduled, live, and historical meetings</span>
-        <button class="btn btn-primary btn-sm" id="btnLaunchNewMeetingFromList" style="display: none;">+ Schedule Meeting</button>
-      </div>
-
-      <div id="meetingsListContainer" style="overflow-y: auto; max-height: 60vh; display: flex; flex-direction: column; gap: 10px;">
-        <div style="text-align: center; padding: 20px; color: #94a3b8;">Loading meetings...</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Admin Meeting Scheduling Modal -->
-  <div class="canvas-modal-backdrop" id="scheduleMeetingModalBackdrop" style="display: none;">
-    <div class="canvas-dialog" style="max-width: 540px; height: auto; padding: 24px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h3 style="margin: 0; color: #fff;">Schedule / Launch Meeting</h3>
-        <button class="btn btn-secondary btn-sm" id="btnCloseScheduleMeetingModal">✕</button>
-      </div>
-
-      <form id="scheduleMeetingForm">
-        <div class="form-group mb-3">
-          <label style="display: block; font-size: 12.5px; color: #cbd5e1; margin-bottom: 4px;">Meeting Title</label>
-          <input type="text" id="schedMeetingTitle" class="form-input" style="width: 100%;" required placeholder="e.g., Weekly Product Sync or Idea Governance Review" />
-        </div>
-
-        <div class="form-group mb-3">
-          <label style="display: block; font-size: 12.5px; color: #cbd5e1; margin-bottom: 4px;">Meeting Type</label>
-          <select id="schedMeetingType" class="form-input" style="width: 100%;">
-            <option value="ad_hoc">Ad-hoc Team Meeting</option>
-            <option value="idea_review">Idea Review (Split-Screen Voting Panel)</option>
-          </select>
-        </div>
-
-        <div class="form-group mb-3" id="schedLinkedIdeaGroup" style="display: none;">
-          <label style="display: block; font-size: 12.5px; color: #cbd5e1; margin-bottom: 4px;">Linked Idea (Step 03 Pipeline)</label>
-          <select id="schedLinkedIdea" class="form-input" style="width: 100%;">
-            <option value="">-- Select Pending Idea --</option>
-          </select>
-        </div>
-
-        <div class="form-group mb-3">
-          <label style="display: block; font-size: 12.5px; color: #cbd5e1; margin-bottom: 4px;">Scheduled Date & Time (Optional)</label>
-          <input type="datetime-local" id="schedMeetingDateTime" class="form-input" style="width: 100%;" />
-        </div>
-
-        <div class="form-group mb-4" style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" id="schedRecordingEnabled" style="width: 16px; height: 16px;" />
-          <label for="schedRecordingEnabled" style="font-size: 13px; color: #cbd5e1; cursor: pointer;">
-            Enable Meeting Recording & AI Notes Pipeline (Whisper + GPT-4o)
-          </label>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-          <button type="button" class="btn btn-secondary w-100" id="btnCancelScheduleMeeting">Cancel</button>
-          <button type="submit" class="btn btn-primary w-100" id="btnSubmitScheduleMeeting">Create Meeting</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Meeting Notes Modal (Bilingual Hindi/English Viewer) -->
-  <div class="canvas-modal-backdrop" id="meetingNotesModalBackdrop" style="display: none;">
-    <div class="canvas-dialog" style="max-width: 800px; height: auto; max-height: 85vh; padding: 24px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <div>
-          <h3 style="margin: 0; color: #fff; display: flex; align-items: center; gap: 8px;">
-            <span>📝</span> Meeting Notes & Key Decisions
-          </h3>
-          <span id="notesMeetingTitle" style="font-size: 12px; color: #94a3b8;">Meeting Title</span>
-        </div>
-        <button class="btn btn-secondary btn-sm" id="btnCloseMeetingNotesModal">✕</button>
-      </div>
-
-      <!-- Language Selector Tabs -->
-      <div class="lang-toggle-tabs">
-        <button class="lang-tab-btn active" id="btnNotesLangEn">🇬🇧 English Notes</button>
-        <button class="lang-tab-btn" id="btnNotesLangHi">🇮🇳 हिंदी नोट्स (Hindi)</button>
-        <button class="lang-tab-btn" id="btnNotesLangRaw" style="font-size: 11px;">📄 Raw Transcript</button>
-      </div>
-
-      <div class="notes-content-box" id="notesContentDisplay">
-        Loading notes...
-      </div>
-
-      <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #94a3b8;">
-        <span id="notesMetaModel">Generated by OpenAI Whisper + GPT-4o</span>
-        <span id="notesMetaConfirmed">✓ Confirmed by Admin</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Step 13: Floating Toast Notifications Container (Bottom-Right, Max 3 Stack) -->
-  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
-
-  <script src="/js/dashboard.js"></script>
+  </dialog>
 </body>
 </html>
