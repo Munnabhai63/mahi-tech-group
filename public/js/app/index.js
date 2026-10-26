@@ -80,19 +80,61 @@ function isRealAuth() {
 }
 
 function render() {
-    // Route guard: workspace/admin routes need real authentication
-    const path = location.hash.replace('#', '') || '/app/dashboard';
-    if (!isPublic(path) && !isSigning(path) && !isRealAuth()) {
-        // Clear any fake SPA session
-        state.session = null;
-        persistSession();
-        location.hash = '#/login';
-        return;
-    }
   if (rendering) return;
   rendering = true;
   try {
-    if (!location.hash) { 
+    const path = location.hash.replace('#', '') || '/app/dashboard';
+    const params = new URLSearchParams(path.split('?')[1] || '');
+    const user = currentUser();
+
+    // Route guard: workspace/admin routes require real authentication
+    if (!isPublic(path) && !isSigning(path) && !isRealAuth()) {
+      state.session = null;
+      persistSession();
+      location.hash = '#/login';
+      return;
+    }
+
+    // Admin role check
+    if (user && (path.startsWith('/admin') || path.startsWith('/superadmin')) && user.role !== 'admin') {
+      toast('Admin access requires the Admin role.', 'error');
+      location.hash = '#/app/dashboard';
+      return;
+    }
+
+    // Former member check
+    if (user && user.status === 'inactive' && path.startsWith('/app') && !['/app/former-member', '/app/wallet', '/app/notifications'].includes(path)) {
+      location.hash = '#/app/former-member';
+      return;
+    }
+
+    // Cleanup previous view
+    if (typeof cleanup === 'function') { try { cleanup(); } catch (error) { console.warn('cleanup', error); } }
+    cleanup = null;
+    closeDialog();
+    closeDrawer(false);
+    state.ui.sidebarOpen = false;
+
+    // Render the view
+    let view;
+    try { view = route(path, params); }
+    catch (error) {
+      console.error('Route render failed:', path, error);
+      view = { html: pageHead('Error', 'Something went wrong', 'Please try again.') };
+    }
+
+    // Mount the view
+    const protectedShell = !isPublic(path) && !isSigning(path);
+    app.innerHTML = protectedShell ? shellHTML(view, path) : isSigning(path) ? view.html : '<main id="main-content" tabindex="-1">' + view.html + '</main>';
+    document.title = (path.startsWith('/superadmin') ? 'Elevated Admin' : path.startsWith('/admin') ? 'Admin' : path.startsWith('/app') ? 'Workspace' : 'MAHI TECH GROUP') + ' — MAHI TECH GROUP';
+
+    const shellCleanup = protectedShell ? mountShell(path) : null;
+    let viewCleanup = null;
+    if (typeof view.mount === 'function') { const result = view.mount(); if (typeof result === 'function') viewCleanup = result; }
+    cleanup = function() { if (typeof shellCleanup === 'function') shellCleanup(); if (typeof viewCleanup === 'function') viewCleanup(); };
+    if (previousPath !== path) { window.scrollTo({ top: 0, behavior: 'instant' }); }
+    previousPath = path;
+  } finally { rendering = false; }
 }
     if (user && (path.startsWith('/admin') || path.startsWith('/superadmin')) && user.role !== 'admin') { toast('Admin operations require the Admin demo role.', 'error'); location.hash = user.status === 'inactive' ? '#/app/former-member' : '#/app/dashboard'; return; }
     if (user?.status === 'inactive' && path.startsWith('/app') && !['/app/former-member', `/app/members/${user.id}`, '/app/wallet', '/app/notifications'].includes(path)) { location.hash = '#/app/former-member'; return; }
