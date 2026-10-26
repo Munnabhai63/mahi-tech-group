@@ -65,10 +65,21 @@
   - Retained `src/server.js` PM2 environment detection per user decision.
   - Recorded complete architectural decisions B.1–B.7 in `docs/decisions.md`.
 
+- **Oviaxe-Updated-UI-1 Integration & Blank Workspace Fix**:
+  - Integrated all modules from `Oviaxe-Updated-UI-1`: `ai.js`, `notifications.js`, `project-work.js`, and `views/ai-center.js`.
+  - Added AI Settings tab and Broadcast Notification modal to Admin Panel (`views/admin.js`) with live backend persistence.
+  - Eliminated dummy role selector buttons and mock-role switches (`[data-demo-role]`, `<div class="demo-box">`) in `views/public.js`.
+  - Re-routed landing page CTAs from legacy `#/role-selection` to `#/login` across `public/index.html` and `public/js/data/site.js`.
+  - Resolved fatal blank screen bug (`TypeError: Cannot read properties of null (reading 'status')`):
+    - Added immediate top-level redirection from `/role-selection` to `#/login` in `public/js/app/index.js`.
+    - Added null-safety defensive guards in `public/js/app/shell.js` across `shellHTML()`, `navigation()`, `countFor()`, `openAccountDrawer()`, and `searchItems()`.
+  - Merged and reconciled diverged remote history into `master` using clean `ours` strategy and successfully pushed commit `84a2f7f` to GitHub repository `Munnabhai63/mahi-tech-group`.
+  - All 13 backend test suites (`npm test`) pass cleanly (100% PASS).
+  - All 20 frontend JavaScript files compile cleanly (`node --check`).
+
 ## Pending / Next Steps
-- Production deployment of commits `816c0bd` and integration hardening commit to VPS `https://oviaxe.com`.
-- Live ₹1 test scan / 1-tap pay confirmation by user on mobile with PhonePe / GPay / Paytm.
-- Android Observer APK installation on merchant phone for automated UPI SMS settlement.
+- Run `git pull origin master` on VPS (`/var/www/oviaxe.com`) and restart PM2 to serve the updated code on `https://oviaxe.com`.
+- Verify live login on `https://oviaxe.com/app.html#/login`.
 
 
 
