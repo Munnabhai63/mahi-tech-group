@@ -28,14 +28,14 @@ export const taskBlueprints = [
 ];
 
 const users = [
-  { id: 'u-admin', name: 'Ananya Rao', email: 'ananya@demo.mahi', role: 'admin', subRole: null, status: 'active', initials: 'AR', joinedAt: '2024-02-12', lastActive: '2026-10-25T09:42:00+05:30', bio: 'Administrator coordinating project gates, member operations, and organization governance.', location: 'Pune, Maharashtra', rating: 4.9, ideas: 8, projects: 12, meetings: 64, wallet: 0, totalEarnings: 0, frozen: false, color: '#ddd5f5' },
-  { id: 'u-research', name: 'Mira Nair', email: 'mira@demo.mahi', role: 'researcher', subRole: null, status: 'active', initials: 'MN', joinedAt: '2025-01-18', lastActive: '2026-10-25T10:18:00+05:30', bio: 'Researcher interested in public services, field interviews, and making complex systems easier to navigate.', location: 'Kochi, Kerala', rating: 4.8, ideas: 11, projects: 7, meetings: 42, wallet: 18450, totalEarnings: 74200, frozen: false, color: '#dce9c7' },
-  { id: 'u-design', name: 'Arjun Mehta', email: 'arjun@demo.mahi', role: 'designer', subRole: null, status: 'active', initials: 'AM', joinedAt: '2025-03-09', lastActive: '2026-10-25T09:56:00+05:30', bio: 'Product designer working across research synthesis, accessible interaction, and clear service journeys.', location: 'Ahmedabad, Gujarat', rating: 4.7, ideas: 4, projects: 9, meetings: 38, wallet: 12600, totalEarnings: 68500, frozen: false, color: '#f1dfbd' },
-  { id: 'u-dev-front', name: 'Kabir Shah', email: 'kabir@demo.mahi', role: 'developer', subRole: 'frontend', status: 'active', initials: 'KS', joinedAt: '2025-02-21', lastActive: '2026-10-25T10:04:00+05:30', bio: 'Frontend developer focused on resilient interfaces, useful states, and maintainable design systems.', location: 'Mumbai, Maharashtra', rating: 4.9, ideas: 3, projects: 10, meetings: 45, wallet: 21200, totalEarnings: 91300, frozen: false, color: '#cdddf5' },
-  { id: 'u-dev-back', name: 'Ishaan Kulkarni', email: 'ishaan@demo.mahi', role: 'developer', subRole: 'backend', status: 'active', initials: 'IK', joinedAt: '2025-04-14', lastActive: '2026-10-24T18:22:00+05:30', bio: 'Backend developer interested in reliable workflows, traceable decisions, and thoughtful API boundaries.', location: 'Nashik, Maharashtra', rating: 4.6, ideas: 2, projects: 8, meetings: 36, wallet: 15900, totalEarnings: 79000, frozen: false, color: '#d7e6e0' },
-  { id: 'u-producer', name: 'Sana Iqbal', email: 'sana@demo.mahi', role: 'producer', subRole: null, status: 'active', initials: 'SI', joinedAt: '2025-06-02', lastActive: '2026-10-25T08:47:00+05:30', bio: 'Producer and tester coordinating release readiness, acceptance checks, and actionable quality reports.', location: 'Bhopal, Madhya Pradesh', rating: 4.8, ideas: 5, projects: 9, meetings: 48, wallet: 9800, totalEarnings: 63400, frozen: false, color: '#f2d5d0' },
-  { id: 'u-research-2', name: 'Neel Joshi', email: 'neel@demo.mahi', role: 'researcher', subRole: null, status: 'active', initials: 'NJ', joinedAt: '2026-01-10', lastActive: '2026-10-23T16:10:00+05:30', bio: 'Researcher exploring local commerce, cooperative tools, and neighborhood-scale services.', location: 'Jaipur, Rajasthan', rating: 4.4, ideas: 3, projects: 3, meetings: 16, wallet: 4200, totalEarnings: 18600, frozen: false, color: '#e5dcbf' },
-  { id: 'u-former', name: 'Devika Rao', email: 'devika@demo.mahi', role: 'designer', subRole: null, status: 'inactive', initials: 'DR', joinedAt: '2024-08-19', lastActive: '2026-08-31T17:30:00+05:30', bio: 'Former product designer. Historical contributions remain attributed and read-only.', location: 'Bengaluru, Karnataka', rating: 4.5, ideas: 6, projects: 5, meetings: 27, wallet: 7300, totalEarnings: 44900, frozen: true, color: '#deded8', exitedAt: '2026-08-31' }
+  { id: 'u-admin', username: 'ananya.rao', name: 'Ananya Rao', email: 'ananya@demo.mahi', role: 'admin', subRole: null, status: 'active', initials: 'AR', joinedAt: '2024-02-12', lastActive: '2026-10-25T09:42:00+05:30', bio: 'Administrator coordinating project gates, member operations, and organization governance.', location: 'Pune, Maharashtra', rating: 4.9, ideas: 8, projects: 12, meetings: 64, wallet: 0, totalEarnings: 0, frozen: false, color: '#ddd5f5' },
+  { id: 'u-research', username: 'mira.nair', name: 'Mira Nair', email: 'mira@demo.mahi', role: 'researcher', subRole: null, status: 'active', initials: 'MN', joinedAt: '2025-01-18', lastActive: '2026-10-25T10:18:00+05:30', bio: 'Researcher interested in public services, field interviews, and making complex systems easier to navigate.', location: 'Kochi, Kerala', rating: 4.8, ideas: 11, projects: 7, meetings: 42, wallet: 18450, totalEarnings: 74200, frozen: false, color: '#dce9c7' },
+  { id: 'u-design', username: 'arjun.mehta', name: 'Arjun Mehta', email: 'arjun@demo.mahi', role: 'designer', subRole: null, status: 'active', initials: 'AM', joinedAt: '2025-03-09', lastActive: '2026-10-25T09:56:00+05:30', bio: 'Product designer working across research synthesis, accessible interaction, and clear service journeys.', location: 'Ahmedabad, Gujarat', rating: 4.7, ideas: 4, projects: 9, meetings: 38, wallet: 12600, totalEarnings: 68500, frozen: false, color: '#f1dfbd' },
+  { id: 'u-dev-front', username: 'kabir.shah', name: 'Kabir Shah', email: 'kabir@demo.mahi', role: 'developer', subRole: 'frontend', status: 'active', initials: 'KS', joinedAt: '2025-02-21', lastActive: '2026-10-25T10:04:00+05:30', bio: 'Frontend developer focused on resilient interfaces, useful states, and maintainable design systems.', location: 'Mumbai, Maharashtra', rating: 4.9, ideas: 3, projects: 10, meetings: 45, wallet: 21200, totalEarnings: 91300, frozen: false, color: '#cdddf5' },
+  { id: 'u-dev-back', username: 'ishaan.kulkarni', name: 'Ishaan Kulkarni', email: 'ishaan@demo.mahi', role: 'developer', subRole: 'backend', status: 'active', initials: 'IK', joinedAt: '2025-04-14', lastActive: '2026-10-24T18:22:00+05:30', bio: 'Backend developer interested in reliable workflows, traceable decisions, and thoughtful API boundaries.', location: 'Nashik, Maharashtra', rating: 4.6, ideas: 2, projects: 8, meetings: 36, wallet: 15900, totalEarnings: 79000, frozen: false, color: '#d7e6e0' },
+  { id: 'u-producer', username: 'sana.iqbal', name: 'Sana Iqbal', email: 'sana@demo.mahi', role: 'producer', subRole: null, status: 'active', initials: 'SI', joinedAt: '2025-06-02', lastActive: '2026-10-25T08:47:00+05:30', bio: 'Producer and tester coordinating release readiness, acceptance checks, and actionable quality reports.', location: 'Bhopal, Madhya Pradesh', rating: 4.8, ideas: 5, projects: 9, meetings: 48, wallet: 9800, totalEarnings: 63400, frozen: false, color: '#f2d5d0' },
+  { id: 'u-research-2', username: 'neel.joshi', name: 'Neel Joshi', email: 'neel@demo.mahi', role: 'researcher', subRole: null, status: 'active', initials: 'NJ', joinedAt: '2026-01-10', lastActive: '2026-10-23T16:10:00+05:30', bio: 'Researcher exploring local commerce, cooperative tools, and neighborhood-scale services.', location: 'Jaipur, Rajasthan', rating: 4.4, ideas: 3, projects: 3, meetings: 16, wallet: 4200, totalEarnings: 18600, frozen: false, color: '#e5dcbf' },
+  { id: 'u-former', username: 'devika.rao', name: 'Devika Rao', email: 'devika@demo.mahi', role: 'designer', subRole: null, status: 'inactive', initials: 'DR', joinedAt: '2024-08-19', lastActive: '2026-08-31T17:30:00+05:30', bio: 'Former product designer. Historical contributions remain attributed and read-only.', location: 'Bengaluru, Karnataka', rating: 4.5, ideas: 6, projects: 5, meetings: 27, wallet: 7300, totalEarnings: 44900, frozen: true, color: '#deded8', exitedAt: '2026-08-31' }
 ];
 
 const projectSeeds = [
@@ -73,7 +73,7 @@ function buildTasks(project) {
     weight: index === 0 ? 18 : index === 8 ? 8 : 10,
     updatedAt: `2026-10-${String(Math.max(8, 24 - index)).padStart(2, '0')}T10:30:00+05:30`,
     completedAt: statuses[index] === 'DONE' ? `2026-10-${String(Math.max(8, 20 - index)).padStart(2, '0')}T16:00:00+05:30` : null,
-    deliverable: statuses[index] === 'DONE' ? `${blueprint.name} — reviewed handoff` : null
+    deliverable: statuses[index] === 'DONE' ? `${blueprint.name} — reviewed handoff` : blueprint.type === 'research' ? `${blueprint.name} — working handoff reference` : null
   }));
 }
 
@@ -137,9 +137,39 @@ const auditLogs = [
   { id: 'a10', userId: 'u-former', action: 'access_revoked', resource: 'user:u-former sessions revoked and login disabled', module: 'offboarding', severity: 'critical', at: '2026-08-31T17:30:00+05:30' }
 ];
 
+function usernameBase(value) {
+  return String(value || '').trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+}
+
+// Existing ids remain the canonical UIDs. Usernames are assigned once, persisted with
+// the member, and deterministically repaired only when legacy/duplicate records lack one.
+export function ensureMemberIdentities(users = []) {
+  const used = new Set();
+  users.forEach((user, index) => {
+    const base = usernameBase(user.username) || usernameBase(user.name) || `member.${index + 1}`;
+    let username = base; let suffix = 2;
+    while (used.has(username)) username = `${base}.${suffix++}`;
+    user.username = username; used.add(username);
+  });
+  return users;
+}
+
+export function createMemberIdentity(name, users = [], preferredId = null) {
+  let id = preferredId;
+  if (!id || users.some(user => user.id === id)) {
+    let sequence = users.length + 1;
+    do { id = `u-member-${String(sequence++).padStart(3, '0')}`; } while (users.some(user => user.id === id));
+  }
+  const base = usernameBase(name) || 'member';
+  let username = base; let suffix = 2;
+  const claimed = new Set(users.map(user => usernameBase(user.username)).filter(Boolean));
+  while (claimed.has(username)) username = `${base}.${suffix++}`;
+  return { id, username };
+}
+
 export function createInitialData() {
   const projects = projectSeeds.map(seed => ({ ...seed, tasks: buildTasks(seed) }));
-  return {
+  const data = {
     version: 1,
     users: structuredClone(users),
     projects,
@@ -161,14 +191,23 @@ export function createInitialData() {
       { id: 'w-088', userId: 'u-former', amount: 7300, status: 'PENDING', requestedAt: '2026-08-28T10:00:00+05:30', reviewedAt: null, reason: null }
     ],
     ledger: createLedger(),
+    revenueEvents: [
+      { id: 'rev-repair-2026-08', projectId: 'p-repair', amount: 36000, source: 'Community repair service pilot', eventDate: '2026-08-31', enteredBy: 'u-admin' },
+      { id: 'rev-repair-2026-09', projectId: 'p-repair', amount: 30000, source: 'Repair Circle operations', eventDate: '2026-09-30', enteredBy: 'u-admin' }
+    ],
+    aiConfig: { confidenceThreshold: 75, digestFrequencyHours: 24, features: { reply: true, meeting_summary: true, research_summary: true, idea_prescore: true, notification_digest: true, standup: true, task_breakdown: true } },
+    aiSuggestions: [],
+    aiInteractions: [],
+    standups: [],
+    uiPreferences: {},
     notifications: [
       { id: 'n1', userId: 'all', type: 'meeting', message: 'Idea review for Arogya Queue is scheduled for 4:00 PM today.', link: '#/app/meetings/m-clinic-review', readBy: [], at: '2026-10-25T09:40:00+05:30' },
       { id: 'n2', userId: 'u-dev-front', type: 'task', message: 'Research is ready. Frontend API Integration is available in Khet Price Brief.', link: '#/app/projects/p-khet', readBy: [], at: '2026-10-25T09:15:00+05:30' },
       { id: 'n3', userId: 'u-producer', type: 'task', message: 'Build ready: Full QA Testing can begin in Mess Mate.', link: '#/app/projects/p-mess', readBy: [], at: '2026-10-24T18:30:00+05:30' },
-      { id: 'n4', userId: 'u-admin', type: 'support', message: 'A high-priority project access ticket is waiting for review.', link: '#/superadmin/support', readBy: [], at: '2026-10-24T10:12:00+05:30' },
+      { id: 'n4', userId: 'u-admin', type: 'support', priority: 'critical', message: 'A high-priority project access ticket is waiting for review.', link: '#/superadmin/support', readBy: [], at: '2026-10-24T10:12:00+05:30' },
       { id: 'n5', userId: 'u-research', type: 'vote', message: 'Your idea “Clinic waiting, without the uncertainty” is open for team voting.', link: '#/app/ideas/i-clinic', readBy: ['u-research'], at: '2026-10-22T11:30:00+05:30' }
     ],
-    config: { ideaQuota: 2, quotaCycleDays: 7, votingWindowHours: 48, approvalThreshold: 70, quorumPercentage: 70, revenueSplitMonths: 5, ownerSplit: 50, teamSplit: 50, orgName: 'MAHI TECH GROUP', orgEmail: 'no-reply@mahitechgroup.com' },
+    config: { ideaQuota: 2, cornerQuotas: { researcher: 2, designer: 2, developer: 2, producer: 2, admin: 2 }, quotaCycleDays: 7, votingWindowHours: 48, approvalThreshold: 70, quorumPercentage: 70, revenueSplitMonths: 5, ownerSplit: 50, teamSplit: 50, orgName: 'MAHI TECH GROUP', orgEmail: 'no-reply@mahitechgroup.com' },
     performanceConfig: { tasks: 30, ideas: 25, voting: 20, meetings: 15, revenue: 10 },
     performance: [
       { userId: 'u-dev-front', score: 92.4, tasks: 96, ideas: 68, voting: 95, meetings: 90, revenue: 94, trend: 'improving', monthly: [58, 65, 69, 76, 84, 92] },
@@ -192,6 +231,8 @@ export function createInitialData() {
     },
     auditLogs: structuredClone(auditLogs)
   };
+  ensureMemberIdentities(data.users);
+  return data;
 }
 
 export const signingDocuments = {

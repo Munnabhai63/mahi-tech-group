@@ -2130,7 +2130,7 @@ body.menu-open .mobile-nav {
   border-top: 1px solid #51514a;
   color: var(--paper);
   font-family: var(--font-display);
-  font-size: clamp(28px, 10.2vw, 152px);
+  font-size: clamp(75px, 12.3vw, 172px);
   font-weight: 800;
   letter-spacing: -0.085em;
   line-height: 0.78;
@@ -3040,7 +3040,7 @@ body.menu-open .mobile-nav {
 
   .footer__wordmark {
     margin-top: 50px;
-    font-size: clamp(28px, 10.2vw, 68px);
+    font-size: 14.5vw;
   }
 
   .footer__bottom {

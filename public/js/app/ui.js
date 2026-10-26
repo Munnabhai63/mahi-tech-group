@@ -5,10 +5,12 @@ export const badge = (label, tone = statusTone(label), extra = '') => `<span cla
 export const plainBadge = (label, tone = 'neutral') => `<span class="badge badge--${tone} badge--no-dot">${escapeHTML(label)}</span>`;
 export function avatar(user, size = '', status = false) {
   if (!user) return '<span class="avatar avatar--sm">?</span>';
-  return `<span class="avatar ${size ? `avatar--${size}` : ''}" style="--avatar-bg:${user.color || '#dfe4d4'}" aria-hidden="true">${escapeHTML(user.initials)}${status ? '<i class="avatar__status"></i>' : ''}</span>`;
+  const image = user.photoData ? `<img src="${escapeHTML(user.photoData)}" alt="">` : escapeHTML(user.initials);
+  return `<span class="avatar ${size ? `avatar--${size}` : ''}" style="--avatar-bg:${user.color || '#dfe4d4'}" aria-hidden="true">${image}${status ? '<i class="avatar__status"></i>' : ''}</span>`;
 }
 export function person(user, subtitle = '', size = 'sm') {
-  return `<div class="person">${avatar(user, size)}<div class="person__meta"><strong>${escapeHTML(user?.name || 'Unassigned')}</strong><span>${escapeHTML(subtitle || (user ? titleCase(user.role) : 'No assignee'))}</span></div></div>`;
+  const former = user?.status === 'inactive';
+  return `<div class="person">${avatar(user, size)}<div class="person__meta"><strong>${escapeHTML(user?.name || 'Unassigned')}${former ? '<span class="former-inline">Former member</span>' : ''}</strong><span>${escapeHTML(subtitle || (user ? titleCase(user.role) : 'No assignee'))}</span></div></div>`;
 }
 export const progress = (value, label = '', tone = '') => `${label ? `<div class="progress-label"><span>${escapeHTML(label)}</span><strong>${Number(value)}%</strong></div>` : ''}<div class="progress ${tone ? `progress--${tone}` : ''}" role="progressbar" aria-label="${escapeHTML(label || 'Progress')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Number(value)}"><span style="width:${Math.max(0, Math.min(100, Number(value) || 0))}%"></span></div>`;
 export function statCard(label, value, note, iconName = 'activity', accent = false) {
@@ -184,3 +186,4 @@ export function renderBackendError(title = 'Backend Service Unavailable', messag
     </section>
   `;
 }
+

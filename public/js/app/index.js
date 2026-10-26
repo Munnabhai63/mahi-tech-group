@@ -1,4 +1,6 @@
-import { state, currentUser, setPreview } from './store.js';
+import { state, currentUser, setPreview, syncDataFromStorage, persistData } from './store.js';
+import { getAuthToken } from './api.js';
+import { notificationPriority, markNotificationRead } from './notifications.js';
 import { icon, notice, pageHead, emptyState, closeDialog, closeDrawer, toast } from './ui.js';
 import { shellHTML, mountShell, openNotificationsDrawer, openQuickSearch } from './shell.js';
 import { renderLogin, renderRoleSelection, renderSignup, renderApplicationStatus, renderAbout, renderContact, renderLegal } from './views/public.js';
@@ -10,6 +12,7 @@ import { renderAdminDashboard, renderAdminApplications, renderAdminMembers, rend
 import { renderDisputes } from './views/disputes.js';
 import { renderSuperadminDashboard, renderSuperadminMembers, renderSuperadminPerformance, renderSuperadminSupport, renderSuperadminIdeas, renderSuperadminGateway, renderSuperadminGovernance, renderSuperadminAudit } from './views/superadmin.js';
 import { renderSigning } from './views/signing.js';
+import { renderAiCenter } from './views/ai-center.js';
 
 const app = document.querySelector('#app');
 let cleanup = null;
@@ -18,7 +21,7 @@ let rendering = false;
 
 function route(path, params) {
   if (path === '/login') return renderLogin();
-  if (path === '/role-selection') return renderRoleSelection();
+  if (path === '/role-selection') { location.hash = '#/login'; return renderLogin(); }
   if (path === '/signup') return renderSignup();
   if (path === '/application-status') return renderApplicationStatus(params);
   if (path === '/about') return renderAbout();
@@ -30,6 +33,7 @@ function route(path, params) {
   if (path === '/app/workspace') return renderWorkspace();
   if (path === '/app/tasks') return renderTasks();
   if (path === '/app/notifications') return renderNotifications();
+  if (path === '/app/ai') return renderAiCenter();
   if (path === '/app/projects') return renderProjects();
   let match = path.match(/^\/app\/projects\/([^/]+)$/); if (match) return renderProjectDetail(match[1]);
   if (path === '/app/ideas') return renderIdeas();
@@ -49,12 +53,12 @@ function route(path, params) {
 
   if (path === '/admin') return renderAdminDashboard();
   if (path === '/admin/applications') return renderAdminApplications();
-  if (path === '/admin/members') return renderAdminMembers();
+  if (path === '/admin/members') return renderAdminMembers(params);
   if (path === '/admin/ideas') return renderAdminIdeas();
   if (path === '/admin/projects') return renderAdminProjects();
-  if (path === '/admin/revenue') return renderAdminRevenue();
-  if (path === '/admin/offboarding') return renderAdminOffboarding();
-  if (path === '/admin/config') return renderAdminConfig();
+  if (path === '/admin/revenue') return renderAdminRevenue(params);
+  if (path === '/admin/offboarding') return renderAdminOffboarding(params);
+  if (path === '/admin/config') return renderAdminConfig(params);
   if (path === '/admin/meetings') return renderAdminMeetings();
   if (path === '/admin/audit') return renderAdminAudit();
 
@@ -72,7 +76,7 @@ function route(path, params) {
   if (match) { if (match[3] && !params.has('token')) params.set('token', match[3]); return renderSigning(match[1], match[2], params); }
   return { html: `${pageHead('404 · Route not found', 'This screen is not in the application map.', 'Use the navigation or quick search to return to an implemented workspace screen.')}${emptyState('Unknown application route', 'The route may be incomplete or no longer available.', '<a class="btn btn--primary" href="#/app/dashboard">Return to dashboard</a>', 'search')}` };
 }
-function isPublic(path) { return ['/login', '/role-selection', '/signup', '/application-status', '/about', '/contact', '/mentorship', '/legal/terms', '/legal/privacy'].includes(path); }
+function isPublic(path) { return ['/login', '/signup', '/application-status', '/about', '/contact', '/mentorship', '/legal/terms', '/legal/privacy'].includes(path); }
 function isSigning(path) { return path.startsWith('/sign/'); }
 function render() {
   if (rendering) return;
@@ -81,8 +85,9 @@ function render() {
     if (!location.hash) { const user = currentUser(); location.hash = user ? (user.role === 'admin' ? '#/admin' : user.status === 'inactive' ? '#/app/former-member' : '#/app/dashboard') : '#/login'; return; }
     const raw = location.hash.slice(1); const [rawPath, query = ''] = raw.split('?'); const path = (`/${rawPath.replace(/^\/+/, '')}`).replace(/\/$/, '') || '/'; const params = new URLSearchParams(query);
     const user = currentUser();
-    if (!isPublic(path) && !isSigning(path) && !user) { state.ui.returnTo = location.hash; location.hash = '#/login'; return; }
-    if (user && (path.startsWith('/admin') || path.startsWith('/superadmin')) && user.role !== 'admin') { toast('Admin operations require the Admin demo role.', 'error'); location.hash = user.status === 'inactive' ? '#/app/former-member' : '#/app/dashboard'; return; }
+    const token = getAuthToken();
+    if (!isPublic(path) && !isSigning(path) && (!user || !token)) { state.ui.returnTo = location.hash; location.hash = '#/login'; return; }
+    if (user && (path.startsWith('/admin') || path.startsWith('/superadmin')) && user.role !== 'admin') { toast('Admin operations require the Admin role.', 'error'); location.hash = user.status === 'inactive' ? '#/app/former-member' : '#/app/dashboard'; return; }
     if (user?.status === 'inactive' && path.startsWith('/app') && !['/app/former-member', `/app/members/${user.id}`, '/app/wallet', '/app/notifications'].includes(path)) { location.hash = '#/app/former-member'; return; }
     if (typeof cleanup === 'function') { try { cleanup(); } catch (error) { console.warn('View cleanup failed', error); } }
     cleanup = null; closeDialog(); closeDrawer(false); state.ui.sidebarOpen = false;
@@ -107,6 +112,10 @@ function render() {
 window.addEventListener('hashchange', render);
 window.addEventListener('app:refresh', render);
 window.addEventListener('backend-error', render);
+window.addEventListener('storage', event => {
+  if (event.key !== 'mtg-frontend-data-v1' || !event.newValue) return;
+  if (syncDataFromStorage()) { toast('A local update from another tab was synchronized.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); }
+});
 document.addEventListener('click', event => {
   const skipLink = event.target.closest('.skip-link');
   if (skipLink) { event.preventDefault(); const main = document.querySelector('#main-content'); main?.focus({ preventScroll: true }); main?.scrollIntoView({ block: 'start' }); return; }
@@ -115,6 +124,11 @@ document.addEventListener('click', event => {
   if (action === 'clear-preview') { setPreview('normal'); window.dispatchEvent(new CustomEvent('app:refresh')); }
   if (action === 'retry-route') { state.live.backendError = false; window.dispatchEvent(new CustomEvent('app:refresh')); }
   if (event.target.closest('[data-open-notifications]')) openNotificationsDrawer();
+  const notificationLink = event.target.closest('[data-notification-link]');
+  if (notificationLink) {
+    const note = state.data.notifications.find(item => item.id === notificationLink.dataset.notificationLink);
+    if (note && notificationPriority(note) === 'normal') { markNotificationRead(note); persistData(); }
+  }
   const anchor = event.target.closest('a[href]');
   if (anchor?.closest('#app-dialog')) closeDialog();
   if (anchor?.closest('#drawer-root')) closeDrawer(false);

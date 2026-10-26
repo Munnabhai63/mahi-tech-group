@@ -17,6 +17,7 @@ import {
 import { openOverrideDialog } from './ideas.js';
 import { openFinalReview, openTaskDialog } from './projects.js';
 import { openNotesReview } from './meetings.js';
+import { renderAiSettings, bindAiSettings } from '../ai.js';
 
 function adminHead(title, description, elevated = false) {
   return `<section class="admin-hero ${elevated ? 'admin-hero--elevated' : ''}"><div><div class="eyebrow" style="color:#b9addf">${elevated ? 'Elevated Admin zone' : 'Admin operations'}</div><h1>${title}</h1><p>${description}</p></div><div class="admin-hero__status">${icon('shield')} Admin access · live backend</div></section>`;
@@ -25,7 +26,61 @@ function adminStats() {
   const active = state.data.users.filter(user => user.status === 'active');
   const pendingApps = state.data.applications.filter(app => app.status === 'pending');
   const pendingPayouts = state.data.withdrawals.filter(item => item.status === 'PENDING');
-  return `<section class="stat-grid">${statCard('Active members', active.length, `${state.data.users.filter(user => user.status === 'inactive').length} former member records`, 'users')}${statCard('Pending applications', pendingApps.length, 'Admin review queue', 'user-plus', pendingApps.length > 0)}${statCard('Active projects', state.data.projects.filter(project => project.stage !== 'LIVE').length, `${state.data.projects.filter(project => project.stage === 'ADMIN_REVIEW').length} at final review`, 'folder')}${statCard('Pending payouts', pendingPayouts.length, formatINR(pendingPayouts.reduce((sum, item) => sum + item.amount, 0)), 'wallet')}</section>`;
+  return `<section class="stat-grid">${statCard('Active members', active.length, `${state.data.users.filter(user => user.status === 'inactive').length} former member records`, 'users')}${statCard('Pending applications', pendingApps.length, 'Admin review queue', 'user-plus', pendingApps.length > 0)}${statCard('Active projects', state.data.projects.filter(project => project.stage !== 'LIVE').length, `${state.data.projects.filter(project => project.stage === 'ADMIN_REVIEW').length} at final review`, 'folder')}${statCard('Pending payouts', pendingPayouts.length, formatINR(pendingPayouts.reduce((sum, item) => sum + item.amount, 0)), 'wallet')}</section>`;}
+
+function broadcastRecipients(audience) {
+  const active = state.data.users.filter(user => user.status === 'active');
+  if (audience === 'all') return active;
+  if (audience.startsWith('corner:')) return active.filter(user => user.role === audience.slice(7));
+  if (audience.startsWith('user:')) return active.filter(user => user.id === audience.slice(5));
+  return [];
+}
+
+function openAdminBroadcastNotification() {
+  if (currentUser()?.role !== 'admin') return toast('Only Admin can broadcast notifications.', 'error');
+  const active = state.data.users.filter(user => user.status === 'active');
+  openDialog({
+    title: 'Broadcast Notification',
+    subtitle: 'Admin broadcast dispatch',
+    content: `<form id="admin-broadcast-form" class="stack" novalidate><div class="field"><label for="broadcast-audience">Audience</label><select class="select" id="broadcast-audience" name="audience" required><option value="all">All active users</option>${['researcher', 'developer', 'producer', 'admin'].map(role => `<option value="corner:${role}">${titleCase(role)} corner · active users</option>`).join('')}<optgroup label="Individual active user">${active.map(user => `<option value="user:${user.id}">${escapeHTML(user.name)} · ${titleCase(user.role)}</option>`).join('')}</optgroup></select></div><div class="field"><label for="broadcast-message">Message (required)</label><textarea class="textarea" id="broadcast-message" name="message" required maxlength="500" placeholder="Write the in-app notification message."></textarea><span class="field-hint">Maximum 500 characters.</span></div><section class="broadcast-preview" aria-labelledby="broadcast-preview-title"><div class="eyebrow">Live preview</div><h3 id="broadcast-preview-title">Notification Preview</h3><div id="broadcast-preview-content" class="broadcast-preview__content" aria-live="polite"></div></section></form>`,
+    footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="review-admin-broadcast">Preview & send broadcast</button>',
+    onMount(dialog) {
+      const form = dialog.querySelector('#admin-broadcast-form');
+      const preview = dialog.querySelector('#broadcast-preview-content');
+      const updatePreview = () => {
+        const values = formValues(form);
+        const recipients = broadcastRecipients(values.audience || '');
+        const option = dialog.querySelector('#broadcast-audience').selectedOptions[0];
+        preview.innerHTML = `<div class="key-value"><span>Audience</span><strong>${escapeHTML(option?.textContent || 'Not selected')}</strong></div><div class="key-value"><span>Recipients</span><strong>${recipients.length}</strong></div><div class="broadcast-preview__message">${values.message?.trim() ? escapeHTML(values.message.trim()) : '<span class="muted">Your message preview appears here.</span>'}</div>`;
+      };
+      dialog.querySelector('#broadcast-audience').addEventListener('change', updatePreview);
+      dialog.querySelector('#broadcast-message').addEventListener('input', updatePreview);
+      updatePreview();
+      form.addEventListener('submit', event => { event.preventDefault(); dialog.querySelector('#review-admin-broadcast').click(); });
+      dialog.querySelector('#review-admin-broadcast').addEventListener('click', async () => {
+        const values = formValues(form);
+        const message = values.message?.trim() || '';
+        const recipients = broadcastRecipients(values.audience || '');
+        if (currentUser()?.role !== 'admin') return setFormError(form, 'Only Admin can broadcast notifications.');
+        if (!message) return setFormError(form, 'A broadcast message is required.', 'message');
+        if (message.length > 500) return setFormError(form, 'Broadcast message must be 500 characters or fewer.', 'message');
+        if (!recipients.length) return setFormError(form, 'Select an audience with at least one active recipient.', 'audience');
+        const option = dialog.querySelector('#broadcast-audience').selectedOptions[0];
+        if (!await confirmDialog({
+          title: 'Confirm Broadcast Notification',
+          message: `Send notification to ${recipients.length} recipient${recipients.length === 1 ? '' : 's'}?`,
+          detail: `<div class="stack"><div><strong>Audience:</strong> ${escapeHTML(option?.textContent || values.audience)}</div><div class="broadcast-preview__message">${escapeHTML(message)}</div></div>`,
+          confirmLabel: 'Send broadcast'
+        })) return;
+        const confirmedRecipients = broadcastRecipients(values.audience || '');
+        confirmedRecipients.forEach(user => addNotification(user.id, 'admin_broadcast', message, '#/app/notifications'));
+        addAudit('admin_notification_broadcast', `audience:${values.audience}; recipients:${confirmedRecipients.length}`, 'notifications');
+        persistData();
+        closeDialog();
+        toast(`Broadcast notification sent to ${confirmedRecipients.length} user${confirmedRecipients.length === 1 ? '' : 's'}.`, 'success');
+      });
+    }
+  });
 }
 
 export function renderAdminDashboard() {
@@ -39,12 +94,11 @@ export function renderAdminDashboard() {
       }
     };
   }
-
   const recent = state.data.auditLogs.slice(0, 6);
   const offboarding = state.data.offboarding.slice(0, 3);
   const content = `${adminStats()}<div class="admin-section-label"><h2>Queues that need a decision</h2><span></span></div><div class="grid-3"><a class="metric-alert" href="#/admin/applications"><span class="metric-alert__icon">${icon('user-plus')}</span><div><strong>${state.data.applications.filter(app => app.status === 'pending').length}</strong><span>Applications to review</span></div>${icon('chevron-right', 'icon--sm')}</a><a class="metric-alert" href="#/admin/projects"><span class="metric-alert__icon">${icon('eye')}</span><div><strong>${state.data.projects.filter(project => project.stage === 'ADMIN_REVIEW').length}</strong><span>Final review gates</span></div>${icon('chevron-right', 'icon--sm')}</a><a class="metric-alert" href="#/admin/revenue"><span class="metric-alert__icon">${icon('wallet')}</span><div><strong>${state.data.withdrawals.filter(item => item.status === 'PENDING').length}</strong><span>Manual payout reviews</span></div>${icon('chevron-right', 'icon--sm')}</a></div><div class="grid-main-side mt-3"><section class="card card--flush"><div class="card-head"><div><h2>Recent operational activity</h2><p>Latest audit events across the organization.</p></div><a class="btn btn--ghost btn--sm" href="#/admin/audit">Full access log ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body">${recent.map(log => `<div class="activity-item"><span class="activity-item__dot">${icon(log.severity === 'critical' ? 'alert' : log.module === 'meetings' ? 'video' : log.module === 'wallet' ? 'wallet' : 'activity')}</span><div><p><strong>${titleCase(log.action)}</strong> · ${escapeHTML(log.resource)}</p><time>${formatDateTime(log.at)} · ${escapeHTML(getUser(log.userId)?.name || 'System')}</time></div></div>`).join('')}</div></section><aside class="stack"><section class="card card--flush"><div class="card-head"><div><h2>Recent offboarding</h2><p>Permanent exit records.</p></div></div><div class="card-body">${offboarding.length ? offboarding.map(record => { const user = getUser(record.userId); return `<a class="list-row list-row--button" href="#/admin/offboarding"><div class="list-row__main">${person(user, `Exited ${formatDate(record.completedAt)}`)}</div>${badge(record.status)}</a>`; }).join('') : emptyState('No offboarding records', 'Member exits will appear here.', '', 'users')}</div></section><section class="card card--pad"><div class="eyebrow">Elevated operations</div><h3 class="mt-1" style="font:600 18px var(--font-display)">Performance, disputes & governance</h3><p class="small muted mt-1">Enter the Admin-only elevated zone for directory exports, internal support notes, gateway controls, and unified audit.</p><a class="btn btn--primary btn--full mt-2" href="#/superadmin">Open elevated zone ${icon('arrow-up-right')}</a></section></aside></div>`;
   return {
-    html: `${adminHead('Operational control, with a record.', 'Member, project, financial, and governance queues across MAHI TECH GROUP.')}${withPreview(content, { title: 'No Admin operations in this preview', description: 'The empty-state preview hides queues, projects, payouts, and logs.', icon: 'shield' })}`,
+    html: `${adminHead('Operational control, with a record.', 'Member, project, financial, and governance queues across MAHI TECH GROUP.')}<div class="dashboard-actions mb-2"><button class="btn btn--primary" id="admin-broadcast-notification">${icon('bell')} Broadcast Notification</button></div>${withPreview(content, { title: 'No Admin operations in this preview', description: 'The empty-state preview hides queues, projects, payouts, and logs.', icon: 'shield' })}`,
     mount() {
       fetchAdminApplications();
       fetchAdminMembers();
@@ -666,13 +720,17 @@ function openWalletSettlement(userId) {
   });
 }
 
-export function renderAdminConfig() {
+export function renderAdminConfig(params = new URLSearchParams()) {
   const config = state.data.config;
-  const content = `<form id="config-form"><div class="config-grid"><section class="config-card"><div class="config-card__head"><span class="config-card__icon">${icon('bulb')}</span><div><h3>Idea quota</h3><p>Submission limit and rolling window. Drafts do not consume quota.</p></div></div><div class="field"><label for="cfg-quota">Idea quota limit</label><input class="input" id="cfg-quota" name="ideaQuota" type="number" min="1" step="1" value="${config.ideaQuota}"></div><div class="field"><label for="cfg-quota-days">Quota window (days)</label><input class="input" id="cfg-quota-days" name="quotaCycleDays" type="number" min="1" step="1" value="${config.quotaCycleDays}"></div></section><section class="config-card"><div class="config-card__head"><span class="config-card__icon">${icon('vote')}</span><div><h3>Voting gate</h3><p>Review window, green-vote threshold, and participation quorum.</p></div></div><div class="field"><label for="cfg-window">Voting window (hours)</label><input class="input" id="cfg-window" name="votingWindowHours" type="number" min="1" step="1" value="${config.votingWindowHours}"></div><div class="field"><label for="cfg-approval">Approval threshold (% green)</label><input class="input" id="cfg-approval" name="approvalThreshold" type="number" min="50" max="100" step="0.1" value="${config.approvalThreshold}"></div><div class="field"><label for="cfg-quorum">Quorum (% participation)</label><input class="input" id="cfg-quorum" name="quorumPercentage" type="number" min="1" max="100" step="0.1" value="${config.quorumPercentage}"></div></section><section class="config-card"><div class="config-card__head"><span class="config-card__icon">${icon('wallet')}</span><div><h3>Revenue split duration</h3><p>Initial Owner 50% / Team 50% period before Team 100%.</p></div></div><div class="field"><label for="cfg-revenue">Duration (1–36 months)</label><input class="input" id="cfg-revenue" name="revenueSplitMonths" type="number" min="1" max="36" step="1" value="${config.revenueSplitMonths}"></div><div class="key-value mt-2"><span>Initial split</span><strong>Owner 50% / Team 50%</strong></div><div class="key-value"><span>After boundary</span><strong>Team 100%</strong></div></section><section class="config-card"><div class="config-card__head"><span class="config-card__icon">${icon('video')}</span><div><h3>Meeting provider</h3><p>Domain used by the meeting provider.</p></div></div><div class="field"><label for="cfg-jitsi">Jitsi domain</label><input class="input" id="cfg-jitsi" name="jitsiDomain" value="${escapeHTML(config.jitsiDomain || 'meet.jit.si')}"></div><div class="key-value mt-2"><span>Organization ID</span><strong>DEFAULT_ORG</strong></div><div class="key-value"><span>Meeting scheduling</span><strong>Admin only</strong></div></section></div><div class="form-actions"><button class="btn btn--primary" type="submit">Save configuration</button></div></form>${notice('Configuration changes are persisted directly to the backend system config.', 'info')}`;
+  const aiTab = params?.get?.('tab') === 'ai';
+  const general = `<form id="config-form"><div class="config-grid"><section class="config-card"><div class="config-card__head"><span class="config-card__icon">${icon('bulb')}</span><div><h3>Idea quota</h3><p>Submission limit and rolling window. Drafts do not consume quota.</p></div></div><div class="field"><label for="cfg-quota">Idea quota limit</label><input class="input" id="cfg-quota" name="ideaQuota" type="number" min="1" step="1" value="${config.ideaQuota}"></div><div class="field"><label for="cfg-quota-days">Quota window (days)</label><input class="input" id="cfg-quota-days" name="quotaCycleDays" type="number" min="1" step="1" value="${config.quotaCycleDays}"></div></section><section class="config-card"><div class="config-card__head"><span class="config-card__icon">${icon('vote')}</span><div><h3>Voting gate</h3><p>Review window, green-vote threshold, and participation quorum.</p></div></div><div class="field"><label for="cfg-window">Voting window (hours)</label><input class="input" id="cfg-window" name="votingWindowHours" type="number" min="1" step="1" value="${config.votingWindowHours}"></div><div class="field"><label for="cfg-approval">Approval threshold (% green)</label><input class="input" id="cfg-approval" name="approvalThreshold" type="number" min="50" max="100" step="0.1" value="${config.approvalThreshold}"></div><div class="field"><label for="cfg-quorum">Quorum (% participation)</label><input class="input" id="cfg-quorum" name="quorumPercentage" type="number" min="1" max="100" step="0.1" value="${config.quorumPercentage}"></div></section><section class="config-card"><div class="config-card__head"><span class="config-card__icon">${icon('wallet')}</span><div><h3>Revenue split duration</h3><p>Initial Owner 50% / Team 50% period before Team 100%.</p></div></div><div class="field"><label for="cfg-revenue">Duration (1–36 months)</label><input class="input" id="cfg-revenue" name="revenueSplitMonths" type="number" min="1" max="36" step="1" value="${config.revenueSplitMonths}"></div><div class="key-value mt-2"><span>Initial split</span><strong>Owner 50% / Team 50%</strong></div><div class="key-value"><span>After boundary</span><strong>Team 100%</strong></div></section><section class="config-card"><div class="config-card__head"><span class="config-card__icon">${icon('video')}</span><div><h3>Meeting provider</h3><p>Domain used by the meeting provider.</p></div></div><div class="field"><label for="cfg-jitsi">Jitsi domain</label><input class="input" id="cfg-jitsi" name="jitsiDomain" value="${escapeHTML(config.jitsiDomain || 'meet.jit.si')}"></div><div class="key-value mt-2"><span>Organization ID</span><strong>DEFAULT_ORG</strong></div><div class="key-value"><span>Meeting scheduling</span><strong>Admin only</strong></div></section></div><div class="form-actions"><button class="btn btn--primary" type="submit">Save configuration</button></div></form>${notice('Configuration changes are persisted directly to the backend system config.', 'info')}`;
+  const content = `<div data-tab-scope><div class="tabs" data-tabs role="tablist" aria-label="Configuration sections"><button class="tab" data-tab="general" aria-selected="${!aiTab}">General</button><button class="tab" data-tab="ai" aria-selected="${aiTab}">AI Settings</button></div><section data-tab-panel="general" ${aiTab ? 'hidden' : ''}>${general}</section><section data-tab-panel="ai" ${aiTab ? '' : 'hidden'}>${renderAiSettings()}</section></div>`;
   return {
     html: `${adminHead('System configuration', 'Quota, voting, revenue, and meeting parameters with explicit validation.')}<div class="page-head page-head--compact"><div class="page-head__copy"><div class="eyebrow">Operational parameters</div><h1>Configuration</h1></div></div>${withPreview(content)}`,
     mount() {
       fetchAdminConfig().catch(() => {});
+      bindTabs(document);
+      bindAiSettings();
       document.querySelector('#config-form')?.addEventListener('submit', async event => {
         event.preventDefault();
         const form = event.currentTarget;

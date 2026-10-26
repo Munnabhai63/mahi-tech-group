@@ -820,7 +820,7 @@
 .footer__wordmark {
   margin: 0 0 62px;
   color: var(--paper);
-  font-size: clamp(28px, 10.2vw, 152px);
+  font-size: clamp(82px, 14.2vw, 215px);
   line-height: 0.72;
   white-space: nowrap;
 }
@@ -1457,7 +1457,7 @@
 
   .footer__wordmark {
     margin-bottom: 48px;
-    font-size: clamp(28px, 10.2vw, 68px);
+    font-size: 14.5vw;
   }
 
   .footer__main {

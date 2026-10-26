@@ -2,10 +2,11 @@ import { roleMeta } from './data.js';
 import { state, currentUser, getUser, userTasks, pendingVotesFor, visibleNotifications, unreadNotifications, persistData, logout, setPreview, formatDateTime, relativeTime, escapeHTML, titleCase } from './store.js';
 import { icon, badge, avatar, person, openDialog, closeDialog, openDrawer, closeDrawer, toast } from './ui.js';
 import { api, getAuthToken } from './api.js';
+import { groupedNotificationHTML, markNotificationRead, markNormalNotificationsViewed } from './notifications.js';
 
 const memberNav = [
   ['Workspace', [
-    ['#/app/dashboard', 'Dashboard', 'grid'], ['#/app/workspace', 'My discipline', 'briefcase'], ['#/app/tasks', 'Task queue', 'check-square', 'tasks']
+    ['#/app/dashboard', 'Dashboard', 'grid'], ['#/app/workspace', 'My discipline', 'briefcase'], ['#/app/tasks', 'Task queue', 'check-square', 'tasks'], ['#/app/ai', 'AI review', 'activity']
   ]],
   ['Collaboration', [
     ['#/app/projects', 'Projects', 'folder'], ['#/app/ideas', 'Ideas', 'bulb'], ['#/app/voting', 'Voting', 'vote', 'votes'], ['#/app/meetings', 'Meetings', 'video']
@@ -53,7 +54,7 @@ function navigation(path) {
 }
 function titleFor(path) {
   const exact = {
-    '/app/dashboard': 'Dashboard', '/app/workspace': 'My discipline', '/app/tasks': 'Task queue', '/app/projects': 'Project pipeline', '/app/ideas': 'Ideation', '/app/ideas/new': 'Idea editor', '/app/voting': 'Voting queue', '/app/meetings': 'Meetings', '/app/notifications': 'Notifications', '/app/support': 'Member support', '/app/profile': 'My profile', '/app/wallet': 'Wallet & settlements', '/app/settings': 'Settings', '/app/former-member': 'Former-member history',
+    '/app/dashboard': 'Dashboard', '/app/workspace': 'My discipline', '/app/tasks': 'Task queue', '/app/ai': 'AI review center', '/app/projects': 'Project pipeline', '/app/ideas': 'Ideation', '/app/ideas/new': 'Idea editor', '/app/voting': 'Voting queue', '/app/meetings': 'Meetings', '/app/notifications': 'Notifications', '/app/support': 'Member support', '/app/profile': 'My profile', '/app/wallet': 'Wallet & settlements', '/app/settings': 'Settings', '/app/former-member': 'Former-member history',
     '/admin': 'Admin dashboard', '/admin/applications': 'Applications', '/admin/members': 'Member administration', '/admin/ideas': 'Idea governance', '/admin/projects': 'Project gates', '/admin/revenue': 'Revenue & payouts', '/admin/offboarding': 'Offboarding', '/admin/config': 'Configuration', '/admin/meetings': 'Meeting administration', '/admin/audit': 'Access log',
     '/superadmin': 'Elevated overview', '/superadmin/members': 'Member intelligence', '/superadmin/performance': 'Performance intelligence', '/superadmin/support': 'Support operations', '/superadmin/ideas': 'Ideation controls', '/superadmin/disputes': 'Disputes & waivers', '/superadmin/gateway': 'Gateway controls', '/superadmin/governance': 'Data governance', '/superadmin/audit': 'Unified audit'
   };
@@ -100,30 +101,37 @@ export function mountShell(path) {
 }
 export function openNotificationsDrawer() {
   const user = currentUser(); if (!user) return; const notes = visibleNotifications();
-  openDrawer({ title: 'Notifications', subtitle: `${unreadNotifications().length} unread · local demo updates`, content: `${notes.length ? notes.map(note => { const unread = !note.readBy.includes(user.id); return `<article class="notification-item ${unread ? 'is-unread' : ''}"><span class="notification-item__icon">${icon(note.type === 'meeting' ? 'video' : note.type === 'vote' ? 'vote' : note.type === 'support' ? 'support' : note.type === 'signature' ? 'pen' : 'check-square')}</span><div class="list-row__main"><p>${escapeHTML(note.message)}</p><time title="${formatDateTime(note.at)}">${relativeTime(note.at)}</time><div class="cluster mt-1"><a class="link-btn small" href="${note.link}">Open related view</a>${unread ? `<button class="link-btn small" data-drawer-read="${note.id}">Mark read</button>` : ''}</div></div></article>`; }).join('') : '<div class="empty-state"><h3>No notifications</h3><p>Your local workspace is up to date.</p></div>'}`, footer: `<a class="btn btn--outline" href="#/app/notifications">Open full inbox</a><button class="btn btn--primary" id="drawer-read-all" ${unreadNotifications().length ? '' : 'disabled'}>Mark all read</button>`, onMount(drawer) {
-    drawer.querySelectorAll('[data-drawer-read]').forEach(button => button.addEventListener('click', async () => {
-      const noteId = button.dataset.drawerRead;
-      if (getAuthToken()) {
-        try { await api.patch(`/api/notifications/${noteId}/read`); } catch (e) {}
-      }
-      const note = notes.find(item => item.id === noteId);
-      if (note && !note.readBy.includes(user.id)) note.readBy.push(user.id);
-      persistData();
-      closeDrawer();
-      toast('Notification marked read.', 'info');
-      window.dispatchEvent(new CustomEvent('app:refresh'));
-    }));
-    drawer.querySelector('#drawer-read-all')?.addEventListener('click', async () => {
-      if (getAuthToken()) {
-        try { await api.post('/api/notifications/mark-all-read'); } catch (e) {}
-      }
-      notes.forEach(note => { if (!note.readBy.includes(user.id)) note.readBy.push(user.id); });
-      persistData();
-      closeDrawer();
-      toast('All notifications marked read.', 'info');
-      window.dispatchEvent(new CustomEvent('app:refresh'));
-    });
-  } });
+  openDrawer({
+    title: 'Notifications',
+    subtitle: `${unreadNotifications().length} unread · Today / Earlier`,
+    content: `${notes.length ? groupedNotificationHTML(notes, user, { drawer: true }) : '<div class="empty-state"><h3>No notifications</h3><p>Your workspace is up to date.</p></div>'}`,
+    footer: `<a class="btn btn--outline" href="#/app/notifications">Open full inbox</a><button class="btn btn--primary" id="drawer-read-all" ${unreadNotifications().length ? '' : 'disabled'}>Mark all read</button>`,
+    onMount(drawer) {
+      drawer.querySelectorAll('[data-drawer-read]').forEach(button => button.addEventListener('click', async () => {
+        const noteId = button.dataset.drawerRead;
+        if (getAuthToken()) {
+          try { await api.patch(`/api/notifications/${noteId}/read`); } catch (e) {}
+        }
+        const note = notes.find(item => item.id === noteId);
+        markNotificationRead(note, user);
+        persistData();
+        closeDrawer();
+        toast('Notification marked read.', 'info');
+        window.dispatchEvent(new CustomEvent('app:refresh'));
+      }));
+      drawer.querySelector('#drawer-read-all')?.addEventListener('click', async () => {
+        if (getAuthToken()) {
+          try { await api.post('/api/notifications/mark-all-read'); } catch (e) {}
+        }
+        notes.forEach(note => markNotificationRead(note, user));
+        persistData();
+        closeDrawer();
+        toast('All notifications marked read.', 'info');
+        window.dispatchEvent(new CustomEvent('app:refresh'));
+      });
+      markNormalNotificationsViewed(user);
+    }
+  });
 }
 function openAccountDrawer() {
   const user = currentUser();
@@ -131,13 +139,13 @@ function openAccountDrawer() {
   openDrawer({
     title: token ? 'User Account' : 'Demo account',
     subtitle: token ? 'Authenticated workspace session' : 'Local identity and workspace areas',
-    content: `<section class="card card--pad">${person(user, user.email, '')}<div class="cluster mt-2">${badge(user.status)}${badge(user.role, 'neutral')}${user.frozen ? badge('wallet frozen', 'danger') : ''}</div><dl class="definition-list mt-3"><dt>Session</dt><dd>${token ? 'Authenticated JWT' : 'Browser-only demo'}</dd><dt>Authentication</dt><dd>${token ? 'Verified' : 'Not verified'}</dd><dt>Data</dt><dd>${token ? 'Live backend' : 'Local mock fixtures'}</dd></dl></section><div class="stack mt-2"><a class="btn btn--outline btn--full" href="#/app/profile">${icon('user')} Open my profile</a><a class="btn btn--outline btn--full" href="#/app/settings">${icon('settings')} Settings & local cache</a>${user.role === 'admin' ? `<a class="btn btn--outline btn--full" href="#/admin">${icon('shield')} Admin operations</a><a class="btn btn--outline btn--full" href="#/superadmin">${icon('key')} Elevated Admin zone</a>` : ''}${token ? '' : `<a class="btn btn--outline btn--full" href="#/role-selection">${icon('refresh')} Switch demo role</a>`}<a class="btn btn--ghost btn--full" href="/">${icon('home')} Public homepage</a><button class="btn btn--danger btn--full" id="logout-demo">${icon('log-out')} ${token ? 'Sign out' : 'Log out of demo'}</button></div>`,
+    content: `<section class="card card--pad">${person(user, user.email, '')}<div class="cluster mt-2">${badge(user.status)}${badge(user.role, 'neutral')}${user.frozen ? badge('wallet frozen', 'danger') : ''}</div><dl class="definition-list mt-3"><dt>Session</dt><dd>${token ? 'Authenticated JWT' : 'Browser-only demo'}</dd><dt>Authentication</dt><dd>${token ? 'Verified' : 'Not verified'}</dd><dt>Data</dt><dd>${token ? 'Live backend' : 'Local mock fixtures'}</dd></dl></section><div class="stack mt-2"><a class="btn btn--outline btn--full" href="#/app/profile">${icon('user')} Open my profile</a><a class="btn btn--outline btn--full" href="#/app/settings">${icon('settings')} Settings & local cache</a>${user.role === 'admin' ? `<a class="btn btn--outline btn--full" href="#/admin">${icon('shield')} Admin operations</a><a class="btn btn--outline btn--full" href="#/superadmin">${icon('key')} Elevated Admin zone</a>` : ''}<a class="btn btn--ghost btn--full" href="/">${icon('home')} Public homepage</a><button class="btn btn--danger btn--full" id="logout-demo">${icon('log-out')} ${token ? 'Sign out' : 'Log out'}</button></div>`,
     onMount(drawer) {
       drawer.querySelector('#logout-demo').addEventListener('click', async () => {
         closeDrawer();
         await logout();
         location.hash = '#/login';
-        toast(token ? 'Signed out successfully.' : 'Local demo session ended.', 'info');
+        toast(token ? 'Signed out successfully.' : 'Session ended.', 'info');
       });
     }
   });

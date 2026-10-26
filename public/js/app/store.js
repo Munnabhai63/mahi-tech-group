@@ -1,4 +1,4 @@
-import { createInitialData, roleMeta } from './data.js';
+import { createInitialData, roleMeta, ensureMemberIdentities } from './data.js';
 import { api, getAuthToken, setAuthToken, clearAuthToken } from './api.js';
 import { realtime } from './ws.js';
 
@@ -123,6 +123,23 @@ export function getIdea(id) { return state.data.ideas.find(idea => idea.id === i
 export function getMeeting(id) { return state.data.meetings.find(meeting => meeting.id === id) || null; }
 export function getTicket(id) { return state.data.tickets.find(ticket => ticket.id === id || ticket.number === id) || null; }
 export function getDispute(id) { return state.data.disputes.find(dispute => dispute.id === id || dispute.number === id) || null; }
+
+export function syncDataFromStorage() {
+  const incoming = safeRead(DATA_KEY);
+  if (incoming?.version !== 1) return false;
+  state.data = incoming;
+  ensureMemberIdentities(state.data.users);
+  notify('external-tab-sync');
+  return true;
+}
+
+export function ideaQuotaLimitFor(userId) {
+  const user = getUser(userId); const memberLimit = Number(user?.ideaQuotaLimit);
+  if (Number.isInteger(memberLimit) && memberLimit >= 1) return memberLimit;
+  const cornerLimit = Number(state.data.config.cornerQuotas?.[user?.role]);
+  if (Number.isInteger(cornerLimit) && cornerLimit >= 1) return cornerLimit;
+  return Number(state.data.config.ideaQuota);
+}
 
 export async function loginWithCredentials(email, password) {
   const result = await api.post('/api/auth/login', { email, password });
