@@ -18,7 +18,7 @@ let rendering = false;
 
 function route(path, params) {
   if (path === '/login') return renderLogin();
-  if (path === '/role-selection') return renderRoleSelection();
+  if (path === '/role-selection') { location.hash = '#/login'; return; }
   if (path === '/signup') return renderSignup();
   if (path === '/application-status') return renderApplicationStatus(params);
   if (path === '/about') return renderAbout();
@@ -79,21 +79,18 @@ function render() {
   rendering = true;
   try {
     if (!location.hash) { const user = currentUser();
-const authToken = getAuthToken();
+const realToken = localStorage.getItem('token');
+
+// STRICT: workspace/admin routes require a real JWT from the backend login
 if (!isPublic(path) && !isSigning(path)) {
-    if (!user || !authToken) {
-        if (user) clearSession();
+    if (!realToken) {
+        // Clear any fake local session
+        state.session = null;
+        persistSession();
         location.hash = '#/login';
         return;
     }
-    try {
-        const payload = JSON.parse(atob(authToken.split('.')[1]));
-        if (payload.exp && payload.exp * 1000 < Date.now()) {
-            clearSession();
-            location.hash = '#/login';
-            return;
-        }
-    } catch (e) { clearSession(); location.hash = '#/login'; return; }
+}
 }
     if (user && (path.startsWith('/admin') || path.startsWith('/superadmin')) && user.role !== 'admin') { toast('Admin operations require the Admin demo role.', 'error'); location.hash = user.status === 'inactive' ? '#/app/former-member' : '#/app/dashboard'; return; }
     if (user?.status === 'inactive' && path.startsWith('/app') && !['/app/former-member', `/app/members/${user.id}`, '/app/wallet', '/app/notifications'].includes(path)) { location.hash = '#/app/former-member'; return; }
