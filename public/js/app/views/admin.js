@@ -6,11 +6,12 @@ import {
   formatINR, formatDate, formatDateTime, relativeTime, escapeHTML, titleCase,
   statusTone, initials, uid,
   fetchAdminApplications, fetchAdminMembers, fetchAdminRevenue,
-  fetchAdminOffboarding, fetchAdminConfig, fetchAdminAudit
+  fetchAdminOffboarding, fetchAdminConfig, fetchAdminAudit,
+  isDemoMode
 } from '../store.js';
 import {
   icon, badge, plainBadge, avatar, person, statCard, progress, pageHead,
-  card, notice, emptyState, withPreview, openDialog, closeDialog, confirmDialog,
+  card, notice, emptyState, renderBackendError, withPreview, openDialog, closeDialog, confirmDialog,
   toast, bindTabs, formValues, setFormError
 } from '../ui.js';
 import { openOverrideDialog } from './ideas.js';
@@ -28,6 +29,17 @@ function adminStats() {
 }
 
 export function renderAdminDashboard() {
+  if (state.live.backendError && !isDemoMode()) {
+    return {
+      html: `${adminHead('Operational control, with a record.', 'Member, project, financial, and governance queues across MAHI TECH GROUP.')}${renderBackendError('Admin Operations Offline', 'The backend server is unreachable. Live administrative queues, application reviews, and financial oversight are suspended until connection is restored.')}`,
+      mount() {
+        fetchAdminApplications();
+        fetchAdminMembers();
+        fetchAdminRevenue();
+      }
+    };
+  }
+
   const recent = state.data.auditLogs.slice(0, 6);
   const offboarding = state.data.offboarding.slice(0, 3);
   const content = `${adminStats()}<div class="admin-section-label"><h2>Queues that need a decision</h2><span></span></div><div class="grid-3"><a class="metric-alert" href="#/admin/applications"><span class="metric-alert__icon">${icon('user-plus')}</span><div><strong>${state.data.applications.filter(app => app.status === 'pending').length}</strong><span>Applications to review</span></div>${icon('chevron-right', 'icon--sm')}</a><a class="metric-alert" href="#/admin/projects"><span class="metric-alert__icon">${icon('eye')}</span><div><strong>${state.data.projects.filter(project => project.stage === 'ADMIN_REVIEW').length}</strong><span>Final review gates</span></div>${icon('chevron-right', 'icon--sm')}</a><a class="metric-alert" href="#/admin/revenue"><span class="metric-alert__icon">${icon('wallet')}</span><div><strong>${state.data.withdrawals.filter(item => item.status === 'PENDING').length}</strong><span>Manual payout reviews</span></div>${icon('chevron-right', 'icon--sm')}</a></div><div class="grid-main-side mt-3"><section class="card card--flush"><div class="card-head"><div><h2>Recent operational activity</h2><p>Latest audit events across the organization.</p></div><a class="btn btn--ghost btn--sm" href="#/admin/audit">Full access log ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body">${recent.map(log => `<div class="activity-item"><span class="activity-item__dot">${icon(log.severity === 'critical' ? 'alert' : log.module === 'meetings' ? 'video' : log.module === 'wallet' ? 'wallet' : 'activity')}</span><div><p><strong>${titleCase(log.action)}</strong> · ${escapeHTML(log.resource)}</p><time>${formatDateTime(log.at)} · ${escapeHTML(getUser(log.userId)?.name || 'System')}</time></div></div>`).join('')}</div></section><aside class="stack"><section class="card card--flush"><div class="card-head"><div><h2>Recent offboarding</h2><p>Permanent exit records.</p></div></div><div class="card-body">${offboarding.length ? offboarding.map(record => { const user = getUser(record.userId); return `<a class="list-row list-row--button" href="#/admin/offboarding"><div class="list-row__main">${person(user, `Exited ${formatDate(record.completedAt)}`)}</div>${badge(record.status)}</a>`; }).join('') : emptyState('No offboarding records', 'Member exits will appear here.', '', 'users')}</div></section><section class="card card--pad"><div class="eyebrow">Elevated operations</div><h3 class="mt-1" style="font:600 18px var(--font-display)">Performance, disputes & governance</h3><p class="small muted mt-1">Enter the Admin-only elevated zone for directory exports, internal support notes, gateway controls, and unified audit.</p><a class="btn btn--primary btn--full mt-2" href="#/superadmin">Open elevated zone ${icon('arrow-up-right')}</a></section></aside></div>`;

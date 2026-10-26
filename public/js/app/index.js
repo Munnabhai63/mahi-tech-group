@@ -106,13 +106,14 @@ function render() {
 
 window.addEventListener('hashchange', render);
 window.addEventListener('app:refresh', render);
+window.addEventListener('backend-error', render);
 document.addEventListener('click', event => {
   const skipLink = event.target.closest('.skip-link');
   if (skipLink) { event.preventDefault(); const main = document.querySelector('#main-content'); main?.focus({ preventScroll: true }); main?.scrollIntoView({ block: 'start' }); return; }
   if (event.target.closest('[data-close-dialog]')) closeDialog();
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'clear-preview') { setPreview('normal'); window.dispatchEvent(new CustomEvent('app:refresh')); }
-  if (action === 'retry-route') window.dispatchEvent(new CustomEvent('app:refresh'));
+  if (action === 'retry-route') { state.live.backendError = false; window.dispatchEvent(new CustomEvent('app:refresh')); }
   if (event.target.closest('[data-open-notifications]')) openNotificationsDrawer();
   const anchor = event.target.closest('a[href]');
   if (anchor?.closest('#app-dialog')) closeDialog();

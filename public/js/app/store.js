@@ -6,6 +6,43 @@ const SESSION_KEY = 'mtg-frontend-session-v1';
 const DATA_KEY = 'mtg-frontend-data-v1';
 const listeners = new Set();
 
+export function isDemoMode() {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location.hostname;
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  // Strictly prevent demo mode on production domain
+  if (!isLocal) return false;
+  // Demo mode is ONLY allowed if explicitly passed ?demo=true AND no authenticated token exists
+  const hasDemoParam = new URLSearchParams(window.location.search).get('demo') === 'true' ||
+                        window.location.hash.includes('demo=true');
+  return Boolean(hasDemoParam && !getAuthToken());
+}
+
+export function createEmptyData() {
+  return {
+    version: 1,
+    users: [],
+    projects: [],
+    ideas: [],
+    votes: [],
+    meetings: [],
+    coworking: {},
+    tickets: [],
+    disputes: [],
+    withdrawals: [],
+    applications: [],
+    offboarding: [],
+    auditLogs: [],
+    governance: [],
+    ledger: [],
+    performance: [],
+    performanceConfig: {},
+    config: {},
+    gateway: {},
+    notifications: []
+  };
+}
+
 function safeRead(key) {
   try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
 }
@@ -15,7 +52,7 @@ function safeWrite(key, value) {
 
 const savedData = safeRead(DATA_KEY);
 export const state = {
-  data: savedData?.version === 1 ? savedData : createInitialData(),
+  data: isDemoMode() ? (savedData?.version === 1 ? savedData : createInitialData()) : createEmptyData(),
   session: safeRead(SESSION_KEY),
   ui: { preview: 'normal', sidebarOpen: false, drawer: null, accountOpen: false, canvasTool: 'select' },
   live: {
@@ -28,7 +65,9 @@ export const state = {
     walletData: null,
     projectAssets: {},
     disputeData: {},
-    isLive: false
+    isLive: false,
+    backendError: false,
+    backendErrorMessage: null
   }
 };
 
@@ -156,8 +195,13 @@ export function loginFormer() {
 }
 
 export async function logout() {
-  if (getAuthToken()) {
-    try { await api.post('/api/auth/logout').catch(() => {}); } catch {}
+  const token = getAuthToken();
+  if (token) {
+    try {
+      await api.post('/api/auth/logout', {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).catch(() => {});
+    } catch {}
   }
   clearAuthToken();
   realtime.disconnect();
@@ -236,11 +280,18 @@ export async function syncUserData() {
     if (profile && state.session) {
       state.session.user = normalizeUser({ ...state.session.user, ...profile });
       persistSession();
+      state.live.backendError = false;
+      state.live.backendErrorMessage = null;
       notify('user-sync');
     }
   } catch (err) {
     if (err.status === 401) {
       logout();
+    } else {
+      state.live.backendError = true;
+      state.live.backendErrorMessage = err.message || 'Backend connection failed';
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+      notify('backend-error');
     }
   }
 }
@@ -256,6 +307,18 @@ export async function fetchLiveDashboard() {
       api.get('/api/meetings'),
       api.get('/api/banners/active')
     ]);
+
+    const allRejected = [summary, kanban, myTasksRes, pendingVotesRes, meetingsRes, bannersRes].every(r => r.status === 'rejected');
+    if (allRejected) {
+      state.live.backendError = true;
+      state.live.backendErrorMessage = 'Backend server is unreachable. All operational metrics and pipelines are offline.';
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+      notify('backend-error');
+      return null;
+    }
+
+    state.live.backendError = false;
+    state.live.backendErrorMessage = null;
 
     if (summary.status === 'fulfilled') state.live.dashboardSummary = summary.value;
     if (myTasksRes.status === 'fulfilled') state.live.myTasks = myTasksRes.value?.tasks || [];
@@ -295,7 +358,10 @@ export async function fetchLiveDashboard() {
 
     notify('dashboard-fetched');
   } catch (err) {
-    console.warn('[Sync] Dashboard fetch error:', err);
+    state.live.backendError = true;
+    state.live.backendErrorMessage = err.message || 'Dashboard fetch error';
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+    notify('backend-error');
   }
 }
 
@@ -321,6 +387,17 @@ export async function fetchLiveWallet() {
       api.get('/api/users/me/wallet'),
       api.get('/api/users/me/earnings')
     ]);
+
+    if (walletRes.status === 'rejected' && earningsRes.status === 'rejected') {
+      state.live.backendError = true;
+      state.live.backendErrorMessage = 'Wallet service unreachable. Financial records are offline.';
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+      notify('backend-error');
+      return null;
+    }
+
+    state.live.backendError = false;
+    state.live.backendErrorMessage = null;
 
     const wallet = walletRes.status === 'fulfilled' ? walletRes.value : {};
     const earnings = earningsRes.status === 'fulfilled' ? earningsRes.value : {};
@@ -410,11 +487,16 @@ export async function fetchAdminApplications() {
       // Merge with non-pending in local state
       const nonPending = state.data.applications.filter(a => a.status !== 'pending');
       state.data.applications = [...apps, ...nonPending];
+      state.live.backendError = false;
+      state.live.backendErrorMessage = null;
       notify('admin-applications-fetched');
       return apps;
     }
   } catch (err) {
-    console.warn('[Sync] Admin applications fetch error:', err);
+    state.live.backendError = true;
+    state.live.backendErrorMessage = err.message || 'Admin applications unreachable';
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+    notify('backend-error');
   }
   return state.data.applications;
 }
@@ -427,11 +509,16 @@ export async function fetchAdminMembers() {
       const members = res.members.map(normalizeUser);
       state.live.adminMembers = members;
       state.data.users = members;
+      state.live.backendError = false;
+      state.live.backendErrorMessage = null;
       notify('admin-members-fetched');
       return members;
     }
   } catch (err) {
-    console.warn('[Sync] Admin members fetch error:', err);
+    state.live.backendError = true;
+    state.live.backendErrorMessage = err.message || 'Admin members unreachable';
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+    notify('backend-error');
   }
   return state.data.users;
 }
@@ -443,6 +530,17 @@ export async function fetchAdminRevenue() {
       api.get('/api/admin/withdrawals/pending'),
       api.get('/api/admin/revenue/ledger')
     ]);
+
+    if (withdrawalsRes.status === 'rejected' && ledgerRes.status === 'rejected') {
+      state.live.backendError = true;
+      state.live.backendErrorMessage = 'Admin revenue service unreachable';
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+      notify('backend-error');
+      return null;
+    }
+
+    state.live.backendError = false;
+    state.live.backendErrorMessage = null;
 
     if (withdrawalsRes.status === 'fulfilled' && withdrawalsRes.value?.withdrawals) {
       const pending = withdrawalsRes.value.withdrawals.map(w => ({

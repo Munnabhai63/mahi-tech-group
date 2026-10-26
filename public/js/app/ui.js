@@ -166,3 +166,21 @@ export function bindTabs(root = document) {
     });
   });
 }
+
+export function renderBackendError(title = 'Backend Service Unavailable', message = 'Unable to connect to the live backend server. All operational and financial records require an active server connection.') {
+  return `
+    <section class="card card--pad" style="border-left: 4px solid var(--danger, #e53e3e); margin: 2rem 0; background: rgba(229, 62, 62, 0.05);">
+      <div style="display:flex;align-items:flex-start;gap:1rem;">
+        <span class="notification-item__icon" style="color:var(--danger, #e53e3e);font-size:1.5rem;">${icon('alert')}</span>
+        <div style="flex:1;">
+          <h2 style="font:600 20px var(--font-display);margin:0 0 0.5rem 0;color:var(--text, #111);">${escapeHTML(title)}</h2>
+          <p class="muted" style="margin:0 0 1rem 0;">${escapeHTML(message)}</p>
+          <div style="display:flex;gap:0.75rem;">
+            <button class="btn btn--outline" data-action="retry-route">${icon('refresh')} Retry Connection</button>
+            <a class="btn btn--ghost" href="#/login">Return to Sign In</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}

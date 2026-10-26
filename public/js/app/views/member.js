@@ -28,7 +28,8 @@ import {
   fetchLiveDashboard,
   fetchLiveQuota,
   fetchLiveWallet,
-  fetchLiveProfile
+  fetchLiveProfile,
+  isDemoMode
 } from '../store.js';
 import { api, getAuthToken } from '../api.js';
 import {
@@ -43,6 +44,7 @@ import {
   card,
   notice,
   emptyState,
+  renderBackendError,
   withPreview,
   openDialog,
   closeDialog,
@@ -63,6 +65,18 @@ function miniProject(project) {
 
 export function renderDashboard() {
   const user = currentUser();
+  if (state.live.backendError && !isDemoMode()) {
+    return {
+      html: `${pageHead('Operational Workspace', 'Live backend connection required.', 'All organization records, task dependencies, and project gates require an active server connection.')}${renderBackendError('Dashboard Data Unavailable', 'Unable to reach the live backend server. Offline mock data has been disabled in compliance with data safety standards.')}`,
+      mount() {
+        if (getAuthToken()) {
+          fetchLiveDashboard();
+          fetchLiveQuota();
+        }
+      }
+    };
+  }
+
   const projects = userProjects();
   const tasks = state.live.myTasks?.length ? state.live.myTasks : userTasks();
   const pendingVotes = state.live.pendingVotes?.length ? state.live.pendingVotes : pendingVotesFor();
@@ -281,15 +295,26 @@ export function renderProfile(id = null) {
 
 export function renderWallet() {
   const user = currentUser();
+  if (state.live.backendError && !isDemoMode()) {
+    return {
+      html: `${pageHead('Wallet & settlements', 'Your earnings, with a visible review gate.', 'Balance, recorded splits, withdrawal requests, frozen states, and settlement history.', '<a class="btn btn--outline" href="#/app/dashboard">Back to dashboard</a>')}${renderBackendError('Financial Service Unavailable', 'Unable to reach the live backend server. Wallet balances and withdrawal ledgers require an active server connection.')}`,
+      mount() {
+        if (getAuthToken()) {
+          fetchLiveWallet();
+        }
+      }
+    };
+  }
+
   const walletData = state.live.walletData;
   
   // Real withdrawals from GET /api/users/me/earnings
-  const withdrawals = walletData?.withdrawals || state.data.withdrawals.filter(item => item.userId === user.id);
+  const withdrawals = walletData?.withdrawals || (isDemoMode() ? state.data.withdrawals.filter(item => item.userId === user.id) : []);
   const pending = withdrawals.filter(item => item.status === 'PENDING').reduce((sum, item) => sum + Number(item.amount), 0);
 
   // Timeline from GET /api/users/:id/earnings
   const timeline = walletData?.timeline || [];
-  const monthly = timeline.length ? timeline.map(t => t.month) : ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'];
+  const monthly = timeline.length ? timeline.map(t => t.month) : (isDemoMode() ? ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'] : []);
   const values = timeline.length ? timeline.map(t => Number(t.monthly_total)) : monthly.map(() => 0);
   const max = Math.max(...values, 1);
   const withdrawalBlocked = user.frozen || user.status !== 'active';

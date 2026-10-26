@@ -58,10 +58,17 @@
   - Executed automated headless browser verification in Microsoft Edge via Playwright (`scripts/verify-browser-ui.cjs`): 0 console errors, 0 network errors, and captured verified screenshot `scripts/browser-verified-workspace.png`.
   - All 13 core platform test suites (`npm test`) executed and passed cleanly (13/13 PASS).
 
+- **Final Integration Hardening & Decision Ledger (B.1–B.7)**:
+  - Restored single-flight token refresh queue in `public/js/app/api.js` (`POST /api/auth/refresh`), eliminating infinite refresh loops.
+  - Eliminated mock fallback on production code path in `store.js`, `views/member.js`, and `views/admin.js`, enforcing strict database-grounded values.
+  - Fixed manual logout in `store.js` and `shell.js`: sent `Authorization: Bearer <token>` to revoke server session prior to storage clearance, and excluded `/auth/logout` from the 401 interceptor.
+  - Retained `src/server.js` PM2 environment detection per user decision.
+  - Recorded complete architectural decisions B.1–B.7 in `docs/decisions.md`.
+
 ## Pending / Next Steps
+- Production deployment of commits `816c0bd` and integration hardening commit to VPS `https://oviaxe.com`.
 - Live ₹1 test scan / 1-tap pay confirmation by user on mobile with PhonePe / GPay / Paytm.
 - Android Observer APK installation on merchant phone for automated UPI SMS settlement.
-- Webhook bridge from OviPay back into MAHI TECH GROUP wallet ledger for instant crediting.
-- Sync changes to remote VPS server `200.97.164.97` when requested.
+
 
 

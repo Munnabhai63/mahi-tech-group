@@ -32,11 +32,49 @@
 - **Decision**: Update `font-size: clamp(28px, 10.2vw, 152px)` on desktop and `clamp(28px, 10.2vw, 68px)` on mobile breakpoints in both `public/css/homepage-studio.css` and `public/css/site.css`.
 - **Consequences**: "MAHI TECH GROUP" fits seamlessly across all breakpoints (from 360px up to 1920px) without any letter clipping, retaining the oversized editorial poster aesthetic while eliminating horizontal overflow.
 
-## Decision 7: Full Frontend Live API Wiring with Resilient Local Fallback
+## Decision 7: Full Frontend Live API Wiring & WebSocket Architecture
 - **Context**: The `Oviaxe-UI` operational views relied on client-side state and mock data. To make the platform fully production-functional across all 14 layers without breaking existing preview or demo flows, a robust communication layer was required.
 - **Decision**: 
   1. Author `public/js/app/api.js` for unified HTTP calls with automatic JWT Bearer token attachment, session revocation interception, and standardized error parsing.
   2. Author `public/js/app/ws.js` for real-time WebSocket communication supporting multiplexed channel subscriptions, heartbeat keep-alive, and auto-reconnect with fallback polling.
-  3. Wire all 10 view modules (`admin.js`, `disputes.js`, `ideas.js`, `meetings.js`, `member.js`, `projects.js`, `public.js`, `signing.js`, `superadmin.js`, `shell.js`) so that authenticated users trigger live backend endpoints while unauthenticated/preview modes seamlessly fall back to local store state.
-- **Consequences**: 100% production functionality for real authenticated users, zero disruption to offline or demo modes, and full test pass rate across all 13 platform test suites and 48 smoke tests.
+  3. Wire all 10 view modules (`admin.js`, `disputes.js`, `ideas.js`, `meetings.js`, `member.js`, `projects.js`, `public.js`, `signing.js`, `superadmin.js`, `shell.js`) so that authenticated users trigger live backend endpoints.
+- **Consequences**: 100% production functionality for real authenticated users, full test pass rate across all 13 platform test suites, and reliable real-time updates.
+
+## Decision Ledger (B.1 – B.7): Clarifications & Integration Hardening
+
+### Decision B.1: Universal Voting Feed Visibility
+- **Context**: Clarification on whether team members without any active project assignments can participate in democratic idea governance.
+- **Decision**: Ideas in `PENDING_REVIEW` with scheduled review meetings are globally visible in `GET /api/dashboard/votes-feed` to all active members regardless of assignment status. Any active member can vote via `POST /api/ideas/:id/vote`.
+- **Consequences**: Prevents deadlocks where new or unassigned members cannot vote on incoming proposals.
+
+### Decision B.2: Role-Filtering Isolation & Multi-Tenant Boundaries
+- **Context**: Non-admin contributors must only see projects to which they are actively assigned, while admins maintain full oversight.
+- **Decision**: The Kanban engine (`GET /api/dashboard/kanban`) strictly enforces tenant isolation: non-admin contributors query only projects where their `user_id` is registered in `project_members`. Admins view all organization projects across all pipeline stages.
+- **Consequences**: Zero accidental leakage of private project details between separate development teams.
+
+### Decision B.3: Project Count Harmonization
+- **Context**: Edge-case testing of orphan projects with deleted owners caused a disparity between `/api/dashboard/summary` (`activeProjectsCount`) and `/api/dashboard/kanban` (`totalProjects`).
+- **Decision**: Replaced `INNER JOIN users u ON p.owner_id = u.id` with `LEFT JOIN users u ON p.owner_id = u.id` in `src/routes/dashboard.js`, ensuring projects with orphaned or null owner references still aggregate consistently across both endpoints.
+- **Consequences**: 100% mathematical reconciliation between dashboard overview tiles and Kanban board column totals.
+
+### Decision B.4: Real-Time WebSocket Resilience & HTTP Polling Fallback
+- **Context**: Network drops or proxy timeouts must not crash the operational workspace or cause users to miss critical team updates.
+- **Decision**: Built bidirectional reconnect handling in `public/js/app/ws.js`: on unexpected disconnect, client immediately falls back to periodic REST polling (`/api/dashboard/summary`, `/api/dashboard/kanban`), executes exponential backoff reconnection, and resumes live event subscriptions once the socket reopens.
+- **Consequences**: Resilient real-time UI that survives spotty cellular connections and proxy interruptions without data loss.
+
+### Decision B.5: Single-Flight Token Refresh Flow (`/api/auth/refresh`)
+- **Context**: Concurrent 401 Unauthorized responses triggered multiple competing refresh requests, causing token stampedes and infinite refresh loops.
+- **Decision**: Implement a single-flight queue in `public/js/app/api.js`: on the first 401, set `isRefreshing = true` and queue subsequent requests in `refreshQueue`. Exactly one `POST /api/auth/refresh` call is made. On success, the queue drains with the new token and each original request retries once. `/auth/login`, `/auth/refresh`, and `/auth/logout` are explicitly excluded from the interceptor.
+- **Consequences**: Seamless session continuity across background tabs with zero token racing and deterministic redirect to `#/login?session=expired` if refresh fails.
+
+### Decision B.6: Strict Data Grounding & Elimination of Production Mock Fallback
+- **Context**: Client views originally rendered mock data fixtures when the API was unreachable. Rendering fabricated revenue, balances, or task counts during a backend outage violates the core rule that every displayed value must come from the database.
+- **Decision**: Completely stripped mock-data fallbacks from the production code path. If the backend fails or is offline, views (`dashboard`, `wallet`, `admin`) display a standardized error/empty/retry component (`renderBackendError`). Demo mock data is restricted to `localhost` behind an explicit `?demo=true` flag and is blocked on production domains.
+- **Consequences**: 100% data integrity: users never see fabricated numbers during backend hiccups, and wallet/governance values are strictly grounded in SQLite.
+
+### Decision B.7: Clean Logout Lifecycle & Session Invalidation (`/api/auth/logout`)
+- **Context**: `logout()` cleared local storage before making the API call, causing `POST /api/auth/logout` to go out without an Authorization header, trigger a 401, and dispatch a spurious "Session expired" toast on intentional manual logout.
+- **Decision**: In `public/js/app/store.js`, send `POST /api/auth/logout` with the active `Authorization: Bearer <token>` header to revoke the session in SQLite before clearing local storage. In `public/js/app/api.js`, exclude `/auth/logout` from the 401 interceptor so even an expired token on logout will not trigger the session-expired listener.
+- **Consequences**: Clean, silent server-side session revocation with no spurious error banners or expired toasts on manual logout.
+
 

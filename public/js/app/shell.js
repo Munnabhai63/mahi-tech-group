@@ -127,7 +127,20 @@ export function openNotificationsDrawer() {
 }
 function openAccountDrawer() {
   const user = currentUser();
-  openDrawer({ title: 'Demo account', subtitle: 'Local identity and workspace areas', content: `<section class="card card--pad">${person(user, user.email, '')}<div class="cluster mt-2">${badge(user.status)}${badge(user.role, 'neutral')}${user.frozen ? badge('wallet frozen', 'danger') : ''}</div><dl class="definition-list mt-3"><dt>Session</dt><dd>Browser-only demo</dd><dt>Authentication</dt><dd>Not verified</dd><dt>Data</dt><dd>Local mock fixtures</dd></dl></section><div class="stack mt-2"><a class="btn btn--outline btn--full" href="#/app/profile">${icon('user')} Open my profile</a><a class="btn btn--outline btn--full" href="#/app/settings">${icon('settings')} Settings & mock-data reset</a>${user.role === 'admin' ? `<a class="btn btn--outline btn--full" href="#/admin">${icon('shield')} Admin operations</a><a class="btn btn--outline btn--full" href="#/superadmin">${icon('key')} Elevated Admin zone</a>` : ''}<a class="btn btn--outline btn--full" href="#/role-selection">${icon('refresh')} Switch demo role</a><a class="btn btn--ghost btn--full" href="/">${icon('home')} Public homepage</a><button class="btn btn--danger btn--full" id="logout-demo">${icon('log-out')} Log out of demo</button></div>`, onMount(drawer) { drawer.querySelector('#logout-demo').addEventListener('click', () => { closeDrawer(); logout(); location.hash = '#/login'; toast('Local demo session ended.', 'info'); }); } });
+  const token = getAuthToken();
+  openDrawer({
+    title: token ? 'User Account' : 'Demo account',
+    subtitle: token ? 'Authenticated workspace session' : 'Local identity and workspace areas',
+    content: `<section class="card card--pad">${person(user, user.email, '')}<div class="cluster mt-2">${badge(user.status)}${badge(user.role, 'neutral')}${user.frozen ? badge('wallet frozen', 'danger') : ''}</div><dl class="definition-list mt-3"><dt>Session</dt><dd>${token ? 'Authenticated JWT' : 'Browser-only demo'}</dd><dt>Authentication</dt><dd>${token ? 'Verified' : 'Not verified'}</dd><dt>Data</dt><dd>${token ? 'Live backend' : 'Local mock fixtures'}</dd></dl></section><div class="stack mt-2"><a class="btn btn--outline btn--full" href="#/app/profile">${icon('user')} Open my profile</a><a class="btn btn--outline btn--full" href="#/app/settings">${icon('settings')} Settings & local cache</a>${user.role === 'admin' ? `<a class="btn btn--outline btn--full" href="#/admin">${icon('shield')} Admin operations</a><a class="btn btn--outline btn--full" href="#/superadmin">${icon('key')} Elevated Admin zone</a>` : ''}${token ? '' : `<a class="btn btn--outline btn--full" href="#/role-selection">${icon('refresh')} Switch demo role</a>`}<a class="btn btn--ghost btn--full" href="/">${icon('home')} Public homepage</a><button class="btn btn--danger btn--full" id="logout-demo">${icon('log-out')} ${token ? 'Sign out' : 'Log out of demo'}</button></div>`,
+    onMount(drawer) {
+      drawer.querySelector('#logout-demo').addEventListener('click', async () => {
+        closeDrawer();
+        await logout();
+        location.hash = '#/login';
+        toast(token ? 'Signed out successfully.' : 'Local demo session ended.', 'info');
+      });
+    }
+  });
 }
 function searchItems() {
   const user = currentUser(); const admin = user.role === 'admin';

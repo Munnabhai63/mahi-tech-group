@@ -1,0 +1,782 @@
+[
+  {
+    "method": "GET",
+    "fullPath": "/api/health",
+    "file": "src/app.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/debug/error-test",
+    "file": "src/app.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/auth/signup",
+    "file": "src/routes/auth.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/auth/login",
+    "file": "src/routes/auth.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/auth/logout",
+    "file": "src/routes/auth.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/auth/refresh",
+    "file": "src/routes/auth.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/sign/disputes/:id/:token",
+    "file": "src/routes/sign.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/sign/disputes/:id",
+    "file": "src/routes/sign.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/sign/waivers/:id/:token",
+    "file": "src/routes/sign.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/sign/waivers/:id",
+    "file": "src/routes/sign.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/admin/members/add",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/members/:id/status",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/members",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/applications/pending",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/applications/:id/decide",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/config/quota",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/ideas/:id/override",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/config/voting",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/projects/all",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/projects/:id/members/:memberId/weight",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/projects/:id/reassign",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/projects/:id/final-review",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/admin/members/:id/offboard",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/offboarding/:id/status",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/offboarding/:id/checklist",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/offboarding/history",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/wallets/frozen",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/admin/projects/:id/revenue",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/admin/projects/:id/revenue/reversal",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/revenue/ledger",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/withdrawals/pending",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/withdrawals/:id/approve",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/admin/withdrawals/:id/approve",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/withdrawals/:id/reject",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/admin/withdrawals/:id/reject",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/corners-overview",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/dashboard/overview",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/members/:id",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/admin/wallets/:user_id/settle",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/access-logs",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/config",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/config/general",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/ideas/:id/history",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/admin/meetings",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/admin/meetings/:id/notes/confirm",
+    "file": "src/routes/admin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/overview",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/system/integrity",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/members/export",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/members",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/members/:id",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/performance/leaderboard",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/performance/config",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/superadmin/performance/config",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/performance/:userId",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/performance",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/tickets",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/tickets",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/tickets/:id/messages",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/superadmin/tickets/:id",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/tickets/:id",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/ideas",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/ideas/:id/kill",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/ideas/:id/restore",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/ideas/:id",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/quota/config",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/superadmin/quota/config",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/disputes",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/disputes",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/disputes/:id",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/superadmin/disputes/:id/status",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/disputes/:id/parties",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/disputes/:id/agreement",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/disputes/:id/waiver",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/disputes/:id/signatures",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/disputes/:id/settle",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/superadmin/tickets/:id/link-dispute",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/gateway/config",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/superadmin/gateway/config",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/gateway/test",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/governance/:userId/block",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/governance/:userId/unblock",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/superadmin/governance/:userId",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/superadmin/governance/:userId",
+    "file": "src/routes/superadmin.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/me",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/users/me/password",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/users/me/profile",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/me/quota-status",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/me/wallet",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/me/earnings",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/profile-mini",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/:id/profile-mini",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/:id/profile",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/:id/ideas",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/:id/projects",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/:id/ratings",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/:id/earnings",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/:id/earnings-summary",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/tickets",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/users/tickets",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/users/tickets/:id",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/users/tickets/:id/messages",
+    "file": "src/routes/users.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/ideas",
+    "file": "src/routes/ideas.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/ideas/draft",
+    "file": "src/routes/ideas.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/ideas/:id/draft",
+    "file": "src/routes/ideas.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/ideas/:id/submit",
+    "file": "src/routes/ideas.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/ideas/pending-my-vote",
+    "file": "src/routes/ideas.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/ideas/my",
+    "file": "src/routes/ideas.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/ideas/:id/vote",
+    "file": "src/routes/ideas.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/ideas/:id/votes",
+    "file": "src/routes/ideas.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/ideas/:id/meeting",
+    "file": "src/routes/ideas.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/ideas/:id",
+    "file": "src/routes/ideas.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/projects/auto-create",
+    "file": "src/routes/projects.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/projects/my-tasks",
+    "file": "src/routes/projects.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/projects/my",
+    "file": "src/routes/projects.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/projects/:id",
+    "file": "src/routes/projects.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/projects/:id",
+    "file": "src/routes/projects.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/projects/:id/assets",
+    "file": "src/routes/projects.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/projects/:id/assets",
+    "file": "src/routes/projects.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/projects/:id/coworking-room",
+    "file": "src/routes/projects.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/projects/:id/coworking-room/create",
+    "file": "src/routes/projects.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/tasks/:id/status",
+    "file": "src/routes/tasks.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/tasks/:id/upload",
+    "file": "src/routes/tasks.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/withdrawals/request",
+    "file": "src/routes/withdrawals.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/coworking-rooms/:id/join",
+    "file": "src/routes/coworking.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/coworking-rooms/:id/leave",
+    "file": "src/routes/coworking.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/coworking-rooms/:id/snapshot",
+    "file": "src/routes/coworking.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/meetings",
+    "file": "src/routes/meetings.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/meetings/:id/start",
+    "file": "src/routes/meetings.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/meetings/:id/end",
+    "file": "src/routes/meetings.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/meetings/:id/cancel",
+    "file": "src/routes/meetings.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/meetings/:id/join",
+    "file": "src/routes/meetings.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/meetings/:id/leave",
+    "file": "src/routes/meetings.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/meetings",
+    "file": "src/routes/meetings.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/meetings/:id",
+    "file": "src/routes/meetings.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/meetings/:id/notes",
+    "file": "src/routes/meetings.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/meetings/:id/recording",
+    "file": "src/routes/meetings.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/dashboard/summary",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/dashboard/kanban",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/dashboard/votes-feed",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/dashboard/notifications/my",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/dashboard/notifications",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/dashboard/notifications/:id/read",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/dashboard/notifications/mark-all-read",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/dashboard/activity/recent",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/dashboard/notifications/send",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/dashboard/banners/active",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/summary",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/kanban",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/votes-feed",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/notifications/my",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/notifications",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "PATCH",
+    "fullPath": "/api/notifications/:id/read",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/notifications/mark-all-read",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/activity/recent",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "POST",
+    "fullPath": "/api/notifications/send",
+    "file": "src/routes/dashboard.js"
+  },
+  {
+    "method": "GET",
+    "fullPath": "/api/banners/active",
+    "file": "src/routes/dashboard.js"
+  }
+]
