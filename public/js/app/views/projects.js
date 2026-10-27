@@ -106,10 +106,8 @@ export function renderProjects() {
                 }));
               }
             });
-            if (list.length) {
-              state.data.projects = list;
-              filter();
-            }
+            state.data.projects = list;
+            filter();
           }
         }).catch(() => {});
       }

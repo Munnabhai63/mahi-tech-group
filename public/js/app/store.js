@@ -51,8 +51,9 @@ function safeWrite(key, value) {
 }
 
 const savedData = safeRead(DATA_KEY);
+const shouldSeedDemo = isDemoMode();
 export const state = {
-  data: savedData?.version === 1 ? savedData : createInitialData(),
+  data: (savedData?.version === 1 && shouldSeedDemo) ? savedData : (shouldSeedDemo ? createInitialData() : createEmptyData()),
   session: safeRead(SESSION_KEY),
   ui: { preview: 'normal', sidebarOpen: false, drawer: null, accountOpen: false, canvasTool: 'select' },
   live: {
@@ -401,7 +402,7 @@ export async function fetchLiveDashboard() {
           });
         }
       });
-      if (liveProjects.length) state.data.projects = liveProjects;
+      state.data.projects = liveProjects;
     }
 
     notify('dashboard-fetched');
