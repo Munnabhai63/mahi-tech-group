@@ -382,15 +382,35 @@ export function openFinalReview(projectId) {
     footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="submit-review">Record decision</button>',
     onMount(dialog) {
       dialog.querySelector('#submit-review').addEventListener('click', async () => {
+        const submitBtn = dialog.querySelector('#submit-review');
         const values = formValues(dialog.querySelector('#review-form'));
         const approved = values.decision === 'approved';
         if (approved && incomplete.length) return toast('All eight preceding tasks must be DONE before approval.', 'error');
-        project.stage = approved ? 'LIVE' : 'REJECTED_AT_REVIEW';
-        project.status = approved ? 'LIVE' : 'ACTIVE';
-        persistData();
-        closeDialog();
-        toast(`Final-review decision recorded: ${approved ? 'LIVE' : 'Rejected at review'}.`, 'success');
-        window.dispatchEvent(new CustomEvent('app:refresh'));
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Recording decision...';
+
+        try {
+          if (getAuthToken()) {
+            const res = await api.patch(`/api/admin/projects/${projectId}/final-review`, {
+              approved,
+              notes: values.notes?.trim() || null
+            });
+            project.stage = res.stage || (approved ? 'LIVE' : 'REJECTED_AT_REVIEW');
+            project.status = approved ? 'LIVE' : 'ACTIVE';
+          } else {
+            project.stage = approved ? 'LIVE' : 'REJECTED_AT_REVIEW';
+            project.status = approved ? 'LIVE' : 'ACTIVE';
+          }
+          persistData();
+          closeDialog();
+          toast(`Final-review decision recorded: ${approved ? 'LIVE' : 'Rejected at review'}.`, 'success');
+          window.dispatchEvent(new CustomEvent('app:refresh'));
+        } catch (err) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Record decision';
+          toast(api.extractError(err, 'Failed to record final review decision.'), 'error');
+        }
       });
     }
   });

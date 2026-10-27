@@ -383,14 +383,38 @@ export function openOverrideDialog(ideaId) {
     content: `<form id="override-form" class="stack"><div class="field"><label for="override-decision">Decision</label><select class="select" id="override-decision" name="decision"><option value="APPROVED">APPROVED — promote to project</option><option value="REVISE">REVISE — request revision</option><option value="REJECTED">REJECTED — close proposal</option></select></div><div class="field"><label for="override-reason">Mandatory reason</label><textarea class="textarea" id="override-reason" name="reason" required placeholder="Explain the decision and its operational context."></textarea></div>${notice('A clear reason is mandatory for an Admin decision.', 'warning')}</form>`,
     footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--danger" id="save-override">Record decision</button>',
     onMount(dialog) {
-      dialog.querySelector('#save-override').addEventListener('click', () => {
+      dialog.querySelector('#save-override').addEventListener('click', async () => {
         const form = dialog.querySelector('#override-form');
+        const saveBtn = dialog.querySelector('#save-override');
         const values = formValues(form);
         if (!values.reason?.trim()) return setFormError(form, 'A clear reason is mandatory.', 'reason');
-        idea.status = values.decision;
-        closeDialog();
-        toast(`Admin decision saved for “${idea.title}”.`, 'info');
-        window.dispatchEvent(new CustomEvent('app:refresh'));
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving decision...';
+
+        try {
+          if (getAuthToken()) {
+            const res = await api.patch(`/api/admin/ideas/${ideaId}/override`, {
+              decision: values.decision,
+              reason: values.reason.trim()
+            });
+            if (res?.idea) {
+              idea.status = res.idea.status || values.decision;
+            } else {
+              idea.status = values.decision;
+            }
+          } else {
+            idea.status = values.decision;
+          }
+          persistData();
+          closeDialog();
+          toast(`Admin decision saved for “${idea.title}”.`, 'success');
+          window.dispatchEvent(new CustomEvent('app:refresh'));
+        } catch (err) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Record decision';
+          toast(api.extractError(err, 'Failed to save admin decision.'), 'error');
+        }
       });
     }
   });
