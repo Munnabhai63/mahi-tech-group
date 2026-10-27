@@ -106,6 +106,11 @@ async function route(path, params) {
   match = path.match(/^\/app\/members\/([^/]+)$/); if (match) return renderProfile(match[1]);
   if (path === '/app/wallet') return renderWallet();
   if (path === '/app/settings') return renderSettings();
+  if (path === '/app/github') {
+    return {
+      html: `${pageHead('GitHub Account Integration', 'Connect your personal GitHub account to receive automated repo invites and GitFlow branch access.', '<a class="btn btn--outline" href="#/app/profile">← My Profile</a>')}<div class="card card--pad" style="margin-top:1.5rem"><iframe src="/github-link.html?embedded=true" style="width:100%;height:850px;border:none;border-radius:8px;background:#090d16;"></iframe></div>`
+    };
+  }
   if (path === '/app/support') return renderSupport();
   match = path.match(/^\/app\/support\/([^/]+)$/); if (match) return renderTicket(match[1]);
   if (path === '/app/former-member') return renderFormerMember();
@@ -118,6 +123,9 @@ async function route(path, params) {
     if (path === '/admin/ideas') return admin.renderAdminIdeas();
     if (path === '/admin/projects') return admin.renderAdminProjects();
     if (path === '/admin/pipeline') return admin.renderAdminPipeline();
+    if (path === '/admin/thresholds') return admin.renderAdminThresholds();
+    if (path === '/admin/github-teams') return admin.renderAdminGitHubTeams();
+    if (path === '/admin/webhooks') return admin.renderAdminWebhooks();
     if (path === '/admin/revenue') return admin.renderAdminRevenue(params);
     if (path === '/admin/offboarding') return admin.renderAdminOffboarding(params);
     if (path === '/admin/config') return admin.renderAdminConfig(params);

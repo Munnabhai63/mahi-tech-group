@@ -849,3 +849,22 @@ export function renderAdminAudit() {
     }
   };
 }
+
+export function renderAdminThresholds() {
+  return {
+    html: `${adminHead('Participation Threshold Settings', 'Configure minimum participation % gates, grace periods, and auto-settlement revenue unlocks.')}<div class="card card--pad" style="margin-top:1.5rem"><iframe src="/admin-threshold.html?embedded=true&v=179313" style="width:100%;height:850px;border:none;border-radius:8px;background:#090d16;"></iframe></div>`
+  };
+}
+
+export function renderAdminGitHubTeams() {
+  return {
+    html: `${adminHead('GitHub Team Permissions & Sync', 'Manage organization members, team sync across research, dev, and core roles, and 2FA status.')}<div class="card card--pad" style="margin-top:1.5rem"><iframe src="/github-members.html?embedded=true&v=179313" style="width:100%;height:850px;border:none;border-radius:8px;background:#090d16;"></iframe></div>`
+  };
+}
+
+export function renderAdminWebhooks() {
+  return {
+    html: `${adminHead('GitHub Webhooks & Event Ledger', 'Live webhook event stream, signature verification audits, retry execution, and delivery status.')}<div class="card card--pad" style="margin-top:1.5rem"><iframe src="/github-webhook-log.html?embedded=true&v=179313" style="width:100%;height:850px;border:none;border-radius:8px;background:#090d16;"></iframe></div>`
+  };
+}
+

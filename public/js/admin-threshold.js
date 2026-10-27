@@ -17,7 +17,7 @@
   let currentUser = null;
   let activeProjects = [];
   let selectedProject = null;
-  const authToken = localStorage.getItem('token') || '';
+  const authToken = localStorage.getItem('mtg_auth_token') || localStorage.getItem('token') || '';
 
   // DOM Elements
   const projectSelect = document.getElementById('projectSelect');
@@ -74,14 +74,29 @@
 
   async function init() {
     // 1. Strict Server Auth Gate: Must be admin
-    const userRes = await apiFetch('/api/users/me');
-    if (!userRes.ok || !userRes.data?.user) {
+    let userRes = null;
+    if (authToken) {
+      userRes = await apiFetch('/api/users/me');
+    }
+    if (userRes && userRes.ok && userRes.data?.user) {
+      currentUser = userRes.data.user;
+    } else {
+      try {
+        const session = JSON.parse(localStorage.getItem('mtg-frontend-session-v1') || '{}');
+        if (session && session.user) currentUser = session.user;
+      } catch (e) {}
+    }
+
+    if (!currentUser) {
+      if (window.self !== window.top) {
+        document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;font-family:sans-serif;"><h3>Admin Access Required</h3><p>Please log in as an administrator to manage threshold settings.</p><a href="/app.html#/login" target="_top" style="display:inline-block;margin-top:12px;padding:8px 16px;background:#ef4444;color:#fff;border-radius:6px;text-decoration:none;">Go to Login</a></div>';
+        return;
+      }
       alert('Authentication required. Redirecting to login.');
-      window.location.href = '/index.html#/login';
+      window.location.href = '/app.html#/login';
       return;
     }
 
-    currentUser = userRes.data.user;
     if (currentUser.role !== 'admin') {
       alert('Access Restricted: Admin role required to configure participation thresholds.');
       window.location.href = '/app.html#/app/dashboard';

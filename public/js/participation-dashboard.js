@@ -17,7 +17,7 @@
 
   let currentUser = null;
   let projectData = null;
-  const authToken = localStorage.getItem('token') || '';
+  const authToken = localStorage.getItem('mtg_auth_token') || localStorage.getItem('token') || '';
 
   // DOM Elements
   const projectTitleDisplay = document.getElementById('projectTitleDisplay');
@@ -109,13 +109,28 @@
     if (btnManageThreshold) btnManageThreshold.href = `/admin-threshold.html?projectId=${encodeURIComponent(projectId)}`;
 
     // 1. Verify user strictly from server
-    const userRes = await apiFetch('/api/users/me');
-    if (!userRes.ok || !userRes.data?.user) {
+    let userRes = null;
+    if (authToken) {
+      userRes = await apiFetch('/api/users/me');
+    }
+    if (userRes && userRes.ok && userRes.data?.user) {
+      currentUser = userRes.data.user;
+    } else {
+      try {
+        const session = JSON.parse(localStorage.getItem('mtg-frontend-session-v1') || '{}');
+        if (session && session.user) currentUser = session.user;
+      } catch (e) {}
+    }
+
+    if (!currentUser) {
+      if (window.self !== window.top) {
+        document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;font-family:sans-serif;"><h3>Authentication Required</h3><p>Please log in to the workspace to view participation.</p><a href="/app.html#/login" target="_top" style="display:inline-block;margin-top:12px;padding:8px 16px;background:#3b82f6;color:#fff;border-radius:6px;text-decoration:none;">Go to Login</a></div>';
+        return;
+      }
       alert('Authentication required. Please log in.');
-      window.location.href = '/index.html#/login';
+      window.location.href = '/app.html#/login';
       return;
     }
-    currentUser = userRes.data.user;
 
     if (userNameDisplay) userNameDisplay.textContent = currentUser.name || currentUser.email;
     if (userRoleBadge) {

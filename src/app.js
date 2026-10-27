@@ -65,10 +65,11 @@ export function createApp() {
 
   // Serve static frontend assets
   app.use(express.static(publicPath, {
-    maxAge: '1h',
     setHeaders: (res, filePath) => {
-      if (filePath.endsWith('.html')) {
-        res.setHeader('Cache-Control', 'no-cache');
+      if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
       } else {
         res.setHeader('Cache-Control', 'public, max-age=3600');
       }

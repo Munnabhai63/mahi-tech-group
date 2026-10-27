@@ -385,13 +385,26 @@
       padding: 1.5rem;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
     }
+
+    /* Embedded Mode for New UI */
+    body.is-embedded {
+      background: transparent !important;
+      min-height: auto !important;
+    }
+    body.is-embedded .board-header {
+      display: none !important;
+    }
+    body.is-embedded .board-container {
+      padding: 0.25rem 0 1rem 0 !important;
+      max-width: 100% !important;
+    }
   </style>
 </head>
 <body>
   <!-- Header -->
   <header class="board-header">
     <div class="brand-group">
-      <a href="/" class="brand-logo"><span>⚡</span> MAHI TECH GROUP</a>
+      <a href="/app.html#/app/dashboard" class="brand-logo"><span>⚡</span> MAHI TECH GROUP</a>
       <span style="color: var(--border-card);">/</span>
       <div class="project-header-info">
         <span class="project-title" id="projectTitleDisplay">Loading Project...</span>
@@ -523,7 +536,12 @@
     </div>
   </div>
 
-  <script src="/js/tool-links-panel.js"></script>
-  <script src="/js/point-pool-board.js"></script>
+  <script src="/js/tool-links-panel.js?v=179313"></script>
+  <script src="/js/point-pool-board.js?v=179313"></script>
+  <script>
+    if (window.self !== window.top || new URLSearchParams(window.location.search).get('embedded') === 'true') {
+      document.body.classList.add('is-embedded');
+    }
+  </script>
 </body>
 </html>

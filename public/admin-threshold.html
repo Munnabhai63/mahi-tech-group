@@ -193,17 +193,30 @@
       border: 1px solid #ef4444;
       color: #fca5a5;
     }
+
+    /* Embedded Mode for New UI */
+    body.is-embedded {
+      background: transparent !important;
+      min-height: auto !important;
+    }
+    body.is-embedded .top-nav {
+      display: none !important;
+    }
+    body.is-embedded .settings-container {
+      padding: 0.25rem 0 1rem 0 !important;
+      max-width: 100% !important;
+    }
   </style>
 </head>
 <body>
   <header class="top-nav">
     <div style="display: flex; align-items: center; gap: 1rem;">
-      <a href="/admin.html" class="brand-logo"><span>⚡</span> ADMIN CONSOLE</a>
+      <a href="/app.html#/admin" class="brand-logo"><span>⚡</span> ADMIN CONSOLE</a>
       <span style="color: var(--admin-card-border);">/</span>
       <span style="font-size: 0.95rem; font-weight: 600; color: #cbd5e1;">Participation Thresholds</span>
     </div>
     <div style="display: flex; align-items: center; gap: 0.75rem;">
-      <a href="/admin.html" class="nav-btn-link">← Return to Admin Panel</a>
+      <a href="/app.html#/admin" class="nav-btn-link">← Return to Admin Panel</a>
       <a href="#" id="linkProjectParticipation" class="nav-btn-link" style="display: none;">View Participation Dashboard ↗</a>
     </div>
   </header>
@@ -257,6 +270,11 @@
     </div>
   </main>
 
-  <script src="/js/admin-threshold.js"></script>
+  <script src="/js/admin-threshold.js?v=179313"></script>
+  <script>
+    if (window.self !== window.top || new URLSearchParams(window.location.search).get('embedded') === 'true') {
+      document.body.classList.add('is-embedded');
+    }
+  </script>
 </body>
 </html>

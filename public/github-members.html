@@ -395,17 +395,30 @@
       padding: 3rem 1rem;
       color: var(--text-muted);
     }
+
+    /* Embedded Mode for New UI */
+    body.is-embedded {
+      background: transparent !important;
+      min-height: auto !important;
+    }
+    body.is-embedded .top-nav {
+      display: none !important;
+    }
+    body.is-embedded .page-container {
+      padding: 0.25rem 0 1rem 0 !important;
+      max-width: 100% !important;
+    }
   </style>
 </head>
 <body>
   <nav class="top-nav">
-    <a href="/legacy-dashboard.html" class="brand-logo">
+    <a href="/app.html#/app/dashboard" class="brand-logo">
       <span>🐙</span> Mahi Tech Group
     </a>
     <div class="nav-links">
-      <a href="/legacy-dashboard.html" class="nav-btn-link">Dashboard</a>
+      <a href="/app.html#/app/dashboard" class="nav-btn-link">Dashboard</a>
       <a href="/github-link.html" class="nav-btn-link">GitHub Account</a>
-      <a href="/admin.html" class="nav-btn-link">Admin Panel</a>
+      <a href="/app.html#/admin" class="nav-btn-link">Admin Panel</a>
       <a href="/github-webhook-log.html" class="nav-btn-link">Webhook Log</a>
     </div>
   </nav>
@@ -507,6 +520,11 @@
     </div>
   </div>
 
-  <script src="/js/github-members.js"></script>
+  <script src="/js/github-members.js?v=179313"></script>
+  <script>
+    if (window.self !== window.top || new URLSearchParams(window.location.search).get('embedded') === 'true') {
+      document.body.classList.add('is-embedded');
+    }
+  </script>
 </body>
 </html>

@@ -9,7 +9,7 @@
  * Strict RBAC: All user roles are derived ONLY from GET /api/users/me (never localStorage)
  */
 
-import { api } from '../api.js';
+import { api, getAuthToken } from '../api.js';
 import {
   state, getUser, currentUser, formatDate, formatDateTime, escapeHTML, titleCase
 } from '../store.js';
@@ -30,6 +30,9 @@ let lastUserFetchTime = 0;
  * @param {boolean} force - if true, bypasses short in-memory cache
  */
 export async function getVerifiedUser(force = false) {
+  if (!getAuthToken()) {
+    return currentUser();
+  }
   const now = Date.now();
   if (!force && cachedServerUser && (now - lastUserFetchTime < 3000)) {
     return cachedServerUser;
@@ -41,7 +44,7 @@ export async function getVerifiedUser(force = false) {
     return cachedServerUser;
   } catch (err) {
     console.error('Failed to verify user role from server:', err);
-    return null;
+    return currentUser();
   }
 }
 
