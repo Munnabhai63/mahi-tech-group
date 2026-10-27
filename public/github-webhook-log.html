@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Webhook Activity Log — Admin Panel — Mahi Tech Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-sidebar: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --color-success: #10b981;
+      --color-danger: #ef4444;
+      --color-warning: #f59e0b;
+      --color-pending: #38bdf8;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-nav {
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border-card);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .brand-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .nav-btn-link {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .nav-btn-link:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .page-container {
+      max-width: 1280px;
+      width: 100%;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      flex: 1;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .header-section {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-title-box h1 {
+      margin: 0 0 0.25rem 0;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 700;
+    }
+
+    .header-title-box p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .audit-note {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-card);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Filter Toolbar */
+    .filter-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      background: #0f172a;
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-btn:hover {
+      background: #334155;
+      color: var(--text-main);
+    }
+
+    .filter-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .poll-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--color-success);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--color-success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+
+    /* Table */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+
+    th {
+      background: #0f172a;
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-card);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+      color: var(--text-main);
+      vertical-align: middle;
+      font-variant-numeric: tabular-nums;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge-valid {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--color-success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-invalid {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--color-danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-done {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--color-success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-error {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--color-danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      cursor: help;
+    }
+
+    .badge-pending {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--color-pending);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .event-type-badge {
+      font-family: monospace;
+      background: #334155;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
+    .repo-text {
+      color: #93c5fd;
+      font-family: monospace;
+      font-size: 0.82rem;
+    }
+
+    .error-tooltip-icon {
+      margin-left: 0.35rem;
+      cursor: help;
+    }
+
+    .pagination-bar {
+      margin-top: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      background: #334155;
+      color: #f8fafc;
+    }
+
+    .btn:hover {
+      background: #475569;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <a href="/legacy-dashboard.html" class="brand-logo">
+      <span>🐙</span> Mahi Tech Group
+    </a>
+    <div class="nav-links">
+      <a href="/legacy-dashboard.html" class="nav-btn-link">Dashboard</a>
+      <a href="/github-link.html" class="nav-btn-link">GitHub Account</a>
+      <a href="/github-members.html" class="nav-btn-link">GitHub Teams</a>
+      <a href="/admin.html" class="nav-btn-link">Admin Panel</a>
+    </div>
+  </nav>
+
+  <div class="page-container">
+    <div class="card">
+      <div class="header-section">
+        <div class="header-title-box">
+          <h1>GitHub Webhook Activity Log</h1>
+          <p>Append-only audit trail of all incoming webhook events, HMAC signatures, and state processing.</p>
+        </div>
+        <div>
+          <span class="audit-note">🛡️ Read-Only Security Audit Trail</span>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-toolbar">
+        <div class="filter-group">
+          <span style="font-size:0.85rem; color:var(--text-muted); margin-right:0.25rem;">Filter:</span>
+          <button class="filter-btn active" data-filter="">All Events</button>
+          <button class="filter-btn" data-filter="push">push</button>
+          <button class="filter-btn" data-filter="pull_request">pull_request</button>
+          <button class="filter-btn" data-filter="member">member</button>
+          <button class="filter-btn" data-filter="repository">repository</button>
+          <button class="filter-btn" data-filter="invalid_signature">Invalid Signatures</button>
+        </div>
+        <div class="poll-indicator">
+          <span class="live-dot"></span>
+          <span>Live Polling (30s)</span>
+          <button id="btnManualRefresh" class="btn" style="padding:0.3rem 0.6rem; font-size:0.8rem; margin-left:0.5rem;">Refresh</button>
+        </div>
+      </div>
+
+      <!-- Event Log Table -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Event</th>
+              <th>Action</th>
+              <th>Repo</th>
+              <th>Sender</th>
+              <th>Signature</th>
+              <th>Processed</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody id="webhookLogTableBody">
+            <tr>
+              <td colspan="8" class="empty-state">Loading webhook activity logs...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Toolbar -->
+      <div class="pagination-bar">
+        <span id="logCountLabel" style="font-size:0.85rem; color:var(--text-muted);">Showing 0 events</span>
+        <button id="btnLoadMore" class="btn" style="display:none;">Load More Events</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/github-webhook-log.js"></script>
+</body>
+</html>

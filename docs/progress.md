@@ -205,8 +205,217 @@
     - **Total Passing Tests**: **312 / 312 tests passing (100%)**.
   - **PRD 16 Status**: PERMANENTLY SEALED.
 
-## Pending / Next Steps
-- PRD 16 is permanently sealed.
-- Await user GO-AHEAD before beginning PRD 17 (GitHub Automation).
+- **PRD 17 Batch 1: Database Schema + GitHub App Configuration (100% COMPLETE)**:
+  - Added 4 new tables for GitHub automation in `src/db/schema.sql`, `database/schema.sql`, and `src/db/database.js`:
+    - `user_github_links`: maps platform user to GitHub username with index on `user_id`.
+    - `project_github_repos`: tracks project GitHub repos with status CHECK (`PENDING`, `ACTIVE`, `ARCHIVED`, `FAILED`) and indexes on `project_id` and `status`.
+    - `project_github_memberships`: per-member GitHub team membership with role CHECK (`researcher`, `designer`, `developer`, `tester`, `lead`, `admin`), status CHECK (`ACTIVE`, `REMOVED`), `UNIQUE(project_id, user_id)`, and 3 indexes.
+    - `github_webhook_log`: immutable append-only webhook event log with 3 indexes and 2 triggers (`prevent_webhook_log_update`, `prevent_webhook_log_delete`).
+  - Created and executed migration script `scripts/migrate-prd17-batch1.js` with WAL mode, 5000ms busy_timeout, schema creation, and webhook log trigger sanity check.
+  - Updated `.env.example` with GitHub App configuration keys (`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY_PATH`, `GITHUB_WEBHOOK_SECRET`, `GITHUB_ORG_NAME`, `GITHUB_APP_INSTALLATION_ID`).
+  - Updated `.gitignore` to strictly exclude `certs/` and `*.pem` files.
+  - Implemented config loader `src/config/github.config.js` reading process.env, loading private key via `fs.readFileSync`, performing fail-fast validations on load, and exporting frozen config without leaking secrets.
+  - Created test suite `scripts/verify-prd17-batch1.js` with 20 real DB and config assertions: **20 / 20 PASS**.
+  - Verified full 9-suite regression pass:
+    - `node scripts/run-prd16-layer1-tests.js` -> 48/48 PASS
+    - `node scripts/run-prd16-layer2-tests.js` -> 62/62 PASS
+    - `node scripts/verify-prd16-layer3.js` -> 29/29 PASS
+    - `node scripts/verify-prd16-layer4.js` -> 30/30 PASS
+    - `node scripts/verify-prd16-layer5.js` -> 29/29 PASS
+    - `node scripts/verify-prd16-layer6-integration.js` -> 34/34 PASS
+    - `npm test` -> 13/13 PASS
+    - `node scripts/run-step15-pipeline-tests.js` -> 67/67 PASS
+    - `node scripts/verify-prd17-batch1.js` -> 20/20 PASS
+    - **Total Passing Tests**: **332 / 332 tests passing (100%)**.
+
+- **PRD 17 Batch 2: Core GitHub Automation Service (100% COMPLETE)**:
+  - Installed dependencies: `@octokit/rest` (v22.0.1) and `jsonwebtoken` (v9.0.3).
+  - Built core GitHub automation service in `src/services/githubAutomation.service.js`:
+    - `generateJWT()`: Generates short-lived RS256 JWT using private key from config, 60s clock skew buffer, 10m expiry, iss = appId. Never logs private key or JWT.
+    - `getInstallationToken()`: Exchanges JWT for short-lived Installation Access Token, caches in-memory with expiration date, auto-refreshes when <= 60s remaining.
+    - `getAuthedOctokit()`: Returns authenticated Octokit instance using cached installation token.
+    - `createProjectRepo(projectId, projectName)`: Sanitizes project name to `mahi-${slug}`, max 50 chars, creates private repo with auto_init, inserts into `project_github_repos` with status `ACTIVE` or `FAILED`.
+    - `createGitFlowBranches(repoFullName)`: Sequential branch setup: `develop` from `main`, then `feature/research`, `feature/design`, `feature/dev`, `feature/test` from `develop`; catches 422 warning without throwing.
+    - `createProjectTeams(projectId, repoFullName)`: Creates 6 per-role teams (`researcher`, `designer`, `developer`, `tester`, `lead`, `admin`), binds fine-grained permissions (`push`, `maintain`, `admin`).
+    - `setBranchProtection(repoFullName)`: Configures branch protection rules on `main` and `develop`.
+    - `addMemberToTeam(projectId, userId, role)`: Verifies user GitHub link, adds user to org team, inserts `project_github_memberships`, logs `GITHUB_MEMBER_ADDED` in `access_log`.
+    - `removeMemberFromTeam(projectId, userId, reason)`: Removes user from team, updates `project_github_memberships` status to `REMOVED` with reason and timestamp, preserves permanent attribution, logs `GITHUB_MEMBER_REMOVED` in `access_log`.
+    - `linkUserGitHub(userId, githubUsername, githubNodeId, linkedBy)`: Verifies user, prevents duplicate links, records in `user_github_links`, logs `GITHUB_ACCOUNT_LINKED` in `access_log`.
+    - `archiveProjectRepo(projectId)`: Calls GitHub API to archive repo, updates `project_github_repos` to `ARCHIVED`, logs `GITHUB_REPO_ARCHIVED` in `access_log`.
+    - `setupProjectGitHub(projectId, projectName)`: Master orchestrator executing repo, branch, team, and protection setup sequentially, updates `status = 'FAILED'` on error.
+  - Implemented unit & integration test suite `scripts/verify-prd17-batch2.js` with 26 assertions across all 8 required groups plus orchestrator integration tests: **26 / 26 PASS**.
+  - Verified full 10-suite regression pass:
+    - `node scripts/run-prd16-layer1-tests.js` -> 48/48 PASS
+    - `node scripts/run-prd16-layer2-tests.js` -> 62/62 PASS
+    - `node scripts/verify-prd16-layer3.js` -> 29/29 PASS
+    - `node scripts/verify-prd16-layer4.js` -> 30/30 PASS
+    - `node scripts/verify-prd16-layer5.js` -> 29/29 PASS
+    - `node scripts/verify-prd16-layer6-integration.js` -> 34/34 PASS
+    - `npm test` -> 13/13 PASS
+    - `node scripts/run-step15-pipeline-tests.js` -> 67/67 PASS
+    - `node scripts/verify-prd17-batch1.js` -> 20/20 PASS
+    - `node scripts/verify-prd17-batch2.js` -> 26/26 PASS
+    - **Total Passing Tests**: **358 / 358 tests passing (100%)**.
+
+- **PRD 17 Batch 3: Webhook Receiver + Signature Verification + Sync (100% COMPLETE)**:
+  - Created webhook HMAC-SHA256 signature middleware in `src/middleware/githubWebhookVerify.js`:
+    - Uses Node.js built-in `crypto.timingSafeEqual` with buffer length guard against timing attacks.
+    - Validates `X-Hub-Signature-256` header against raw request buffer (never parsed JSON).
+    - Rejects invalid/missing signatures with HTTP 401 and logs audit entry into `github_webhook_log` (`signature_valid = 0`).
+  - Implemented webhook routing in `src/routes/githubWebhook.routes.js`:
+    - Mounted at `/api/github` using `express.raw({ type: 'application/json' })` strictly BEFORE global `express.json()`.
+    - Implemented idempotent delivery logging in `github_webhook_log` with UNIQUE constraint on `delivery_id` (gracefully returning HTTP 200 `{ status: 'duplicate', skipped: true }`).
+    - Immediate non-blocking HTTP 200 acknowledgement (`{ status: 'received' }`) with asynchronous processing via `setImmediate`.
+  - Implemented webhook event processor in `src/services/githubWebhookProcessor.js`:
+    - `push`: Dispatches `github_push` platform notifications to Project Lead and Admins.
+    - `pull_request`: Dispatches `github_pr_opened`, `github_pr_closed`, and `github_pr_merged` notifications to Project Lead and Admins.
+    - `member`: Logs audit entry (`GITHUB_WEBHOOK_MEMBER_ADDED`) on addition; executes team offboarding via `removeMemberFromTeam(projectId, userId, 'Removed via GitHub webhook')` on removal.
+    - `repository`: Marks repo `ARCHIVED` on archive action; marks repo `FAILED` and dispatches alerts on delete action.
+    - Updates `github_webhook_log.processed = 1` or captures `error_message`.
+  - Updated SQLite trigger via `scripts/migrate-prd17-batch3.js`:
+    - Updated `prevent_webhook_log_update` trigger to permit updates ONLY to `processed` and `error_message` while strictly blocking mutations to immutable fields (`delivery_id`, `event_type`, `payload`, `signature_valid`, `received_at`).
+    - Documented Decision 11 in `docs/decisions.md`.
+  - Created test suite `scripts/verify-prd17-batch3.js` with 25 assertions across 6 groups: **25 / 25 PASS**.
+  - Verified full 11-suite regression pass:
+    - `node scripts/run-prd16-layer1-tests.js` -> 48/48 PASS
+    - `node scripts/run-prd16-layer2-tests.js` -> 62/62 PASS
+    - `node scripts/verify-prd16-layer3.js` -> 29/29 PASS
+    - `node scripts/verify-prd16-layer4.js` -> 30/30 PASS
+    - `node scripts/verify-prd16-layer5.js` -> 29/29 PASS
+    - `node scripts/verify-prd16-layer6-integration.js` -> 34/34 PASS
+    - `npm test` -> 13/13 PASS
+    - `node scripts/run-step15-pipeline-tests.js` -> 67/67 PASS
+    - `node scripts/verify-prd17-batch1.js` -> 20/20 PASS
+    - `node scripts/verify-prd17-batch2.js` -> 26/26 PASS
+    - `node scripts/verify-prd17-batch3.js` -> 25/25 PASS
+    - **Total Passing Tests**: **383 / 383 tests passing (100%)**.
+
+- **PRD 17 Batch 4: Frontend — GitHub Settings Panel & Backend API (100% COMPLETE)**:
+  - Created backend API router in `src/routes/githubSettings.routes.js` mounted at `/api/github/settings` with 9 endpoints:
+    - `POST /link-account`: Allows authenticated users to link their GitHub username & Node ID.
+    - `GET /my-link`: Returns user's linked GitHub account details or `{ linked: false }`.
+    - `POST /admin/link-member`: Admin-only linking on behalf of team members.
+    - `GET /projects/:projectId/repo`: Returns project repository metadata, status, default branch, and timestamps.
+    - `GET /projects/:projectId/members`: Admin-only view of project GitHub team memberships and attribution history.
+    - `POST /projects/:projectId/members/:userId/add`: Adds member to GitHub role sub-team (`researcher`, `designer`, `developer`, `tester`, `lead`).
+    - `DELETE /projects/:projectId/members/:userId`: Soft-removes member with >= 10-char reason; permanently retains row for attribution.
+    - `GET /webhook-log`: Admin-only paginated audit log with filtering by event type; strictly suppresses sensitive `payload` column.
+    - `POST /projects/:projectId/setup`: Admin-only orchestrator setting up repo, GitFlow branches, sub-teams, and branch protection.
+    - Static sub-paths strictly ordered before parameterized routes.
+  - Mounted router in `src/app.js` using standard `express.json()` parser while constraining `express.raw()` specifically to `/api/github/webhook`.
+  - Built 4 platform UI views:
+    - View 1 (`public/github-link.html`, `public/js/github-link.js`): Self-linking card with green connected badge, Node ID help tooltip, and Admin linking panel for members.
+    - View 2 (`public/github-repo-panel.html`, `public/js/github-repo-panel.js`): Repo status card (ACTIVE / ARCHIVED / FAILED), GitFlow branch architecture display, "Open on GitHub" (`target="_blank" rel="noopener noreferrer"`), and Admin repo provisioning modal with loading spinner.
+    - View 3 (`public/github-members.html`, `public/js/github-members.js`): Admin-only team membership table with active/removed badges, inline Add Member form (excluding admin role), and Remove Member modal with >= 10-char validation preserving attribution.
+    - View 4 (`public/github-webhook-log.html`, `public/js/github-webhook-log.js`): Admin-only audit log with live 30s polling, delivery deduplication, event filters, and signature validity badges.
+  - Navigation integrations:
+    - Added "GitHub Account" link to profile header and account drawer in `public/profile.html` and `public/js/app/shell.js`.
+    - Added "GitHub" tab embedding `/github-repo-panel.html?projectId=${project.id}` in `public/js/app/views/projects.js`.
+    - Added "GitHub Teams" (`/github-members.html`) and "Webhook Log" (`/github-webhook-log.html`) to Admin sidebar in `public/admin.html` and `public/js/app/shell.js`.
+  - Created test suite `scripts/verify-prd17-batch4.js` with 32 assertions across 6 groups: **32 / 32 PASS**.
+  - Verified full 12-suite regression pass (415 / 415 assertions passing cleanly):
+    - `node scripts/run-prd16-layer1-tests.js` -> 48/48 PASS
+    - `node scripts/run-prd16-layer2-tests.js` -> 62/62 PASS
+    - `node scripts/verify-prd16-layer3.js` -> 29/29 PASS
+    - `node scripts/verify-prd16-layer4.js` -> 30/30 PASS
+    - `node scripts/verify-prd16-layer5.js` -> 29/29 PASS
+    - `node scripts/verify-prd16-layer6-integration.js` -> 34/34 PASS
+    - `npm test` -> 13/13 PASS
+    - `node scripts/run-step15-pipeline-tests.js` -> 67/67 PASS
+    - `node scripts/verify-prd17-batch1.js` -> 20/20 PASS
+    - `node scripts/verify-prd17-batch2.js` -> 26/26 PASS
+    - `node scripts/verify-prd17-batch3.js` -> 25/25 PASS
+    - `node scripts/verify-prd17-batch4.js` -> 32/32 PASS
+    - **Total Passing Tests**: **415 / 415 tests passing (100%)**.
+
+- **PRD 17 Batch 5: Full Integration + Documentation + Platform Seal (100% COMPLETE)**:
+  - Created end-to-end integration test suite `scripts/verify-prd17-batch5-integration.js` covering complete usage lifecycle across Phases A–H:
+    - Phase A: Pre-Flight Setup (Admin, 4 Members registered/approved/logged in, project auto-created, 4 members assigned).
+    - Phase B: GitHub Account Linking (4 members + Admin self-link, duplicate link rejected with 409, non-existent user link rejected with 404).
+    - Phase C: Project GitHub Setup (Admin setup returns 200 ACTIVE, duplicate setup returns 400, non-admin rejected with 403).
+    - Phase D: Team Membership Management (Admin adds researcher 200, duplicate add 409, all 4 roles active, soft removal with >=10 char reason preserves attribution, member list returns 1 REMOVED + 3 ACTIVE).
+    - Phase E: Webhook Ingestion (Push event 200 received + processed=1, PR opened event 200 + notification created, invalid signature 401 logged, duplicate delivery 200 skipped: true idempotency).
+    - Phase F: Webhook Log Audit (Admin GET 200 total>0, sensitive payload strictly excluded, eventType filter verified, non-admin 403).
+    - Phase G: Repo Status Verification (Member GET 200 status=ACTIVE, unauthenticated GET 401).
+    - Phase H: Cross-System Consistency (5 user_github_links, 4 project_github_memberships, access_log audit trail, archiveProjectRepo transitions to ARCHIVED).
+  - Integration suite result: **54 / 54 PASS (100%)**.
+  - Executed full 13-suite regression verification: **469 / 469 assertions passing (100%)**:
+    1. `node scripts/run-prd16-layer1-tests.js` -> 48/48 PASS
+    2. `node scripts/run-prd16-layer2-tests.js` -> 62/62 PASS
+    3. `node scripts/verify-prd16-layer3.js` -> 29/29 PASS
+    4. `node scripts/verify-prd16-layer4.js` -> 30/30 PASS
+    5. `node scripts/verify-prd16-layer5.js` -> 29/29 PASS
+    6. `node scripts/verify-prd16-layer6-integration.js` -> 34/34 PASS
+    7. `npm test` -> 13/13 PASS
+    8. `node scripts/run-step15-pipeline-tests.js` -> 67/67 PASS
+    9. `node scripts/verify-prd17-batch1.js` -> 20/20 PASS
+    10. `node scripts/verify-prd17-batch2.js` -> 26/26 PASS
+    11. `node scripts/verify-prd17-batch3.js` -> 25/25 PASS
+    12. `node scripts/verify-prd17-batch4.js` -> 32/32 PASS
+    13. `node scripts/verify-prd17-batch5-integration.js` -> 54/54 PASS
+  - Authored comprehensive architecture documentation in `docs/17_GITHUB_AUTOMATION.md`.
+
+---
+
+## Platform Build: 100% COMPLETE
+
+| Phase            | PRD/Step | Status  | Commit     |
+|------------------|----------|---------|------------|
+| Core (01-14)     | Steps    | SEALED  | multiple   |
+| 4-Role Pipeline  | PRD 15   | SEALED  | 5bf0a3a    |
+| Point-Pool       | PRD 16   | SEALED  | e8a7c6e    |
+| GitHub Automation| PRD 17   | SEALED  | [PENDING COMMIT] |
+
+### System Totals & Metrics
+- **Total DB Tables**: 43 core tables (39 from PRDs 15+16 + 4 from PRD 17; 46 active in SQLite)
+- **Total DB Triggers**: 19 core triggers (20 active in SQLite)
+- **Total Test Assertions**: 469 passing assertions across 13 test suites (100% PASS)
+- **Total Backend Service Files**: 25 files:
+  1. `aiNotesService.js`
+  2. `assetService.js`
+  3. `auditService.js`
+  4. `coworkingService.js`
+  5. `dashboardService.js`
+  6. `disputeService.js`
+  7. `emailService.js`
+  8. `fanoutService.js`
+  9. `gatewayService.js`
+  10. `githubAutomation.service.js`
+  11. `githubWebhookProcessor.js`
+  12. `governanceService.js`
+  13. `meetingService.js`
+  14. `notificationService.js`
+  15. `offboardingService.js`
+  16. `payoutService.js`
+  17. `pipelineService.js`
+  18. `pointPoolService.js`
+  19. `quotaService.js`
+  20. `revenueService.js`
+  21. `signService.js`
+  22. `superadminService.js`
+  23. `ticketService.js`
+  24. `votingService.js`
+  25. `wsService.js`
+- **Total Frontend Views**: 15 HTML view files in `public/`:
+  1. `admin-threshold.html`
+  2. `admin.html`
+  3. `app.html`
+  4. `github-link.html`
+  5. `github-members.html`
+  6. `github-repo-panel.html`
+  7. `github-webhook-log.html`
+  8. `index.html`
+  9. `legacy-dashboard.html`
+  10. `participation-dashboard.html`
+  11. `point-pool-board.html`
+  12. `profile.html`
+  13. `sign.html`
+  14. `signup.html`
+  15. `superadmin.html`
+  *(plus 10 modular views in `public/js/app/views/`: `admin.js`, `ai-center.js`, `disputes.js`, `ideas.js`, `meetings.js`, `member.js`, `projects.js`, `public.js`, `signing.js`, `superadmin.js`)*
+- **Total API Routes**: 196 registered endpoints across all routers
+
+
+
 
 

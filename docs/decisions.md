@@ -97,5 +97,21 @@
   3. Enforce server-side data isolation: in `GET /participation`, Admins/Leads receive all project members' participation metrics, whereas regular contributors receive only their own participation metrics.
 - **Consequences**: Deterministic Express URL dispatch with zero route collision, tamper-proof role enforcement, and privacy isolation across team members.
 
+## Decision 10: PRD 17 GitHub App Architecture, In-Memory Token Caching & Attribution Preservation
+- **Context**: PRD 17 requires programmatic GitHub operations (repo provisioning, GitFlow branch creation, role-based team management, branch protection, and project repo archiving). Using personal access tokens (PAT) or OAuth apps would violate least-privilege principles, risk credential leaks, or bind repository ownership to personal accounts.
+- **Decision**:
+  1. Enforce GitHub App authentication exclusively using RS256 JWTs (`iss = GITHUB_APP_ID`, `iat = now - 60s`, `exp = now + 10m`) exchanged for short-lived (~1 hour) Installation Access Tokens via `@octokit/rest`.
+  2. Implement module-level in-memory token caching (`_cachedToken`) with a 60-second validity guard. Tokens are reused across requests until <= 60 seconds remain, minimizing API latency and GitHub rate-limiting.
+  3. Private keys and tokens are strictly kept in-memory and NEVER logged, stored in the database, or returned in any API responses.
+  4. Preserve contributor attribution permanently on member offboarding: `project_github_memberships` rows are updated with `status = 'REMOVED'`, `removed_at = datetime('now')`, and `removed_reason = reason`. Records are never deleted from the database.
+  5. Audit all administrative operations in the immutable `access_log` table (`GITHUB_MEMBER_ADDED`, `GITHUB_MEMBER_REMOVED`, `GITHUB_ACCOUNT_LINKED`, `GITHUB_REPO_ARCHIVED`).
+- **Consequences**: Enterprise-grade security with fine-grained organization permissions, zero token exposure, resilient caching, and immutable audit tracking.
 
-
+## Decision 11: Webhook Ingestion Append-Only Trigger & State Transition Exception
+- **Context**: The `github_webhook_log` table is designed as an immutable append-only ledger for all inbound deliveries to guarantee audit fidelity and detect replay attacks. However, after asynchronous background workers process an event, the system must record whether processing succeeded (`processed = 1`) or failed (`error_message = ...`) without creating duplicate event records.
+- **Decision**: 
+  1. The `processed` and `error_message` columns on `github_webhook_log` are the sole mutable fields.
+  2. The SQLite `BEFORE UPDATE` trigger (`prevent_webhook_log_update`) strictly blocks mutations to all other columns (`delivery_id`, `event_type`, `payload`, `signature_valid`, `received_at`, and `id`).
+  3. `BEFORE DELETE` trigger (`prevent_webhook_log_delete`) remains unconditionally strict — deletion is impossible.
+  4. Raw request payloads (`express.raw({ type: 'application/json' })`) are captured before `express.json()` to ensure exact cryptographic HMAC-SHA256 signature verification via `crypto.timingSafeEqual()`.
+- **Consequences**: Provable tamper resistance for event delivery records, single-row state progression without event duplication, and zero timing attack vulnerabilities during webhook authentication.

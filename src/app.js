@@ -14,6 +14,8 @@ import superadminRouter from './routes/superadmin.js';
 import signRouter from './routes/sign.js';
 import pipelineRouter from './routes/pipeline.routes.js';
 import pointPoolRouter from './routes/pointPool.routes.js';
+import githubWebhookRouter from './routes/githubWebhook.routes.js';
+import githubSettingsRouter from './routes/githubSettings.routes.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { queryAll } from './db/database.js';
@@ -29,6 +31,11 @@ export function createApp() {
 
   app.use(securityHeaders);
   app.use(cors());
+
+  // Webhook raw body parser MUST be mounted BEFORE global express.json()
+  app.use('/api/github/webhook', express.raw({ type: 'application/json' }));
+  app.use('/api/github', githubWebhookRouter);
+
   app.use(express.json());
 
   // Enhanced health check endpoint
@@ -84,6 +91,7 @@ export function createApp() {
   app.use('/api/pointpool', pointPoolRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api', dashboardRouter); // Covers /api/notifications/* and /api/activity/*
+  app.use('/api/github/settings', githubSettingsRouter);
 
   // Direct shortcut redirects for common workspace and auth routes (Express 5 compatible)
   app.use((req, res, next) => {

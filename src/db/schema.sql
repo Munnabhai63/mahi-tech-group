@@ -904,3 +904,108 @@ CREATE INDEX IF NOT EXISTS idx_participation_thresholds_project_id ON participat
 
 CREATE INDEX IF NOT EXISTS idx_point_tool_links_point_id ON point_tool_links(point_id);
 CREATE INDEX IF NOT EXISTS idx_point_tool_links_project_id ON point_tool_links(project_id);
+
+-- ===================================================================
+-- PRD 17: GitHub Automation Architecture (Batch 1)
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS user_github_links (
+  id              TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  user_id         TEXT NOT NULL UNIQUE,
+  github_username TEXT NOT NULL,
+  github_node_id  TEXT NOT NULL,
+  linked_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  linked_by       TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_github_links_user_id
+  ON user_github_links(user_id);
+
+CREATE TABLE IF NOT EXISTS project_github_repos (
+  id              TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  project_id      TEXT NOT NULL UNIQUE,
+  github_repo_id  INTEGER,
+  repo_name       TEXT NOT NULL,
+  repo_full_name  TEXT NOT NULL,
+  repo_url        TEXT NOT NULL,
+  default_branch  TEXT NOT NULL DEFAULT 'main',
+  status          TEXT NOT NULL DEFAULT 'PENDING'
+                    CHECK(status IN ('PENDING','ACTIVE','ARCHIVED','FAILED')),
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  archived_at     TEXT,
+  FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_github_repos_project_id
+  ON project_github_repos(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_github_repos_status
+  ON project_github_repos(status);
+
+CREATE TABLE IF NOT EXISTS project_github_memberships (
+  id              TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  project_id      TEXT NOT NULL,
+  user_id         TEXT NOT NULL,
+  github_username TEXT NOT NULL,
+  role            TEXT NOT NULL
+                    CHECK(role IN ('researcher','designer',
+                                   'developer','tester','lead','admin')),
+  team_slug       TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'ACTIVE'
+                    CHECK(status IN ('ACTIVE','REMOVED')),
+  added_at        TEXT NOT NULL DEFAULT (datetime('now')),
+  removed_at      TEXT,
+  removed_reason  TEXT,
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (user_id)    REFERENCES users(id),
+  UNIQUE(project_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_proj_gh_memberships_project_id
+  ON project_github_memberships(project_id);
+CREATE INDEX IF NOT EXISTS idx_proj_gh_memberships_user_id
+  ON project_github_memberships(user_id);
+CREATE INDEX IF NOT EXISTS idx_proj_gh_memberships_status
+  ON project_github_memberships(status, project_id);
+
+CREATE TABLE IF NOT EXISTS github_webhook_log (
+  id              TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  delivery_id     TEXT NOT NULL UNIQUE,
+  event_type      TEXT NOT NULL,
+  action          TEXT,
+  repo_full_name  TEXT,
+  sender_login    TEXT,
+  payload         TEXT NOT NULL,
+  signature_valid INTEGER NOT NULL DEFAULT 0
+                    CHECK(signature_valid IN (0,1)),
+  processed       INTEGER NOT NULL DEFAULT 0
+                    CHECK(processed IN (0,1)),
+  error_message   TEXT,
+  received_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_gh_webhook_log_event_type
+  ON github_webhook_log(event_type);
+CREATE INDEX IF NOT EXISTS idx_gh_webhook_log_received_at
+  ON github_webhook_log(received_at);
+CREATE INDEX IF NOT EXISTS idx_gh_webhook_log_processed
+  ON github_webhook_log(processed);
+
+CREATE TRIGGER IF NOT EXISTS prevent_webhook_log_update
+BEFORE UPDATE ON github_webhook_log
+WHEN OLD.delivery_id != NEW.delivery_id
+  OR OLD.event_type != NEW.event_type
+  OR OLD.payload != NEW.payload
+  OR OLD.signature_valid != NEW.signature_valid
+  OR OLD.received_at != NEW.received_at
+BEGIN
+  SELECT RAISE(ABORT, 'github_webhook_log is append-only: only processed and error_message fields are mutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_webhook_log_delete
+BEFORE DELETE ON github_webhook_log
+BEGIN
+  SELECT RAISE(ABORT, 'github_webhook_log rows cannot be deleted');
+END;
+
