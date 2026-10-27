@@ -364,7 +364,7 @@
 | Core (01-14)     | Steps    | SEALED  | multiple   |
 | 4-Role Pipeline  | PRD 15   | SEALED  | 5bf0a3a    |
 | Point-Pool       | PRD 16   | SEALED  | e8a7c6e    |
-| GitHub Automation| PRD 17   | SEALED  | [PENDING COMMIT] |
+| GitHub Automation| PRD 17   | SEALED  | 6558f93    |
 
 ### System Totals & Metrics
 - **Total DB Tables**: 43 core tables (39 from PRDs 15+16 + 4 from PRD 17; 46 active in SQLite)

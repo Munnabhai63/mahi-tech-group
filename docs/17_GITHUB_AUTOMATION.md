@@ -270,5 +270,5 @@ PRD 17 test suites verify every layer from schema triggers to end-to-end integra
 
 ## Commit Hash
 
-- **PRD 17 Feature Seal**: `[PENDING COMMIT]`
-- **Documentation & Summary Seal**: `[PENDING COMMIT]`
+- **PRD 17 Feature Seal**: `6558f93`
+- **Documentation & Summary Seal**: `ac05852`
