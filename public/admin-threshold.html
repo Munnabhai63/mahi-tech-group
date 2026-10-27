@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Participation Threshold Settings — Admin Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    :root {
+      --admin-primary: #ef4444;
+      --admin-primary-hover: #dc2626;
+      --admin-bg-sidebar: #0f172a;
+      --admin-bg-main: #090d16;
+      --admin-card-bg: #1e293b;
+      --admin-card-border: #334155;
+      --admin-text-dim: #94a3b8;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--admin-bg-main);
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-nav {
+      background: var(--admin-bg-sidebar);
+      border-bottom: 1px solid var(--admin-card-border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .brand-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--admin-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-btn-link {
+      background: #1e293b;
+      border: 1px solid var(--admin-card-border);
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .nav-btn-link:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .settings-container {
+      max-width: 900px;
+      width: 100%;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      flex: 1;
+    }
+
+    .settings-card {
+      background: var(--admin-card-bg);
+      border: 1px solid var(--admin-card-border);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .settings-header {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--admin-card-border);
+      padding-bottom: 1.25rem;
+    }
+
+    .settings-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin: 0;
+    }
+
+    .settings-subtitle {
+      color: var(--admin-text-dim);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .form-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .form-select, .form-input {
+      background: #0f172a;
+      border: 1px solid var(--admin-card-border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: #f8fafc;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-select:focus, .form-input:focus {
+      border-color: #3b82f6;
+    }
+
+    .form-input:disabled, .form-select:disabled {
+      background: #020617;
+      color: #64748b;
+      cursor: not-allowed;
+      border-style: dashed;
+    }
+
+    .form-hint {
+      font-size: 0.8rem;
+      color: var(--admin-text-dim);
+    }
+
+    .btn-submit {
+      background: #ef4444;
+      border: none;
+      color: #ffffff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: #dc2626;
+    }
+
+    .btn-submit:disabled {
+      background: #475569;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .alert-banner {
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .alert-frozen {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid #f59e0b;
+      color: #fde68a;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #10b981;
+      color: #a7f3d0;
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+    }
+  </style>
+</head>
+<body>
+  <header class="top-nav">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <a href="/admin.html" class="brand-logo"><span>⚡</span> ADMIN CONSOLE</a>
+      <span style="color: var(--admin-card-border);">/</span>
+      <span style="font-size: 0.95rem; font-weight: 600; color: #cbd5e1;">Participation Thresholds</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <a href="/admin.html" class="nav-btn-link">← Return to Admin Panel</a>
+      <a href="#" id="linkProjectParticipation" class="nav-btn-link" style="display: none;">View Participation Dashboard ↗</a>
+    </div>
+  </header>
+
+  <main class="settings-container">
+    <div class="settings-card">
+      <div class="settings-header">
+        <h1 class="settings-title">Configure Project Participation Threshold</h1>
+        <p class="settings-subtitle">
+          Define the minimum point weight percentage and inactivity abandonment window required for revenue share eligibility.
+        </p>
+      </div>
+
+      <!-- Alerts -->
+      <div class="alert-banner alert-frozen" id="bannerFrozen">
+        ⚠️ <strong>Threshold Frozen:</strong> This project is LIVE in production. Participation thresholds and abandonment policies are permanently locked to guarantee financial ledger predictability.
+      </div>
+      <div class="alert-banner alert-success" id="bannerSuccess"></div>
+      <div class="alert-banner alert-error" id="bannerError"></div>
+
+      <form id="thresholdForm">
+        <!-- Project Selector -->
+        <div class="form-group">
+          <label class="form-label" for="projectSelect">Select Project:</label>
+          <select id="projectSelect" class="form-select" required>
+            <option value="">-- Choose an active project --</option>
+          </select>
+          <span class="form-hint">Thresholds are configured on a per-project basis.</span>
+        </div>
+
+        <!-- Threshold % -->
+        <div class="form-group">
+          <label class="form-label" for="inputThresholdPct">Minimum Participation Percentage (%):</label>
+          <input type="number" id="inputThresholdPct" class="form-input" min="0" max="100" step="0.5" required placeholder="20.00">
+          <span class="form-hint">Members whose overall approved point contribution falls below this threshold will be flagged as disqualified at go-live. (Default: 20.00%)</span>
+          <div id="errorThresholdPct" style="color: #f87171; font-size: 0.8rem; display: none;"></div>
+        </div>
+
+        <!-- Abandonment Days -->
+        <div class="form-group">
+          <label class="form-label" for="inputAbandonmentDays">Inactivity Abandonment Window (Days):</label>
+          <input type="number" id="inputAbandonmentDays" class="form-input" min="1" max="30" step="1" required placeholder="7">
+          <span class="form-hint">Number of days a claimed point can sit idle without submission before being classified as abandoned. (Default: 7 days, max: 30 days)</span>
+          <div id="errorAbandonmentDays" style="color: #f87171; font-size: 0.8rem; display: none;"></div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+          <button type="submit" id="btnSaveThreshold" class="btn-submit">Save Threshold Settings</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/admin-threshold.js"></script>
+</body>
+</html>

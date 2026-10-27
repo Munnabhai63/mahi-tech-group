@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS pipeline_checklist_points (
   weight INTEGER NOT NULL DEFAULT 5 CHECK(weight >= 1 AND weight <= 10),
   status VARCHAR(20) NOT NULL DEFAULT 'UNCLAIMED',
   assigned_to TEXT,
+  claim_locked_by TEXT REFERENCES users(id),
+  claim_locked_at TIMESTAMP,
   submitted_at TIMESTAMP,
   approved_at TIMESTAMP,
   approved_by TEXT,
@@ -37,6 +39,7 @@ CREATE TABLE IF NOT EXISTS pipeline_checklist_points (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (deliverable_id) REFERENCES pipeline_deliverables(id),
   FOREIGN KEY (assigned_to) REFERENCES users(id),
+  FOREIGN KEY (claim_locked_by) REFERENCES users(id),
   FOREIGN KEY (approved_by) REFERENCES users(id),
   FOREIGN KEY (created_by) REFERENCES users(id)
 );
@@ -87,6 +90,66 @@ CREATE TABLE IF NOT EXISTS pipeline_addendum_requests (
 );
 `;
 
+export const POINT_POOL_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS point_pool_claims (
+  id TEXT PRIMARY KEY,
+  point_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  deliverable_id TEXT NOT NULL,
+  stage VARCHAR(20) NOT NULL,
+  claimed_by TEXT NOT NULL,
+  claimed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  released_at TIMESTAMP,
+  release_reason VARCHAR(50),
+  released_by TEXT,
+  FOREIGN KEY (point_id) REFERENCES pipeline_checklist_points(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (claimed_by) REFERENCES users(id)
+);
+
+CREATE TRIGGER IF NOT EXISTS prevent_claim_delete
+BEFORE DELETE ON point_pool_claims
+BEGIN
+  SELECT RAISE(ABORT, 'point_pool_claims is append-only. Deletes forbidden.');
+END;
+
+CREATE TABLE IF NOT EXISTS participation_thresholds (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL UNIQUE,
+  threshold_pct DECIMAL(5,2) NOT NULL DEFAULT 20.00,
+  abandonment_days INTEGER NOT NULL DEFAULT 7,
+  set_by TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (set_by) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS point_tool_links (
+  id TEXT PRIMARY KEY,
+  point_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  added_by TEXT NOT NULL,
+  tool_name VARCHAR(100) NOT NULL,
+  tool_url TEXT NOT NULL,
+  deleted_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (point_id) REFERENCES pipeline_checklist_points(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (added_by) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_point_id ON point_pool_claims(point_id);
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_project_id ON point_pool_claims(project_id);
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_claimed_by ON point_pool_claims(claimed_by);
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_stage ON point_pool_claims(stage);
+
+CREATE INDEX IF NOT EXISTS idx_participation_thresholds_project_id ON participation_thresholds(project_id);
+
+CREATE INDEX IF NOT EXISTS idx_point_tool_links_point_id ON point_tool_links(point_id);
+CREATE INDEX IF NOT EXISTS idx_point_tool_links_project_id ON point_tool_links(project_id);
+`;
+
 export const COMPOSITE_INDEXES_SQL = `
 CREATE INDEX IF NOT EXISTS idx_ideas_status_owner
   ON ideas(status, owner_id);
@@ -118,6 +181,7 @@ export function getDatabase() {
     dbInstance.exec('PRAGMA foreign_keys = ON;');
     console.log('[DB] WAL mode enabled');
     dbInstance.exec(PIPELINE_SCHEMA_SQL);
+    dbInstance.exec(POINT_POOL_SCHEMA_SQL);
     dbInstance.exec(COMPOSITE_INDEXES_SQL);
   }
   return dbInstance;

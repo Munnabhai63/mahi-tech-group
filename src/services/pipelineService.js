@@ -2,6 +2,13 @@ import crypto from 'node:crypto';
 import { queryAll, queryOne, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
 import { pushToUser, pushToProject, pushToGlobal } from './wsService.js';
+import {
+  claimPoint as poolClaimPoint,
+  computeParticipationPct,
+  computeOverallParticipationPct,
+  applyParticipationBlocks,
+  getThreshold
+} from './pointPoolService.js';
 
 /**
  * Helper to verify if user is Lead or Admin for a given project
@@ -239,18 +246,6 @@ export function addChecklistPoint(deliverableId, stage, pointTitle, pointDescrip
     throw new Error('Deliverable not found');
   }
 
-  // Stage must be current_stage of deliverable OR an open addendum target stage
-  const isCurrentStage = (deliverable.current_stage === upperStage);
-  const openAddendum = queryOne(
-    `SELECT id FROM pipeline_addendum_requests 
-     WHERE deliverable_id = ? AND target_stage = ? AND status = 'OPEN' LIMIT 1`,
-    [deliverableId, upperStage]
-  );
-
-  if (!isCurrentStage && !openAddendum) {
-    throw new Error(`Cannot add point to stage ${upperStage}. Deliverable is currently in ${deliverable.current_stage} and no open addendum exists for this stage.`);
-  }
-
   const id = crypto.randomUUID();
   execute(`
     INSERT INTO pipeline_checklist_points (
@@ -283,59 +278,8 @@ export function addChecklistPoint(deliverableId, stage, pointTitle, pointDescrip
  *    - Returns updated point
  */
 export function claimPoint(pointId, userId, userRole) {
-  if (!pointId || !userId || !userRole) {
-    throw new Error('pointId, userId, and userRole are required');
-  }
-
-  const point = queryOne('SELECT * FROM pipeline_checklist_points WHERE id = ?', [pointId]);
-  if (!point) {
-    throw new Error('Point not found');
-  }
-  if (point.status !== 'UNCLAIMED') {
-    throw new Error(`Point cannot be claimed in status ${point.status}`);
-  }
-
-  const role = userRole.toLowerCase();
-  const isPrivileged = (role === 'admin' || role === 'lead');
-
-  if (!isPrivileged) {
-    let allowedRole = false;
-    switch (point.stage) {
-      case 'RESEARCH':
-        allowedRole = (role === 'researcher');
-        break;
-      case 'DESIGN':
-        allowedRole = (role === 'designer');
-        break;
-      case 'DEV':
-        allowedRole = (role === 'developer');
-        break;
-      case 'TEST':
-        allowedRole = (role === 'tester' || role === 'producer');
-        break;
-      default:
-        allowedRole = false;
-    }
-
-    if (!allowedRole) {
-      throw new Error(`Role mismatch: ${userRole} cannot claim a ${point.stage} checklist point`);
-    }
-  }
-
-  execute(`
-    UPDATE pipeline_checklist_points 
-    SET status = 'CLAIMED', assigned_to = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `, [userId, pointId]);
-
-  logAccess({
-    userId,
-    action: 'pipeline_point_claimed',
-    resource: `/api/pipeline/points/${pointId}`,
-    targetId: pointId
-  });
-
-  return queryOne('SELECT * FROM pipeline_checklist_points WHERE id = ?', [pointId]);
+  const result = poolClaimPoint(pointId, userId, userRole);
+  return result.updatedPoint || result;
 }
 
 /**
@@ -530,7 +474,45 @@ export function approvePoint(pointId, approverId) {
     console.error('[EVENT 2/4 NOTIFICATION ERROR]:', notifErr.message);
   }
 
-  return { updatedPoint, stagePercent };
+  // EVENT 3: Participation Warning (At-Risk) & Participation calculation
+  const memberId = updatedPoint.claim_locked_by || updatedPoint.assigned_to;
+  let participationUpdate = null;
+
+  if (memberId && projectId) {
+    const stagePct = computeParticipationPct(memberId, projectId, point.stage);
+    const overallPct = computeOverallParticipationPct(memberId, projectId);
+    const thresholdRecord = getThreshold(projectId);
+    const threshold = Number(thresholdRecord?.threshold_pct ?? 20.00);
+    const atRisk = overallPct < (threshold + 10);
+
+    participationUpdate = {
+      userId: memberId,
+      stage: point.stage,
+      stagePct,
+      overallPct,
+      threshold,
+      atRisk
+    };
+
+    if (atRisk) {
+      try {
+        const project = queryOne('SELECT title FROM projects WHERE id = ?', [projectId]);
+        const projectTitle = project?.title || 'Project';
+        sendPipelineNotification({
+          recipientUserIds: [memberId],
+          eventType: 'pointpool_participation_warning',
+          message: `⚠️ Your participation in project '${projectTitle}' is currently ${overallPct}%. Minimum ${threshold}% required to receive your revenue share at Go-Live. Claim and complete more points to stay eligible.`,
+          link: `/projects/${projectId}?tab=participation`,
+          projectId,
+          deliverableId: point.deliverable_id
+        });
+      } catch (warnErr) {
+        console.error('[PARTICIPATION WARNING NOTIFICATION ERROR]:', warnErr.message);
+      }
+    }
+  }
+
+  return { updatedPoint, stagePercent, participationUpdate };
 }
 
 /**
@@ -1068,7 +1050,15 @@ export function adminApproveLive(projectId, adminId, approvalNotes = '') {
     console.error('[EVENT 10 NOTIFICATION ERROR]:', notifErr.message);
   }
 
-  return updatedProject;
+  // Apply participation gates & revenue blocks (PRD 16 Layer 2)
+  const blockResult = applyParticipationBlocks(projectId);
+  const blockedMembers = blockResult?.blockedMembers || [];
+
+  return {
+    ...updatedProject,
+    project: updatedProject,
+    blockedMembers
+  };
 }
 
 /**

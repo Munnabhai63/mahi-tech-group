@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Point Pool Board — Mahi Tech Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-research: #06b6d4;
+      --color-design: #a855f7;
+      --color-dev: #3b82f6;
+      --color-test: #f59e0b;
+      --color-success: #10b981;
+      --color-danger: #ef4444;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .board-header {
+      background: #0f172a;
+      border-bottom: 1px solid var(--border-card);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #3b82f6;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .project-header-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .project-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .header-nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .nav-link-btn {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .nav-link-btn:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .nav-link-btn.active {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: #3b82f6;
+      color: #60a5fa;
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #020617;
+      border: 1px solid var(--border-card);
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+    }
+
+    .board-container {
+      max-width: 1440px;
+      width: 100%;
+      margin: 1.5rem auto;
+      padding: 0 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .board-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 0.85rem 1.25rem;
+    }
+
+    .kanban-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    @media (max-width: 1100px) {
+      .kanban-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .kanban-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stage-col {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      min-height: 480px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+    }
+
+    .stage-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .stage-header.research { border-top: 4px solid var(--color-research); }
+    .stage-header.design   { border-top: 4px solid var(--color-design); }
+    .stage-header.dev      { border-top: 4px solid var(--color-dev); }
+    .stage-header.test     { border-top: 4px solid var(--color-test); }
+
+    .stage-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+    }
+
+    .stage-badge-count {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #94a3b8;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+    }
+
+    .points-list {
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      flex: 1;
+    }
+
+    .point-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    }
+
+    .point-card:hover {
+      border-color: #475569;
+      transform: translateY(-1px);
+    }
+
+    .point-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .point-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f8fafc;
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .point-weight-pill {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+
+    .point-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    .status-pill {
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .status-pill.unclaimed { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid #475569; }
+    .status-pill.claimed   { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .status-pill.in_progress { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+    .status-pill.submitted { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+    .status-pill.approved  { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .status-pill.revision_needed { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+    .tool-badge-btn {
+      background: #0b1120;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s ease;
+    }
+
+    .tool-badge-btn:hover {
+      background: #1e293b;
+      color: #60a5fa;
+      border-color: #3b82f6;
+    }
+
+    .claimer-info {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .btn-claim {
+      background: #3b82f6;
+      border: none;
+      color: #ffffff;
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-claim:hover { background: #2563eb; }
+
+    .btn-release {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-release:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+
+    /* Abandoned section */
+    .abandoned-panel {
+      background: #0f172a;
+      border: 1px solid #7f1d1d;
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+
+    .abandoned-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .abandoned-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fca5a5;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-box {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      max-width: 480px;
+      width: 90%;
+      padding: 1.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="board-header">
+    <div class="brand-group">
+      <a href="/" class="brand-logo"><span>⚡</span> MAHI TECH GROUP</a>
+      <span style="color: var(--border-card);">/</span>
+      <div class="project-header-info">
+        <span class="project-title" id="projectTitleDisplay">Loading Project...</span>
+        <span class="badge" id="projectStageBadge" style="display:none;">STAGE</span>
+      </div>
+    </div>
+    
+    <div class="header-nav-links">
+      <a href="#" class="nav-link-btn active" id="linkPointPool">Point Pool Board</a>
+      <a href="#" class="nav-link-btn" id="linkParticipation">Participation %</a>
+      <a href="#" class="nav-link-btn" id="linkProjectDetail">← Project Details</a>
+      <div class="user-pill">
+        <span id="userRoleBadge" class="status-pill unclaimed">USER</span>
+        <span id="userNameDisplay">Checking Auth...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="board-container">
+    <div class="board-toolbar">
+      <div>
+        <h1 style="margin: 0; font-size: 1.35rem; font-family: 'Outfit', sans-serif;">Point Pool Kanban</h1>
+        <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
+          Multi-member point pool. Claim checklist points by verified role, track progress, and link development tools.
+        </p>
+      </div>
+      <div id="poolStats" style="display: flex; gap: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+        <span>Total Points: <strong id="totalPointsCount" style="color: #f8fafc;">0</strong></span>
+        <span>Claimed: <strong id="claimedPointsCount" style="color: #fbbf24;">0</strong></span>
+        <span>Approved: <strong id="approvedPointsCount" style="color: #34d399;">0</strong></span>
+      </div>
+    </div>
+
+    <!-- 4 Stage Columns -->
+    <div class="kanban-grid">
+      <!-- 1. RESEARCH -->
+      <section class="stage-col" data-stage="RESEARCH">
+        <div class="stage-header research">
+          <span class="stage-title" style="color: var(--color-research);">🔍 RESEARCH</span>
+          <span class="stage-badge-count" id="count-RESEARCH">0</span>
+        </div>
+        <div class="points-list" id="points-RESEARCH">
+          <div style="text-align: center; color: #64748b; font-size: 13px; padding: 2rem 0;">Loading...</div>
+        </div>
+      </section>
+
+      <!-- 2. DESIGN -->
+      <section class="stage-col" data-stage="DESIGN">
+        <div class="stage-header design">
+          <span class="stage-title" style="color: var(--color-design);">🎨 DESIGN</span>
+          <span class="stage-badge-count" id="count-DESIGN">0</span>
+        </div>
+        <div class="points-list" id="points-DESIGN">
+          <div style="text-align: center; color: #64748b; font-size: 13px; padding: 2rem 0;">Loading...</div>
+        </div>
+      </section>
+
+      <!-- 3. DEV -->
+      <section class="stage-col" data-stage="DEV">
+        <div class="stage-header dev">
+          <span class="stage-title" style="color: var(--color-dev);">💻 DEV</span>
+          <span class="stage-badge-count" id="count-DEV">0</span>
+        </div>
+        <div class="points-list" id="points-DEV">
+          <div style="text-align: center; color: #64748b; font-size: 13px; padding: 2rem 0;">Loading...</div>
+        </div>
+      </section>
+
+      <!-- 4. TEST -->
+      <section class="stage-col" data-stage="TEST">
+        <div class="stage-header test">
+          <span class="stage-title" style="color: var(--color-test);">🧪 TEST</span>
+          <span class="stage-badge-count" id="count-TEST">0</span>
+        </div>
+        <div class="points-list" id="points-TEST">
+          <div style="text-align: center; color: #64748b; font-size: 13px; padding: 2rem 0;">Loading...</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Abandoned Points Panel (Lead / Admin Only) -->
+    <section class="abandoned-panel" id="abandonedPanel" style="display: none;">
+      <div class="abandoned-header" id="abandonedToggle">
+        <div class="abandoned-title">
+          <span>⚠️</span> Inactive Abandoned Points (&gt; 7 Days Unclaimed / Inactive)
+          <span class="stage-badge-count" id="abandonedCountBadge" style="background:#450a0a; color:#fca5a5; border-color:#991b1b;">0</span>
+        </div>
+        <span id="abandonedChevron" style="color: #fca5a5; font-size: 0.9rem;">▼</span>
+      </div>
+      <div id="abandonedBody" style="margin-top: 1rem; display: none;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+          <thead>
+            <tr style="border-bottom: 1px solid #7f1d1d; color: #fca5a5;">
+              <th style="padding: 8px;">Point</th>
+              <th style="padding: 8px;">Stage</th>
+              <th style="padding: 8px;">Claimed By</th>
+              <th style="padding: 8px;">Claimed At</th>
+              <th style="padding: 8px; text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="abandonedListBody">
+            <tr><td colspan="5" style="text-align: center; padding: 12px; color: #94a3b8;">No abandoned points found.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Release Reason Modal -->
+  <div class="modal-backdrop" id="releaseModal">
+    <div class="modal-box">
+      <h3 style="margin-top: 0; color: #f87171; font-family: 'Outfit', sans-serif;">Release Claimed Point</h3>
+      <p style="font-size: 0.85rem; color: #94a3b8;">
+        Releasing this point will clear the current claim lock and return it to the UNCLAIMED pool for eligible members. A non-empty reason is required for audit logs.
+      </p>
+      <form id="releaseForm" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+        <input type="hidden" id="releasePointId">
+        <div>
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.35rem;">Release Reason (Required):</label>
+          <textarea id="releaseReasonInput" required placeholder="e.g. Member inactive for 7 days / Reassigned per team sprint" style="width: 100%; box-sizing: border-box; background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px; color: #f8fafc; font-size: 0.85rem; min-height: 80px;"></textarea>
+          <div id="releaseModalError" style="color: #f87171; font-size: 0.8rem; display: none; margin-top: 0.35rem;"></div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="nav-link-btn" id="btnCancelRelease">Cancel</button>
+          <button type="submit" class="btn-release" id="btnConfirmRelease">Confirm Release</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/tool-links-panel.js"></script>
+  <script src="/js/point-pool-board.js"></script>
+</body>
+</html>

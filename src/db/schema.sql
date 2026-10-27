@@ -281,6 +281,10 @@ CREATE TABLE IF NOT EXISTS revenue_splits (
     amount              DECIMAL(12,2) NOT NULL,
     rule_applied        VARCHAR(30) NOT NULL CHECK (rule_applied IN ('OWNER_50_TEAM_50','TEAM_100')),
     split_type          VARCHAR(30) DEFAULT 'TEAM_CONTRIBUTOR' CHECK (split_type IN ('OWNER_ROYALTY','TEAM_CONTRIBUTOR')),
+    is_blocked          INTEGER NOT NULL DEFAULT 0,
+    block_reason        TEXT,
+    unblocked_by        TEXT REFERENCES users(id),
+    unblocked_at        TIMESTAMP,
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -340,6 +344,15 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS prevent_revenue_splits_update
 BEFORE UPDATE ON revenue_splits
+WHEN (
+    OLD.id != NEW.id OR
+    OLD.revenue_event_id != NEW.revenue_event_id OR
+    OLD.user_id != NEW.user_id OR
+    OLD.amount != NEW.amount OR
+    OLD.rule_applied != NEW.rule_applied OR
+    OLD.split_type != NEW.split_type OR
+    OLD.created_at != NEW.created_at
+)
 BEGIN
     SELECT RAISE(FAIL, 'Immutable ledger: UPDATE not allowed on revenue_splits');
 END;
@@ -734,6 +747,8 @@ CREATE TABLE IF NOT EXISTS pipeline_checklist_points (
   weight INTEGER NOT NULL DEFAULT 5 CHECK(weight >= 1 AND weight <= 10),
   status VARCHAR(20) NOT NULL DEFAULT 'UNCLAIMED',
   assigned_to TEXT,
+  claim_locked_by TEXT REFERENCES users(id),
+  claim_locked_at TIMESTAMP,
   submitted_at TIMESTAMP,
   approved_at TIMESTAMP,
   approved_by TEXT,
@@ -744,6 +759,7 @@ CREATE TABLE IF NOT EXISTS pipeline_checklist_points (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (deliverable_id) REFERENCES pipeline_deliverables(id),
   FOREIGN KEY (assigned_to) REFERENCES users(id),
+  FOREIGN KEY (claim_locked_by) REFERENCES users(id),
   FOREIGN KEY (approved_by) REFERENCES users(id),
   FOREIGN KEY (created_by) REFERENCES users(id)
 );
@@ -826,3 +842,65 @@ CREATE INDEX IF NOT EXISTS idx_pipeline_points_composite
 
 CREATE INDEX IF NOT EXISTS idx_pipeline_deliverables_proj
   ON pipeline_deliverables(project_id, status);
+
+-- ===================================================================
+-- STEP 16: Dynamic Point-Pool, Multi-Member & Participation % Tables
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS point_pool_claims (
+  id TEXT PRIMARY KEY,
+  point_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  deliverable_id TEXT NOT NULL,
+  stage VARCHAR(20) NOT NULL,
+  claimed_by TEXT NOT NULL,
+  claimed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  released_at TIMESTAMP,
+  release_reason VARCHAR(50),
+  released_by TEXT,
+  FOREIGN KEY (point_id) REFERENCES pipeline_checklist_points(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (claimed_by) REFERENCES users(id)
+);
+
+CREATE TRIGGER IF NOT EXISTS prevent_claim_delete
+BEFORE DELETE ON point_pool_claims
+BEGIN
+  SELECT RAISE(ABORT, 'point_pool_claims is append-only. Deletes forbidden.');
+END;
+
+CREATE TABLE IF NOT EXISTS participation_thresholds (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL UNIQUE,
+  threshold_pct DECIMAL(5,2) NOT NULL DEFAULT 20.00,
+  abandonment_days INTEGER NOT NULL DEFAULT 7,
+  set_by TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (set_by) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS point_tool_links (
+  id TEXT PRIMARY KEY,
+  point_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  added_by TEXT NOT NULL,
+  tool_name VARCHAR(100) NOT NULL,
+  tool_url TEXT NOT NULL,
+  deleted_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (point_id) REFERENCES pipeline_checklist_points(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (added_by) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_point_id ON point_pool_claims(point_id);
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_project_id ON point_pool_claims(project_id);
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_claimed_by ON point_pool_claims(claimed_by);
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_stage ON point_pool_claims(stage);
+
+CREATE INDEX IF NOT EXISTS idx_participation_thresholds_project_id ON participation_thresholds(project_id);
+
+CREATE INDEX IF NOT EXISTS idx_point_tool_links_point_id ON point_tool_links(point_id);
+CREATE INDEX IF NOT EXISTS idx_point_tool_links_project_id ON point_tool_links(project_id);

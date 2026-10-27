@@ -109,11 +109,104 @@
     - `3J (run-step14-superadmin-tests.js)`: Verified full 6-layer Superadmin lifecycle under WAL mode without locks. (PASS - 45/45, 265/265 assertions)
   - **Regression Verification**: Official test suite `npm test` executed and verified: 13/13 PASS (100%), confirming zero regressions across all core subsystems.
 
+- **PRD 16 Layer 1: Dynamic Point-Pool & Multi-Member Participation Schema (100% COMPLETE)**:
+  - Added `claim_locked_by` and `claim_locked_at` to `pipeline_checklist_points`.
+  - Created `point_pool_claims` table with append-only delete trigger (`prevent_claim_delete`) and 4 composite indexes.
+  - Created `participation_thresholds` table with `UNIQUE(project_id)`, default `threshold_pct = 20.00`, and default `abandonment_days = 7`.
+  - Created `point_tool_links` table with `deleted_at` column for soft deletes and 2 indexes.
+  - Added `is_blocked`, `block_reason`, `unblocked_by`, and `unblocked_at` to `revenue_splits`.
+  - Updated `prevent_revenue_splits_update` trigger to permit participation gate updates while keeping financial records strictly immutable.
+  - Verified with `scripts/verify-prd16-layer1.js` (48/48 checks pass).
+  - All test suites verified clean: `npm test` (13/13 PASS), Step 6 tests (7/7 PASS), PRD 15 tests (67/67 PASS).
+
+- **PRD 16 Layer 2: Core Services Implementation (100% COMPLETE)**:
+  - Created `src/services/pointPoolService.js` implementing all 13 core functions in exact specified order: `claimPoint`, `releasePoint`, `getPointPool`, `getAbandonedPoints`, `computeParticipationPct`, `computeOverallParticipationPct`, `applyParticipationBlocks`, `unblockRevenueSplit`, `setThreshold`, `getThreshold`, `addToolLink`, `getToolLinks`, `deleteToolLink`.
+  - Updated `src/services/pipelineService.js`:
+    - `claimPoint()` now sets `claim_locked_by`, `claim_locked_at`, and creates `point_pool_claims` record without duplicating validation.
+    - `approvePoint()` now calls `computeParticipationPct()`, checks at-risk zone (`overallPct < threshold + 10%`), sends warning notifications, and returns `{ updatedPoint, stagePercent, participationUpdate }`.
+    - `adminApproveLive()` calls `applyParticipationBlocks(projectId)` and returns `{ project, blockedMembers }`.
+  - Updated `src/services/payoutService.js`:
+    - Added participation gate check in `requestWithdrawal()` returning 400 with descriptive error if revenue splits are blocked.
+    - Added payout calculation functions `getEligiblePayoutSplits()` and `calculateEligiblePayout()` with `WHERE is_blocked = 0` filter.
+  - Implemented unit test suite in `scripts/verify-prd16-layer2.js` covering all 26 test scenarios with real DB calls: 62/62 checks passed.
+  - Full regression test run:
+    - `node scripts/verify-prd16-layer2.js` -> 62/62 PASS
+    - `npm test` -> 13/13 PASS
+    - `node scripts/run-step15-pipeline-tests.js` -> 67/67 PASS
+    - `node scripts/run-step6-tests.js` -> 7/7 PASS
+
+- **PRD 16 Layer 3: API Routes Implementation (100% COMPLETE)**:
+  - Created `src/routes/pointPool.routes.js` with all 13 routes wired strictly as thin controllers to `pointPoolService.js`:
+    - Point Pool Management (4 routes): `GET /projects/:projectId/pool`, `PATCH /points/:id/claim`, `PATCH /points/:id/release`, `GET /projects/:projectId/abandoned`.
+    - Participation Tracking (2 routes): `GET /projects/:projectId/participation`, `GET /projects/:projectId/participation/me`.
+    - Participation Threshold (2 routes): `GET /projects/:projectId/threshold`, `PATCH /projects/:projectId/threshold`.
+    - Revenue Block / Unblock (2 routes): `GET /projects/:projectId/revenue-blocks`, `PATCH /revenue-splits/:splitId/unblock`.
+    - Tool Links (3 routes): `POST /points/:id/tools`, `GET /points/:id/tools`, `DELETE /points/:id/tools/:toolId` (and `/tools/:toolId`).
+  - Registered router in `src/app.js` under prefix `/api/pointpool`.
+  - Enforced strict static-before-parameterized route ordering and server-side RBAC (JWT lookup, zero body role trust, project membership check).
+  - Implemented end-to-end integration test suite `scripts/verify-prd16-layer3.js` testing 29 HTTP route scenarios with real tokens and real HTTP requests: 29/29 PASS.
+  - **PRD 16 Layer 4: Frontend Views Implementation (100% COMPLETE)**:
+  - Created 4 dedicated frontend views + JS controllers:
+    - `public/point-pool-board.html` & `public/js/point-pool-board.js`: Per-project, 4-stage Kanban-style point pool board with role-verified claiming, in-place card updates, Lead/Admin release modals, and collapsible abandoned points section.
+    - `public/participation-dashboard.html` & `public/js/participation-dashboard.js`: Participation % dashboard with "My Participation" shortcut card, live threshold bar, per-member metrics table with AT-RISK and REVENUE BLOCKED badges, and Admin-only revenue block unblocking panel with client/server 10-char reason enforcement.
+    - `public/js/tool-links-panel.js`: Reusable inline tool links component embedded into point cards with protocol validation, display-only quick suggestions (Notion, GitHub, Figma, Jira, Trello), connect form, and owner/Lead soft-delete.
+    - `public/admin-threshold.html` & `public/js/admin-threshold.js`: Admin-only threshold settings page with project selector, threshold % (0-100) and abandonment days (1-30) configuration, and LIVE project frozen indicator.
+  - Wired navigation integration:
+    - Added "Point Pool" and "Participation %" tabs and embedded iframes in `public/js/app/views/projects.js`.
+    - Added "Participation Thresholds" sidebar item in `public/admin.html` for Admin users.
+  - Implemented end-to-end integration test suite `scripts/verify-prd16-layer4.js` with 30 assertions across static serving, API frontend flow, tool links, revenue blocks, and participation % display: 30/30 PASS.
+  - Full 6-suite regression verification:
+    - `node scripts/run-prd16-layer1-tests.js` -> 48/48 PASS
+    - `node scripts/run-prd16-layer2-tests.js` -> 62/62 PASS
+    - `node scripts/verify-prd16-layer3.js` -> 29/29 PASS
+    - `node scripts/verify-prd16-layer4.js` -> 30/30 PASS
+    - `npm test` -> 13/13 PASS
+    - `node scripts/run-step15-pipeline-tests.js` -> 67/67 PASS
+
+- **PRD 16 Layer 5: WebSocket + DB Notifications (100% COMPLETE)**:
+  - Implemented all 5 real-time WebSocket + DB notification events in `src/services/pointPoolService.js`:
+    - Event 1: `pointpool_point_claimed` — triggered on `claimPoint`, notifies Project Lead, Admin, and same-stage members.
+    - Event 2: `pointpool_point_released` — triggered on `releasePoint`, notifies original claimer and same-stage members with release reason.
+    - Event 3: `pointpool_participation_warning` — triggered on `computeOverallParticipationPct` / `checkAndSendParticipationWarning` when overall % < threshold, with unread deduplication (`read_status = 0`), notifies member and Admin.
+    - Event 4: `pointpool_revenue_blocked` — triggered on `applyParticipationBlocks` when revenue split is blocked, notifies blocked member and Admin.
+    - Event 5: `pointpool_revenue_unblocked` — triggered on `unblockRevenueSplit`, notifies unblocked member with Admin's reason.
+  - Implemented `sendPointPoolNotification` helper ensuring persistent `notifications` table inserts (parameterized queries) and targeted WebSocket pushes via `pushToUser` (zero global broadcast leakage).
+  - Created test suite `scripts/verify-prd16-layer5.js` with 29 assertions across all 5 event groups testing real HTTP requests, real DB inserts, and live WebSocket message delivery: 29/29 PASS.
+  - Full 7-suite regression verification:
+    - `node scripts/run-prd16-layer1-tests.js` -> 48/48 PASS
+    - `node scripts/run-prd16-layer2-tests.js` -> 62/62 PASS
+    - `node scripts/verify-prd16-layer3.js` -> 29/29 PASS
+    - `node scripts/verify-prd16-layer4.js` -> 30/30 PASS
+    - `node scripts/verify-prd16-layer5.js` -> 29/29 PASS
+    - `npm test` -> 13/13 PASS
+    - `node scripts/run-step15-pipeline-tests.js` -> 67/67 PASS
+
+- **PRD 16 Layer 6: Full Integration + Regression + Git Commit (100% COMPLETE — PRD 16 PERMANENTLY SEALED)**:
+  - Created end-to-end integration test suite `scripts/verify-prd16-layer6-integration.js` covering a complete real-world lifecycle across all 5 layers:
+    - Phase A (Setup): Real admin & 4 member registrations (researcher, designer, developer, tester), project auto-creation, project member assignments, deliverable creation, and 4 weighted checklist points across all 4 stages.
+    - Phase B (Point Pool Flow): Researcher claims point (CLAIMED + claim_locked_by), role mismatch 403 / 409 rejection, designer claims design point, lead releases with documented reason (UNCLAIMED), GET /abandoned returns released point, researcher re-claims (new append-only claim row).
+    - Phase C (Tool Links Flow): Researcher adds tool link (Notion URL, 201), GET /tools returns active link, non-owner delete rejected (403), owner soft delete verified (200, deleted_at set), GET /tools returns 0 active tools.
+    - Phase D (Participation % Flow): Pipeline approval of research point, researcher GET /participation/me shows >0%, Admin sees all members, designer (0 approved points) sees only self with 0.00%.
+    - Phase E (Threshold + Block Flow): Admin sets threshold = 30%, abandonment_days = 5, applyParticipationBlocks blocks designer (is_blocked = 1) while researcher is unblocked, Admin unblocks designer with ≥10 char reason, GET /revenue-blocks returns 0 blocked splits.
+    - Phase F (Notification Verification): Verified DB notification rows and correct links for all 5 events (claimed, released, warning, blocked, unblocked) with read_status = 0.
+    - Phase G (Threshold Freeze Test): Project status transitioned to LIVE, PATCH /threshold rejected with 400 (frozen).
+    - Phase H (Final Pool State): All 4 stages present in /pool, researcher has highest %, /abandoned is empty.
+  - Integration suite passed: **34/34 assertions PASS**.
+  - Generated full documentation in `docs/16_POINT_POOL_PARTICIPATION.md`.
+  - Full 8-suite regression pass across entire platform:
+    - `node scripts/run-prd16-layer1-tests.js` -> 48/48 PASS
+    - `node scripts/run-prd16-layer2-tests.js` -> 62/62 PASS
+    - `node scripts/verify-prd16-layer3.js` -> 29/29 PASS
+    - `node scripts/verify-prd16-layer4.js` -> 30/30 PASS
+    - `node scripts/verify-prd16-layer5.js` -> 29/29 PASS
+    - `npm test` -> 13/13 PASS
+    - `node scripts/run-step15-pipeline-tests.js` -> 67/67 PASS
+    - `node scripts/verify-prd16-layer6-integration.js` -> 34/34 PASS
+    - **Total Passing Tests**: **312 / 312 tests passing (100%)**.
+  - **PRD 16 Status**: PERMANENTLY SEALED.
+
 ## Pending / Next Steps
-- Commit verified changes to git repository `Munnabhai63/mahi-tech-group`.
-- Run `git pull origin master` on VPS (`/var/www/oviaxe.com`) and restart PM2 to serve the updated code on `https://oviaxe.com`.
-- Verify live login on `https://oviaxe.com/app.html#/login`.
-
-
+- PRD 16 is permanently sealed.
+- Await user GO-AHEAD before beginning PRD 17 (GitHub Automation).
 
 

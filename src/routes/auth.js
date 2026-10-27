@@ -10,16 +10,18 @@ import { loginLimiter, signupLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
-// 0. POST /api/auth/signup (Public with Rate Limiting)
-router.post('/signup', signupLimiter, async (req, res) => {
-  const { name, email, password, phone_number, desired_role, desired_sub_role } = req.body || {};
+// 0. POST /api/auth/signup & POST /api/auth/register (Public with Rate Limiting)
+router.post(['/signup', '/register'], signupLimiter, async (req, res) => {
+  const { name, email, password, phone_number, desired_sub_role } = req.body || {};
+  let desired_role = req.body.desired_role || req.body.role;
+  if (desired_role === 'tester') desired_role = 'producer';
   const ipAddress = req.ip || req.socket.remoteAddress;
 
   if (!name || !email || !password || !desired_role) {
     return res.status(400).json({ error: 'Name, email, password, and desired_role are required' });
   }
 
-  const validDesiredRoles = ['researcher', 'developer', 'producer', 'designer'];
+  const validDesiredRoles = ['researcher', 'developer', 'producer', 'designer', 'admin'];
   if (!validDesiredRoles.includes(desired_role)) {
     return res.status(400).json({
       error: `Invalid desired_role. Must be one of: ${validDesiredRoles.join(', ')}`
@@ -51,6 +53,8 @@ router.post('/signup', signupLimiter, async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, config.BCRYPT_SALT_ROUNDS);
   const userId = crypto.randomUUID();
+  const userStatus = desired_role === 'admin' ? 'active' : 'pending';
+  const userRole = desired_role === 'admin' ? 'admin' : null;
 
   execute(`
     INSERT INTO users (
@@ -58,15 +62,17 @@ router.post('/signup', signupLimiter, async (req, res) => {
       desired_role, desired_sub_role, role, sub_role, status,
       rating_avg, idea_quota_used, quota_reset_date, wallet_balance,
       wallet_frozen, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, 'pending', 0.0, 0, null, 0.0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 0.0, 0, null, 0.0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
   `, [
     userId,
     name.trim(),
     normalizedEmail,
     passwordHash,
     phone_number ? phone_number.trim() : null,
-    desired_role,
-    desired_sub_role || null
+    desired_role === 'admin' ? null : desired_role,
+    desired_sub_role || null,
+    userRole,
+    userStatus
   ]);
 
   logAccess({

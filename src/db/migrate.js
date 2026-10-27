@@ -630,6 +630,116 @@ export function runMigration() {
     console.log('>>> Added type column to pipeline_addendum_requests table.');
   }
 
+  // ===================================================================
+  // STEP 16: PRD 16 Point-Pool, Participation % and Tool Links Migration
+  // ===================================================================
+  const pointCols = queryAll("PRAGMA table_info(pipeline_checklist_points);");
+  if (pointCols.length > 0 && !pointCols.some(c => c.name === 'claim_locked_by')) {
+    execRaw("ALTER TABLE pipeline_checklist_points ADD COLUMN claim_locked_by TEXT REFERENCES users(id);");
+    console.log('>>> Added claim_locked_by column to pipeline_checklist_points table.');
+  }
+  if (pointCols.length > 0 && !pointCols.some(c => c.name === 'claim_locked_at')) {
+    execRaw("ALTER TABLE pipeline_checklist_points ADD COLUMN claim_locked_at TIMESTAMP;");
+    console.log('>>> Added claim_locked_at column to pipeline_checklist_points table.');
+  }
+
+  execRaw(`
+    CREATE TABLE IF NOT EXISTS point_pool_claims (
+      id TEXT PRIMARY KEY,
+      point_id TEXT NOT NULL,
+      project_id TEXT NOT NULL,
+      deliverable_id TEXT NOT NULL,
+      stage VARCHAR(20) NOT NULL,
+      claimed_by TEXT NOT NULL,
+      claimed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      released_at TIMESTAMP,
+      release_reason VARCHAR(50),
+      released_by TEXT,
+      FOREIGN KEY (point_id) REFERENCES pipeline_checklist_points(id),
+      FOREIGN KEY (project_id) REFERENCES projects(id),
+      FOREIGN KEY (claimed_by) REFERENCES users(id)
+    );
+
+    CREATE TRIGGER IF NOT EXISTS prevent_claim_delete
+    BEFORE DELETE ON point_pool_claims
+    BEGIN
+      SELECT RAISE(ABORT, 'point_pool_claims is append-only. Deletes forbidden.');
+    END;
+
+    CREATE TABLE IF NOT EXISTS participation_thresholds (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL UNIQUE,
+      threshold_pct DECIMAL(5,2) NOT NULL DEFAULT 20.00,
+      abandonment_days INTEGER NOT NULL DEFAULT 7,
+      set_by TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (project_id) REFERENCES projects(id),
+      FOREIGN KEY (set_by) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS point_tool_links (
+      id TEXT PRIMARY KEY,
+      point_id TEXT NOT NULL,
+      project_id TEXT NOT NULL,
+      added_by TEXT NOT NULL,
+      tool_name VARCHAR(100) NOT NULL,
+      tool_url TEXT NOT NULL,
+      deleted_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (point_id) REFERENCES pipeline_checklist_points(id),
+      FOREIGN KEY (project_id) REFERENCES projects(id),
+      FOREIGN KEY (added_by) REFERENCES users(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_point_pool_claims_point_id ON point_pool_claims(point_id);
+    CREATE INDEX IF NOT EXISTS idx_point_pool_claims_project_id ON point_pool_claims(project_id);
+    CREATE INDEX IF NOT EXISTS idx_point_pool_claims_claimed_by ON point_pool_claims(claimed_by);
+    CREATE INDEX IF NOT EXISTS idx_point_pool_claims_stage ON point_pool_claims(stage);
+
+    CREATE INDEX IF NOT EXISTS idx_participation_thresholds_project_id ON participation_thresholds(project_id);
+
+    CREATE INDEX IF NOT EXISTS idx_point_tool_links_point_id ON point_tool_links(point_id);
+    CREATE INDEX IF NOT EXISTS idx_point_tool_links_project_id ON point_tool_links(project_id);
+  `);
+
+  const revSplitCols = queryAll("PRAGMA table_info(revenue_splits);");
+  if (revSplitCols.length > 0 && !revSplitCols.some(c => c.name === 'is_blocked')) {
+    execRaw("ALTER TABLE revenue_splits ADD COLUMN is_blocked INTEGER NOT NULL DEFAULT 0;");
+    console.log('>>> Added is_blocked column to revenue_splits table.');
+  }
+  if (revSplitCols.length > 0 && !revSplitCols.some(c => c.name === 'block_reason')) {
+    execRaw("ALTER TABLE revenue_splits ADD COLUMN block_reason TEXT;");
+    console.log('>>> Added block_reason column to revenue_splits table.');
+  }
+  if (revSplitCols.length > 0 && !revSplitCols.some(c => c.name === 'unblocked_by')) {
+    execRaw("ALTER TABLE revenue_splits ADD COLUMN unblocked_by TEXT REFERENCES users(id);");
+    console.log('>>> Added unblocked_by column to revenue_splits table.');
+  }
+  if (revSplitCols.length > 0 && !revSplitCols.some(c => c.name === 'unblocked_at')) {
+    execRaw("ALTER TABLE revenue_splits ADD COLUMN unblocked_at TIMESTAMP;");
+    console.log('>>> Added unblocked_at column to revenue_splits table.');
+  }
+
+  // Update trigger on revenue_splits to allow participation gate updates while keeping financial records immutable
+  execRaw(`
+    DROP TRIGGER IF EXISTS prevent_revenue_splits_update;
+    CREATE TRIGGER IF NOT EXISTS prevent_revenue_splits_update
+    BEFORE UPDATE ON revenue_splits
+    WHEN (
+        OLD.id != NEW.id OR
+        OLD.revenue_event_id != NEW.revenue_event_id OR
+        OLD.user_id != NEW.user_id OR
+        OLD.amount != NEW.amount OR
+        OLD.rule_applied != NEW.rule_applied OR
+        OLD.split_type != NEW.split_type OR
+        OLD.created_at != NEW.created_at
+    )
+    BEGIN
+        SELECT RAISE(FAIL, 'Immutable ledger: UPDATE not allowed on revenue_splits');
+    END;
+  `);
+
   // Verification of tables
 
 

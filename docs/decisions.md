@@ -89,5 +89,13 @@
 - **Decision**: Enforce two-decimal mathematical rounding (`Math.round(val * 100) / 100`) and inclusive `>=` comparison (`safeGreen >= safeThreshold`) in `src/services/votingService.js`, with the documented boundary rule: "Threshold is inclusive — exactly 70% = APPROVED, not undefined".
 - **Consequences**: Deterministic transition to APPROVED at exactly 70.0% supermajority with zero ambiguous states.
 
+## Decision 9: PRD 16 Route Order Strictness & Server-Side RBAC Enforcement
+- **Context**: In Express router registration, declaring parameterized routes like `/projects/:projectId/participation` before literal paths like `/projects/:projectId/participation/me` causes Express to interpret `'me'` as a sub-path parameter or trigger unintended route handlers. Furthermore, client requests could attempt privilege escalation by passing a desired `role` in the request body.
+- **Decision**: 
+  1. Strictly register static sub-paths (`/participation/me`, `/revenue-blocks`, `/abandoned`, `/pool`, `/threshold`) before dynamic parameterized paths in `src/routes/pointPool.routes.js`.
+  2. Derive member identity and permissions strictly from JWT session tokens verified against the database (`req.user.id`). Never trust any client-supplied role in request payloads.
+  3. Enforce server-side data isolation: in `GET /participation`, Admins/Leads receive all project members' participation metrics, whereas regular contributors receive only their own participation metrics.
+- **Consequences**: Deterministic Express URL dispatch with zero route collision, tamper-proof role enforcement, and privacy isolation across team members.
+
 
 
