@@ -21,7 +21,7 @@ let rendering = false;
 
 function route(path, params) {
   if (path === '/login') return renderLogin();
-  if (path === '/role-selection') { location.hash = '#/login'; return renderLogin(); }
+  if (path === '/role-selection') return renderRoleSelection();
   if (path === '/signup') return renderSignup();
   if (path === '/application-status') return renderApplicationStatus(params);
   if (path === '/about') return renderAbout();
@@ -84,10 +84,9 @@ function render() {
   try {
     if (!location.hash) { const user = currentUser(); location.hash = user ? (user.role === 'admin' ? '#/admin' : user.status === 'inactive' ? '#/app/former-member' : '#/app/dashboard') : '#/login'; return; }
     const raw = location.hash.slice(1); const [rawPath, query = ''] = raw.split('?'); const path = (`/${rawPath.replace(/^\/+/, '')}`).replace(/\/$/, '') || '/'; const params = new URLSearchParams(query);
-    if (path === '/role-selection') { location.hash = '#/login'; return; }
     const user = currentUser();
     const token = getAuthToken();
-    if (!isPublic(path) && !isSigning(path) && (!user || !token)) { state.ui.returnTo = location.hash; location.hash = '#/login'; return; }
+    if (!isPublic(path) && !isSigning(path) && (!user || (!token && !state.session?.demo))) { state.ui.returnTo = location.hash; location.hash = '#/login'; return; }
     if (user && (path.startsWith('/admin') || path.startsWith('/superadmin')) && user.role !== 'admin') { toast('Admin operations require the Admin role.', 'error'); location.hash = user.status === 'inactive' ? '#/app/former-member' : '#/app/dashboard'; return; }
     if (user?.status === 'inactive' && path.startsWith('/app') && !['/app/former-member', `/app/members/${user.id}`, '/app/wallet', '/app/notifications'].includes(path)) { location.hash = '#/app/former-member'; return; }
     if (typeof cleanup === 'function') { try { cleanup(); } catch (error) { console.warn('View cleanup failed', error); } }

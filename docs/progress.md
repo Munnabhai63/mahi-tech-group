@@ -77,6 +77,22 @@
   - All 13 backend test suites (`npm test`) pass cleanly (100% PASS).
   - All 20 frontend JavaScript files compile cleanly (`node --check`).
 
+- **100% Oviaxe UI Login Section & Role Selection Restoration**:
+  - Restored the 100% original Oviaxe UI login form layout in `public/js/app/views/public.js`:
+    - Email address input with placeholder `you@example.com`
+    - Password input with placeholder `At least 8 characters` and SVG eye toggle
+    - `Remember this demo` checkbox and `Recovery options` self-service dialog
+    - Submit button: `Continue to role selection ↗` (supporting both real credential authentication and demo preview)
+    - Restored the dedicated 1-click `.demo-box` ("Enter with a demo identity — No password needed") with all 6 role buttons: `Researcher`, `UI/UX Designer`, `Developer`, `Producer / Tester`, `Admin`, and `Former member`.
+  - Restored full interactive `renderRoleSelection()` in `views/public.js` and enabled `/role-selection` routing in `index.js` with zero blank screen errors.
+  - Hardened `store.js` (`state.data` initialization, `loginAs`, and `loginFormer`) ensuring `currentUser()` is always non-null.
+  - Verified live in browser:
+    - Login view: `login_page_view_1793064689963.png`
+    - Developer workspace: `dashboard_page_view_1793064709028.png`
+    - Role selection screen: `role_selection_screen_1793064761032.png`
+  - All 13 test suites pass cleanly (`npm test`: 13/13).
+  - All 20 frontend JavaScript files syntax checked clean (`node --check`).
+
 ## Pending / Next Steps
 - Run `git pull origin master` on VPS (`/var/www/oviaxe.com`) and restart PM2 to serve the updated code on `https://oviaxe.com`.
 - Verify live login on `https://oviaxe.com/app.html#/login`.

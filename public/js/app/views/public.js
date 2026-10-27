@@ -7,29 +7,28 @@ function accessLayout(content, { wide = false, intro = null } = {}) {
 }
 
 export function renderLogin() {
-  const sessionExpired = typeof location !== 'undefined' && location.hash.includes('session=expired');
-  const content = `<div class="eyebrow">Member access</div><h2>Welcome back to the workspace.</h2><p class="access-form-wrap__intro">Enter your credentials to access your active workspace, tasks, and project records.</p>${sessionExpired ? notice('Your session has expired or was invalidated. Please sign in again with your credentials.', 'warning', 'Session expired', 'lock') : (state.session ? notice('A workspace session is currently active. You can continue or log in with another account.', 'info', 'Active session') : '')}<form id="login-form" class="stack mt-2" novalidate><div class="field"><label for="login-email">Email address</label><input class="input" id="login-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required></div><div class="field"><label for="login-password">Password</label><div class="input-wrap input-wrap--action"><input class="input" id="login-password" name="password" type="password" autocomplete="current-password" placeholder="At least 8 characters" required minlength="8"><button class="btn btn--ghost btn--icon btn--sm" type="button" id="toggle-password" aria-label="Show password">${icon('eye', 'icon--sm')}</button></div></div><div class="spread"><label class="check"><input type="checkbox" name="remember" checked> Remember this device</label><button type="button" class="link-btn small" id="recovery-placeholder">Recovery options</button></div><button class="btn btn--primary btn--lg btn--full" id="login-submit" type="submit">Sign in to workspace ${icon('arrow-up-right')}</button></form><p class="access-form-wrap__foot">New to the group? <a class="link-btn" href="#/signup">Submit a membership application</a></p>`;
+  const content = `<div class="eyebrow">Member access</div><h2>Welcome back to the workspace.</h2><p class="access-form-wrap__intro">This preview uses local demo identities. It does not verify credentials or create a real authenticated session.</p>${state.session ? notice('A demo workspace session is already active. You can continue or choose another role.', 'info', 'Demo session active') : ''}<form id="login-form" class="stack mt-2" novalidate><div class="field"><label for="login-email">Email address</label><input class="input" id="login-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required></div><div class="field"><label for="login-password">Password</label><div class="input-wrap input-wrap--action"><input class="input" id="login-password" name="password" type="password" autocomplete="current-password" placeholder="At least 8 characters" required minlength="8"><button class="btn btn--ghost btn--icon btn--sm" type="button" id="toggle-password" aria-label="Show password">${icon('eye', 'icon--sm')}</button></div></div><div class="spread"><label class="check"><input type="checkbox" name="remember"> Remember this demo</label><button type="button" class="link-btn small" id="recovery-placeholder">Recovery options</button></div><button class="btn btn--primary btn--lg btn--full" id="login-submit" type="submit">Continue to role selection ${icon('arrow-up-right')}</button></form><div class="demo-box"><div class="demo-box__head"><strong>Enter with a demo identity</strong><span>No password needed</span></div><div class="demo-roles">${Object.entries(roleMeta).map(([role, meta]) => `<button class="demo-role" data-demo-role="${role}">${meta.label}</button>`).join('')}<button class="demo-role" data-demo-role="former">Former member</button></div></div><p class="access-form-wrap__foot">New to the group? <a class="link-btn" href="#/signup">Submit a membership application</a></p>`;
   return { html: accessLayout(content), mount() {
     document.querySelector('#toggle-password')?.addEventListener('click', event => {
       const input = document.querySelector('#login-password'); const showing = input.type === 'text';
       input.type = showing ? 'password' : 'text'; event.currentTarget.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
     });
-    document.querySelector('#recovery-placeholder')?.addEventListener('click', () => openDialog({ title: 'Account recovery', subtitle: 'Self-service recovery', content: notice('For account recovery or password resets, contact your organization administrator or submit a ticket via Access & Support.', 'info'), footer: '<button class="btn btn--primary" data-close-dialog>Close</button>' }));
-    
+    document.querySelector('#recovery-placeholder')?.addEventListener('click', () => openDialog({ title: 'Account recovery', subtitle: 'Frontend-only placeholder', content: notice('Password recovery requires an identity and email service. No recovery email was sent from this prototype.', 'info'), footer: '<button class="btn btn--primary" data-close-dialog>Close</button>' }));
     document.querySelector('#login-form')?.addEventListener('submit', async event => {
-      event.preventDefault();
-      const form = event.currentTarget;
+      event.preventDefault(); const form = event.currentTarget; const values = formValues(form);
+      const email = (values.email || '').trim();
+      const password = values.password || '';
+      if (!/^\S+@\S+\.\S+$/.test(email)) return setFormError(form, 'Enter a valid email format for this demo.', 'email');
+      if (password.length < 8) return setFormError(form, 'Use at least 8 characters to preview this form.', 'password');
+      if (email.startsWith('inactive@')) return setFormError(form, 'Preview state: Access Revoked. This inactive account cannot enter the workspace.');
+      if (email.startsWith('suspended@')) return setFormError(form, 'Preview state: Account Suspended. Access is blocked pending administrative review.');
+      if (email.startsWith('pending@')) { location.hash = '#/application-status?status=pending'; return; }
+      if (email.startsWith('rejected@')) { location.hash = '#/application-status?status=rejected'; return; }
+
       const submitBtn = document.querySelector('#login-submit');
-      const values = formValues(form);
-
-      if (!/^\S+@\S+\.\S+$/.test(values.email || '')) return setFormError(form, 'Enter a valid email address.', 'email');
-      if ((values.password || '').length < 8) return setFormError(form, 'Password must contain at least 8 characters.', 'password');
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Authenticating...';
-
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Authenticating...'; }
       try {
-        const result = await loginWithCredentials(values.email, values.password);
+        const result = await loginWithCredentials(email, password);
         toast(`Welcome back, ${result.user?.name || 'Member'}!`, 'success');
         if (result.user?.role === 'admin') {
           location.hash = '#/admin';
@@ -39,36 +38,29 @@ export function renderLogin() {
           location.hash = '#/app/dashboard';
         }
       } catch (err) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `Sign in to workspace ${icon('arrow-up-right')}`;
-        
-        const msg = err.message || '';
-        if (err.status === 403) {
-          if (msg.includes('pending')) {
-            location.hash = '#/application-status?status=pending';
-            return;
-          }
-          if (msg.includes('rejected')) {
-            location.hash = '#/application-status?status=rejected';
-            return;
-          }
-          if (msg.includes('suspended')) {
-            return setFormError(form, 'Account Suspended: Access blocked pending administrative review.');
-          }
-          if (msg.includes('inactive')) {
-            location.hash = '#/app/former-member';
-            return;
-          }
-        }
-        setFormError(form, msg || 'Login failed. Please check your credentials.');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `Continue to role selection ${icon('arrow-up-right')}`; }
+        location.hash = '#/role-selection';
       }
     });
+    document.querySelectorAll('[data-demo-role]').forEach(button => button.addEventListener('click', () => {
+      const role = button.dataset.demoRole;
+      if (role === 'former') { loginFormer(); location.hash = '#/app/former-member'; }
+      else { loginAs(role); location.hash = role === 'admin' ? '#/admin' : '#/app/dashboard'; }
+    }));
   } };
 }
 
 export function renderRoleSelection() {
-  location.hash = '#/login';
-  return renderLogin();
+  const roles = Object.entries(roleMeta).map(([role, meta]) => `<button class="role-card" data-select-role="${role}"><span class="role-card__icon">${icon(meta.icon)}</span><span><h3>${meta.label}</h3><p>${meta.description}</p></span>${icon('chevron-right')}</button>`).join('');
+  const content = `<div class="eyebrow">Demo role selection</div><h2>Choose your working view.</h2><p class="access-form-wrap__intro">Each identity uses the same mock organization data with role-appropriate tasks, actions, and financial privacy.</p><div class="role-grid">${roles}<button class="role-card" data-select-role="elevated"><span class="role-card__icon">${icon('key')}</span><span><h3>Elevated admin zone</h3><p>Open the admin-only performance, dispute, gateway, governance, and audit views.</p></span>${icon('chevron-right')}</button></div><div class="mt-3">${notice('Elevated administration is an access area for the Admin role, not an additional member role.', 'info')}</div><p class="access-form-wrap__foot"><button class="link-btn" data-select-role="former">Preview a read-only former-member account</button> · <a class="link-btn" href="#/login">Back to login</a></p>`;
+  return { html: accessLayout(content, { wide: true }), mount() {
+    document.querySelectorAll('[data-select-role]').forEach(button => button.addEventListener('click', () => {
+      const role = button.dataset.selectRole;
+      if (role === 'former') { loginFormer(); location.hash = '#/app/former-member'; return; }
+      if (role === 'elevated') { loginAs('admin', { elevated: true }); location.hash = '#/superadmin'; return; }
+      loginAs(role); location.hash = role === 'admin' ? '#/admin' : '#/app/dashboard';
+    }));
+  } };
 }
 
 export function renderSignup() {

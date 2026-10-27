@@ -52,7 +52,7 @@ function safeWrite(key, value) {
 
 const savedData = safeRead(DATA_KEY);
 export const state = {
-  data: isDemoMode() ? (savedData?.version === 1 ? savedData : createInitialData()) : createEmptyData(),
+  data: savedData?.version === 1 ? savedData : createInitialData(),
   session: safeRead(SESSION_KEY),
   ui: { preview: 'normal', sidebarOpen: false, drawer: null, accountOpen: false, canvasTool: 'select' },
   live: {
@@ -180,15 +180,28 @@ export async function signupApplicant(payload) {
 export function loginAs(role, options = {}) {
   const meta = roleMeta[role];
   if (!meta) return false;
+  if (!state.data.users || state.data.users.length === 0) {
+    state.data = createInitialData();
+  }
   const userId = options.former ? 'u-former' : meta.userId;
   const foundUser = state.data.users.find(u => u.id === userId);
+  const fallbackUser = {
+    id: userId,
+    name: meta.label,
+    email: `${role}@mahitechgroup.local`,
+    role: options.former ? 'designer' : role,
+    subRole: role === 'developer' ? 'frontend' : null,
+    status: options.former ? 'inactive' : 'active',
+    wallet: 0,
+    rating: 5.0
+  };
   state.session = {
     userId,
     role: options.former ? 'designer' : role,
-    subRole: foundUser?.subRole || null,
+    subRole: foundUser?.subRole || (role === 'developer' ? 'frontend' : null),
     elevated: Boolean(options.elevated && role === 'admin'),
     demo: true,
-    user: foundUser ? normalizeUser(foundUser) : null,
+    user: normalizeUser(foundUser || fallbackUser),
     loginAt: new Date().toISOString()
   };
   persistSession();
@@ -197,14 +210,26 @@ export function loginAs(role, options = {}) {
 }
 
 export function loginFormer() {
+  if (!state.data.users || state.data.users.length === 0) {
+    state.data = createInitialData();
+  }
   const found = state.data.users.find(u => u.id === 'u-former');
+  const fallbackUser = {
+    id: 'u-former',
+    name: 'Devika Rao',
+    email: 'devika@demo.mahi',
+    role: 'designer',
+    status: 'inactive',
+    wallet: 0,
+    rating: 5.0
+  };
   state.session = {
     userId: 'u-former',
     role: 'designer',
     elevated: false,
     demo: true,
     former: true,
-    user: found ? normalizeUser(found) : null,
+    user: normalizeUser(found || fallbackUser),
     loginAt: new Date().toISOString()
   };
   persistSession();
