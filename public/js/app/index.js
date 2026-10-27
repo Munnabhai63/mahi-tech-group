@@ -8,7 +8,7 @@ import { renderDashboard, renderWorkspace, renderTasks, renderNotifications, ren
 import { renderProjects, renderProjectDetail } from './views/projects.js';
 import { renderIdeas, renderNewIdea, renderVoting, renderIdeaDetail } from './views/ideas.js';
 import { renderMeetings, renderMeetingDetail, renderCoworking } from './views/meetings.js';
-import { renderAdminDashboard, renderAdminApplications, renderAdminMembers, renderAdminIdeas, renderAdminProjects, renderAdminRevenue, renderAdminOffboarding, renderAdminConfig, renderAdminMeetings, renderAdminAudit } from './views/admin.js';
+import { renderAdminDashboard, renderAdminApplications, renderAdminMembers, renderAdminIdeas, renderAdminProjects, renderAdminPipeline, renderAdminRevenue, renderAdminOffboarding, renderAdminConfig, renderAdminMeetings, renderAdminAudit } from './views/admin.js';
 import { renderDisputes } from './views/disputes.js';
 import { renderSuperadminDashboard, renderSuperadminMembers, renderSuperadminPerformance, renderSuperadminSupport, renderSuperadminIdeas, renderSuperadminGateway, renderSuperadminGovernance, renderSuperadminAudit } from './views/superadmin.js';
 import { renderSigning } from './views/signing.js';
@@ -56,6 +56,7 @@ function route(path, params) {
   if (path === '/admin/members') return renderAdminMembers(params);
   if (path === '/admin/ideas') return renderAdminIdeas();
   if (path === '/admin/projects') return renderAdminProjects();
+  if (path === '/admin/pipeline') return renderAdminPipeline();
   if (path === '/admin/revenue') return renderAdminRevenue(params);
   if (path === '/admin/offboarding') return renderAdminOffboarding(params);
   if (path === '/admin/config') return renderAdminConfig(params);

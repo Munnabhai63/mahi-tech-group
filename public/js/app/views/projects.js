@@ -37,6 +37,7 @@ import {
   formValues,
   setFormError
 } from '../ui.js';
+import { renderPipelineDashboard } from './pipeline.js';
 
 function evaluateStage(project) {
   const map = Object.fromEntries((project.tasks || []).map(task => [task.name || task.task_name, task.status]));
@@ -187,9 +188,9 @@ export function renderProjectDetail(id) {
   const stage = project.stage || project.current_stage || 'RESEARCH_DEV_PARALLEL';
   const canReview = user?.role === 'admin' && ['ADMIN_REVIEW', 'REJECTED_AT_REVIEW'].includes(stage);
   
-  const content = `<div data-tab-scope><section data-tab-panel="overview">${projectOverview(project)}</section><section data-tab-panel="tasks" hidden><div class="filter-bar"><div class="field"><label for="detail-task-filter">Task status</label><select class="select" id="detail-task-filter"><option value="all">All statuses</option><option>TODO</option><option>BLOCKED</option><option>IN_PROGRESS</option><option>DONE</option></select></div></div><div class="task-list" id="project-task-list">${tasks.map(task => taskRow(task, project)).join('')}</div></section><section data-tab-panel="assets" hidden>${assetsPanel(project)}</section><section data-tab-panel="contributors" hidden>${contributorsPanel(project)}</section><section data-tab-panel="revenue" hidden>${revenuePanel(project)}</section></div>`;
+  const content = `<div data-tab-scope><section data-tab-panel="overview">${projectOverview(project)}</section><section data-tab-panel="pipeline" hidden><div id="pipeline-view-container"></div></section><section data-tab-panel="tasks" hidden><div class="filter-bar"><div class="field"><label for="detail-task-filter">Task status</label><select class="select" id="detail-task-filter"><option value="all">All statuses</option><option>TODO</option><option>BLOCKED</option><option>IN_PROGRESS</option><option>DONE</option></select></div></div><div class="task-list" id="project-task-list">${tasks.map(task => taskRow(task, project)).join('')}</div></section><section data-tab-panel="assets" hidden>${assetsPanel(project)}</section><section data-tab-panel="contributors" hidden>${contributorsPanel(project)}</section><section data-tab-panel="revenue" hidden>${revenuePanel(project)}</section></div>`;
   
-  const html = `${pageHead(`${project.code || 'PRJ'} · ${stageMeta[stage]?.label || titleCase(stage)}`, escapeHTML(project.title), 'Project context, dependencies, contributors, organization assets, and financial history.', `<a class="btn btn--outline" href="#/app/projects">${icon('arrow-left')} Pipeline</a><a class="btn btn--outline" href="#/app/coworking/${project.id}">${icon('pen')} Canvas</a>${canReview ? `<button class="btn btn--primary" id="final-review">${icon('shield')} Final review</button>` : ''}`)}<div class="tabs" data-tabs role="tablist" aria-label="Project sections">${[['overview', 'Overview'], ['tasks', `Tasks ${tasks.length}`], ['assets', `Assets ${assetsFor(project).length}`], ['contributors', 'Contributors'], ['revenue', 'Revenue']].map(([tab, label], index) => `<button class="tab" role="tab" data-tab="${tab}" aria-selected="${index === 0}">${label}</button>`).join('')}</div>${withPreview(content, { title: 'No project detail in this preview', description: 'The empty-state preview hides tasks, assets, and financial entries.', icon: 'folder' })}`;
+  const html = `${pageHead(`${project.code || 'PRJ'} · ${stageMeta[stage]?.label || titleCase(stage)}`, escapeHTML(project.title), 'Project context, dependencies, contributors, organization assets, and financial history.', `<a class="btn btn--outline" href="#/app/projects">${icon('arrow-left')} Pipeline</a><a class="btn btn--outline" href="#/app/coworking/${project.id}">${icon('pen')} Canvas</a>${canReview ? `<button class="btn btn--primary" id="final-review">${icon('shield')} Final review</button>` : ''}`)}<div class="tabs" data-tabs role="tablist" aria-label="Project sections">${[['overview', 'Overview'], ['pipeline', 'Pipeline'], ['tasks', `Tasks ${tasks.length}`], ['assets', `Assets ${assetsFor(project).length}`], ['contributors', 'Contributors'], ['revenue', 'Revenue']].map(([tab, label], index) => `<button class="tab" role="tab" data-tab="${tab}" aria-selected="${index === 0}">${label}</button>`).join('')}</div>${withPreview(content, { title: 'No project detail in this preview', description: 'The empty-state preview hides tasks, assets, and financial entries.', icon: 'folder' })}`;
   
   return {
     html,
@@ -199,6 +200,17 @@ export function renderProjectDetail(id) {
       document.querySelectorAll('[data-open-task]').forEach(button => button.addEventListener('click', () => openTaskDialog(button.dataset.openTask)));
       document.querySelector('#add-asset')?.addEventListener('click', () => openAssetDialog(project.id));
       document.querySelector('#final-review')?.addEventListener('click', () => openFinalReview(project.id));
+      
+      const pipelineMount = document.querySelector('#pipeline-view-container');
+      if (pipelineMount) {
+        renderPipelineDashboard(project.id, pipelineMount);
+      }
+      document.querySelector('[data-tab="pipeline"]')?.addEventListener('click', () => {
+        if (pipelineMount) {
+          renderPipelineDashboard(project.id, pipelineMount);
+        }
+      });
+
       if (getAuthToken()) {
         fetchProjectAssets(project.id);
       }

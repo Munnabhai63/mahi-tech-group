@@ -32,7 +32,7 @@ router.post('/auto-create', authenticate, (req, res) => {
   }
 
   try {
-    const fanoutResult = triggerProjectFanout(idea_id);
+    const fanoutResult = triggerProjectFanout(idea_id, req.user?.id);
     return res.status(201).json({
       message: fanoutResult.alreadyExisted ? 'Project already existed for this idea' : 'Parallel fanout successfully initiated',
       project: fanoutResult.project,

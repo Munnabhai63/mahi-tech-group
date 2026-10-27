@@ -27,6 +27,7 @@ import {
 } from '../services/payoutService.js';
 import { createNotification } from '../services/notificationService.js';
 import { confirmMeetingNotes } from '../services/meetingService.js';
+import * as pipelineService from '../services/pipelineService.js';
 
 const router = express.Router();
 
@@ -586,6 +587,20 @@ router.patch('/projects/:id/final-review', authenticate, (req, res) => {
 
   if (typeof approved !== 'boolean') {
     return res.status(400).json({ error: "'approved' boolean flag (true/false) is required" });
+  }
+
+  // PRD 15 Layer 6 Integration 2: Pipeline Go-Live -> Project Final Review Gate
+  if (approved) {
+    const pendingDeliverables = queryOne(`
+      SELECT COUNT(*) as count FROM pipeline_deliverables
+      WHERE project_id = ? AND status != 'LIVE' AND status != 'CANCELLED'
+    `, [id]);
+
+    if (pendingDeliverables && Number(pendingDeliverables.count) > 0) {
+      return res.status(400).json({
+        error: 'Pipeline deliverables must all reach LIVE status before final project review. Use Admin Pipeline Approval first.'
+      });
+    }
   }
 
   const result = adminFinalReview({
@@ -1441,6 +1456,82 @@ router.patch('/meetings/:id/notes/confirm', authenticate, (req, res) => {
   });
 
   return res.status(result.status).json(result.notes ? { message: result.message, notes: result.notes } : { error: result.error });
+});
+
+/**
+ * 25. GET /api/admin/projects/:id/pipeline/summary (Admin only)
+ * Full audit summary of pipeline for a project
+ */
+router.get('/projects/:id/pipeline/summary', authenticate, (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Admin role required' });
+    }
+
+    const project = queryOne('SELECT * FROM projects WHERE id = ?', [req.params.id]);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const deliverables = queryAll(
+      'SELECT * FROM pipeline_deliverables WHERE project_id = ? ORDER BY created_at ASC',
+      [req.params.id]
+    );
+
+    const details = deliverables.map(d => pipelineService.getDeliverableDetail(d.id));
+
+    const handoffs = queryAll(`
+      SELECT h.* FROM pipeline_stage_handoffs h 
+      JOIN pipeline_deliverables d ON h.deliverable_id = d.id 
+      WHERE d.project_id = ? 
+      ORDER BY h.created_at ASC
+    `, [req.params.id]);
+
+    const addendums = queryAll(`
+      SELECT a.* FROM pipeline_addendum_requests a 
+      JOIN pipeline_deliverables d ON a.deliverable_id = d.id 
+      WHERE d.project_id = ? 
+      ORDER BY a.created_at ASC
+    `, [req.params.id]);
+
+    return res.status(200).json({
+      project,
+      deliverables: details,
+      handoffs,
+      addendums
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * 26. PATCH /api/admin/projects/:id/pipeline/approve-live (Admin only)
+ * Approves pipeline go-live when all deliverables COMPLETE and 0 open addendums
+ */
+router.patch('/projects/:id/pipeline/approve-live', authenticate, (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Admin role required' });
+    }
+
+    const { approval_notes } = req.body || {};
+    try {
+      const updatedProject = pipelineService.adminApproveLive(
+        req.params.id,
+        req.user.id,
+        approval_notes || ''
+      );
+      return res.status(200).json(updatedProject);
+    } catch (serviceErr) {
+      if (serviceErr.message.includes('not found')) {
+        return res.status(404).json({ error: serviceErr.message });
+      }
+      return res.status(400).json({ error: serviceErr.message });
+    }
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

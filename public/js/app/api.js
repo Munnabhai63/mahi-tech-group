@@ -93,7 +93,8 @@ async function executeRefreshCall(oldToken) {
 }
 
 export async function request(path, options = {}, isRetry = false) {
-  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+  const base = (typeof window !== 'undefined' && window.__API_BASE__) || (typeof globalThis !== 'undefined' && globalThis.__API_BASE__) || API_BASE || '';
+  const url = path.startsWith('http') ? path : `${base}${path}`;
   const headers = {
     'Accept': 'application/json',
     ...(options.headers || {})

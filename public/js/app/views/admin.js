@@ -18,6 +18,7 @@ import { openOverrideDialog } from './ideas.js';
 import { openFinalReview, openTaskDialog } from './projects.js';
 import { openNotesReview } from './meetings.js';
 import { renderAiSettings, bindAiSettings } from '../ai.js';
+import { renderAdminPipelineApprovals } from './pipeline.js';
 
 function adminHead(title, description, elevated = false) {
   return `<section class="admin-hero ${elevated ? 'admin-hero--elevated' : ''}"><div><div class="eyebrow" style="color:#b9addf">${elevated ? 'Elevated Admin zone' : 'Admin operations'}</div><h1>${title}</h1><p>${description}</p></div><div class="admin-hero__status">${icon('shield')} Admin access · live backend</div></section>`;
@@ -361,10 +362,11 @@ export function renderAdminIdeas() {
 
 export function renderAdminProjects() {
   const projects = state.data.projects;
-  const content = `<div class="filter-bar"><div class="field field--search"><label for="admin-project-search">Search projects</label><div class="input-wrap">${icon('search')}<input class="input" id="admin-project-search" placeholder="Project title or code"></div></div><div class="field"><label for="admin-project-stage">Stage</label><select class="select" id="admin-project-stage"><option value="all">All stages</option>${Object.entries(stageMeta).map(([value, meta]) => `<option value="${value}">${meta.label}</option>`).join('')}<option value="REJECTED_AT_REVIEW">Rejected at review</option></select></div><span class="filter-count">${projects.length} projects</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Project</th><th>Stage</th><th>Progress</th><th>Open tasks</th><th>Contributors</th><th>Final gate</th><th></th></tr></thead><tbody id="admin-project-rows">${projects.map(project => { const open = project.tasks.filter(task => task.status !== 'DONE').length; const contributors = new Set(project.tasks.map(task => task.assignedTo).filter(Boolean)).size; return `<tr data-stage="${project.stage}" data-search="${escapeHTML(`${project.title} ${project.code}`.toLowerCase())}"><td><a class="table-link" href="#/app/projects/${project.id}">${escapeHTML(project.title)}</a><div class="cell-sub">${project.code}</div></td><td>${badge(project.stage)}</td><td style="min-width:130px">${progress(projectProgress(project))}<div class="cell-sub">${projectProgress(project)}%</div></td><td>${open}</td><td>${contributors}</td><td>${['ADMIN_REVIEW', 'REJECTED_AT_REVIEW'].includes(project.stage) ? `<button class="btn btn--primary btn--sm" data-final-review="${project.id}">${project.stage === 'REJECTED_AT_REVIEW' ? 'Re-review' : 'Review'}</button>` : project.stage === 'LIVE' ? badge('approved', 'success') : '<span class="small muted">Not ready</span>'}</td><td><a class="btn btn--outline btn--sm" href="#/app/projects/${project.id}">Manage</a></td></tr>`; }).join('')}</tbody></table></div>${notice('Open a project to reassign tasks, inspect dependencies, manage contribution weights, or add organization asset references.', 'info')}`;
+  const content = `<div data-tab-scope><div class="tabs mb-3" data-tabs role="tablist"><button class="tab" data-tab="projects-list" aria-selected="true">Projects Directory</button><button class="tab" data-tab="pipeline-approvals" aria-selected="false">Pipeline Go-Live Approvals</button></div><section data-tab-panel="projects-list"><div class="filter-bar"><div class="field field--search"><label for="admin-project-search">Search projects</label><div class="input-wrap">${icon('search')}<input class="input" id="admin-project-search" placeholder="Project title or code"></div></div><div class="field"><label for="admin-project-stage">Stage</label><select class="select" id="admin-project-stage"><option value="all">All stages</option>${Object.entries(stageMeta).map(([value, meta]) => `<option value="${value}">${meta.label}</option>`).join('')}<option value="REJECTED_AT_REVIEW">Rejected at review</option></select></div><span class="filter-count">${projects.length} projects</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Project</th><th>Stage</th><th>Progress</th><th>Open tasks</th><th>Contributors</th><th>Final gate</th><th></th></tr></thead><tbody id="admin-project-rows">${projects.map(project => { const open = project.tasks.filter(task => task.status !== 'DONE').length; const contributors = new Set(project.tasks.map(task => task.assignedTo).filter(Boolean)).size; return `<tr data-stage="${project.stage}" data-search="${escapeHTML(`${project.title} ${project.code}`.toLowerCase())}"><td><a class="table-link" href="#/app/projects/${project.id}">${escapeHTML(project.title)}</a><div class="cell-sub">${project.code}</div></td><td>${badge(project.stage)}</td><td style="min-width:130px">${progress(projectProgress(project))}<div class="cell-sub">${projectProgress(project)}%</div></td><td>${open}</td><td>${contributors}</td><td>${['ADMIN_REVIEW', 'REJECTED_AT_REVIEW'].includes(project.stage) ? `<button class="btn btn--primary btn--sm" data-final-review="${project.id}">${project.stage === 'REJECTED_AT_REVIEW' ? 'Re-review' : 'Review'}</button>` : project.stage === 'LIVE' ? badge('approved', 'success') : '<span class="small muted">Not ready</span>'}</td><td><a class="btn btn--outline btn--sm" href="#/app/projects/${project.id}">Manage</a></td></tr>`; }).join('')}</tbody></table></div>${notice('Open a project to reassign tasks, inspect dependencies, manage contribution weights, or add organization asset references.', 'info')}</section><section data-tab-panel="pipeline-approvals" hidden><div id="admin-pipeline-approvals-mount"></div></section></div>`;
   return {
     html: `${adminHead('Project pipeline & final gates', 'All projects, assignments, prerequisites, contribution records, and launch decisions.')}<div class="page-head page-head--compact"><div class="page-head__copy"><div class="eyebrow">Delivery control</div><h1>Projects</h1></div></div>${withPreview(content, { title: 'No projects', description: 'Approved ideas will create projects for Admin management.', icon: 'folder' })}`,
     mount() {
+      bindTabs(document);
       document.querySelectorAll('[data-final-review]').forEach(button => button.addEventListener('click', () => openFinalReview(button.dataset.finalReview)));
       const search = document.querySelector('#admin-project-search');
       const stage = document.querySelector('#admin-project-stage');
@@ -376,6 +378,28 @@ export function renderAdminProjects() {
       };
       search?.addEventListener('input', filter);
       stage?.addEventListener('change', filter);
+
+      const approvalsMount = document.querySelector('#admin-pipeline-approvals-mount');
+      if (approvalsMount) {
+        renderAdminPipelineApprovals(approvalsMount);
+      }
+      document.querySelector('[data-tab="pipeline-approvals"]')?.addEventListener('click', () => {
+        if (approvalsMount) {
+          renderAdminPipelineApprovals(approvalsMount);
+        }
+      });
+    }
+  };
+}
+
+export function renderAdminPipeline() {
+  return {
+    html: `${adminHead('Pipeline Go-Live Approvals', 'All projects, deliverable stages, and production deployment authorization.')}<div class="page-head page-head--compact"><div class="page-head__copy"><div class="eyebrow">Production Gate</div><h1>Pipeline Approvals</h1></div></div><div class="card card--pad"><div id="admin-pipeline-direct-mount"></div></div>`,
+    mount() {
+      const mountEl = document.querySelector('#admin-pipeline-direct-mount');
+      if (mountEl) {
+        renderAdminPipelineApprovals(mountEl);
+      }
     }
   };
 }

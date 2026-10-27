@@ -504,6 +504,110 @@ export function runMigration() {
     console.log('>>> Seeded default payment_gateway_config row.');
   }
 
+  // Step 15: 4-Role Project Pipeline Workflow Tables & Triggers
+  execRaw(`
+    CREATE TABLE IF NOT EXISTS pipeline_deliverables (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      title VARCHAR(200) NOT NULL,
+      description TEXT,
+      current_stage VARCHAR(20) NOT NULL DEFAULT 'RESEARCH',
+      status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (project_id) REFERENCES projects(id),
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS pipeline_checklist_points (
+      id TEXT PRIMARY KEY,
+      deliverable_id TEXT NOT NULL,
+      stage VARCHAR(20) NOT NULL,
+      point_title VARCHAR(300) NOT NULL,
+      point_description TEXT,
+      weight INTEGER NOT NULL DEFAULT 5 CHECK(weight >= 1 AND weight <= 10),
+      status VARCHAR(20) NOT NULL DEFAULT 'UNCLAIMED',
+      assigned_to TEXT,
+      submitted_at TIMESTAMP,
+      approved_at TIMESTAMP,
+      approved_by TEXT,
+      tool_link TEXT,
+      asset_url TEXT,
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (deliverable_id) REFERENCES pipeline_deliverables(id),
+      FOREIGN KEY (assigned_to) REFERENCES users(id),
+      FOREIGN KEY (approved_by) REFERENCES users(id),
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS pipeline_stage_handoffs (
+      id TEXT PRIMARY KEY,
+      deliverable_id TEXT NOT NULL,
+      from_stage VARCHAR(20) NOT NULL,
+      to_stage VARCHAR(20) NOT NULL,
+      stage_completion_pct DECIMAL(5,2) NOT NULL,
+      handoff_notes TEXT,
+      approved_by TEXT NOT NULL,
+      snapshot_json TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (deliverable_id) REFERENCES pipeline_deliverables(id),
+      FOREIGN KEY (approved_by) REFERENCES users(id)
+    );
+
+    CREATE TRIGGER IF NOT EXISTS prevent_handoff_update
+    BEFORE UPDATE ON pipeline_stage_handoffs
+    BEGIN
+      SELECT RAISE(ABORT, 'pipeline_stage_handoffs is append-only. Updates forbidden.');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_handoff_delete
+    BEFORE DELETE ON pipeline_stage_handoffs
+    BEGIN
+      SELECT RAISE(ABORT, 'pipeline_stage_handoffs is append-only. Deletes forbidden.');
+    END;
+
+    CREATE TABLE IF NOT EXISTS pipeline_addendum_requests (
+      id TEXT PRIMARY KEY,
+      deliverable_id TEXT NOT NULL,
+      requesting_stage VARCHAR(20) NOT NULL,
+      target_stage VARCHAR(20) NOT NULL,
+      point_title VARCHAR(300) NOT NULL,
+      reason TEXT NOT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+      raised_by TEXT NOT NULL,
+      resolved_by TEXT,
+      resolved_at TIMESTAMP,
+      type VARCHAR(20) NOT NULL DEFAULT 'ADDENDUM',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (deliverable_id) REFERENCES pipeline_deliverables(id),
+      FOREIGN KEY (raised_by) REFERENCES users(id),
+      FOREIGN KEY (resolved_by) REFERENCES users(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pipeline_deliverables_project_id ON pipeline_deliverables(project_id);
+    CREATE INDEX IF NOT EXISTS idx_pipeline_deliverables_stage ON pipeline_deliverables(current_stage);
+    CREATE INDEX IF NOT EXISTS idx_pipeline_deliverables_status ON pipeline_deliverables(status);
+    CREATE INDEX IF NOT EXISTS idx_pipeline_checklist_points_deliv ON pipeline_checklist_points(deliverable_id);
+    CREATE INDEX IF NOT EXISTS idx_pipeline_checklist_points_stage ON pipeline_checklist_points(stage);
+    CREATE INDEX IF NOT EXISTS idx_pipeline_checklist_points_status ON pipeline_checklist_points(status);
+    CREATE INDEX IF NOT EXISTS idx_pipeline_checklist_points_assigned ON pipeline_checklist_points(assigned_to);
+    CREATE INDEX IF NOT EXISTS idx_pipeline_handoffs_deliv ON pipeline_stage_handoffs(deliverable_id);
+    CREATE INDEX IF NOT EXISTS idx_pipeline_addendum_deliv ON pipeline_addendum_requests(deliverable_id);
+    CREATE INDEX IF NOT EXISTS idx_pipeline_addendum_status ON pipeline_addendum_requests(status);
+    CREATE INDEX IF NOT EXISTS idx_pipeline_addendum_type ON pipeline_addendum_requests(type);
+  `);
+
+  // Ensure type column on pipeline_addendum_requests if it pre-existed
+  const addendumCols = queryAll("PRAGMA table_info(pipeline_addendum_requests);");
+  if (addendumCols.length > 0 && !addendumCols.some(c => c.name === 'type')) {
+    execRaw("ALTER TABLE pipeline_addendum_requests ADD COLUMN type VARCHAR(20) NOT NULL DEFAULT 'ADDENDUM';");
+    console.log('>>> Added type column to pipeline_addendum_requests table.');
+  }
+
   // Verification of tables
 
 

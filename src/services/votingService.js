@@ -325,7 +325,7 @@ export function adminOverrideDecision({ ideaId, adminUserId, decision, reason, i
 
   let projectData = null;
   if (decision === 'APPROVED') {
-    projectData = triggerProjectFanout(ideaId);
+    projectData = triggerProjectFanout(ideaId, adminUserId);
     broadcastEvent('org:global', 'idea.approved', {
       ideaId,
       title: idea.title,

@@ -3,6 +3,7 @@ import { queryOne, queryAll, execute, execRaw } from '../db/database.js';
 import { logAccess } from './auditService.js';
 import { broadcastEvent, pushToUser, pushToProject } from './wsService.js';
 import { createNotification } from './notificationService.js';
+import * as pipelineService from './pipelineService.js';
 
 // The 9 foundational tasks across research, backend, frontend, design, testing, and review
 export const DEV_AND_TEST_PREP_PREREQUISITES = [
@@ -63,7 +64,7 @@ export function getAvailableMember(role, subRole = null, excludeUserIds = []) {
  * assigns members in parallel, and spawns the 4 zero-dependency tasks simultaneously
  * in a single atomic transaction.
  */
-export function triggerProjectFanout(ideaId) {
+export function triggerProjectFanout(ideaId, createdByUserId = null) {
   const existingProject = queryOne('SELECT * FROM projects WHERE idea_id = ?', [ideaId]);
   if (existingProject) {
     const project = queryOne('SELECT * FROM projects WHERE id = ?', [existingProject.id]);
@@ -217,6 +218,25 @@ export function triggerProjectFanout(ideaId) {
     action: 'project_fanout_created',
     resource: `/api/projects/${projectId} (idea_id: ${idea.id}, title: "${idea.title}")`
   });
+
+  // PRD 15 Layer 6 Integration 1: Fanout -> Auto-Create First Deliverable
+  const creatorId = createdByUserId || admin?.id || idea.owner_id;
+  try {
+    pipelineService.createDeliverable(
+      projectId,
+      'Initial Project Deliverable',
+      'Auto-created on project generation. Update title and description as needed.',
+      creatorId
+    );
+
+    logAccess({
+      userId: creatorId,
+      action: 'pipeline_auto_deliverable_created',
+      resource: `/api/projects/${projectId} (auto-created initial deliverable)`
+    });
+  } catch (pipelineErr) {
+    console.error(`[FANOUT] Failed to auto-create initial pipeline deliverable for project ${projectId}:`, pipelineErr.message);
+  }
 
   const project = queryOne('SELECT * FROM projects WHERE id = ?', [projectId]);
   const tasks = queryAll('SELECT * FROM project_tasks WHERE project_id = ? ORDER BY created_at ASC', [projectId]);
