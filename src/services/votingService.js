@@ -222,9 +222,12 @@ export function evaluateVotingDecision(ideaId, simulatedDate = null) {
 
   // Step B: Decision Logic
   let newStatus;
-  if (greenPercentage >= approvalThreshold) {
+  const safeGreen = Math.round(parseFloat(greenPercentage || 0) * 100) / 100;
+  const safeThreshold = Math.round(parseFloat(approvalThreshold || 70.0) * 100) / 100;
+  // Threshold is inclusive — exactly 70% = APPROVED, not undefined
+  if (safeGreen >= safeThreshold) {
     newStatus = 'APPROVED';
-  } else if (greenPercentage >= 50.0) {
+  } else if (safeGreen >= 50.0) {
     newStatus = 'REVISE';
   } else {
     newStatus = 'REJECTED';

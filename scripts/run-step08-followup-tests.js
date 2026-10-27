@@ -49,7 +49,7 @@ async function registerOrLogin(key, acc) {
     return sessions[key];
   } else {
     const hash = await bcrypt.hash(acc.password, 10);
-    execute('UPDATE users SET password_hash = ?, status = "active" WHERE email = ?', [hash, acc.email]);
+    execute("UPDATE users SET password_hash = ?, status = 'active' WHERE email = ?", [hash, acc.email]);
     
     const retry = await fetch(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
@@ -89,6 +89,7 @@ async function runFollowUpTests() {
   for (const [key, acc] of Object.entries(ACCOUNTS)) {
     await registerOrLogin(key, acc);
     console.log(`  ✓ Authenticated ${key.padEnd(12)}: ${sessions[key].user.name} (Role: ${sessions[key].user.role}) [ID: ${sessions[key].user.id}]`);
+    await sleep(1500);
   }
 
   // -----------------------------------------------------------------

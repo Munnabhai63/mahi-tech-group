@@ -93,9 +93,27 @@
   - All 13 test suites pass cleanly (`npm test`: 13/13).
   - All 20 frontend JavaScript files syntax checked clean (`node --check`).
 
+- **Core Platform Hardening & Bug Fixes 1, 2, 3A-3J (100% Pass & Zero Regression)**:
+  - **Bug Fix 1 (Critical Voting Boundary)**: Corrected threshold evaluation logic in `src/services/votingService.js` to use safe rounded floating-point comparison with inclusive boundary (`safeGreen >= safeThreshold`). Verified with `scripts/verify-bug1-boundary.js` returning `APPROVED` for exactly 70.00% green votes.
+  - **Bug Fix 2 (SQLite WAL Mode & Concurrency)**: Enabled `PRAGMA journal_mode = WAL;` and `PRAGMA busy_timeout = 5000;` on connection startup in `src/db/database.js` with `[DB] WAL mode enabled` logging, resolving database lock contentions under concurrent operations.
+  - **Bug Fix 3 (10 Test Harness Scripts 3A-3J)**:
+    - `3A (run-step7-tests.js)`: Aligned static asset assertions to `legacy-dashboard.html` for 4-corner workspace. (PASS)
+    - `3B (run-step08-tests.js)`: Added 1500ms pacing delay to avoid rate limiting 429s; recognized design tasks in parallel pipeline. (PASS)
+    - `3C (run-step08-revision-tests.js)`: Hardened task-assignee authorization and Kanban verification. (PASS)
+    - `3D (run-step08-followup-tests.js)`: Fixed unquoted SQL literal (`status = 'active'`) and added login pacing delay. (PASS)
+    - `3E (run-step12-meeting-tests.js)`: Filtered persistent notification lookups by meeting title to prevent cross-run collisions. (PASS - 16/16)
+    - `3F (run-step13-final-qa-tests.js)`: Aligned DOM assertions to `legacy-dashboard.html` for desktop/mobile viewport tests. (PASS - 82/82)
+    - `3G (run-step3-tests.js)`: Added explicit quorum resets ensuring clean evaluation of 70% boundary. (PASS - 12/12)
+    - `3H (run-step4-tests.js)`: Supported password update fallback for existing test accounts. (PASS - 9/9)
+    - `3I (run-step04-amendment-tests.js)`: Aligned user setup with bcrypt updates. (PASS - 6/6)
+    - `3J (run-step14-superadmin-tests.js)`: Verified full 6-layer Superadmin lifecycle under WAL mode without locks. (PASS - 45/45, 265/265 assertions)
+  - **Regression Verification**: Official test suite `npm test` executed and verified: 13/13 PASS (100%), confirming zero regressions across all core subsystems.
+
 ## Pending / Next Steps
+- Commit verified changes to git repository `Munnabhai63/mahi-tech-group`.
 - Run `git pull origin master` on VPS (`/var/www/oviaxe.com`) and restart PM2 to serve the updated code on `https://oviaxe.com`.
 - Verify live login on `https://oviaxe.com/app.html#/login`.
+
 
 
 

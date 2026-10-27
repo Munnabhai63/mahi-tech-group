@@ -7,7 +7,9 @@ export function getDatabase() {
   if (!dbInstance) {
     dbInstance = new DatabaseSync(config.DB_PATH);
     dbInstance.exec('PRAGMA journal_mode = WAL;');
+    dbInstance.exec('PRAGMA busy_timeout = 5000;');
     dbInstance.exec('PRAGMA foreign_keys = ON;');
+    console.log('[DB] WAL mode enabled');
   }
   return dbInstance;
 }

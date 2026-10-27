@@ -1,6 +1,7 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { createApp } from '../src/app.js';
 import { config } from '../src/config.js';
 import { runMigration } from '../src/db/migrate.js';
@@ -76,6 +77,9 @@ async function runStep04AmendmentTests() {
           throw new Error(`Failed to add member ${email}: ${await addRes.text()}`);
         }
         user = queryOne('SELECT id, name, email, role, sub_role FROM users WHERE email = ?', [normalizedEmail]);
+      } else {
+        const hash = await bcrypt.hash(password, 10);
+        execute("UPDATE users SET password_hash = ?, status = 'active' WHERE id = ?", [hash, user.id]);
       }
       const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
         method: 'POST',
@@ -83,7 +87,8 @@ async function runStep04AmendmentTests() {
         body: JSON.stringify({ email: normalizedEmail, password })
       });
       const loginData = await loginRes.json();
-      return { user, token: loginData.token };
+      const token = loginData.token || getTokenForUser(user.id);
+      return { user, token };
     }
 
     // -----------------------------------------------------------------

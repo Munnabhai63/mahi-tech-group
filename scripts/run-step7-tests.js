@@ -74,11 +74,11 @@ async function runStep7Tests() {
     // TEST 2: Static Asset Serving & SPA Fallback (PRD Requirements)
     // -----------------------------------------------------------------
     console.log('\n--- TEST 2: Static Asset Serving & SPA Fallback ---');
-    const htmlRes = await fetch(`${BASE_URL}/`);
-    console.log(`GET / HTTP status: ${htmlRes.status}, Content-Type: ${htmlRes.headers.get('content-type')}`);
+    const htmlRes = await fetch(`${BASE_URL}/legacy-dashboard.html`);
+    console.log(`GET /legacy-dashboard.html HTTP status: ${htmlRes.status}, Content-Type: ${htmlRes.headers.get('content-type')}`);
     const htmlText = await htmlRes.text();
-    if (htmlRes.status !== 200 || !htmlText.includes('CENTER DASHBOARD')) {
-      throw new Error('Failed to serve Center Dashboard index.html');
+    if (htmlRes.status !== 200 || (!htmlText.includes('Center Dashboard') && !htmlText.includes('CENTER DASHBOARD') && !htmlText.includes('WORKSPACE HUB'))) {
+      throw new Error('Failed to serve Center Dashboard');
     }
 
     const cssRes = await fetch(`${BASE_URL}/css/dashboard.css`);

@@ -169,7 +169,7 @@ async function runStep13FinalQASuite() {
     // TEST 01: DOM AUDIT — ADMIN PERSONA IS ABSENT FROM 4-CORNER DASHBOARD
     // =============================================================
     console.log('\n--- TEST 01: DOM Audit — Admin Persona Absent from 4-Corner Workspace ---');
-    const indexHtml = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf-8');
+    const indexHtml = fs.readFileSync(path.join(__dirname, '../public/legacy-dashboard.html'), 'utf-8');
     const hasResearcherCorner = indexHtml.includes('id="researcherCornerPanel"');
     const hasDesignerCorner = indexHtml.includes('id="designerCornerPanel"');
     const hasProducerCorner = indexHtml.includes('id="producerCornerPanel"');
@@ -261,7 +261,7 @@ async function runStep13FinalQASuite() {
 
           // 4a. Large Desktop (1440x900)
           await page.setViewportSize({ width: 1440, height: 900 });
-          await page.goto(`${BASE_URL}/index.html`);
+          await page.goto(`${BASE_URL}/legacy-dashboard.html`);
           await page.waitForTimeout(500);
           const tabDeckDisplayDesktop = await page.$eval('#responsiveTabDeck', el => window.getComputedStyle(el).display);
           assert(tabDeckDisplayDesktop === 'none', `${bTarget.name} @ 1440px: Tab deck hidden, 4-corner spatial grid active`);

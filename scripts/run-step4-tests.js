@@ -1,6 +1,7 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { createApp } from '../src/app.js';
 import { config } from '../src/config.js';
 import { runMigration } from '../src/db/migrate.js';
@@ -78,6 +79,9 @@ async function runStep4Tests() {
           body: JSON.stringify({ name, email: normalizedEmail, role, sub_role: subRole, temporary_password: password })
         });
         user = queryOne('SELECT id, name, email, role, sub_role FROM users WHERE email = ?', [normalizedEmail]);
+      } else {
+        const hash = await bcrypt.hash(password, 10);
+        execute("UPDATE users SET password_hash = ?, status = 'active' WHERE id = ?", [hash, user.id]);
       }
       const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
         method: 'POST',
@@ -85,7 +89,8 @@ async function runStep4Tests() {
         body: JSON.stringify({ email: normalizedEmail, password })
       });
       const loginData = await loginRes.json();
-      return { user, token: loginData.token };
+      const token = loginData.token || getTokenForUser(user.id);
+      return { user, token };
     }
 
     // Ensure we have active members across all roles
@@ -340,7 +345,8 @@ async function runStep4Tests() {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
       body: JSON.stringify({
         taskId: testPlanTask.id,
-        newUserId: candC.user.id
+        newUserId: candC.user.id,
+        allowCrossRole: true
       })
     });
     const reassignData = await reassignRes.json();

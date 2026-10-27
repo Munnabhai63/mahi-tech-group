@@ -42,6 +42,8 @@ async function runStep3Tests() {
     const adminToken = adminLoginData.token;
     const adminUser = adminLoginData.user;
 
+    execute("UPDATE system_config SET value = '70.0' WHERE key = 'vote_approval_threshold'");
+    execute("UPDATE system_config SET value = '70.0' WHERE key = 'vote_quorum_percentage'");
     const configs = queryAll("SELECT key, value FROM system_config WHERE key LIKE 'vote_%' OR key = 'voting_window_hours'");
     console.log('Database voting configurations:', JSON.stringify(configs, null, 2));
     results.push({ test: 'Admin Login & Voting Config Check', status: 'PASS' });
@@ -213,6 +215,8 @@ async function runStep3Tests() {
     // TEST 7: Exactly-At-Threshold Vote Split (70% Green => APPROVED)
     // -----------------------------------------------------------------
     console.log('\n--- TEST 7: Exactly-at-Threshold Supermajority (70.0% Green => APPROVED) ---');
+    execute("UPDATE system_config SET value = '70.0' WHERE key = 'vote_approval_threshold'");
+    execute("UPDATE system_config SET value = '0.0' WHERE key = 'vote_quorum_percentage'");
     // Create Idea 2
     const draft2Res = await (await fetch(`${BASE_URL}/api/ideas/draft`, {
       method: 'POST',

@@ -62,6 +62,7 @@ async function runStep08Tests() {
   for (const role of ['admin', 'researcher', 'developer', 'producer']) {
     const s = await loginUser(role);
     console.log(`  ✓ Authenticated ${role.toUpperCase()}: ${s.user.name} (${s.user.email}) [User ID: ${s.user.id}]`);
+    await sleep(1500);
   }
 
   // -----------------------------------------------------------------
@@ -261,8 +262,8 @@ async function runStep08Tests() {
   console.log(`    ✓ Unblocked child tasks: ${uploadResearchJson.unblockedTasks.join(', ') || 'None'}`);
 
   // Step D: Developer Corner receives unblocked dev tasks, starts & completes work
-  console.log('\n  [STAGE 3 - DEVELOPER CORNER] Developer working on assigned tasks...');
-  const devTasks = projTasks.filter(t => t.task_type === 'backend' || t.task_type === 'frontend');
+  console.log('\n  [STAGE 3 - DEVELOPER & DESIGN CORNER] Working on assigned development & design tasks...');
+  const devTasks = projTasks.filter(t => t.task_type === 'backend' || t.task_type === 'frontend' || t.task_type === 'design');
   for (const dt of devTasks) {
     // Check if task is unblocked
     const currentTask = (await (await req('GET', `/api/projects/${newProject.id}`, sessions.admin.token)).json()).tasks.find(t => t.id === dt.id);

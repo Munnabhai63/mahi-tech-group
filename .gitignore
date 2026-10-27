@@ -16,4 +16,6 @@ scripts/test_*.diff
 scripts/all-endpoints.json
 scripts/reconciliation.json
 scripts/route-manifest.json
+scripts/comprehensive-test-report.json
+scripts/db-schema-dump.json
 

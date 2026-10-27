@@ -77,4 +77,17 @@
 - **Decision**: In `public/js/app/store.js`, send `POST /api/auth/logout` with the active `Authorization: Bearer <token>` header to revoke the session in SQLite before clearing local storage. In `public/js/app/api.js`, exclude `/auth/logout` from the 401 interceptor so even an expired token on logout will not trigger the session-expired listener.
 - **Consequences**: Clean, silent server-side session revocation with no spurious error banners or expired toasts on manual logout.
 
+## Decision 8: SQLite WAL Mode & Inclusive Supermajority Threshold
+
+### Decision 8.1: SQLite WAL Mode & 5000ms Busy Timeout
+- **Context**: Under default rollback journal mode, concurrent transactions (e.g. dispute logging, digital signatures, audit trail insertions) produced transient `Error: database is locked` exceptions.
+- **Decision**: Configure `PRAGMA journal_mode = WAL;` and `PRAGMA busy_timeout = 5000;` on connection initialization in `src/db/database.js`.
+- **Consequences**: Readers do not block writers, writers do not block readers, and batch transactions wait safely up to 5 seconds without crashing the server.
+
+### Decision 8.2: Inclusive Voting Decision Threshold (`>=`)
+- **Context**: When an idea's green vote percentage matched the configured threshold exactly (e.g. exactly 70.0%), floating point inaccuracies and strict `>` comparison returned undefined, stalling approval.
+- **Decision**: Enforce two-decimal mathematical rounding (`Math.round(val * 100) / 100`) and inclusive `>=` comparison (`safeGreen >= safeThreshold`) in `src/services/votingService.js`, with the documented boundary rule: "Threshold is inclusive — exactly 70% = APPROVED, not undefined".
+- **Consequences**: Deterministic transition to APPROVED at exactly 70.0% supermajority with zero ambiguous states.
+
+
 

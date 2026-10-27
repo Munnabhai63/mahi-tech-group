@@ -262,7 +262,7 @@ async function runStep12Tests() {
     }
 
     // Verify persistent notifications in database for all active members
-    const devNotif = queryOne("SELECT * FROM notifications WHERE user_id = ? AND event_type = 'meeting_scheduled' ORDER BY created_at DESC LIMIT 1", [devUser.id]);
+    const devNotif = queryOne("SELECT * FROM notifications WHERE user_id = ? AND event_type = 'meeting_scheduled' AND message LIKE ? ORDER BY created_at DESC LIMIT 1", [devUser.id, `%${meeting1.title}%`]);
     if (!devNotif || !devNotif.message.includes(meeting1.title)) {
       throw new Error('Persistent notification was not created in database for active member');
     }
@@ -286,7 +286,7 @@ async function runStep12Tests() {
       throw new Error('WS meeting:started payload invalid or missing room credentials');
     }
 
-    const liveNotif = queryOne("SELECT * FROM notifications WHERE user_id = ? AND event_type = 'meeting_live' ORDER BY created_at DESC LIMIT 1", [devUser.id]);
+    const liveNotif = queryOne("SELECT * FROM notifications WHERE user_id = ? AND event_type = 'meeting_live' AND message LIKE ? ORDER BY created_at DESC LIMIT 1", [devUser.id, `%${meeting1.title}%`]);
     if (!liveNotif || !liveNotif.message.includes('LIVE')) {
       throw new Error('Persistent live notification missing in DB');
     }
