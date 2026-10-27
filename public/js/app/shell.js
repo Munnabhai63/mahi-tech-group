@@ -17,7 +17,7 @@ const memberNav = [
 ];
 const adminNav = [
   ['Overview', [['#/admin', 'Admin dashboard', 'grid']]],
-  ['Operations', [['#/admin/applications', 'Applications', 'user-plus', 'applications'], ['#/admin/members', 'Members', 'users'], ['#/admin/ideas', 'Idea decisions', 'bulb'], ['#/admin/projects', 'Project gates', 'folder'], ['#/admin/meetings', 'Meeting control', 'video']]],
+  ['Operations', [['#/admin/applications', 'Applications', 'user-plus', 'applications'], ['#/admin/members', 'Members', 'users'], ['#/admin/ideas', 'Idea decisions', 'bulb'], ['#/admin/projects', 'Project gates', 'folder'], ['#/admin/pipeline', 'Pipeline Approvals', 'layers'], ['#/admin/meetings', 'Meeting control', 'video']]],
   ['Governance', [['#/admin/thresholds', 'Participation Thresholds', 'check-square']]],
   ['GitHub Automation', [['#/admin/github-teams', 'GitHub Teams', 'users'], ['#/admin/webhooks', 'Webhook Log', 'clipboard']]],
   ['Finance & lifecycle', [['#/admin/revenue', 'Revenue & payouts', 'wallet', 'payouts'], ['#/admin/offboarding', 'Offboarding', 'archive']]],
@@ -58,7 +58,7 @@ function navigation(path) {
 function titleFor(path) {
   const exact = {
     '/app/dashboard': 'Dashboard', '/app/workspace': 'My discipline', '/app/tasks': 'Task queue', '/app/ai': 'AI review center', '/app/projects': 'Project pipeline', '/app/ideas': 'Ideation', '/app/ideas/new': 'Idea editor', '/app/voting': 'Voting queue', '/app/meetings': 'Meetings', '/app/notifications': 'Notifications', '/app/support': 'Member support', '/app/profile': 'My profile', '/app/wallet': 'Wallet & settlements', '/app/settings': 'Settings', '/app/former-member': 'Former-member history', '/app/github': 'GitHub Account Integration',
-    '/admin': 'Admin dashboard', '/admin/applications': 'Applications', '/admin/members': 'Member administration', '/admin/ideas': 'Idea governance', '/admin/projects': 'Project gates', '/admin/thresholds': 'Participation Thresholds', '/admin/github-teams': 'GitHub Teams', '/admin/webhooks': 'GitHub Webhook Log', '/admin/revenue': 'Revenue & payouts', '/admin/offboarding': 'Offboarding', '/admin/config': 'Configuration', '/admin/meetings': 'Meeting administration', '/admin/audit': 'Access log',
+    '/admin': 'Admin dashboard', '/admin/applications': 'Applications', '/admin/members': 'Member administration', '/admin/ideas': 'Idea governance', '/admin/projects': 'Project gates', '/admin/pipeline': 'Pipeline Approvals', '/admin/thresholds': 'Participation Thresholds', '/admin/github-teams': 'GitHub Teams', '/admin/webhooks': 'GitHub Webhook Log', '/admin/revenue': 'Revenue & payouts', '/admin/offboarding': 'Offboarding', '/admin/config': 'Configuration', '/admin/meetings': 'Meeting administration', '/admin/audit': 'Access log',
     '/superadmin': 'Elevated overview', '/superadmin/members': 'Member intelligence', '/superadmin/performance': 'Performance intelligence', '/superadmin/support': 'Support operations', '/superadmin/ideas': 'Ideation controls', '/superadmin/disputes': 'Disputes & waivers', '/superadmin/gateway': 'Gateway controls', '/superadmin/governance': 'Data governance', '/superadmin/audit': 'Unified audit'
   };
   if (exact[path]) return exact[path];
