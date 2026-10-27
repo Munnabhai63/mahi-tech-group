@@ -83,6 +83,24 @@ export function createApp() {
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api', dashboardRouter); // Covers /api/notifications/* and /api/activity/*
 
+  // Direct shortcut redirects for common workspace and auth routes (Express 5 compatible)
+  app.use((req, res, next) => {
+    if (req.method !== 'GET') return next();
+    const p = req.path;
+    if (
+      p === '/app' || p.startsWith('/app/') ||
+      p === '/workspace' || p.startsWith('/workspace/') ||
+      p === '/dashboard' || p.startsWith('/dashboard/') ||
+      p === '/login' || p === '/signup' ||
+      p === '/admin' || p.startsWith('/admin/') ||
+      p === '/superadmin' || p.startsWith('/superadmin/')
+    ) {
+      const targetHash = p.startsWith('/app') ? p : `/${p.replace(/^\/+/, '')}`;
+      return res.redirect(`/app.html#${targetHash}`);
+    }
+    next();
+  });
+
   // Client-side SPA fallback for non-API routes (Express 5 compatible)
   app.use((req, res, next) => {
     if (req.method === 'GET' && !req.path.startsWith('/api')) {

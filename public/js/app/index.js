@@ -182,9 +182,25 @@ async function render() {
   } finally { rendering = false; }
 }
 
+let refreshTimer = null;
+function debouncedRender() {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null;
+    render();
+  }, 50);
+}
+
 window.addEventListener('hashchange', render);
-window.addEventListener('app:refresh', render);
-window.addEventListener('backend-error', render);
+window.addEventListener('app:refresh', debouncedRender);
+let backendErrorHandled = false;
+window.addEventListener('backend-error', () => {
+  if (!backendErrorHandled) {
+    backendErrorHandled = true;
+    render();
+    setTimeout(() => { backendErrorHandled = false; }, 1500);
+  }
+});
 window.addEventListener('storage', event => {
   if (event.key !== 'mtg-frontend-data-v1' || !event.newValue) return;
   if (syncDataFromStorage()) { toast('A local update from another tab was synchronized.', 'info'); window.dispatchEvent(new CustomEvent('app:refresh')); }

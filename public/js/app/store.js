@@ -291,15 +291,19 @@ export function projectProgress(project) {
 export function userProjects(userId = currentUser()?.id) {
   if (!userId) return [];
   const user = getUser(userId);
-  if (user?.role === 'admin') return state.data.projects;
-  return state.data.projects.filter(project => project.ownerId === userId || project.tasks.some(task => task.assignedTo === userId));
+  if (user?.role === 'admin') return state.data.projects || [];
+  return (state.data.projects || []).filter(project => 
+    project.ownerId === userId || 
+    (Array.isArray(project.tasks) && project.tasks.some(task => (task.assignedTo || task.assigned_to) === userId))
+  );
 }
 
 export function userTasks(userId = currentUser()?.id) {
   if (!userId) return [];
   const user = getUser(userId);
-  if (user?.role === 'admin') return state.data.projects.flatMap(project => project.tasks);
-  return state.data.projects.flatMap(project => project.tasks).filter(task => task.assignedTo === userId);
+  const allTasks = (state.data.projects || []).flatMap(project => Array.isArray(project.tasks) ? project.tasks : []);
+  if (user?.role === 'admin') return allTasks;
+  return allTasks.filter(task => (task.assignedTo || task.assigned_to) === userId);
 }
 
 export function pendingVotesFor(userId = currentUser()?.id) {
@@ -330,9 +334,10 @@ export async function syncUserData() {
     if (err.status === 401) {
       logout();
     } else {
+      const wasError = state.live.backendError;
       state.live.backendError = true;
       state.live.backendErrorMessage = err.message || 'Backend connection failed';
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+      if (!wasError && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
       notify('backend-error');
     }
   }
@@ -352,9 +357,10 @@ export async function fetchLiveDashboard() {
 
     const allRejected = [summary, kanban, myTasksRes, pendingVotesRes, meetingsRes, bannersRes].every(r => r.status === 'rejected');
     if (allRejected) {
+      const wasError = state.live.backendError;
       state.live.backendError = true;
       state.live.backendErrorMessage = 'Backend server is unreachable. All operational metrics and pipelines are offline.';
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+      if (!wasError && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
       notify('backend-error');
       return null;
     }
@@ -400,9 +406,10 @@ export async function fetchLiveDashboard() {
 
     notify('dashboard-fetched');
   } catch (err) {
+    const wasError = state.live.backendError;
     state.live.backendError = true;
     state.live.backendErrorMessage = err.message || 'Dashboard fetch error';
-    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+    if (!wasError && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
     notify('backend-error');
   }
 }

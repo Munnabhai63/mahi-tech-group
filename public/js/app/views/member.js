@@ -67,12 +67,15 @@ export function renderDashboard() {
   const user = currentUser();
   if (state.live.backendError && !isDemoMode()) {
     return {
-      html: `${pageHead('Operational Workspace', 'Live backend connection required.', 'All organization records, task dependencies, and project gates require an active server connection.')}${renderBackendError('Dashboard Data Unavailable', 'Unable to reach the live backend server. Offline mock data has been disabled in compliance with data safety standards.')}`,
+      html: `${pageHead('Operational Workspace', 'Live backend connection required.', 'All organization records, task dependencies, and project gates require an active server connection.')}${renderBackendError('Dashboard Data Unavailable', state.live.backendErrorMessage || 'Unable to reach the live backend server. Offline mock data has been disabled in compliance with data safety standards.')}`,
       mount() {
-        if (getAuthToken()) {
-          fetchLiveDashboard();
-          fetchLiveQuota();
-        }
+        document.querySelector('[data-action="retry-route"]')?.addEventListener('click', async () => {
+          state.live.backendError = false;
+          toast('Reconnecting to server...', 'info');
+          await fetchLiveDashboard();
+          await fetchLiveQuota();
+          window.dispatchEvent(new CustomEvent('app:refresh'));
+        });
       }
     };
   }
@@ -108,7 +111,7 @@ export function renderDashboard() {
     html: `${banners ? `<div class="mb-2">${banners}</div>` : ''}${hero}${withPreview(content, { title: 'Your dashboard is clear', description: 'No projects, tasks, votes, or notifications are shown in this empty-state preview.', icon: 'grid' })}`,
     mount() {
       document.querySelectorAll('[data-open-task]').forEach(button => button.addEventListener('click', () => openTaskDialog(button.dataset.openTask)));
-      if (getAuthToken()) {
+      if (getAuthToken() && !state.live.dashboardSummary) {
         fetchLiveDashboard();
         fetchLiveQuota();
       }

@@ -156,11 +156,19 @@ function searchItems() {
   const user = currentUser();
   if (!user) return [];
   const admin = user.role === 'admin';
-  const routes = (admin ? [...memberNav, ...adminNav, ...elevatedNav] : memberNav).flatMap(([, links]) => links).map(([href, label, iconName]) => ({ label, meta: 'Workspace screen', href, icon: iconName, search: `${label} screen` }));
-  const projects = state.data.projects.filter(project => admin || project.ownerId === user.id || project.tasks.some(task => task.assignedTo === user.id)).map(project => ({ label: project.title, meta: `Project · ${project.code}`, href: `#/app/projects/${project.id}`, icon: 'folder', search: `${project.title} ${project.code}` }));
-  const ideas = state.data.ideas.map(idea => ({ label: idea.title, meta: `Idea · ${titleCase(idea.status)}`, href: `#/app/ideas/${idea.id}`, icon: 'bulb', search: `${idea.title} ${idea.status}` }));
-  const meetings = state.data.meetings.filter(meeting => admin || meeting.participantIds.includes(user.id)).map(meeting => ({ label: meeting.title, meta: `Meeting · ${titleCase(meeting.status)}`, href: `#/app/meetings/${meeting.id}`, icon: 'video', search: meeting.title }));
-  const members = state.data.users.map(member => ({ label: member.name, meta: `Member · ${titleCase(member.role)}`, href: `#/app/members/${member.id}`, icon: 'user', search: `${member.name} ${member.role}` }));
+  const routes = (admin ? [...memberNav, ...adminNav, ...elevatedNav] : memberNav)
+    .flatMap(([, links]) => links)
+    .map(([href, label, iconName]) => ({ label, meta: 'Workspace screen', href, icon: iconName, search: `${label} screen` }));
+  const projects = (state.data.projects || [])
+    .filter(project => admin || project.ownerId === user.id || (Array.isArray(project.tasks) && project.tasks.some(task => (task.assignedTo || task.assigned_to) === user.id)))
+    .map(project => ({ label: project.title || 'Untitled Project', meta: `Project · ${project.code || 'PRJ'}`, href: `#/app/projects/${project.id}`, icon: 'folder', search: `${project.title || ''} ${project.code || ''}` }));
+  const ideas = (state.data.ideas || [])
+    .map(idea => ({ label: idea.title || 'Untitled Idea', meta: `Idea · ${titleCase(idea.status || '')}`, href: `#/app/ideas/${idea.id}`, icon: 'bulb', search: `${idea.title || ''} ${idea.status || ''}` }));
+  const meetings = (state.data.meetings || [])
+    .filter(meeting => admin || (Array.isArray(meeting.participantIds) && meeting.participantIds.includes(user.id)))
+    .map(meeting => ({ label: meeting.title || 'Untitled Meeting', meta: `Meeting · ${titleCase(meeting.status || '')}`, href: `#/app/meetings/${meeting.id}`, icon: 'video', search: meeting.title || '' }));
+  const members = (state.data.users || [])
+    .map(member => ({ label: member.name || 'Member', meta: `Member · ${titleCase(member.role || '')}`, href: `#/app/members/${member.id}`, icon: 'user', search: `${member.name || ''} ${member.role || ''}` }));
   return [...routes, ...projects, ...ideas, ...meetings, ...members];
 }
 export function openQuickSearch() {

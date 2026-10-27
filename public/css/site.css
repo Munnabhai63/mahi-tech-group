@@ -293,6 +293,31 @@ ol {
   box-shadow: 8px 8px 0 var(--lime);
 }
 
+.button--workspace {
+  background: var(--lime);
+  color: var(--ink);
+  font-weight: 800;
+  border: 2px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.button--workspace:hover {
+  background: #d4f87a;
+  box-shadow: 8px 8px 0 var(--ink);
+}
+
+.button--secondary {
+  background: var(--paper);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.button--secondary:hover {
+  background: #fdfbf7;
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
 .text-link {
   display: inline-flex;
   align-items: center;
@@ -2399,13 +2424,28 @@ body.menu-open .mobile-nav {
 }
 
 @media (max-width: 999px) {
-  .desktop-nav,
-  .nav-cta {
+  .desktop-nav {
     display: none;
+  }
+
+  .nav-cta {
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 10px;
+    height: 44px;
+    padding: 0 14px;
+    font-size: 13px;
+    white-space: nowrap;
+    background: var(--cobalt);
+    color: var(--paper);
+    border: 2px solid var(--ink);
+    text-decoration: none;
   }
 
   .menu-toggle {
     display: flex;
+    margin-left: 0;
   }
 
   .hero__composition {
