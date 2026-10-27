@@ -1,5 +1,11 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { config } from '../config.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let dbInstance = null;
 
@@ -277,11 +283,23 @@ END;
 
 export function getDatabase() {
   if (!dbInstance) {
+    fs.mkdirSync(path.dirname(config.DB_PATH), { recursive: true });
     dbInstance = new DatabaseSync(config.DB_PATH);
     dbInstance.exec('PRAGMA journal_mode = WAL;');
     dbInstance.exec('PRAGMA busy_timeout = 5000;');
     dbInstance.exec('PRAGMA foreign_keys = ON;');
     console.log('[DB] WAL mode enabled');
+
+    // On fresh database (e.g. CI/CD test runner), load base schema first so tables exist for composite indexes
+    const usersTable = dbInstance.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
+    if (!usersTable) {
+      const schemaPath = path.join(__dirname, 'schema.sql');
+      if (fs.existsSync(schemaPath)) {
+        const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+        dbInstance.exec(schemaSql);
+      }
+    }
+
     dbInstance.exec(PIPELINE_SCHEMA_SQL);
     dbInstance.exec(POINT_POOL_SCHEMA_SQL);
     dbInstance.exec(COMPOSITE_INDEXES_SQL);

@@ -31,5 +31,11 @@ jobs:
       - name: Run Core Test Suite
         run: npm test
 
-      - name: Run Super Admin Verification Suite
-        run: node scripts/run-step14-superadmin-tests.js
+      - name: Run PRD 15 Pipeline Verification Suite
+        run: node scripts/verify-prd15-layer6.js
+
+      - name: Run PRD 16 Point-Pool & Participation Suite
+        run: node scripts/verify-prd16-layer6-integration.js
+
+      - name: Run PRD 17 GitHub Automation Suite
+        run: node scripts/verify-prd17-batch5-integration.js
