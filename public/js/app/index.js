@@ -7,19 +7,67 @@ import { renderLogin, renderRoleSelection, renderSignup, renderApplicationStatus
 import { renderDashboard, renderWorkspace, renderTasks, renderNotifications, renderProfile, renderWallet, renderSettings, renderSupport, renderTicket, renderFormerMember } from './views/member.js';
 import { renderProjects, renderProjectDetail } from './views/projects.js';
 import { renderIdeas, renderNewIdea, renderVoting, renderIdeaDetail } from './views/ideas.js';
-import { renderMeetings, renderMeetingDetail, renderCoworking } from './views/meetings.js';
-import { renderAdminDashboard, renderAdminApplications, renderAdminMembers, renderAdminIdeas, renderAdminProjects, renderAdminPipeline, renderAdminRevenue, renderAdminOffboarding, renderAdminConfig, renderAdminMeetings, renderAdminAudit } from './views/admin.js';
-import { renderDisputes } from './views/disputes.js';
-import { renderSuperadminDashboard, renderSuperadminMembers, renderSuperadminPerformance, renderSuperadminSupport, renderSuperadminIdeas, renderSuperadminGateway, renderSuperadminGovernance, renderSuperadminAudit } from './views/superadmin.js';
-import { renderSigning } from './views/signing.js';
 import { renderAiCenter } from './views/ai-center.js';
+import * as pipelineViews from './views/pipeline.js';
+
+// Dynamic lazy loaders for heavy view modules
+let adminModule = null;
+async function loadAdminView() {
+  if (!window._adminViewLoaded || !adminModule) {
+    adminModule = await import('./views/admin.js');
+    window._adminViewLoaded = true;
+  }
+  return adminModule;
+}
+
+let superadminModule = null;
+async function loadSuperadminView() {
+  if (!window._superadminViewLoaded || !superadminModule) {
+    superadminModule = await import('./views/superadmin.js');
+    window._superadminViewLoaded = true;
+  }
+  return superadminModule;
+}
+
+let disputesModule = null;
+async function loadDisputesView() {
+  if (!window._disputesViewLoaded || !disputesModule) {
+    disputesModule = await import('./views/disputes.js');
+    window._disputesViewLoaded = true;
+  }
+  return disputesModule;
+}
+
+let signingModule = null;
+async function loadSigningView() {
+  if (!window._signingViewLoaded || !signingModule) {
+    signingModule = await import('./views/signing.js');
+    window._signingViewLoaded = true;
+  }
+  return signingModule;
+}
+
+let meetingsModule = null;
+async function loadMeetingsView() {
+  if (!window._meetingsViewLoaded || !meetingsModule) {
+    meetingsModule = await import('./views/meetings.js');
+    window._meetingsViewLoaded = true;
+  }
+  return meetingsModule;
+}
+
+window.loadAdminView = loadAdminView;
+window.loadSuperadminView = loadSuperadminView;
+window.loadDisputesView = loadDisputesView;
+window.loadSigningView = loadSigningView;
+window.loadMeetingsView = loadMeetingsView;
 
 const app = document.querySelector('#app');
 let cleanup = null;
 let previousPath = null;
 let rendering = false;
 
-function route(path, params) {
+async function route(path, params) {
   if (path === '/login') return renderLogin();
   if (path === '/role-selection') return renderRoleSelection();
   if (path === '/signup') return renderSignup();
@@ -40,9 +88,20 @@ function route(path, params) {
   if (path === '/app/ideas/new') return renderNewIdea(params);
   match = path.match(/^\/app\/ideas\/([^/]+)$/); if (match) return renderIdeaDetail(match[1]);
   if (path === '/app/voting') return renderVoting();
-  if (path === '/app/meetings') return renderMeetings();
-  match = path.match(/^\/app\/meetings\/([^/]+)$/); if (match) return renderMeetingDetail(match[1]);
-  match = path.match(/^\/app\/coworking\/([^/]+)$/); if (match) return renderCoworking(match[1]);
+  if (path === '/app/meetings') {
+    const meetings = await loadMeetingsView();
+    return meetings.renderMeetings();
+  }
+  match = path.match(/^\/app\/meetings\/([^/]+)$/);
+  if (match) {
+    const meetings = await loadMeetingsView();
+    return meetings.renderMeetingDetail(match[1]);
+  }
+  match = path.match(/^\/app\/coworking\/([^/]+)$/);
+  if (match) {
+    const meetings = await loadMeetingsView();
+    return meetings.renderCoworking(match[1]);
+  }
   if (path === '/app/profile') return renderProfile();
   match = path.match(/^\/app\/members\/([^/]+)$/); if (match) return renderProfile(match[1]);
   if (path === '/app/wallet') return renderWallet();
@@ -51,35 +110,48 @@ function route(path, params) {
   match = path.match(/^\/app\/support\/([^/]+)$/); if (match) return renderTicket(match[1]);
   if (path === '/app/former-member') return renderFormerMember();
 
-  if (path === '/admin') return renderAdminDashboard();
-  if (path === '/admin/applications') return renderAdminApplications();
-  if (path === '/admin/members') return renderAdminMembers(params);
-  if (path === '/admin/ideas') return renderAdminIdeas();
-  if (path === '/admin/projects') return renderAdminProjects();
-  if (path === '/admin/pipeline') return renderAdminPipeline();
-  if (path === '/admin/revenue') return renderAdminRevenue(params);
-  if (path === '/admin/offboarding') return renderAdminOffboarding(params);
-  if (path === '/admin/config') return renderAdminConfig(params);
-  if (path === '/admin/meetings') return renderAdminMeetings();
-  if (path === '/admin/audit') return renderAdminAudit();
+  if (path.startsWith('/admin')) {
+    const admin = await loadAdminView();
+    if (path === '/admin') return admin.renderAdminDashboard();
+    if (path === '/admin/applications') return admin.renderAdminApplications();
+    if (path === '/admin/members') return admin.renderAdminMembers(params);
+    if (path === '/admin/ideas') return admin.renderAdminIdeas();
+    if (path === '/admin/projects') return admin.renderAdminProjects();
+    if (path === '/admin/pipeline') return admin.renderAdminPipeline();
+    if (path === '/admin/revenue') return admin.renderAdminRevenue(params);
+    if (path === '/admin/offboarding') return admin.renderAdminOffboarding(params);
+    if (path === '/admin/config') return admin.renderAdminConfig(params);
+    if (path === '/admin/meetings') return admin.renderAdminMeetings();
+    if (path === '/admin/audit') return admin.renderAdminAudit();
+  }
 
-  if (path === '/superadmin') return renderSuperadminDashboard();
-  if (path === '/superadmin/members') return renderSuperadminMembers();
-  if (path === '/superadmin/performance') return renderSuperadminPerformance();
-  if (path === '/superadmin/support') return renderSuperadminSupport();
-  if (path === '/superadmin/ideas') return renderSuperadminIdeas();
-  if (path === '/superadmin/disputes') return renderDisputes();
-  if (path === '/superadmin/gateway') return renderSuperadminGateway();
-  if (path === '/superadmin/governance') return renderSuperadminGovernance(params);
-  if (path === '/superadmin/audit') return renderSuperadminAudit();
+  if (path.startsWith('/superadmin')) {
+    if (path === '/superadmin/disputes') {
+      const disputes = await loadDisputesView();
+      return disputes.renderDisputes();
+    }
+    const sa = await loadSuperadminView();
+    if (path === '/superadmin') return sa.renderSuperadminDashboard();
+    if (path === '/superadmin/members') return sa.renderSuperadminMembers();
+    if (path === '/superadmin/performance') return sa.renderSuperadminPerformance();
+    if (path === '/superadmin/support') return sa.renderSuperadminSupport();
+    if (path === '/superadmin/ideas') return sa.renderSuperadminIdeas();
+    if (path === '/superadmin/gateway') return sa.renderSuperadminGateway();
+    if (path === '/superadmin/governance') return sa.renderSuperadminGovernance(params);
+    if (path === '/superadmin/audit') return sa.renderSuperadminAudit();
+  }
 
   match = path.match(/^\/sign\/(disputes|waivers|agreement|waiver)\/([^/]+)(?:\/([^/]+))?$/);
-  if (match) { if (match[3] && !params.has('token')) params.set('token', match[3]); return renderSigning(match[1], match[2], params); }
+  if (match) {
+    if (match[3] && !params.has('token')) params.set('token', match[3]);
+    const signing = await loadSigningView();
+    return signing.renderSigning(match[1], match[2], params);
+  }
   return { html: `${pageHead('404 · Route not found', 'This screen is not in the application map.', 'Use the navigation or quick search to return to an implemented workspace screen.')}${emptyState('Unknown application route', 'The route may be incomplete or no longer available.', '<a class="btn btn--primary" href="#/app/dashboard">Return to dashboard</a>', 'search')}` };
 }
 function isPublic(path) { return ['/login', '/role-selection', '/signup', '/application-status', '/about', '/contact', '/mentorship', '/legal/terms', '/legal/privacy'].includes(path); }
 function isSigning(path) { return path.startsWith('/sign/'); }
-function render() {
+async function render() {
   if (rendering) return;
   rendering = true;
   try {
@@ -93,7 +165,7 @@ function render() {
     if (typeof cleanup === 'function') { try { cleanup(); } catch (error) { console.warn('View cleanup failed', error); } }
     cleanup = null; closeDialog(); closeDrawer(false); state.ui.sidebarOpen = false;
     let view;
-    try { view = route(path, params); }
+    try { view = await route(path, params); }
     catch (error) {
       console.error('Route render failed:', path, error);
       view = { html: `${pageHead('Application error', 'This screen could not be rendered.', 'A local frontend error was caught. No backend request was made.')}${notice('Open the browser console for the route error, or retry this route after returning to normal preview mode.', 'danger', 'Render error', 'alert')}<button class="btn btn--outline mt-2" data-action="retry-route">${icon('refresh')} Retry route</button>` };

@@ -87,6 +87,29 @@ CREATE TABLE IF NOT EXISTS pipeline_addendum_requests (
 );
 `;
 
+export const COMPOSITE_INDEXES_SQL = `
+CREATE INDEX IF NOT EXISTS idx_ideas_status_owner
+  ON ideas(status, owner_id);
+
+CREATE INDEX IF NOT EXISTS idx_projects_status_owner
+  ON projects(status, owner_id);
+
+CREATE INDEX IF NOT EXISTS idx_project_tasks_composite
+  ON project_tasks(project_id, assigned_to, status);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read
+  ON notifications(user_id, read_status);
+
+CREATE INDEX IF NOT EXISTS idx_access_log_user_action
+  ON access_log(user_id, action);
+
+CREATE INDEX IF NOT EXISTS idx_pipeline_points_composite
+  ON pipeline_checklist_points(deliverable_id, stage, status);
+
+CREATE INDEX IF NOT EXISTS idx_pipeline_deliverables_proj
+  ON pipeline_deliverables(project_id, status);
+`;
+
 export function getDatabase() {
   if (!dbInstance) {
     dbInstance = new DatabaseSync(config.DB_PATH);
@@ -95,6 +118,7 @@ export function getDatabase() {
     dbInstance.exec('PRAGMA foreign_keys = ON;');
     console.log('[DB] WAL mode enabled');
     dbInstance.exec(PIPELINE_SCHEMA_SQL);
+    dbInstance.exec(COMPOSITE_INDEXES_SQL);
   }
   return dbInstance;
 }

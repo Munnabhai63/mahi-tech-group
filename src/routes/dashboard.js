@@ -30,7 +30,9 @@ router.get('/summary', authenticate, (req, res) => {
  * Returns projects grouped by stage for the Center Kanban Board
  */
 router.get('/kanban', authenticate, (req, res) => {
-  const kanban = getKanbanProjects(req.user);
+  const limit = req.query.limit ? Math.min(Number(req.query.limit), 100) : 50;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+  const kanban = getKanbanProjects(req.user, { limit, offset });
   return res.status(200).json(kanban);
 });
 
@@ -39,7 +41,9 @@ router.get('/kanban', authenticate, (req, res) => {
  * Returns pending review ideas with live green percentages
  */
 router.get('/votes-feed', authenticate, (req, res) => {
-  const feed = getPendingVotesFeed(req.user);
+  const limit = req.query.limit ? Math.min(Number(req.query.limit), 100) : 50;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+  const feed = getPendingVotesFeed(req.user, { limit, offset });
   return res.status(200).json({
     count: feed.length,
     ideas: feed

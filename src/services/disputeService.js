@@ -159,7 +159,7 @@ export function createDispute({
 /**
  * List disputes with optional filtering
  */
-export function listDisputes({ status, dispute_type, date_from, search } = {}) {
+export function listDisputes({ status, dispute_type, date_from, search, limit = 50, offset = 0 } = {}) {
   let sql = `
     SELECT 
       d.*,
@@ -192,7 +192,8 @@ export function listDisputes({ status, dispute_type, date_from, search } = {}) {
     params.push(term, term, term, term);
   }
 
-  sql += ' ORDER BY d.created_at DESC';
+  sql += ' ORDER BY d.created_at DESC LIMIT ? OFFSET ?';
+  params.push(Number(limit) || 50, Number(offset) || 0);
   return queryAll(sql, params);
 }
 

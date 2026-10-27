@@ -152,13 +152,17 @@ router.patch('/members/:id/status', authenticate, requirePermission('member.remo
 
 // 7. GET /api/admin/members (Admin only - RBAC: member.add)
 router.get('/members', authenticate, requirePermission('member.add'), (req, res) => {
+  const limit = req.query.limit ? Math.min(Number(req.query.limit), 500) : 100;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+
   const members = queryAll(`
     SELECT id, name, email, role, sub_role, status, rating_avg,
            idea_quota_used, quota_reset_date, wallet_balance, profile_photo_url,
            created_at, updated_at, deactivated_at
     FROM users
     ORDER BY created_at DESC
-  `);
+    LIMIT ? OFFSET ?
+  `, [limit, offset]);
 
   return res.status(200).json({ members });
 });
@@ -169,13 +173,17 @@ router.get('/applications/pending', authenticate, requirePermission('application
     return res.status(403).json({ error: 'Forbidden: Only administrators can view pending applications' });
   }
 
+  const limit = req.query.limit ? Math.min(Number(req.query.limit), 500) : 100;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+
   const applications = queryAll(`
     SELECT id, name, email, phone_number, desired_role, desired_sub_role,
            status, created_at, updated_at
     FROM users
     WHERE status = 'pending'
     ORDER BY created_at ASC
-  `);
+    LIMIT ? OFFSET ?
+  `, [limit, offset]);
 
   return res.status(200).json({
     count: applications.length,
@@ -476,6 +484,9 @@ router.get('/projects/all', authenticate, (req, res) => {
     return res.status(403).json({ error: 'Forbidden: Only administrators can view all projects' });
   }
 
+  const limit = req.query.limit ? Math.min(Number(req.query.limit), 500) : 100;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+
   const projects = queryAll(`
     SELECT p.*, COALESCE(u.name, 'Unknown Owner') as owner_name, COALESCE(u.email, '') as owner_email,
            (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.removed_at IS NULL) as member_count,
@@ -484,7 +495,8 @@ router.get('/projects/all', authenticate, (req, res) => {
     FROM projects p
     LEFT JOIN users u ON p.owner_id = u.id
     ORDER BY p.created_at DESC
-  `);
+    LIMIT ? OFFSET ?
+  `, [limit, offset]);
 
   return res.status(200).json({
     count: projects.length,
@@ -833,6 +845,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     JOIN users u ON i.owner_id = u.id
     WHERE i.status = 'PENDING_REVIEW'
     ORDER BY i.created_at DESC
+    LIMIT 20
   `);
   const activeResearchTasks = queryAll(`
     SELECT pt.id, pt.task_name, pt.status, p.title as project_title, u.name as assigned_to_name
@@ -841,6 +854,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     LEFT JOIN users u ON pt.assigned_to = u.id
     WHERE pt.task_type = 'research' AND pt.status IN ('TODO', 'IN_PROGRESS')
     ORDER BY pt.created_at ASC
+    LIMIT 20
   `);
 
   // 2. Developer Corner data
@@ -853,6 +867,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     LEFT JOIN project_tasks dep ON pt.depends_on_task_id = dep.id
     WHERE pt.task_type IN ('backend', 'frontend') AND pt.status IN ('TODO', 'BLOCKED', 'IN_PROGRESS')
     ORDER BY pt.created_at ASC
+    LIMIT 20
   `);
 
   // 3. Producer Corner data
@@ -863,6 +878,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     LEFT JOIN users u ON pt.assigned_to = u.id
     WHERE pt.task_type = 'testing' AND pt.status IN ('TODO', 'BLOCKED', 'IN_PROGRESS')
     ORDER BY pt.created_at ASC
+    LIMIT 20
   `);
 
   // 3b. UI/UX Designer Corner data
@@ -875,6 +891,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     LEFT JOIN project_tasks dep ON pt.depends_on_task_id = dep.id
     WHERE pt.task_type = 'design' AND pt.status IN ('TODO', 'BLOCKED', 'IN_PROGRESS')
     ORDER BY pt.created_at ASC
+    LIMIT 20
   `);
 
   // 4. Admin Corner data
@@ -884,6 +901,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     FROM projects p
     LEFT JOIN users u ON p.owner_id = u.id
     WHERE p.current_stage = 'ADMIN_REVIEW' AND p.status = 'ACTIVE'
+    LIMIT 20
   `);
   const activeMembersCount = queryOne("SELECT COUNT(*) as count FROM users WHERE status = 'active'")?.count || 0;
   const liveProjectsCount = queryOne("SELECT COUNT(*) as count FROM projects WHERE current_stage = 'LIVE'")?.count || 0;

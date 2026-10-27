@@ -56,7 +56,16 @@ export function createApp() {
   });
 
   // Serve static frontend assets
-  app.use(express.static(publicPath));
+  app.use(express.static(publicPath, {
+    maxAge: '1h',
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+      }
+    }
+  }));
 
   // Mount API routers
   app.use('/api/auth', authRouter);

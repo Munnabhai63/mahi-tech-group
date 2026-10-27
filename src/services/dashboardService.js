@@ -73,8 +73,9 @@ export function getDashboardSummary(user) {
 /**
  * Returns projects formatted for the Kanban Board
  * Grouped into the 5 stages per PRD Step 4/7
+ * High-performance batched implementation (3 queries max, eliminates 1 + 2N queries)
  */
-export function getKanbanProjects(user) {
+export function getKanbanProjects(user, { limit = 50, offset = 0 } = {}) {
   const isAdmin = user.role === 'admin';
 
   let projectsQuery = `
@@ -98,7 +99,8 @@ export function getKanbanProjects(user) {
     params.push(user.id, user.id);
   }
 
-  projectsQuery += ' ORDER BY p.created_at DESC';
+  projectsQuery += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
+  params.push(Number(limit) || 50, Number(offset) || 0);
   const projects = queryAll(projectsQuery, params);
 
   // Define the standard 5 Kanban stages
@@ -110,18 +112,59 @@ export function getKanbanProjects(user) {
     LIVE: { title: 'Live & Monetizing', stage: 'LIVE', items: [] }
   };
 
-  for (const proj of projects) {
-    // Fetch members
-    const members = queryAll(`
-      SELECT pm.id, pm.user_id, u.name, u.email, u.role, pm.role_in_project, pm.contribution_weight
-      FROM project_members pm
-      JOIN users u ON pm.user_id = u.id
-      WHERE pm.project_id = ? AND pm.removed_at IS NULL
-      ORDER BY pm.joined_at ASC
-    `, [proj.id]);
+  if (projects.length === 0) {
+    return {
+      totalProjects: 0,
+      columns
+    };
+  }
 
-    // Fetch tasks progress
-    const tasks = queryAll('SELECT id, status FROM project_tasks WHERE project_id = ?', [proj.id]);
+  // Step 2: Single batched query for ALL members of returned projects
+  const projectIds = projects.map(p => p.id);
+  const placeholders = projectIds.map(() => '?').join(',');
+
+  const allMembers = queryAll(`
+    SELECT pm.id, pm.project_id, pm.user_id, u.name, u.email, u.role, pm.role_in_project, pm.contribution_weight
+    FROM project_members pm
+    JOIN users u ON pm.user_id = u.id
+    WHERE pm.project_id IN (${placeholders}) AND pm.removed_at IS NULL
+    ORDER BY pm.joined_at ASC
+  `, projectIds);
+
+  const membersByProject = new Map();
+  for (const m of allMembers) {
+    if (!membersByProject.has(m.project_id)) {
+      membersByProject.set(m.project_id, []);
+    }
+    membersByProject.get(m.project_id).push({
+      id: m.id,
+      user_id: m.user_id,
+      name: m.name,
+      email: m.email,
+      role: m.role,
+      role_in_project: m.role_in_project,
+      contribution_weight: m.contribution_weight
+    });
+  }
+
+  // Step 3: Single batched query for ALL tasks of returned projects
+  const allTasks = queryAll(`
+    SELECT id, project_id, status FROM project_tasks
+    WHERE project_id IN (${placeholders})
+  `, projectIds);
+
+  const tasksByProject = new Map();
+  for (const t of allTasks) {
+    if (!tasksByProject.has(t.project_id)) {
+      tasksByProject.set(t.project_id, []);
+    }
+    tasksByProject.get(t.project_id).push(t);
+  }
+
+  // Step 4: Map members and tasks to projects in memory
+  for (const proj of projects) {
+    const members = membersByProject.get(proj.id) || [];
+    const tasks = tasksByProject.get(proj.id) || [];
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(t => t.status === 'DONE').length;
     const percentComplete = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -147,7 +190,6 @@ export function getKanbanProjects(user) {
     if (columns[proj.current_stage]) {
       columns[proj.current_stage].items.push(kanbanItem);
     } else {
-      // Fallback
       columns.RESEARCH_DEV_PARALLEL.items.push(kanbanItem);
     }
   }
@@ -160,8 +202,9 @@ export function getKanbanProjects(user) {
 
 /**
  * Returns ideas currently in PENDING_REVIEW with live voting percentages
+ * High-performance batched implementation (2 queries max, eliminates 1 + N queries)
  */
-export function getPendingVotesFeed(user) {
+export function getPendingVotesFeed(user, { limit = 50, offset = 0 } = {}) {
   const ideas = queryAll(`
     SELECT i.*, u.name as owner_name, u.email as owner_email,
            rm.voting_window_end, rm.status as meeting_status
@@ -170,11 +213,31 @@ export function getPendingVotesFeed(user) {
     LEFT JOIN review_meetings rm ON i.id = rm.idea_id
     WHERE i.status = 'PENDING_REVIEW'
     ORDER BY i.created_at DESC
-  `);
+    LIMIT ? OFFSET ?
+  `, [Number(limit) || 50, Number(offset) || 0]);
 
+  if (ideas.length === 0) return [];
+
+  // Step 2: Single batched query for votes
+  const ideaIds = ideas.map(i => i.id);
+  const placeholders = ideaIds.map(() => '?').join(',');
+
+  const allVotes = queryAll(`
+    SELECT idea_id, voter_id, vote_color FROM votes
+    WHERE idea_id IN (${placeholders})
+  `, ideaIds);
+
+  const votesByIdea = new Map();
+  for (const v of allVotes) {
+    if (!votesByIdea.has(v.idea_id)) {
+      votesByIdea.set(v.idea_id, []);
+    }
+    votesByIdea.get(v.idea_id).push(v);
+  }
+
+  // Step 3: Map votes to ideas in JS memory
   return ideas.map(idea => {
-    // Get votes breakdown
-    const votes = queryAll('SELECT voter_id, vote_color FROM votes WHERE idea_id = ?', [idea.id]);
+    const votes = votesByIdea.get(idea.id) || [];
     const greenVotes = votes.filter(v => v.vote_color === 'green').length;
     const redVotes = votes.filter(v => v.vote_color === 'red').length;
     const totalVotes = votes.length;
