@@ -16,6 +16,10 @@ import pipelineRouter from './routes/pipeline.routes.js';
 import pointPoolRouter from './routes/pointPool.routes.js';
 import githubWebhookRouter from './routes/githubWebhook.routes.js';
 import githubSettingsRouter from './routes/githubSettings.routes.js';
+import sprintRouter from './routes/sprint.routes.js';
+import backlogRouter from './routes/backlog.routes.js';
+import okrRouter from './routes/okr.routes.js';
+import ganttRouter from './routes/gantt.routes.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { queryAll } from './db/database.js';
@@ -93,6 +97,10 @@ export function createApp() {
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api', dashboardRouter); // Covers /api/notifications/* and /api/activity/*
   app.use('/api/github/settings', githubSettingsRouter);
+  app.use('/api/sprint', sprintRouter);
+  app.use('/api/backlog', backlogRouter);
+  app.use('/api/okr', okrRouter);
+  app.use('/api/gantt', ganttRouter);
 
   // Direct shortcut redirects for common workspace and auth routes (Express 5 compatible)
   app.use((req, res, next) => {

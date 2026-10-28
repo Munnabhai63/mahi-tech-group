@@ -740,9 +740,306 @@ export function runMigration() {
     END;
   `);
 
+  // ============================================================
+  // PRD 18: Sprint Planning, Backlog Management & Velocity Tracking
+  // ============================================================
+  execRaw(`
+    CREATE TABLE IF NOT EXISTS sprints (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL REFERENCES projects(id),
+      name TEXT NOT NULL,
+      goal TEXT,
+      status TEXT NOT NULL DEFAULT 'DRAFT',
+      start_date TEXT,
+      end_date TEXT,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS backlog_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL REFERENCES projects(id),
+      sprint_id INTEGER REFERENCES sprints(id),
+      title TEXT NOT NULL,
+      description TEXT,
+      type TEXT DEFAULT 'STORY',
+      priority TEXT DEFAULT 'MEDIUM',
+      story_points INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'TODO',
+      assigned_to INTEGER REFERENCES users(id),
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      position INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS sprint_velocity_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sprint_id INTEGER NOT NULL REFERENCES sprints(id),
+      project_id INTEGER NOT NULL REFERENCES projects(id),
+      total_points_committed INTEGER DEFAULT 0,
+      total_points_completed INTEGER DEFAULT 0,
+      completion_rate REAL DEFAULT 0.0,
+      logged_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS backlog_item_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_id INTEGER NOT NULL REFERENCES backlog_items(id),
+      changed_by INTEGER NOT NULL REFERENCES users(id),
+      field_changed TEXT NOT NULL,
+      old_value TEXT,
+      new_value TEXT,
+      changed_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS sprint_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sprint_id INTEGER NOT NULL REFERENCES sprints(id),
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      added_by INTEGER NOT NULL REFERENCES users(id),
+      added_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(sprint_id, user_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sprints_project_id ON sprints(project_id);
+    CREATE INDEX IF NOT EXISTS idx_sprints_status ON sprints(status);
+    CREATE INDEX IF NOT EXISTS idx_backlog_items_project_id ON backlog_items(project_id);
+    CREATE INDEX IF NOT EXISTS idx_backlog_items_sprint_id ON backlog_items(sprint_id);
+    CREATE INDEX IF NOT EXISTS idx_sprint_velocity_sprint ON sprint_velocity_log(sprint_id);
+    CREATE INDEX IF NOT EXISTS idx_backlog_history_item ON backlog_item_history(item_id);
+    CREATE INDEX IF NOT EXISTS idx_sprint_members_sprint ON sprint_members(sprint_id);
+
+    CREATE TRIGGER IF NOT EXISTS prevent_velocity_log_update
+    BEFORE UPDATE ON sprint_velocity_log
+    BEGIN SELECT RAISE(ABORT, 'sprint_velocity_log is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_velocity_log_delete
+    BEFORE DELETE ON sprint_velocity_log
+    BEGIN SELECT RAISE(ABORT, 'sprint_velocity_log is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_item_history_update
+    BEFORE UPDATE ON backlog_item_history
+    BEGIN SELECT RAISE(ABORT, 'backlog_item_history is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_item_history_delete
+    BEFORE DELETE ON backlog_item_history
+    BEGIN SELECT RAISE(ABORT, 'backlog_item_history is append-only'); END;
+  `);
+
+  // PRD 19: OKR System (Objectives & Key Results)
+  execRaw(`
+    CREATE TABLE IF NOT EXISTS okr_objectives (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      level TEXT NOT NULL DEFAULT 'TEAM',
+      owner_id INTEGER NOT NULL REFERENCES users(id),
+      parent_objective_id INTEGER REFERENCES okr_objectives(id),
+      project_id INTEGER REFERENCES projects(id),
+      cycle TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'ACTIVE',
+      progress_pct REAL DEFAULT 0.0,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS okr_key_results (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      objective_id INTEGER NOT NULL REFERENCES okr_objectives(id),
+      title TEXT NOT NULL,
+      description TEXT,
+      type TEXT NOT NULL DEFAULT 'PERCENTAGE',
+      target_value REAL NOT NULL DEFAULT 100,
+      current_value REAL NOT NULL DEFAULT 0,
+      unit TEXT,
+      progress_pct REAL DEFAULT 0.0,
+      status TEXT NOT NULL DEFAULT 'ON_TRACK',
+      assigned_to INTEGER REFERENCES users(id),
+      due_date TEXT,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS okr_checkins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key_result_id INTEGER NOT NULL REFERENCES okr_key_results(id),
+      submitted_by INTEGER NOT NULL REFERENCES users(id),
+      previous_value REAL NOT NULL DEFAULT 0,
+      new_value REAL NOT NULL,
+      confidence TEXT NOT NULL DEFAULT 'MEDIUM',
+      note TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS okr_alignment_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      child_objective_id INTEGER NOT NULL REFERENCES okr_objectives(id),
+      parent_objective_id INTEGER NOT NULL REFERENCES okr_objectives(id),
+      linked_by INTEGER NOT NULL REFERENCES users(id),
+      linked_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(child_objective_id, parent_objective_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS okr_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      entity_type TEXT NOT NULL,
+      entity_id INTEGER NOT NULL,
+      changed_by INTEGER NOT NULL REFERENCES users(id),
+      field_changed TEXT NOT NULL,
+      old_value TEXT,
+      new_value TEXT,
+      changed_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_okr_objectives_level ON okr_objectives(level);
+    CREATE INDEX IF NOT EXISTS idx_okr_objectives_cycle ON okr_objectives(cycle);
+    CREATE INDEX IF NOT EXISTS idx_okr_objectives_project ON okr_objectives(project_id);
+    CREATE INDEX IF NOT EXISTS idx_okr_objectives_owner ON okr_objectives(owner_id);
+    CREATE INDEX IF NOT EXISTS idx_okr_objectives_parent ON okr_objectives(parent_objective_id);
+    CREATE INDEX IF NOT EXISTS idx_okr_key_results_obj ON okr_key_results(objective_id);
+    CREATE INDEX IF NOT EXISTS idx_okr_key_results_assigned ON okr_key_results(assigned_to);
+    CREATE INDEX IF NOT EXISTS idx_okr_checkins_kr ON okr_checkins(key_result_id);
+    CREATE INDEX IF NOT EXISTS idx_okr_alignment_child ON okr_alignment_links(child_objective_id);
+    CREATE INDEX IF NOT EXISTS idx_okr_alignment_parent ON okr_alignment_links(parent_objective_id);
+    CREATE INDEX IF NOT EXISTS idx_okr_history_entity ON okr_history(entity_type, entity_id);
+
+    CREATE TRIGGER IF NOT EXISTS prevent_okr_checkin_update
+    BEFORE UPDATE ON okr_checkins
+    BEGIN SELECT RAISE(ABORT, 'okr_checkins is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_okr_checkin_delete
+    BEFORE DELETE ON okr_checkins
+    BEGIN SELECT RAISE(ABORT, 'okr_checkins is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_okr_alignment_update
+    BEFORE UPDATE ON okr_alignment_links
+    BEGIN SELECT RAISE(ABORT, 'okr_alignment_links is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_okr_alignment_delete
+    BEFORE DELETE ON okr_alignment_links
+    BEGIN SELECT RAISE(ABORT, 'okr_alignment_links is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_okr_history_update
+    BEFORE UPDATE ON okr_history
+    BEGIN SELECT RAISE(ABORT, 'okr_history is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_okr_history_delete
+    BEFORE DELETE ON okr_history
+    BEGIN SELECT RAISE(ABORT, 'okr_history is append-only'); END;
+  `);
+
+  // PRD 20 Layer 1: Gantt Chart & Timeline View
+  execRaw(`
+    CREATE TABLE IF NOT EXISTS gantt_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL REFERENCES projects(id),
+      sprint_id INTEGER REFERENCES sprints(id),
+      backlog_item_id INTEGER REFERENCES backlog_items(id),
+      title TEXT NOT NULL,
+      description TEXT,
+      type TEXT NOT NULL DEFAULT 'TASK',
+      assigned_to INTEGER REFERENCES users(id),
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      progress_pct REAL DEFAULT 0.0,
+      color TEXT DEFAULT '#4A90E2',
+      parent_item_id INTEGER REFERENCES gantt_items(id),
+      position INTEGER DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'NOT_STARTED',
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS gantt_dependencies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL REFERENCES projects(id),
+      predecessor_item_id INTEGER NOT NULL REFERENCES gantt_items(id),
+      successor_item_id INTEGER NOT NULL REFERENCES gantt_items(id),
+      dependency_type TEXT NOT NULL DEFAULT 'FINISH_TO_START',
+      lag_days INTEGER DEFAULT 0,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(predecessor_item_id, successor_item_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS gantt_milestones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL REFERENCES projects(id),
+      gantt_item_id INTEGER REFERENCES gantt_items(id),
+      title TEXT NOT NULL,
+      milestone_date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      achieved_at TEXT,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS gantt_baselines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL REFERENCES projects(id),
+      gantt_item_id INTEGER NOT NULL REFERENCES gantt_items(id),
+      baseline_start_date TEXT NOT NULL,
+      baseline_end_date TEXT NOT NULL,
+      snapshot_taken_by INTEGER NOT NULL REFERENCES users(id),
+      snapshot_taken_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS gantt_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      gantt_item_id INTEGER NOT NULL REFERENCES gantt_items(id),
+      changed_by INTEGER NOT NULL REFERENCES users(id),
+      field_changed TEXT NOT NULL,
+      old_value TEXT,
+      new_value TEXT,
+      changed_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_gantt_items_project ON gantt_items(project_id);
+    CREATE INDEX IF NOT EXISTS idx_gantt_items_sprint ON gantt_items(sprint_id);
+    CREATE INDEX IF NOT EXISTS idx_gantt_items_backlog ON gantt_items(backlog_item_id);
+    CREATE INDEX IF NOT EXISTS idx_gantt_items_assigned ON gantt_items(assigned_to);
+    CREATE INDEX IF NOT EXISTS idx_gantt_items_parent ON gantt_items(parent_item_id);
+    CREATE INDEX IF NOT EXISTS idx_gantt_dependencies_project ON gantt_dependencies(project_id);
+    CREATE INDEX IF NOT EXISTS idx_gantt_dependencies_pred ON gantt_dependencies(predecessor_item_id);
+    CREATE INDEX IF NOT EXISTS idx_gantt_dependencies_succ ON gantt_dependencies(successor_item_id);
+    CREATE INDEX IF NOT EXISTS idx_gantt_milestones_project ON gantt_milestones(project_id);
+    CREATE INDEX IF NOT EXISTS idx_gantt_milestones_item ON gantt_milestones(gantt_item_id);
+    CREATE INDEX IF NOT EXISTS idx_gantt_baselines_project ON gantt_baselines(project_id);
+    CREATE INDEX IF NOT EXISTS idx_gantt_baselines_item ON gantt_baselines(gantt_item_id);
+    CREATE INDEX IF NOT EXISTS idx_gantt_history_item ON gantt_history(gantt_item_id);
+
+    CREATE TRIGGER IF NOT EXISTS prevent_gantt_dependency_update
+    BEFORE UPDATE ON gantt_dependencies
+    BEGIN SELECT RAISE(ABORT, 'gantt_dependencies is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_gantt_dependency_delete
+    BEFORE DELETE ON gantt_dependencies
+    BEGIN SELECT RAISE(ABORT, 'gantt_dependencies is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_gantt_baseline_update
+    BEFORE UPDATE ON gantt_baselines
+    BEGIN SELECT RAISE(ABORT, 'gantt_baselines is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_gantt_baseline_delete
+    BEFORE DELETE ON gantt_baselines
+    BEGIN SELECT RAISE(ABORT, 'gantt_baselines is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_gantt_history_update
+    BEFORE UPDATE ON gantt_history
+    BEGIN SELECT RAISE(ABORT, 'gantt_history is append-only'); END;
+
+    CREATE TRIGGER IF NOT EXISTS prevent_gantt_history_delete
+    BEFORE DELETE ON gantt_history
+    BEGIN SELECT RAISE(ABORT, 'gantt_history is append-only'); END;
+  `);
+
   // Verification of tables
-
-
   const tables = queryAll("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;");
   console.log('>>> Migration executed successfully.');
   console.log('>>> Verified Tables in Database:', tables.map(t => t.name).join(', '));

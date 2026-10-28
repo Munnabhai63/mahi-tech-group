@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gantt Chart & Timeline — Mahi Tech Group</title>
+  <meta name="description" content="Interactive project Gantt chart, timeline visualization, SVG dependencies, critical path, and milestone management for Mahi Tech Group.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-critical: #ff3366;
+      --color-purple: #a855f7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .select-project {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      max-width: 220px;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      color: #38bdf8;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      color: #ffffff;
+      border: 1px solid #38bdf8;
+      padding: 0.45rem 0.95rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+
+    /* Sub Toolbar */
+    .toolbar-bar {
+      background: #0d1424;
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.65rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      z-index: 40;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .zoom-btn-group {
+      display: flex;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .btn-zoom {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-zoom:hover {
+      color: #f8fafc;
+    }
+
+    .btn-zoom.active {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .toggle-critical-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #f8fafc;
+      background: #1e293b;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-card);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-critical-wrap input {
+      accent-color: #ef4444;
+      cursor: pointer;
+    }
+
+    .summary-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .summary-badge strong {
+      color: #f8fafc;
+    }
+
+    /* Gantt Main Layout */
+    .gantt-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 120px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Left Table Panel */
+    .gantt-table-panel {
+      width: 380px;
+      min-width: 300px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-card);
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+    }
+
+    .gantt-table-header {
+      height: 48px;
+      background: #0d1527;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .col-title { flex: 1; }
+    .col-assignee { width: 90px; text-align: left; }
+    .col-prog { width: 55px; text-align: right; }
+
+    .gantt-table-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .task-row {
+      height: 44px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .task-row:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .task-row.selected {
+      background: rgba(56, 189, 248, 0.12);
+      border-left: 3px solid #38bdf8;
+    }
+
+    .task-row.is-critical {
+      border-left: 3px solid #ef4444;
+    }
+
+    .type-icon {
+      margin-right: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    /* Right Timeline Panel */
+    .gantt-timeline-panel {
+      flex: 1;
+      background: var(--bg-dark);
+      overflow: auto;
+      position: relative;
+    }
+
+    .timeline-inner {
+      position: relative;
+      min-width: 1200px;
+      height: 100%;
+    }
+
+    /* Timeline Header */
+    .timeline-header {
+      height: 48px;
+      background: #0d1527;
+      border-bottom: 1px solid var(--border-card);
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+    }
+
+    .time-header-cell {
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #94a3b8;
+      user-select: none;
+    }
+
+    .time-header-cell.weekend {
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    /* Grid Rows */
+    .timeline-body {
+      position: relative;
+    }
+
+    .grid-row {
+      height: 44px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+      display: flex;
+    }
+
+    .grid-cell {
+      border-right: 1px solid rgba(255, 255, 255, 0.03);
+      height: 100%;
+    }
+
+    .grid-cell.weekend {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* Today Marker Line */
+    .today-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #ef4444;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    .today-label {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      background: #ef4444;
+      color: #ffffff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+
+    /* SVG Overlay for Dependencies */
+    .gantt-svg-overlay {
+      position: absolute;
+      top: 48px;
+      left: 0;
+      width: 100%;
+      height: calc(100% - 48px);
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    .dep-line {
+      fill: none;
+      stroke: #38bdf8;
+      stroke-width: 2;
+      stroke-dasharray: 4, 3;
+      transition: stroke 0.2s;
+    }
+
+    .dep-line.critical {
+      stroke: #ff3366;
+      stroke-width: 2.5;
+      stroke-dasharray: none;
+    }
+
+    /* Gantt Item Bars */
+    .timeline-bar {
+      position: absolute;
+      height: 26px;
+      top: 9px;
+      border-radius: 5px;
+      background: #0284c7;
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+      transition: box-shadow 0.15s, transform 0.1s;
+      z-index: 10;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .timeline-bar:hover {
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      transform: translateY(-1px);
+      z-index: 12;
+    }
+
+    .resize-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      cursor: col-resize;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.15);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .timeline-bar:hover .resize-handle {
+      opacity: 1;
+    }
+
+    .resize-left { left: 0; border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+    .resize-right { right: 0; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+
+    .timeline-bar.critical-item {
+      outline: 2px solid #ef4444;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+    }
+
+    .bar-progress-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.28);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .bar-label {
+      position: relative;
+      z-index: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    /* Diamond Milestone Shape */
+    .timeline-milestone {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      top: 11px;
+      background: #f59e0b;
+      transform: rotate(45deg);
+      border-radius: 3px;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      transition: all 0.15s;
+    }
+
+    .timeline-milestone:hover {
+      box-shadow: 0 0 12px #f59e0b;
+      transform: rotate(45deg) scale(1.15);
+      z-index: 14;
+    }
+
+    .timeline-milestone.achieved {
+      background: #10b981;
+    }
+
+    .timeline-milestone.critical-item {
+      outline: 2px solid #ef4444;
+      box-shadow: 0 0 12px #ef4444;
+    }
+
+    .milestone-label {
+      position: absolute;
+      top: 2px;
+      left: 28px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #f8fafc;
+      white-space: nowrap;
+      pointer-events: none;
+      transform: rotate(-45deg);
+    }
+
+    /* View 2: Inline Drawer Detail Sidebar */
+    .item-drawer {
+      position: fixed;
+      top: 0;
+      right: -480px;
+      width: 460px;
+      height: 100vh;
+      background: #0f172a;
+      border-left: 1px solid var(--border-card);
+      box-shadow: -5px 0 25px rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .item-drawer.open {
+      right: 0;
+    }
+
+    .drawer-header {
+      padding: 1.25rem 1.5rem;
+      background: #0d1424;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .drawer-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 0;
+      color: #f8fafc;
+    }
+
+    .btn-close-drawer {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .drawer-body {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .drawer-section {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .drawer-section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .form-group {
+      margin-bottom: 0.85rem;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 0.3rem;
+    }
+
+    .form-control {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #38bdf8;
+    }
+
+    .progress-slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .progress-slider-wrap input[type=range] {
+      flex: 1;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    .progress-badge {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #38bdf8;
+      min-width: 45px;
+      text-align: right;
+    }
+
+    .dep-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.45rem 0.65rem;
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 5px;
+      font-size: 0.8rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .badge-pill {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-task { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+    .badge-milestone { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    .badge-critical { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+
+    .history-entry {
+      font-size: 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 0.45rem 0;
+    }
+
+    .history-entry:last-child { border-bottom: none; }
+    .history-time { color: #64748b; font-size: 0.7rem; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 120;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      width: 480px;
+      max-width: 90vw;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/gantt-chart.html" class="brand-title">
+        <span>📊</span> Mahi Tech Gantt
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>Timeline</span>
+        <span>/</span>
+        <strong id="headerProjectName">Loading...</strong>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <select id="projectSelect" class="select-project" title="Select Project" aria-label="Select Project">
+        <option value="" disabled selected>Loading projects...</option>
+      </select>
+
+      <a href="/milestone-timeline.html" class="btn-nav" id="linkMilestones" title="View Milestone Timeline">
+        <span>💎</span> Milestones
+      </a>
+
+      <a href="/gantt-baseline.html" class="btn-nav" id="linkBaselines" title="Planned vs Actual View">
+        <span>📐</span> Planned vs Actual
+      </a>
+
+      <button type="button" class="btn-nav" id="btnTakeSnapshot" title="Take Baseline Snapshot (Admin only)">
+        <span>📸</span> Snapshot
+      </button>
+
+      <button type="button" class="btn-nav" id="btnExportJson" title="Export Project Timeline JSON">
+        <span>📥</span> Export
+      </button>
+
+      <button type="button" class="btn-primary" id="btnOpenNewItem">
+        <span>+</span> New Task
+      </button>
+    </div>
+  </header>
+
+  <!-- Control Sub Toolbar -->
+  <div class="toolbar-bar">
+    <div class="toolbar-group">
+      <div class="zoom-btn-group">
+        <button type="button" class="btn-zoom active" data-zoom="day">Day</button>
+        <button type="button" class="btn-zoom" data-zoom="week">Week</button>
+        <button type="button" class="btn-zoom" data-zoom="month">Month</button>
+        <button type="button" class="btn-zoom" data-zoom="quarter">Quarter</button>
+      </div>
+
+      <label class="toggle-critical-wrap" title="Highlight Critical Path">
+        <input type="checkbox" id="toggleCritical" checked>
+        <span>🔥 Critical Path</span>
+      </label>
+
+      <input type="text" id="filterInput" class="form-control" placeholder="Search tasks..." style="width: 160px; padding: 0.35rem 0.6rem;">
+    </div>
+
+    <div class="toolbar-group">
+      <div class="summary-badge" id="badgeTotalItems">
+        Tasks: <strong id="lblTotalTasks">0</strong>
+      </div>
+      <div class="summary-badge" id="badgeDuration">
+        Duration: <strong id="lblProjectDuration">0d</strong>
+      </div>
+      <div class="summary-badge" id="badgeCriticalCount">
+        Critical: <strong id="lblCriticalCount" style="color: #ef4444;">0</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gantt Main Split Container -->
+  <main class="gantt-container">
+    <!-- Left: Task Table -->
+    <div class="gantt-table-panel">
+      <div class="gantt-table-header">
+        <div class="col-title">Task Name</div>
+        <div class="col-assignee">Assignee</div>
+        <div class="col-prog">Prog %</div>
+      </div>
+      <div class="gantt-table-body" id="tableBody">
+        <!-- Rendered Task Rows -->
+      </div>
+    </div>
+
+    <!-- Right: Timeline Chart Grid & SVG Overlay -->
+    <div class="gantt-timeline-panel" id="timelineScrollPanel">
+      <div class="timeline-inner" id="timelineInner">
+        <!-- Sticky Header Time Scale -->
+        <div class="timeline-header" id="timelineHeader"></div>
+
+        <!-- SVG Line Overlay for Dependencies -->
+        <svg class="gantt-svg-overlay" id="depSvgCanvas">
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L6,3 z" fill="#38bdf8" />
+            </marker>
+            <marker id="arrowhead-critical" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L6,3 z" fill="#ff3366" />
+            </marker>
+          </defs>
+        </svg>
+
+        <!-- Vertical Red Line for Today Marker -->
+        <div class="today-line today-marker" id="todayLine">
+          <span class="today-label">TODAY</span>
+        </div>
+
+        <!-- Timeline Grid Body -->
+        <div class="timeline-body" id="timelineBody">
+          <!-- Rendered Bars & Grid Rows -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- View 2: Inline Drawer Detail Sidebar -->
+  <aside class="item-drawer" id="itemDetailDrawer">
+    <div class="drawer-header">
+      <h3 class="drawer-title" id="drawerTitle">Task Details</h3>
+      <input type="hidden" id="drawerItemTitle">
+      <button type="button" class="btn-close-drawer" id="btnCloseDrawer">&times;</button>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Section: Details & Progress -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <span>Overview</span>
+          <span id="drawerItemTypeBadge" class="badge-pill badge-task">TASK</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="drawerInputTitle">Title</label>
+          <input type="text" id="drawerInputTitle" class="form-control">
+        </div>
+
+        <div class="form-group" style="display: flex; gap: 0.5rem;">
+          <div style="flex: 1;">
+            <label class="form-label" for="drawerStartDate">Start Date</label>
+            <input type="date" id="drawerStartDate" class="form-control">
+            <input type="hidden" id="drawerInputStart">
+          </div>
+          <div style="flex: 1;">
+            <label class="form-label" for="drawerEndDate">End Date</label>
+            <input type="date" id="drawerEndDate" class="form-control">
+            <input type="hidden" id="drawerInputEnd">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="drawerProgressSlider">Progress</label>
+          <div class="progress-slider-wrap">
+            <input type="range" id="drawerProgressSlider" min="0" max="100" value="0">
+            <input type="hidden" id="drawerSliderProgress">
+            <span class="progress-badge" id="drawerProgressValue">0%</span>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem;">
+          <button type="button" class="btn-primary" id="btnSaveDrawerItem">Save Changes</button>
+          <button type="button" style="display:none;" id="btnSaveItemChanges"></button>
+        </div>
+      </div>
+
+      <!-- Section: Dependencies -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <span>Dependencies (Predecessors)</span>
+          <button type="button" class="btn-nav" id="btnToggleAddDep" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">+ Add</button>
+        </div>
+
+        <div id="drawerPredecessorsList">
+          <!-- Rendered Predecessors -->
+        </div>
+        <div id="drawerDepList" style="display: none;"></div>
+
+        <div class="drawer-section-title" style="margin-top: 0.85rem;">
+          <span>Successors (Depends on this)</span>
+        </div>
+        <div id="drawerSuccessorsList">
+          <!-- Rendered Successors -->
+        </div>
+
+        <!-- Add Dependency Inline Form -->
+        <div id="addDepForm" style="display: none; background: #0d1527; padding: 0.75rem; border-radius: 6px; margin-top: 0.5rem;">
+          <div class="form-group">
+            <label class="form-label" for="selectPredecessor">Predecessor Task</label>
+            <select id="selectPredecessor" class="form-control"></select>
+          </div>
+          <div class="form-group" style="display: flex; gap: 0.5rem;">
+            <div style="flex: 2;">
+              <label class="form-label" for="selectDepType">Type</label>
+              <select id="selectDepType" class="form-control">
+                <option value="FINISH_TO_START">Finish-to-Start (FS)</option>
+                <option value="START_TO_START">Start-to-Start (SS)</option>
+                <option value="FINISH_TO_FINISH">Finish-to-Finish (FF)</option>
+                <option value="START_TO_FINISH">Start-to-Finish (SF)</option>
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <label class="form-label" for="inputLagDays">Lag (d)</label>
+              <input type="number" id="inputLagDays" class="form-control" value="0">
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" class="btn-nav" id="btnCancelAddDep">Cancel</button>
+            <button type="button" class="btn-primary" id="btnSubmitAddDep">Link</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Audit History Log -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Change History</div>
+        <div id="drawerHistoryList" style="max-height: 180px; overflow-y: auto;">
+          <!-- History Log Entries -->
+        </div>
+      </div>
+
+      <!-- Dangerous Area -->
+      <div style="display: flex; justify-content: flex-end;">
+        <button type="button" class="btn-nav" id="btnDeleteDrawerItem" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">
+          🗑 Delete Task
+        </button>
+        <button type="button" style="display: none;" id="btnDeleteItem"></button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Modal: Create Task / Milestone -->
+  <div class="modal-backdrop" id="modalNewItem">
+    <div class="modal-dialog">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h3 style="margin:0; font-family:'Outfit',sans-serif; color:#f8fafc;">Create Timeline Item</h3>
+        <button type="button" class="btn-close-drawer" id="btnCancelNewItem">&times;</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="newItemTitle">Title *</label>
+        <input type="text" id="newItemTitle" class="form-control" placeholder="e.g. Core System Integration">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="newItemType">Type</label>
+        <select id="newItemType" class="form-control">
+          <option value="TASK" selected>Task</option>
+          <option value="MILESTONE">Milestone (Single Date)</option>
+          <option value="PHASE">Phase</option>
+          <option value="EPIC">Epic</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="display:flex; gap:0.5rem;">
+        <div style="flex:1;">
+          <label class="form-label" for="newItemStart">Start Date *</label>
+          <input type="date" id="newItemStart" class="form-control">
+        </div>
+        <div style="flex:1;" id="wrapNewItemEnd">
+          <label class="form-label" for="newItemEnd">End Date *</label>
+          <input type="date" id="newItemEnd" class="form-control">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="newItemColor">Bar Color</label>
+        <input type="color" id="newItemColor" value="#0284c7" style="width:100%; height:36px; border:none; background:none; cursor:pointer;">
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+        <button type="button" class="btn-nav" id="btnCloseNewItemModal">Cancel</button>
+        <button type="button" class="btn-primary" id="btnSubmitNewItem">Create Item</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Authentication & Configuration
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || localStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    let currentProjectId = null;
+    let projectData = null;
+    let criticalPathData = null;
+    let activeZoom = 'day';
+    let cellWidth = 40; // Pixels per day
+    let startDateAnchor = null;
+    let totalTimelineDays = 60;
+    let selectedItemId = null;
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function addDays(date, days) {
+      const result = new Date(date);
+      result.setDate(result.getDate() + days);
+      return result;
+    }
+
+    function formatDateIso(date) {
+      return date.toISOString().split('T')[0];
+    }
+
+    function daysDiff(d1Str, d2Str) {
+      const d1 = new Date(d1Str);
+      const d2 = new Date(d2Str);
+      return Math.round((d1 - d2) / 86400000);
+    }
+
+    // App Initialization
+    async function initGantt() {
+      await loadProjectOptions();
+      setupEventListeners();
+    }
+
+    async function loadProjectOptions() {
+      try {
+        const res = await fetch('/api/projects', { headers });
+        const projects = await res.json();
+        const select = document.getElementById('projectSelect');
+        select.innerHTML = '';
+
+        const list = Array.isArray(projects) ? projects : (projects?.projects || []);
+        if (list.length === 0) {
+          select.innerHTML = '<option value="">No Projects Found</option>';
+          return;
+        }
+
+        list.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.title || `Project ${p.id}`;
+          select.appendChild(opt);
+        });
+
+        // Match URL param or first project
+        const paramProj = urlParams.get('project_id');
+        currentProjectId = paramProj && list.some(p => String(p.id) === String(paramProj))
+          ? paramProj
+          : list[0].id;
+        select.value = currentProjectId;
+
+        updateNavLinks();
+        await loadGanttData();
+      } catch (err) {
+        console.error('Failed to load project list:', err);
+      }
+    }
+
+    function updateNavLinks() {
+      document.getElementById('linkMilestones').href = `/milestone-timeline.html?project_id=${currentProjectId}`;
+      document.getElementById('linkBaselines').href = `/gantt-baseline.html?project_id=${currentProjectId}`;
+    }
+
+    async function loadGanttData() {
+      if (!currentProjectId) return;
+      try {
+        const [projRes, cpmRes] = await Promise.all([
+          fetch(`/api/gantt/project/${currentProjectId}`, { headers }),
+          fetch(`/api/gantt/criticalpath/${currentProjectId}`, { headers })
+        ]);
+
+        projectData = await projRes.json();
+        criticalPathData = await cpmRes.json();
+
+        document.getElementById('headerProjectName').textContent = projectData?.project_title || `Project #${currentProjectId}`;
+        document.getElementById('lblTotalTasks').textContent = (projectData?.items || []).length;
+        document.getElementById('lblProjectDuration').textContent = `${criticalPathData?.project_duration_days || 0}d`;
+        document.getElementById('lblCriticalCount').textContent = (criticalPathData?.critical_path_item_ids || []).length;
+
+        renderGanttChart();
+      } catch (err) {
+        console.error('Failed to load timeline data:', err);
+      }
+    }
+
+    function setupEventListeners() {
+      document.getElementById('projectSelect').addEventListener('change', (e) => {
+        currentProjectId = e.target.value;
+        updateNavLinks();
+        loadGanttData();
+      });
+
+      // Zoom Buttons
+      document.querySelectorAll('.btn-zoom').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.btn-zoom').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeZoom = btn.dataset.zoom;
+          switch (activeZoom) {
+            case 'day': cellWidth = 40; break;
+            case 'week': cellWidth = 18; break; // condensed per day
+            case 'month': cellWidth = 8; break;
+            case 'quarter': cellWidth = 3; break;
+          }
+          renderGanttChart();
+        });
+      });
+
+      // Toggle Critical Path
+      document.getElementById('toggleCritical').addEventListener('change', () => {
+        renderGanttChart();
+      });
+
+      // Search Filter
+      document.getElementById('filterInput').addEventListener('input', () => {
+        renderGanttChart();
+      });
+
+      // Snapshot Button
+      document.getElementById('btnTakeSnapshot').addEventListener('click', async () => {
+        try {
+          const res = await fetch('/api/gantt/baseline/snapshot', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ project_id: currentProjectId })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert(`Baseline snapshot taken successfully! (${data.count} items recorded)`);
+            loadGanttData();
+          } else {
+            alert(data.error || 'Failed to take snapshot');
+          }
+        } catch (err) {
+          alert('Network error taking snapshot');
+        }
+      });
+
+      // Export JSON Button
+      document.getElementById('btnExportJson').addEventListener('click', async () => {
+        try {
+          const res = await fetch(`/api/gantt/export/${currentProjectId}`, { headers });
+          const bundle = await res.json();
+          const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `gantt_export_project_${currentProjectId}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          alert('Failed to export timeline JSON');
+        }
+      });
+
+      // Drawer & Modal Controls
+      document.getElementById('btnCloseDrawer').addEventListener('click', closeDrawer);
+      document.getElementById('btnOpenNewItem').addEventListener('click', () => {
+        const today = formatDateIso(new Date());
+        document.getElementById('newItemStart').value = today;
+        document.getElementById('newItemEnd').value = today;
+        document.getElementById('modalNewItem').classList.add('open');
+      });
+      document.getElementById('btnCancelNewItem').addEventListener('click', () => {
+        document.getElementById('modalNewItem').classList.remove('open');
+      });
+      document.getElementById('btnCloseNewItemModal').addEventListener('click', () => {
+        document.getElementById('modalNewItem').classList.remove('open');
+      });
+
+      // New Item Type change (Milestone start = end)
+      document.getElementById('newItemType').addEventListener('change', (e) => {
+        const wrapEnd = document.getElementById('wrapNewItemEnd');
+        if (e.target.value === 'MILESTONE') {
+          wrapEnd.style.display = 'none';
+        } else {
+          wrapEnd.style.display = 'block';
+        }
+      });
+
+      // Submit New Item
+      document.getElementById('btnSubmitNewItem').addEventListener('click', async () => {
+        const title = document.getElementById('newItemTitle').value.trim();
+        const type = document.getElementById('newItemType').value;
+        const start_date = document.getElementById('newItemStart').value;
+        let end_date = document.getElementById('newItemEnd').value;
+        const color = document.getElementById('newItemColor').value;
+
+        if (!title || !start_date) {
+          alert('Title and Start Date are required');
+          return;
+        }
+
+        if (type === 'MILESTONE') {
+          end_date = start_date;
+        }
+
+        try {
+          const res = await fetch('/api/gantt/item/create', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              project_id: currentProjectId,
+              title,
+              type,
+              start_date,
+              end_date,
+              color
+            })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            document.getElementById('modalNewItem').classList.remove('open');
+            document.getElementById('newItemTitle').value = '';
+            loadGanttData();
+          } else {
+            alert(data.error || 'Failed to create item');
+          }
+        } catch (e) {
+          alert('Network error creating item');
+        }
+      });
+
+      // Save Drawer Item Changes
+      const handleSaveDrawer = async () => {
+        if (!selectedItemId) return;
+        const title = (document.getElementById('drawerInputTitle')?.value || '').trim();
+        const start_date = document.getElementById('drawerStartDate')?.value || document.getElementById('drawerInputStart')?.value;
+        const end_date = document.getElementById('drawerEndDate')?.value || document.getElementById('drawerInputEnd')?.value;
+        const progress_pct = Number(document.getElementById('drawerProgressSlider')?.value || document.getElementById('drawerSliderProgress')?.value || 0);
+
+        try {
+          const res = await fetch(`/api/gantt/item/${selectedItemId}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ title, start_date, end_date, progress_pct })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            if (data.warnings && data.warnings.length > 0) {
+              alert(data.warnings.join('\n'));
+            }
+            loadGanttData();
+            openDrawer(selectedItemId);
+          } else {
+            alert(data.error || 'Failed to update item');
+          }
+        } catch (e) {
+          alert('Error saving changes');
+        }
+      };
+
+      document.getElementById('btnSaveDrawerItem')?.addEventListener('click', handleSaveDrawer);
+      document.getElementById('btnSaveItemChanges')?.addEventListener('click', handleSaveDrawer);
+
+      // Progress Slider Input Event
+      const handleSliderInput = (e) => {
+        const val = e.target.value;
+        document.getElementById('drawerProgressValue').textContent = `${val}%`;
+        const slider1 = document.getElementById('drawerProgressSlider');
+        const slider2 = document.getElementById('drawerSliderProgress');
+        if (slider1) slider1.value = val;
+        if (slider2) slider2.value = val;
+      };
+      document.getElementById('drawerProgressSlider')?.addEventListener('input', handleSliderInput);
+      document.getElementById('drawerSliderProgress')?.addEventListener('input', handleSliderInput);
+
+      // Toggle Add Dependency
+      document.getElementById('btnToggleAddDep').addEventListener('click', () => {
+        const form = document.getElementById('addDepForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+      });
+      document.getElementById('btnCancelAddDep').addEventListener('click', () => {
+        document.getElementById('addDepForm').style.display = 'none';
+      });
+
+      // Submit Add Dependency
+      document.getElementById('btnSubmitAddDep').addEventListener('click', async () => {
+        const predId = document.getElementById('selectPredecessor').value;
+        const depType = document.getElementById('selectDepType').value;
+        const lagDays = Number(document.getElementById('inputLagDays').value) || 0;
+
+        if (!predId || !selectedItemId) return;
+
+        try {
+          const res = await fetch('/api/gantt/dependency/add', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              project_id: currentProjectId,
+              predecessor_item_id: predId,
+              successor_item_id: selectedItemId,
+              dependency_type: depType,
+              lag_days: lagDays
+            })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            document.getElementById('addDepForm').style.display = 'none';
+            loadGanttData();
+            openDrawer(selectedItemId);
+          } else {
+            alert(data.error || 'Failed to add dependency');
+          }
+        } catch (e) {
+          alert('Network error adding dependency');
+        }
+      });
+
+      // Delete Item
+      const handleDeleteItem = async () => {
+        if (!selectedItemId) return;
+        if (!confirm('Are you sure you want to delete this timeline item?')) return;
+
+        try {
+          const res = await fetch(`/api/gantt/item/${selectedItemId}`, {
+            method: 'DELETE',
+            headers
+          });
+          const data = await res.json();
+          if (res.ok) {
+            closeDrawer();
+            loadGanttData();
+          } else {
+            alert(data.error || 'Failed to delete item');
+          }
+        } catch (e) {
+          alert('Network error deleting item');
+        }
+      };
+
+      document.getElementById('btnDeleteDrawerItem')?.addEventListener('click', handleDeleteItem);
+      document.getElementById('btnDeleteItem')?.addEventListener('click', handleDeleteItem);
+    }
+
+    // Render Main Gantt Chart
+    function renderGanttChart() {
+      const items = projectData?.items || [];
+      const criticalIds = new Set(criticalPathData?.critical_path_item_ids || []);
+      const filterText = document.getElementById('filterInput').value.toLowerCase();
+      const showCriticalOnly = document.getElementById('toggleCritical').checked;
+
+      // Filter items
+      const displayItems = items.filter(it => {
+        if (filterText && !it.title.toLowerCase().includes(filterText)) return false;
+        return true;
+      });
+
+      // Determine timeline bounds
+      if (displayItems.length === 0) {
+        startDateAnchor = new Date();
+        totalTimelineDays = 30;
+      } else {
+        let minDate = new Date(displayItems[0].start_date);
+        let maxDate = new Date(displayItems[0].end_date);
+        displayItems.forEach(it => {
+          const s = new Date(it.start_date);
+          const e = new Date(it.end_date);
+          if (s < minDate) minDate = s;
+          if (e > maxDate) maxDate = e;
+        });
+
+        // Add 5-day padding
+        startDateAnchor = addDays(minDate, -4);
+        const daysSpan = Math.max(30, daysDiff(maxDate, minDate) + 12);
+        totalTimelineDays = daysSpan;
+      }
+
+      const timelineWidth = totalTimelineDays * cellWidth;
+      document.getElementById('timelineInner').style.width = `${timelineWidth}px`;
+
+      // 1. Render Sticky Header
+      renderTimelineHeader(startDateAnchor, totalTimelineDays);
+
+      // 2. Render Left Table Rows
+      const tableBody = document.getElementById('tableBody');
+      tableBody.innerHTML = displayItems.map(it => {
+        const isCrit = criticalIds.has(it.id);
+        const typeIcon = it.type === 'MILESTONE' ? '💎' : (it.type === 'EPIC' ? '⚡' : '📌');
+        const selectedClass = selectedItemId === it.id ? 'selected' : '';
+        const critClass = isCrit && showCriticalOnly ? 'is-critical' : '';
+
+        return `
+          <div class="task-row ${selectedClass} ${critClass}" data-id="${it.id}" onclick="openDrawer(${it.id})">
+            <div class="col-title" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              <span class="type-icon">${typeIcon}</span>
+              <span>${escapeHTML(it.title)}</span>
+            </div>
+            <div class="col-assignee" style="color:#94a3b8; font-size:0.75rem;">
+              ${escapeHTML(it.assignee_name || 'Unassigned')}
+            </div>
+            <div class="col-prog" style="font-weight:700; color:#38bdf8;">
+              ${Math.round(it.progress_pct || 0)}%
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 3. Render Timeline Body Rows
+      const timelineBody = document.getElementById('timelineBody');
+      timelineBody.innerHTML = displayItems.map((it, rowIndex) => {
+        const sDiff = daysDiff(it.start_date, startDateAnchor);
+        const dur = it.type === 'MILESTONE' ? 0 : Math.max(1, daysDiff(it.end_date, it.start_date) + 1);
+        const barLeft = sDiff * cellWidth;
+        const barWidth = Math.max(cellWidth - 4, dur * cellWidth - 4);
+        const isCrit = criticalIds.has(it.id);
+        const critClass = isCrit && showCriticalOnly ? 'critical-item' : '';
+        const progressPct = Math.min(100, Math.max(0, it.progress_pct || 0));
+
+        let barHtml = '';
+        if (it.type === 'MILESTONE') {
+          const isAchieved = it.status === 'COMPLETED' || it.status === 'ACHIEVED' ? 'achieved' : '';
+          barHtml = `
+            <div class="timeline-milestone ${isAchieved} ${critClass}" 
+                 style="left: ${barLeft + 10}px;"
+                 title="${escapeHTML(it.title)} (${it.start_date})"
+                 data-id="${it.id}"
+                 onclick="openDrawer(${it.id})">
+              <span class="milestone-label">${escapeHTML(it.title)}</span>
+            </div>
+          `;
+        } else {
+          barHtml = `
+            <div class="timeline-bar ${critClass}"
+                 style="left: ${barLeft}px; width: ${barWidth}px; background: ${it.color || '#0284c7'};"
+                 data-id="${it.id}"
+                 title="${escapeHTML(it.title)}: ${it.start_date} to ${it.end_date} (${progressPct}%)"
+                 onclick="openDrawer(${it.id})">
+              <div class="resize-handle resize-left" data-id="${it.id}"></div>
+              <div class="bar-progress-fill" style="width: ${progressPct}%;"></div>
+              <span class="bar-label">
+                ${isCrit && showCriticalOnly ? '<span style="color:#ff3366; font-size:0.68rem;">[CRITICAL]</span>' : ''}
+                ${escapeHTML(it.title)}
+              </span>
+              <div class="resize-handle resize-right" data-id="${it.id}"></div>
+            </div>
+          `;
+        }
+
+        // Render grid row cells
+        let cellsHtml = '';
+        for (let d = 0; d < totalTimelineDays; d++) {
+          const curDate = addDays(startDateAnchor, d);
+          const isWeekend = curDate.getDay() === 0 || curDate.getDay() === 6;
+          cellsHtml += `<div class="grid-cell ${isWeekend ? 'weekend' : ''}" style="width: ${cellWidth}px;"></div>`;
+        }
+
+        return `
+          <div class="grid-row" id="grid-row-${it.id}" style="width: ${timelineWidth}px;">
+            ${cellsHtml}
+            ${barHtml}
+          </div>
+        `;
+      }).join('');
+
+      // 4. Position Today Line Marker
+      const today = new Date();
+      const todayDiff = daysDiff(formatDateIso(today), formatDateIso(startDateAnchor));
+      const todayLine = document.getElementById('todayLine');
+      if (todayDiff >= 0 && todayDiff <= totalTimelineDays) {
+        todayLine.style.display = 'block';
+        todayLine.style.left = `${todayDiff * cellWidth + (cellWidth / 2)}px`;
+      } else {
+        todayLine.style.display = 'none';
+      }
+
+      // 5. Draw SVG Dependency Lines
+      renderSvgDependencies(displayItems, startDateAnchor, cellWidth, criticalIds, showCriticalOnly);
+    }
+
+    function renderTimelineHeader(startDate, totalDays) {
+      const header = document.getElementById('timelineHeader');
+      let html = '';
+      for (let i = 0; i < totalDays; i++) {
+        const d = addDays(startDate, i);
+        const dayNum = d.getDate();
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'narrow' });
+        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+        html += `
+          <div class="time-header-cell ${isWeekend ? 'weekend' : ''}" style="width: ${cellWidth}px;">
+            <span>${dayName}</span>
+            <span style="font-weight: 700; color: #f8fafc;">${dayNum}</span>
+          </div>
+        `;
+      }
+      header.innerHTML = html;
+    }
+
+    function drawDependencyArrows() {
+      const items = projectData?.items || [];
+      const criticalIds = new Set(criticalPathData?.critical_path_item_ids || []);
+      const showCriticalOnly = document.getElementById('toggleCritical')?.checked || false;
+      renderSvgDependencies(items, startDateAnchor, cellWidth, criticalIds, showCriticalOnly);
+    }
+    window.drawDependencyArrows = drawDependencyArrows;
+
+    function renderSvgDependencies(items, startDate, cWidth, criticalIds, showCriticalOnly) {
+      const svg = document.getElementById('depSvgCanvas') || document.getElementById('svgOverlay');
+      if (!svg) return;
+      // Keep defs
+      const defsEl = svg.querySelector('defs');
+      const defs = defsEl ? defsEl.outerHTML : '';
+      svg.innerHTML = defs;
+
+      const deps = projectData?.dependencies || [];
+      const itemRowMap = new Map();
+      items.forEach((it, idx) => {
+        itemRowMap.set(it.id, {
+          index: idx,
+          item: it
+        });
+      });
+
+      deps.forEach(dep => {
+        const predInfo = itemRowMap.get(Number(dep.predecessor_item_id));
+        const succInfo = itemRowMap.get(Number(dep.successor_item_id));
+        if (!predInfo || !succInfo) return;
+
+        const pred = predInfo.item;
+        const succ = succInfo.item;
+
+        // Calculate coordinates
+        const predStartDiff = daysDiff(pred.start_date, startDate);
+        const predDur = pred.type === 'MILESTONE' ? 0 : Math.max(1, daysDiff(pred.end_date, pred.start_date) + 1);
+        const predX = (predStartDiff + predDur) * cWidth - 4;
+        const predY = predInfo.index * 44 + 22;
+
+        const succStartDiff = daysDiff(succ.start_date, startDate);
+        const succX = succStartDiff * cWidth;
+        const succY = succInfo.index * 44 + 22;
+
+        const isCritEdge = showCriticalOnly && criticalIds.has(pred.id) && criticalIds.has(succ.id);
+        const markerUrl = isCritEdge ? 'url(#arrowhead-critical)' : 'url(#arrowhead)';
+
+        // Orthogonal or Bézier step curve
+        const midX = predX + Math.max(12, (succX - predX) / 2);
+        const pathData = `M ${predX} ${predY} C ${midX} ${predY}, ${midX} ${succY}, ${succX} ${succY}`;
+
+        const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        pathEl.setAttribute('d', pathData);
+        pathEl.setAttribute('class', `dep-line ${isCritEdge ? 'critical' : ''}`);
+        pathEl.setAttribute('marker-end', markerUrl);
+        svg.appendChild(pathEl);
+      });
+    }
+
+    // View 2: Open Inline Detail Drawer
+    async function openDrawer(itemId) {
+      selectedItemId = itemId;
+      const drawer = document.getElementById('itemDetailDrawer');
+      drawer.classList.add('open');
+
+      // Highlight row in table
+      document.querySelectorAll('.task-row').forEach(r => r.classList.remove('selected'));
+      const activeRow = document.querySelector(`.task-row[data-id="${itemId}"]`);
+      if (activeRow) activeRow.classList.add('selected');
+
+      try {
+        const [detailRes, histRes] = await Promise.all([
+          fetch(`/api/gantt/item/${itemId}`, { headers }),
+          fetch(`/api/gantt/history/${itemId}`, { headers })
+        ]);
+
+        const item = await detailRes.json();
+        const histData = await histRes.json();
+
+        const titleText = item.title || 'Task Details';
+        const titleEl = document.getElementById('drawerTitle');
+        if (titleEl) titleEl.textContent = titleText;
+        const itemTitleEl = document.getElementById('drawerItemTitle');
+        if (itemTitleEl) {
+          if (itemTitleEl.tagName === 'INPUT') itemTitleEl.value = titleText;
+          else itemTitleEl.textContent = titleText;
+        }
+
+        document.getElementById('drawerItemTypeBadge').textContent = item.type || 'TASK';
+        document.getElementById('drawerInputTitle').value = item.title || '';
+
+        const sDate = item.start_date || '';
+        const eDate = item.end_date || '';
+        if (document.getElementById('drawerStartDate')) document.getElementById('drawerStartDate').value = sDate;
+        if (document.getElementById('drawerEndDate')) document.getElementById('drawerEndDate').value = eDate;
+        if (document.getElementById('drawerInputStart')) document.getElementById('drawerInputStart').value = sDate;
+        if (document.getElementById('drawerInputEnd')) document.getElementById('drawerInputEnd').value = eDate;
+
+        const prog = Math.round(item.progress_pct || 0);
+        if (document.getElementById('drawerProgressSlider')) document.getElementById('drawerProgressSlider').value = prog;
+        if (document.getElementById('drawerSliderProgress')) document.getElementById('drawerSliderProgress').value = prog;
+        document.getElementById('drawerProgressValue').textContent = `${prog}%`;
+
+        // Render Dependencies List in Drawer
+        renderDrawerDependencies(item);
+
+        // Populate Predecessor Select for adding dependencies
+        const selectPred = document.getElementById('selectPredecessor');
+        selectPred.innerHTML = (projectData?.items || [])
+          .filter(it => it.id !== itemId)
+          .map(it => `<option value="${it.id}">${escapeHTML(it.title)}</option>`)
+          .join('');
+
+        // Render History Log
+        const histList = document.getElementById('drawerHistoryList');
+        const history = histData?.history || [];
+        if (history.length === 0) {
+          histList.innerHTML = '<div style="color:#64748b; font-size:0.75rem;">No historical edits recorded yet.</div>';
+        } else {
+          histList.innerHTML = history.map(h => `
+            <div class="history-entry">
+              <div><strong>${escapeHTML(h.field_changed)}</strong>: <span style="color:#38bdf8;">${escapeHTML(h.new_value || 'None')}</span></div>
+              <div class="history-time">${escapeHTML(h.changed_by_name || 'System')} &bull; ${h.changed_at}</div>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        console.error('Failed to load item detail:', e);
+      }
+    }
+
+    function renderDrawerDependencies(item) {
+      const predList = document.getElementById('drawerPredecessorsList') || document.getElementById('drawerDepList');
+      const succList = document.getElementById('drawerSuccessorsList');
+      const allDeps = projectData?.dependencies || [];
+
+      // What this item depends on (incoming, predecessor_item_id)
+      const itemPreds = allDeps.filter(d => Number(d.successor_item_id) === Number(item.id));
+      // What depends on this item (outgoing, successor_item_id)
+      const itemSuccs = allDeps.filter(d => Number(d.predecessor_item_id) === Number(item.id));
+
+      if (predList) {
+        if (itemPreds.length === 0) {
+          predList.innerHTML = '<div style="color:#64748b; font-size:0.75rem;">No predecessor dependencies.</div>';
+        } else {
+          predList.innerHTML = itemPreds.map(d => `
+            <div class="dep-item">
+              <div>
+                <strong>${escapeHTML(d.predecessor_title || `Task #${d.predecessor_item_id}`)}</strong>
+                <span style="font-size:0.7rem; color:#94a3b8;">(${d.dependency_type || 'FS'}, lag: ${d.lag_days || 0}d)</span>
+              </div>
+              <button type="button" class="btn-nav" style="padding:0.15rem 0.4rem; font-size:0.7rem; color:#ef4444;" onclick="removeDep(${d.id})">Unlink</button>
+            </div>
+          `).join('');
+        }
+      }
+
+      if (succList) {
+        if (itemSuccs.length === 0) {
+          succList.innerHTML = '<div style="color:#64748b; font-size:0.75rem;">No successor dependencies.</div>';
+        } else {
+          succList.innerHTML = itemSuccs.map(d => `
+            <div class="dep-item">
+              <div>
+                <strong>${escapeHTML(d.successor_title || `Task #${d.successor_item_id}`)}</strong>
+                <span style="font-size:0.7rem; color:#94a3b8;">(${d.dependency_type || 'FS'})</span>
+              </div>
+              <button type="button" class="btn-nav" style="padding:0.15rem 0.4rem; font-size:0.7rem; color:#ef4444;" onclick="removeDep(${d.id})">Unlink</button>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    async function removeDep(depId) {
+      if (!confirm('Remove this dependency relationship?')) return;
+      try {
+        const res = await fetch(`/api/gantt/dependency/${depId}`, {
+          method: 'DELETE',
+          headers
+        });
+        if (res.ok) {
+          loadGanttData();
+          openDrawer(selectedItemId);
+        } else {
+          const err = await res.json();
+          alert(err.error || 'Failed to remove dependency');
+        }
+      } catch (e) {
+        alert('Network error unlinking dependency');
+      }
+    }
+
+    function closeDrawer() {
+      document.getElementById('itemDetailDrawer').classList.remove('open');
+      document.querySelectorAll('.task-row').forEach(r => r.classList.remove('selected'));
+      selectedItemId = null;
+    }
+
+    // Launch App
+    window.addEventListener('DOMContentLoaded', initGantt);
+  </script>
+</body>
+</html>

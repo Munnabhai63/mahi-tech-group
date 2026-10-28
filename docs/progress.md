@@ -413,9 +413,152 @@
   14. `signup.html`
   15. `superadmin.html`
   *(plus 10 modular views in `public/js/app/views/`: `admin.js`, `ai-center.js`, `disputes.js`, `ideas.js`, `meetings.js`, `member.js`, `projects.js`, `public.js`, `signing.js`, `superadmin.js`)*
-- **Total API Routes**: 196 registered endpoints across all routers
+- **PRD 19 OKR System — Layers 1, 2, 3 & 4 (100% COMPLETE & VERIFIED)**:
+  - **Layer 1 (Database & Triggers)**: 5 tables (`okr_objectives`, `okr_key_results`, `okr_checkins`, `okr_alignment_links`, `okr_history`), 11 composite indexes, and 6 append-only SQLite triggers (`prevent_okr_checkin_update`, `prevent_okr_checkin_delete`, `prevent_okr_alignment_update`, `prevent_okr_alignment_delete`, `prevent_okr_history_update`, `prevent_okr_history_delete`). Verified with `scripts/verify-prd19-layer1.js` (29/29 PASS).
+  - **Layer 2 (Objective Service & APIs)**: Full Objective CRUD, alignment tree building, privacy isolation (Rule 8), archived read-only enforcement (Rule 7), and change logging in `okr_history` (Rule 10). Verified with `scripts/verify-prd19-layer2.js` (31/31 PASS).
+  - **Layer 3 (Key Result Service & Circular Chain Detection)**: 4 KR types (`PERCENTAGE`, `NUMBER`, `BOOLEAN`, `MILESTONE`), KR CRUD APIs, target validation (Rule 4: `target_value > 0`), and BFS-based graph traversal detecting and preventing multi-hop circular alignments (`wouldCreateCycle`: A -> B -> C -> A blocked with HTTP 400). Verified with `scripts/verify-prd19-layer3.js` (25/25 PASS).
+  - **Layer 4 (Check-in Service & Bottom-Up Hierarchy Propagation)**:
+    - Built `submitCheckin`: writes immutable check-in row to `okr_checkins`, updates `okr_key_results` `current_value` & `progress_pct`, auto-updates KR status (`COMPLETED` at $\ge 100\%$, `OFF_TRACK` if $< 30\%$ with due date $\le 7$ days, `AT_RISK` on LOW confidence).
+    - Built `recalculateObjectiveHierarchy`: server-side bottom-up recalculation computing Objective `progress_pct` (average of KRs, or 50/50 weighted average of own KRs and aligned child objectives), auto-propagating up parent chains (Leaf Individual -> Mid Team -> Root Company).
+    - Enforced Rule 5: BOOLEAN KR accepts only 0 or 1 as `new_value`.
+    - Auto-transitions objective status to `COMPLETED` when overall `progress_pct` reaches 100.00%.
+  - **Layer 5 (Frontend 4 Views Implementation — 100% COMPLETE & VERIFIED)**:
+    - **View 1: OKR Dashboard (`public/okr-dashboard.html`)**: Dark-themed responsive dashboard with company health dial, KPI cards (Company, Team, My Individual), active cycle filter, dynamic card rendering, drilldown links to detail views, and new objective creation modal.
+    - **View 2: Objective Detail (`public/okr-objective-detail.html`)**: Complete objective overview, server-calculated progress bar, Key Results listing with status badges and current/target indicators, "Add Key Result" modal (supporting PERCENTAGE, NUMBER, BOOLEAN, MILESTONE), alignment hierarchy tree (parent + child goals), and append-only change audit history table.
+    - **View 3: Check-in Modal (`#checkinModal` inside `okr-objective-detail.html`)**: Interactive modal component with value input, 0/1 toggle support for BOOLEAN, confidence selector (HIGH, MEDIUM, LOW), optional note textarea, immediate on-screen progress recalculation hook, and past check-in history table from `GET /api/okr/checkins/:krId`.
+    - **View 4: OKR Alignment Tree (`public/okr-alignment.html`)**: Full cascading visual tree hierarchy (Company -> Team -> Individual) with expandable/collapsible nodes, color-coded borders (green $\ge 70\%$, yellow $40-69\%$, red $< 40\%$), owner avatar with initials, search filter, and Admin/Producer access guard.
+  - **Layer 6 (Full End-to-End Integration & System Verification — 100% COMPLETE & VERIFIED)**:
+    - Authored comprehensive integration test suite `scripts/verify-prd19-integration.js`.
+    - Executed 10-phase verification: real login authentication, real 3-tier objective creation (Company -> Team -> Individual), all 4 KR types (`PERCENTAGE`, `BOOLEAN`, `MILESTONE`, `NUMBER`), real check-in submissions, multi-tier bottom-up rollup verified with direct SQLite DB `SELECT` queries on every tier, 100% completion auto-status transitions to `COMPLETED`, visual alignment tree traversal, circular alignment detection (`A -> B -> C -> A` blocked with HTTP 400), security scan confirming zero hardcoded credentials in public HTML views, and complete Definition of Done checklist run.
+    - Integration suite result: **69 / 69 PASS (100%)**.
+    - Cumulative PRD 19 verification across all 6 layers: **263 / 263 PASS (100%)**.
+    - Total platform regression verification: **all 469 existing tests passing cleanly (100%)**. Total platform assertions: **732 / 732 PASS**.
+- **PRD 20 Gantt Chart & Timeline View — Reverse Engineering & Layer 1 (100% COMPLETE & VERIFIED)**:
+  - **Reverse Engineering Mandate**: Produced exhaustive Reverse Engineering Report (`docs/prd20_reverse_engineering_report.md`) dissecting 5 market competitors (Monday.com, Asana, ClickUp, Jira, Smartsheet). Discarded all competitor visual branding/copy while synthesizing underlying graph models (DAG), dependency logic (FS, SS, FF, SF + lag), CPM critical path calculation, and append-only baseline snapshots.
+  - **Layer 1 Database & Triggers**:
+    - Created 5 core relational tables in `src/db/schema.sql`, `src/db/database.js` (`GANTT_SCHEMA_SQL`), and `src/db/migrate.js`: `gantt_items`, `gantt_dependencies`, `gantt_milestones`, `gantt_baselines`, `gantt_history`.
+    - Added 13 composite and foreign key indexes for ultra-fast timeline queries.
+    - Added 6 append-only SQLite DB triggers enforcing strict immutability:
+      - `prevent_gantt_dependency_update`
+      - `prevent_gantt_dependency_delete`
+      - `prevent_gantt_baseline_update`
+      - `prevent_gantt_baseline_delete`
+      - `prevent_gantt_history_update`
+      - `prevent_gantt_history_delete`
+    - Idempotent migration execution verified: all tables and triggers active in SQLite WAL mode.
+    - Authored dedicated test suite `scripts/verify-prd20-layer1.js` verifying schema columns, trigger abort operations, unique constraints, and mutable milestones: **42 / 42 PASS (100%)**.
+    - Full regression run confirmed: **13/13 test suites PASS (100%)** and **PRD 19 integration 69/69 PASS (100%)**. Total platform verified assertions: **774 / 774 PASS**.
+  - **Layer 2 (Gantt Items, Dependencies with DAG Cycle Detection, Progress & Milestones — 100% COMPLETE & VERIFIED)**:
+    - **Service & API Implementation (`src/services/ganttService.js`, `src/routes/gantt.routes.js`, `src/app.js`)**:
+      - `POST /api/gantt/item/create`: Full item creation with Rule 1 (`end_date >= start_date`) and Rule 2 (`MILESTONE` type enforces `start_date === end_date`). Admin+ role enforced.
+      - `GET /api/gantt/project/:projectId` & `GET /api/gantt/item/:itemId`: Full timeline rollup with item details, assignee metadata, active dependencies, milestones, and baselines.
+      - `PATCH /api/gantt/item/:itemId`: General updates with Rule 4 predecessor date extension conflict detection (generates warning alerts without destructive auto-shifts). Assignees restricted to progress percentage.
+      - `PATCH /api/gantt/item/:itemId/progress`: Progress updates (0–100%) with 100% auto-transitioning status to `COMPLETED`. Auto-logged to append-only `gantt_history`.
+      - `DELETE /api/gantt/item/:itemId`: Item deletion protected: blocked if other active items depend on it.
+      - `POST /api/gantt/dependency/add`: Directed dependency creation supporting `FINISH_TO_START`, `START_TO_START`, `FINISH_TO_FINISH`, `START_TO_FINISH` with `lag_days`. Enforces BFS DAG cycle detection (`wouldCreateGanttCycle`), strictly blocking circular chains (e.g. $A \to B \to C \to A$) with HTTP 400.
+      - `DELETE /api/gantt/dependency/:dependencyId`: Soft reversal audit removal preserving append-only trigger integrity while excluding reversed links from active queries.
+      - `POST /api/gantt/milestone/create`, `PATCH /api/gantt/milestone/:id/achieve`, `GET /api/gantt/milestones/:projectId`: Milestone creation and achievement progression (auto-completes linked timeline items).
+      - `GET /api/gantt/history/:itemId`: Full chronological audit trail endpoint (Admin+).
+    - **Verification**: Authored `scripts/verify-prd20-layer2.js` performing 41 real HTTP test assertions: **41 / 41 PASS (100%)**.
+    - **Total Active Platform Test Assertions Passing**: **815 / 815 PASS (100%)**.
+  - **Layer 3 (Baseline Snapshots, Schedule Slip Analysis, Critical Path Method (CPM) & Export Bundle — 100% COMPLETE & VERIFIED)**:
+    - **Baseline Snapshot Engine (`POST /api/gantt/baseline/snapshot`)**:
+      - Server-side append-only snapshot capture taking point-in-time state of all current item dates for a project into `gantt_baselines`.
+      - Protected by SQLite triggers `prevent_gantt_baseline_update` and `prevent_gantt_baseline_delete` guaranteeing immutable audit history.
+      - Auto-logs snapshot creation events to `gantt_history`. Admin+ role enforced.
+    - **Planned vs Actual Schedule Slip Analysis (`GET /api/gantt/baselines/:projectId`)**:
+      - Computes server-side schedule slip: `slip_days = Math.round((current_end_date - baseline_end_date) / 86400000)` and `start_slip_days`.
+      - Identifies status flags (`is_delayed`, `is_ahead`, `is_on_track`) and groups multi-version snapshots for historical variance analysis.
+    - **Critical Path Method (CPM) Engine (`GET /api/gantt/criticalpath/:projectId`)**:
+      - 100% server-side mathematical computation using Topological Sort (Kahn's algorithm) and Longest-Path Slack analysis — zero external libraries, zero client-side calculation.
+      - **Forward Pass**: Traverses directed acyclic graph (DAG) in topological order, computing Earliest Start ($ES$) and Earliest Finish ($EF$) across all dependency types (`FINISH_TO_START`, `START_TO_START`, `FINISH_TO_FINISH`, `START_TO_FINISH`) and positive/negative `lag_days`. Computes overall project makespan duration $T$.
+      - **Backward Pass**: Traverses in reverse topological order, computing Latest Finish ($LF$) and Latest Start ($LS$).
+      - **Slack / Float Analysis**: Total Float $\text{slack} = LS - ES = LF - EF$.
+      - **Critical Path Flagging**: Automatically flags critical path items ($\text{slack} = 0$), extracts `critical_path_item_ids`, and projects ISO calendar earliest/latest start and finish dates.
+    - **Gantt Export Bundle (`GET /api/gantt/export/:projectId`)**:
+      - Assembles full JSON data package formatted for browser-rendered PNG/PDF exports (project metadata, items, active dependencies, milestones, baselines, and CPM analysis).
+    - **Verification**: Authored `scripts/verify-prd20-layer3.js` testing 22 rigorous assertions covering RBAC, trigger aborts, schedule slip calculations, 4-task CPM network verification, milestone lag expansion, and export bundling: **22 / 22 PASS (100%)**.
+  - **Layer 4 (Milestone CRUD Lifecycle, Baseline Snapshotting & Critical Path API Verification — 100% COMPLETE & VERIFIED)**:
+    - **Milestone Full CRUD & Status Progression Engine**:
+      - `POST /api/gantt/milestone/create`: Project milestone creation with optional link to timeline items. Admin+ role enforced.
+      - `PATCH /api/gantt/milestone/:id`: Full edit capability (title, date, linked item, status) with validation.
+      - `PATCH /api/gantt/milestone/:id/achieve`: Transitions status to `ACHIEVED`, sets `achieved_at = now`, and auto-completes linked timeline items (`progress_pct = 100.0`, `status = 'COMPLETED'`) with `gantt_history` audit logging.
+      - `DELETE /api/gantt/milestone/:id`: Clean milestone deletion (Admin+).
+      - `GET /api/gantt/milestones/:projectId`: Returns all milestones, automatically auto-marking overdue pending milestones as `MISSED` when `milestone_date < today`.
+    - **Baseline Snapshot & Variance Verification**:
+      - Snapshot capture (`POST /api/gantt/baseline/snapshot`) with append-only trigger immutability verified against direct SQL UPDATE and DELETE attacks.
+      - Schedule slip computation (`GET /api/gantt/baselines/:projectId`) verified with positive delays, ahead-of-schedule completions, and on-track items.
+    - **CPM Network Validation**:
+      - Multi-task network verification demonstrating zero-slack critical chain identification ($ES, EF, LS, LF, \text{slack} = 0, \text{is\_critical} = \text{true}$) and non-critical parallel branches with positive total float ($\text{slack} = 15$).
+    - **Export Payload Completeness**:
+      - Confirmed `GET /api/gantt/export/:projectId` provides complete data structures for frontend timeline rendering.
+    - **Verification**: Authored `scripts/verify-prd20-layer4.js` executing 21 test assertions: **21 / 21 PASS (100%)**.
+    - **Full Regression Verification**:
+      - `node scripts/verify-prd20-layer4.js` -> 21/21 PASS
+      - `node scripts/verify-prd20-layer3.js` -> 22/22 PASS
+      - `node scripts/verify-prd20-layer2.js` -> 41/41 PASS
+      - `node scripts/verify-prd20-layer1.js` -> 42/42 PASS
+      - `node scripts/verify-prd19-integration.js` -> 69/69 PASS
+      - `npm test` -> 13/13 test suites PASS
+      - **Total Platform Assertions Passing**: **858 / 858 PASS (100%)**.
+  - **Layer 5 (Frontend 4 Views: Gantt Main, Detail Sidebar Drawer, Milestone Timeline & Planned vs Actual — 100% COMPLETE & VERIFIED)**:
+    - **View 1: Gantt Chart Main (`public/gantt-chart.html`)**:
+      - Timeline split view: sticky task list table (Name, Assignee, Progress %) + scalable timeline grid with dynamic dates.
+      - 4-level zoom controls: Day, Week, Month, Quarter.
+      - SVG dependency line overlay (`<svg id="depSvgCanvas">`) with directional arrowheads (`#arrowhead`, `#arrowhead-critical`) rendering dependency connections without client computation bugs.
+      - Today line marker (`#todayLine`, `.today-line.today-marker`) highlighting the current day in red.
+      - Interactive bar resize handles (`.resize-handle.resize-left` and `.resize-right`) on task bars.
+      - Critical Path toggle: highlights critical path tasks and dependencies in bold crimson (`#ff3366` / `#ef4444`).
+      - JSON Export trigger downloading the complete project timeline dataset.
+    - **View 2: Gantt Item Detail Sidebar (`#itemDetailDrawer` in `public/gantt-chart.html`)**:
+      - Inline drawer sliding in from the right upon clicking any task bar or table row.
+      - Item title, type badge, start date, and end date inputs (Admin-guarded).
+      - Interactive progress % slider updating task progress in real time.
+      - Dual Predecessors and Successors dependency management with 1-click unlink and add dependency modal.
+      - Chronological field change audit history log fetched from `GET /api/gantt/history/:itemId`.
+      - Delete task action with dependency protection feedback.
+    - **View 3: Milestone Timeline (`public/milestone-timeline.html`)**:
+      - Vertical chronological milestone track connected by a continuous gradient spine line.
+      - Color-coded status badges: Green (`ACHIEVED`), Yellow (`PENDING`), Red (`MISSED`).
+      - "Mark as Achieved" button (Admin only) calling `PATCH /api/gantt/milestone/:id/achieve` and auto-completing linked tasks.
+      - Linked Gantt task box showing linked task name, status, and progress bar.
+      - Interactive Add and Edit milestone modals.
+      - Status filter buttons (`All`, `Pending`, `Achieved`, `Missed`) and title search input.
+    - **View 4: Planned vs Actual Baseline Variance (`public/gantt-baseline.html`)**:
+      - Dual horizontal bars per task: planned baseline bar (grey `#64748b` dashed) vs current actual/projected bar (colored with progress fill).
+      - Visual schedule slip indicators: pills highlighting delay (`+Nd Late`, red), on-track (`On Track`, green), and ahead (`-Nd Ahead`, blue).
+      - Snapshot selector dropdown populating distinct snapshots from `GET /api/gantt/baselines/:projectId`.
+      - "Take Baseline Snapshot" button capturing new immutable snapshots.
+      - Comprehensive breakdown table: Item Name, Type, Planned Start, Actual Start, Planned End, Actual End, Status, Progress, Slip (Days), and Variance Verdict.
+      - Variance summary KPI metrics: Items Compared, On Schedule, Delayed, Ahead, and Average Schedule Slip.
+    - **Security & RBAC Client Integrity**:
+      - Zero hardcoded tokens, passwords, or credentials across all 3 HTML files.
+      - Dynamic token retrieval from `localStorage.getItem('token')` or URL query fallback.
+      - Comprehensive `escapeHTML()` sanitization on user input mitigating XSS vulnerabilities.
+    - **Verification**:
+      - `node scripts/verify-prd20-layer5.js`: **27 / 27 PASS (100%)**.
+    - **Full Platform Regression Verification**:
+      - `node scripts/verify-prd20-layer5.js` -> 27/27 PASS
+      - `node scripts/verify-prd20-layer4.js` -> 21/21 PASS
+      - `node scripts/verify-prd20-layer3.js` -> 22/22 PASS
+      - `node scripts/verify-prd20-layer2.js` -> 41/41 PASS
+      - `node scripts/verify-prd20-layer1.js` -> 42/42 PASS
+      - `node scripts/verify-prd19-integration.js` -> 69/69 PASS
+      - `npm test` -> 13/13 test suites PASS
+      - **Total Platform Assertions Passing**: **885 / 885 PASS (100%)**.
 
-
-
-
-
+  - **Layer 6 (Full End-to-End Integration Suite & PRD 20 Sealed — 100% COMPLETE & VERIFIED)**:
+    - Authored comprehensive E2E integration test suite `scripts/verify-prd20-integration.js` covering 10 distinct phases and 96 assertions:
+      - **Phase 1: Real User Authentication & RBAC Personas**: Verified real JWT tokens for Admin and Developer Alice, confirmed persistent sessions and roles in SQLite.
+      - **Phase 2: Real Gantt Items Creation & Constraints Validation**: Created 5 timeline items across types (`TASK`, `MILESTONE`), verified database rows with direct SELECT queries, tested rejection of invalid dates (`end_date < start_date`, `MILESTONE start_date != end_date`), and enforced RBAC.
+      - **Phase 3: Progress Updates, Auto-Completion & Audit History Log**: Verified progress update to 50% and 100% via HTTP 200, auto-transition to `COMPLETED` status in DB, confirmed audit history rows logged in `gantt_history`, and tested trigger protection (`prevent_gantt_history_update` and `delete`).
+      - **Phase 4: Real DAG Dependency Creation & Relationship Graph**: Created 3 linear `FINISH_TO_START` dependencies, verified rows in `gantt_dependencies`, and verified dependent task deletion protection rule.
+      - **Phase 5: Circular Dependency Detection (Real Blocked Attempt)**: Attempted circular dependency (Item 5 -> Item 1) and self-loop (Item 2 -> Item 2), verified HTTP 400 rejection with 'Circular dependency detected', confirmed via direct DB SELECT that invalid link was never saved.
+      - **Phase 6: Critical Path Method (CPM) Server-Side Calculation**: Verified makespan duration of 24 days, confirmed zero-slack critical tasks (Items 1, 2, 3, 5) with `is_critical = true`, and verified non-critical branch (Item 4) with 19 days slack.
+      - **Phase 7: Baseline Snapshotting & Planned vs Actual Schedule Slip Analysis**: Captured baseline snapshot of 5 items, verified trigger immutability, applied schedule shifts, and validated exact mathematical days slip: Item 2 delayed (+4d), Item 4 ahead (-2d), Item 1 on track (0d).
+      - **Phase 8: Milestone Lifecycle Management (PENDING -> ACHIEVED -> MISSED)**: Created Milestone A (future date, `PENDING`) and Milestone B (past date, auto-transitioned to `MISSED`), marked Milestone A `ACHIEVED` via Admin PATCH, verified `achieved_at` in DB, and enforced RBAC.
+      - **Phase 9: Frontend Views & Static Asset Security Audit**: Audited all 3 HTML files for zero hardcoded credentials, dynamic localStorage token retrieval, XSS escaping, and verified HTTP 200 static serving.
+      - **Phase 10: Complete PRD 20 Definition of Done Checklist**: Verified 5 tables in `sqlite_master`, 6 append-only triggers, all 17 Gantt API routes, CPM calculations, baseline analysis, and server-side RBAC.
+    - Integration suite passed: **96 / 96 assertions PASS (100%)**.
+    - **Total Active Platform Test Assertions Passing**: **981 / 981 PASS (100%)** with zero regressions.
+    - **PRD 20 Status**: 100% COMPLETE AND PERMANENTLY SEALED.

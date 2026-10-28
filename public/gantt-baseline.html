@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planned vs Actual (Baseline Comparison) — Mahi Tech Group</title>
+  <meta name="description" content="Planned vs actual schedule variance, baseline comparison, and schedule slip visualization for Mahi Tech Group projects.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-baseline: #64748b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .select-control {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .select-project {
+      max-width: 200px;
+    }
+
+    .select-snapshot {
+      max-width: 260px;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      color: #38bdf8;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      color: #ffffff;
+      border: 1px solid #38bdf8;
+      padding: 0.45rem 0.95rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+
+    /* Sub Toolbar */
+    .toolbar-bar {
+      background: #0d1424;
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.75rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .legend-box {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .legend-swatch {
+      width: 14px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    .legend-baseline {
+      background: #64748b;
+      border: 1px dashed rgba(255, 255, 255, 0.4);
+    }
+
+    .legend-actual {
+      background: #38bdf8;
+    }
+
+    .legend-delayed {
+      background: #ef4444;
+    }
+
+    .search-input {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      width: 200px;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #38bdf8;
+    }
+
+    /* Main Container */
+    .main-content {
+      flex: 1;
+      padding: 1.5rem 1.75rem 4rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Variance Metrics Cards */
+    .variance-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.15rem 1.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .metric-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .metric-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1;
+    }
+
+    .metric-card.ontrack .metric-val { color: var(--color-success); }
+    .metric-card.delayed .metric-val { color: var(--color-danger); }
+    .metric-card.ahead .metric-val { color: var(--color-primary); }
+
+    /* Dual-Bar Comparison Visual Chart */
+    .comparison-chart-card {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .chart-header-bar {
+      padding: 1rem 1.5rem;
+      background: #0d1424;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chart-header-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0;
+    }
+
+    .chart-scroll-wrap {
+      overflow-x: auto;
+      min-height: 250px;
+      position: relative;
+    }
+
+    .dual-gantt-table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: collapse;
+    }
+
+    .dual-row {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      height: 72px;
+      transition: background 0.15s;
+    }
+
+    .dual-row:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .dual-item-col {
+      width: 320px;
+      padding: 0.6rem 1.25rem;
+      border-right: 1px solid var(--border-card);
+      background: #0f172a;
+      position: sticky;
+      left: 0;
+      z-index: 5;
+    }
+
+    .item-meta-title {
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: #f8fafc;
+      margin-bottom: 0.25rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 290px;
+    }
+
+    .item-meta-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.74rem;
+    }
+
+    .badge-tag {
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-task { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+    .badge-milestone { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+
+    .slip-pill {
+      font-weight: 700;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+    }
+
+    .slip-pill.delay {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .slip-pill.ontrack {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .slip-pill.ahead {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    /* Dual Bars Container */
+    .dual-bars-col {
+      padding: 0.6rem 1rem;
+      position: relative;
+    }
+
+    .bars-track {
+      position: relative;
+      height: 48px;
+      width: 100%;
+    }
+
+    .bar-baseline {
+      position: absolute;
+      top: 4px;
+      height: 18px;
+      background: #475569;
+      border: 1px dashed rgba(255, 255, 255, 0.35);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      padding: 0 0.5rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .bar-actual {
+      position: absolute;
+      bottom: 4px;
+      height: 18px;
+      background: #0284c7;
+      border: 1px solid #38bdf8;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      padding: 0 0.5rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: #ffffff;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .bar-actual.delayed {
+      background: #b91c1c;
+      border-color: #ef4444;
+    }
+
+    .bar-actual-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: 1;
+    }
+
+    .bar-actual-label {
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Connecting Slip Bracket/Indicator */
+    .slip-bracket {
+      position: absolute;
+      top: 13px;
+      bottom: 13px;
+      border-right: 2px dashed #ef4444;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    /* Comparative Table Below Chart */
+    .table-card {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .table-header-bar {
+      padding: 1.15rem 1.5rem;
+      background: #0d1424;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .table-header-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0;
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    .comparative-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    .comparative-table th {
+      background: #1e293b;
+      padding: 0.85rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-card);
+      white-space: nowrap;
+    }
+
+    .comparative-table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+      white-space: nowrap;
+    }
+
+    .comparative-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      background: #0f172a;
+      border: 1px dashed var(--border-card);
+      border-radius: 12px;
+      margin-top: 1.5rem;
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 0.75rem;
+      color: #64748b;
+    }
+
+    .empty-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0 0 0.5rem;
+    }
+
+    .empty-desc {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      max-width: 480px;
+      margin: 0 auto 1.5rem;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-size: 0.85rem;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/gantt-chart.html" class="brand-title">
+        <span>📊</span> Mahi Tech Gantt
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>Timeline</span>
+        <span>/</span>
+        <span>Planned vs Actual</span>
+        <span>/</span>
+        <strong id="headerProjectName">Loading...</strong>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <select id="projectSelect" class="select-control select-project" title="Select Project" aria-label="Select Project">
+        <option value="" disabled selected>Loading projects...</option>
+      </select>
+
+      <select id="snapshotSelect" class="select-control select-snapshot" title="Baseline Snapshot" aria-label="Baseline Snapshot">
+        <option value="" disabled selected>Select Baseline Snapshot...</option>
+      </select>
+
+      <button type="button" class="btn-nav" id="btnTakeSnapshot" title="Take Baseline Snapshot (Admin only)">
+        <span>📸</span> Take Snapshot
+      </button>
+
+      <a href="/gantt-chart.html" class="btn-nav" title="View Gantt Chart">
+        <span>📈</span> Gantt Chart
+      </a>
+
+      <a href="/milestone-timeline.html" class="btn-nav" title="Milestone Timeline">
+        <span>💎</span> Milestones
+      </a>
+    </div>
+  </header>
+
+  <!-- Sub Toolbar -->
+  <div class="toolbar-bar">
+    <div class="toolbar-group">
+      <div class="legend-box">
+        <div class="legend-item">
+          <div class="legend-swatch legend-baseline"></div>
+          <span>Planned (Baseline)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch legend-actual"></div>
+          <span>Actual (On Track)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch legend-delayed"></div>
+          <span>Actual (Delayed)</span>
+        </div>
+      </div>
+
+      <input type="text" id="filterInput" class="search-input" placeholder="Search items..." aria-label="Search items">
+    </div>
+
+    <div class="toolbar-group">
+      <span style="font-size: 0.8rem; color: #94a3b8;" id="baselineTimestampLabel">No snapshot selected</span>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="main-content">
+
+    <!-- Variance Metrics Summary Cards -->
+    <section class="variance-stats-grid" id="varianceStatsGrid">
+      <div class="metric-card">
+        <span class="metric-label">Items Compared</span>
+        <span class="metric-val" id="metricTotal">0</span>
+      </div>
+
+      <div class="metric-card ontrack">
+        <span class="metric-label">On Schedule</span>
+        <span class="metric-val" id="metricOnTrack">0</span>
+      </div>
+
+      <div class="metric-card delayed">
+        <span class="metric-label">Delayed (> 0d)</span>
+        <span class="metric-val" id="metricDelayed">0</span>
+      </div>
+
+      <div class="metric-card ahead">
+        <span class="metric-label">Ahead of Schedule</span>
+        <span class="metric-val" id="metricAhead">0</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">Avg Schedule Slip</span>
+        <span class="metric-val" id="metricAvgSlip">0d</span>
+      </div>
+    </section>
+
+    <!-- Dual-Bar Visual Gantt Chart Comparison -->
+    <section class="comparison-chart-card" id="chartCard">
+      <div class="chart-header-bar">
+        <h3 class="chart-header-title">Dual-Bar Schedule Comparison</h3>
+        <span style="font-size: 0.8rem; color: #94a3b8;">Top = Baseline Plan | Bottom = Current Reality</span>
+      </div>
+      <div class="chart-scroll-wrap" id="chartScrollWrap">
+        <table class="dual-gantt-table" id="dualGanttTable">
+          <tbody id="dualGanttBody">
+            <!-- Dynamic dual rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Comparative Table Below Chart -->
+    <section class="table-card" id="tableCard">
+      <div class="table-header-bar">
+        <h3 class="table-header-title">Variance Breakdown Table</h3>
+        <span style="font-size: 0.8rem; color: #94a3b8;" id="tableCountLabel">Showing 0 items</span>
+      </div>
+      <div class="table-responsive">
+        <table class="comparative-table" id="varianceTable">
+          <thead>
+            <tr>
+              <th>Item Name</th>
+              <th>Type</th>
+              <th>Planned Start</th>
+              <th>Actual Start</th>
+              <th>Planned End</th>
+              <th>Actual End</th>
+              <th>Status</th>
+              <th>Progress</th>
+              <th>Slip (Days)</th>
+              <th>Variance Verdict</th>
+            </tr>
+          </thead>
+          <tbody id="varianceTableBody">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState" style="display: none;">
+      <div class="empty-icon">📐</div>
+      <h3 class="empty-title">No Baseline Snapshot Available</h3>
+      <p class="empty-desc">This project has no baseline snapshots captured yet. Take a snapshot to freeze the current schedule and track planned vs actual variance over time.</p>
+      <button type="button" class="btn-primary" id="btnEmptySnapshot">
+        <span>📸</span> Take Initial Baseline Snapshot
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toastNotification" role="alert" aria-live="polite">
+    <span id="toastIcon">ℹ️</span>
+    <span id="toastMessage">Notification message</span>
+  </div>
+
+  <script>
+    // State management
+    const state = {
+      token: null,
+      projects: [],
+      activeProjectId: null,
+      allBaselineRows: [],
+      distinctSnapshots: [],
+      selectedSnapshotTime: null,
+      searchQuery: ''
+    };
+
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toastNotification');
+      const msg = document.getElementById('toastMessage');
+      const icon = document.getElementById('toastIcon');
+      if (!toast) return;
+
+      msg.textContent = message;
+      if (type === 'error') {
+        icon.textContent = '⚠️';
+        toast.style.borderColor = '#ef4444';
+      } else if (type === 'success') {
+        icon.textContent = '✅';
+        toast.style.borderColor = '#10b981';
+      } else {
+        icon.textContent = 'ℹ️';
+        toast.style.borderColor = '#38bdf8';
+      }
+
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
+
+    function getAuthToken() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get('token');
+      if (urlToken) {
+        localStorage.setItem('token', urlToken);
+        return urlToken;
+      }
+      return localStorage.getItem('token');
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (state.token) {
+        headers['Authorization'] = `Bearer ${state.token}`;
+      }
+
+      const opts = { method, headers };
+      if (body) {
+        opts.body = JSON.stringify(body);
+      }
+
+      const res = await fetch(endpoint, opts);
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (e) {
+        // non-json
+      }
+
+      if (!res.ok) {
+        const errorMsg = data?.message || data?.error || `HTTP error ${res.status}`;
+        const err = new Error(errorMsg);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+
+      return data;
+    }
+
+    function initAuth() {
+      state.token = getAuthToken();
+      if (!state.token) {
+        console.warn('No JWT token found in localStorage or query params.');
+      }
+    }
+
+    async function loadProjects() {
+      try {
+        const data = await apiRequest('/api/projects');
+        state.projects = data.projects || (Array.isArray(data) ? data : []);
+
+        const select = document.getElementById('projectSelect');
+        select.innerHTML = '';
+
+        if (state.projects.length === 0) {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = 'No projects found';
+          select.appendChild(opt);
+          return;
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestedProj = urlParams.get('projectId');
+
+        state.projects.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.title || `Project #${p.id}`;
+          select.appendChild(opt);
+        });
+
+        if (requestedProj && state.projects.some(p => String(p.id) === String(requestedProj))) {
+          state.activeProjectId = requestedProj;
+        } else {
+          state.activeProjectId = state.projects[0].id;
+        }
+
+        select.value = state.activeProjectId;
+        updateProjectHeader();
+        await loadBaselines();
+      } catch (err) {
+        console.error('Failed to load projects:', err);
+        showToast('Error loading projects list', 'error');
+      }
+    }
+
+    function updateProjectHeader() {
+      const proj = state.projects.find(p => String(p.id) === String(state.activeProjectId));
+      const headerTitle = document.getElementById('headerProjectName');
+      if (headerTitle) {
+        headerTitle.textContent = proj ? proj.title : `Project #${state.activeProjectId}`;
+      }
+    }
+
+    async function loadBaselines() {
+      if (!state.activeProjectId) return;
+      try {
+        const baselines = await apiRequest(`/api/gantt/baselines/${state.activeProjectId}`);
+        state.allBaselineRows = Array.isArray(baselines) ? baselines : (baselines.baselines || []);
+
+        processSnapshots();
+        renderView();
+      } catch (err) {
+        console.error('Failed to load baselines:', err);
+        showToast(err.message || 'Failed to fetch baseline snapshots', 'error');
+      }
+    }
+
+    function processSnapshots() {
+      // Group rows by snapshot_taken_at
+      const map = new Map();
+      state.allBaselineRows.forEach(row => {
+        const t = row.snapshot_taken_at;
+        if (!map.has(t)) {
+          map.set(t, {
+            time: t,
+            takenBy: row.snapshot_taken_by_name || 'Admin',
+            items: []
+          });
+        }
+        map.get(t).items.push(row);
+      });
+
+      // Sort descending by time
+      state.distinctSnapshots = Array.from(map.values()).sort((a, b) => {
+        return new Date(b.time) - new Date(a.time);
+      });
+
+      const snapshotSelect = document.getElementById('snapshotSelect');
+      snapshotSelect.innerHTML = '';
+
+      if (state.distinctSnapshots.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No baseline snapshots taken';
+        snapshotSelect.appendChild(opt);
+        state.selectedSnapshotTime = null;
+        return;
+      }
+
+      state.distinctSnapshots.forEach((snap, idx) => {
+        const opt = document.createElement('option');
+        opt.value = snap.time;
+        const dateStr = formatDate(snap.time);
+        opt.textContent = `Snapshot #${state.distinctSnapshots.length - idx}: ${dateStr} (${snap.items.length} items)`;
+        snapshotSelect.appendChild(opt);
+      });
+
+      // Default to the latest snapshot
+      state.selectedSnapshotTime = state.distinctSnapshots[0].time;
+      snapshotSelect.value = state.selectedSnapshotTime;
+    }
+
+    function formatDate(isoStr) {
+      if (!isoStr) return '';
+      try {
+        const d = new Date(isoStr);
+        return d.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch (e) {
+        return isoStr;
+      }
+    }
+
+    function getActiveItems() {
+      if (!state.selectedSnapshotTime) return [];
+      const snap = state.distinctSnapshots.find(s => s.time === state.selectedSnapshotTime);
+      if (!snap) return [];
+
+      let items = snap.items;
+      if (state.searchQuery.trim()) {
+        const q = state.searchQuery.toLowerCase();
+        items = items.filter(it => it.item_title && it.item_title.toLowerCase().includes(q));
+      }
+      return items;
+    }
+
+    function renderView() {
+      const chartCard = document.getElementById('chartCard');
+      const tableCard = document.getElementById('tableCard');
+      const emptyState = document.getElementById('emptyState');
+      const statsGrid = document.getElementById('varianceStatsGrid');
+      const timestampLabel = document.getElementById('baselineTimestampLabel');
+
+      if (state.distinctSnapshots.length === 0) {
+        chartCard.style.display = 'none';
+        tableCard.style.display = 'none';
+        statsGrid.style.display = 'none';
+        emptyState.style.display = 'block';
+        timestampLabel.textContent = 'No snapshots recorded';
+        return;
+      }
+
+      chartCard.style.display = 'block';
+      tableCard.style.display = 'block';
+      statsGrid.style.display = 'grid';
+      emptyState.style.display = 'none';
+
+      timestampLabel.textContent = `Baseline captured: ${formatDate(state.selectedSnapshotTime)}`;
+
+      const items = getActiveItems();
+      renderMetrics(items);
+      renderChart(items);
+      renderTable(items);
+    }
+
+    function renderMetrics(items) {
+      const total = items.length;
+      let onTrack = 0;
+      let delayed = 0;
+      let ahead = 0;
+      let totalSlip = 0;
+
+      items.forEach(it => {
+        const slip = it.slip_days || 0;
+        totalSlip += slip;
+        if (slip > 0) delayed++;
+        else if (slip < 0) ahead++;
+        else onTrack++;
+      });
+
+      const avgSlip = total > 0 ? (totalSlip / total).toFixed(1) : 0;
+
+      document.getElementById('metricTotal').textContent = total;
+      document.getElementById('metricOnTrack').textContent = onTrack;
+      document.getElementById('metricDelayed').textContent = delayed;
+      document.getElementById('metricAhead').textContent = ahead;
+      document.getElementById('metricAvgSlip').textContent = `${avgSlip > 0 ? '+' : ''}${avgSlip}d`;
+    }
+
+    function parseUtcDate(str) {
+      if (!str) return new Date();
+      const parts = String(str).split('T')[0].split('-').map(Number);
+      return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+    }
+
+    function renderChart(items) {
+      const tbody = document.getElementById('dualGanttBody');
+      tbody.innerHTML = '';
+
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 2rem; color: #94a3b8;">No matching items found</td></tr>';
+        return;
+      }
+
+      // Calculate global date range
+      let minDate = null;
+      let maxDate = null;
+
+      items.forEach(it => {
+        [it.baseline_start_date, it.current_start_date].forEach(d => {
+          if (d) {
+            const dt = parseUtcDate(d);
+            if (!minDate || dt < minDate) minDate = dt;
+          }
+        });
+
+        [it.baseline_end_date, it.current_end_date].forEach(d => {
+          if (d) {
+            const dt = parseUtcDate(d);
+            if (!maxDate || dt > maxDate) maxDate = dt;
+          }
+        });
+      });
+
+      if (!minDate) minDate = new Date();
+      if (!maxDate) maxDate = new Date(minDate.getTime() + 86400000 * 30);
+
+      // Add padding
+      const chartStart = new Date(minDate.getTime() - 86400000 * 2);
+      const chartEnd = new Date(maxDate.getTime() + 86400000 * 4);
+      const totalSpanDays = Math.max(1, Math.round((chartEnd - chartStart) / 86400000));
+
+      tbody.innerHTML = items.map(it => {
+        const slip = it.slip_days || 0;
+        let slipClass = 'ontrack';
+        let slipText = 'On Track';
+
+        if (slip > 0) {
+          slipClass = 'delay';
+          slipText = `+${slip}d Late`;
+        } else if (slip < 0) {
+          slipClass = 'ahead';
+          slipText = `${slip}d Ahead`;
+        }
+
+        // Baseline bar positions
+        const bStart = parseUtcDate(it.baseline_start_date);
+        const bEnd = parseUtcDate(it.baseline_end_date);
+        const bLeftDays = Math.max(0, Math.round((bStart - chartStart) / 86400000));
+        const bDurationDays = Math.max(1, Math.round((bEnd - bStart) / 86400000) + 1);
+        const bLeftPct = (bLeftDays / totalSpanDays) * 100;
+        const bWidthPct = Math.max(1.5, (bDurationDays / totalSpanDays) * 100);
+
+        // Actual bar positions
+        const aStart = parseUtcDate(it.current_start_date);
+        const aEnd = parseUtcDate(it.current_end_date);
+        const aLeftDays = Math.max(0, Math.round((aStart - chartStart) / 86400000));
+        const aDurationDays = Math.max(1, Math.round((aEnd - aStart) / 86400000) + 1);
+        const aLeftPct = (aLeftDays / totalSpanDays) * 100;
+        const aWidthPct = Math.max(1.5, (aDurationDays / totalSpanDays) * 100);
+
+        const progress = it.current_progress_pct || 0;
+        const delayedClass = slip > 0 ? 'delayed' : '';
+
+        return `
+          <tr class="dual-row">
+            <td class="dual-item-col">
+              <div class="item-meta-title" title="${escapeHTML(it.item_title)}">${escapeHTML(it.item_title)}</div>
+              <div class="item-meta-sub">
+                <span class="badge-tag badge-${(it.item_type || 'task').toLowerCase()}">${it.item_type}</span>
+                <span class="slip-pill ${slipClass}">${slipText}</span>
+                <span style="color: #64748b; font-size: 0.7rem;">${progress}% done</span>
+              </div>
+            </td>
+            <td class="dual-bars-col">
+              <div class="bars-track">
+                <!-- Planned Baseline Bar -->
+                <div class="bar-baseline" style="left: ${bLeftPct}%; width: ${bWidthPct}%;" title="Planned: ${it.baseline_start_date} → ${it.baseline_end_date}">
+                  <span>Planned: ${it.baseline_start_date} → ${it.baseline_end_date}</span>
+                </div>
+
+                <!-- Current Actual Bar -->
+                <div class="bar-actual ${delayedClass}" style="left: ${aLeftPct}%; width: ${aWidthPct}%;" title="Actual: ${it.current_start_date} → ${it.current_end_date} (${progress}%)">
+                  <div class="bar-actual-fill" style="width: ${progress}%;"></div>
+                  <span class="bar-actual-label">Actual: ${it.current_start_date} → ${it.current_end_date}</span>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderTable(items) {
+      const tbody = document.getElementById('varianceTableBody');
+      const countLabel = document.getElementById('tableCountLabel');
+      countLabel.textContent = `Showing ${items.length} items`;
+
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem; color: #94a3b8;">No matching records found</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(it => {
+        const slip = it.slip_days || 0;
+        let verdict = '<span style="color: #10b981; font-weight: 600;">On Schedule</span>';
+        if (slip > 5) {
+          verdict = '<span style="color: #ef4444; font-weight: 700;">Critical Delay</span>';
+        } else if (slip > 0) {
+          verdict = '<span style="color: #f59e0b; font-weight: 600;">Minor Delay</span>';
+        } else if (slip < 0) {
+          verdict = '<span style="color: #38bdf8; font-weight: 600;">Ahead of Schedule</span>';
+        }
+
+        const slipDisplay = slip > 0 ? `<strong style="color: #ef4444;">+${slip}d</strong>` :
+                           (slip < 0 ? `<strong style="color: #38bdf8;">${slip}d</strong>` : `<span style="color: #10b981;">0d</span>`);
+
+        return `
+          <tr>
+            <td><strong>${escapeHTML(it.item_title)}</strong></td>
+            <td><span class="badge-tag badge-${(it.item_type || 'task').toLowerCase()}">${it.item_type}</span></td>
+            <td>${it.baseline_start_date || '-'}</td>
+            <td>${it.current_start_date || '-'}</td>
+            <td>${it.baseline_end_date || '-'}</td>
+            <td>${it.current_end_date || '-'}</td>
+            <td><span style="font-size: 0.75rem; text-transform: uppercase;">${escapeHTML(it.current_status || 'NOT_STARTED')}</span></td>
+            <td>${it.current_progress_pct || 0}%</td>
+            <td>${slipDisplay}</td>
+            <td>${verdict}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function handleTakeSnapshot() {
+      if (!state.activeProjectId) return;
+      try {
+        await apiRequest('/api/gantt/baseline/snapshot', 'POST', {
+          project_id: state.activeProjectId
+        });
+        showToast('Baseline snapshot captured successfully!', 'success');
+        await loadBaselines();
+      } catch (err) {
+        showToast(err.message || 'Failed to capture baseline snapshot', 'error');
+      }
+    }
+
+    function setupEventListeners() {
+      document.getElementById('projectSelect').addEventListener('change', (e) => {
+        state.activeProjectId = e.target.value;
+        updateProjectHeader();
+        loadBaselines();
+      });
+
+      document.getElementById('snapshotSelect').addEventListener('change', (e) => {
+        state.selectedSnapshotTime = e.target.value;
+        renderView();
+      });
+
+      document.getElementById('filterInput').addEventListener('input', (e) => {
+        state.searchQuery = e.target.value;
+        renderView();
+      });
+
+      document.getElementById('btnTakeSnapshot').addEventListener('click', handleTakeSnapshot);
+      document.getElementById('btnEmptySnapshot').addEventListener('click', handleTakeSnapshot);
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      initAuth();
+      setupEventListeners();
+      await loadProjects();
+    });
+  </script>
+</body>
+</html>
