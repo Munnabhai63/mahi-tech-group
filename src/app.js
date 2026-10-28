@@ -21,6 +21,7 @@ import backlogRouter from './routes/backlog.routes.js';
 import okrRouter from './routes/okr.routes.js';
 import ganttRouter from './routes/gantt.routes.js';
 import workloadRouter from './routes/workload.routes.js';
+import timeRouter from './routes/time.routes.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { queryAll } from './db/database.js';
@@ -103,6 +104,7 @@ export function createApp() {
   app.use('/api/okr', okrRouter);
   app.use('/api/gantt', ganttRouter);
   app.use('/api/workload', workloadRouter);
+  app.use('/api/time', timeRouter);
 
   // Direct shortcut redirects for common workspace and auth routes (Express 5 compatible)
   app.use((req, res, next) => {

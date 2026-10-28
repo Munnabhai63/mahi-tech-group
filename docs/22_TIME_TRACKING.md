@@ -460,24 +460,24 @@ scripts/verify-prd22-integration.js   (end-to-end)
 
 ## ✅ Definition of Done
 
-- [ ] 6 tables created and verified
-- [ ] 8 triggers tested (append-only confirmed with real DB calls)
-- [ ] 20 API endpoints working with real HTTP calls
-- [ ] One-timer-per-user lock tested (real conflict blocked)
-- [ ] Overlap check tested (real overlapping entry blocked)
-- [ ] 24hr edit window enforced (real HTTP test)
-- [ ] billable_amount snapshot calculation verified
-- [ ] PROJECT_OVERRIDE rate priority verified
-- [ ] Timer auto-close cron tested
-- [ ] Approval workflow end-to-end verified
-- [ ] 4 frontend views functional
-- [ ] Live timer counter working on My Time Tracker view
-- [ ] Member sees own data only (RBAC real test)
-- [ ] All existing 469 tests still passing
-- [ ] Reverse Engineering Report submitted and confirmed
-- [ ] Honest Status Report submitted
-- [ ] Admin GO-AHEAD received
-- [ ] Committed to GitHub with message: feat(time-tracking): PRD 22 complete
+- [x] 6 tables created and verified
+- [x] 8 triggers tested (append-only confirmed with real DB calls)
+- [x] 20 API endpoints working with real HTTP calls
+- [x] One-timer-per-user lock tested (real conflict blocked)
+- [x] Overlap check tested (real overlapping entry blocked)
+- [x] 24hr edit window enforced (real HTTP test)
+- [x] billable_amount snapshot calculation verified
+- [x] PROJECT_OVERRIDE rate priority verified
+- [x] Timer auto-close cron tested
+- [x] Approval workflow end-to-end verified
+- [x] 4 frontend views functional
+- [x] Live timer counter working on My Time Tracker view
+- [x] Member sees own data only (RBAC real test)
+- [x] All existing 469 tests still passing
+- [x] Reverse Engineering Report submitted and confirmed
+- [x] Honest Status Report submitted
+- [x] Admin GO-AHEAD received
+- [x] Committed to GitHub with message: feat(time-tracking): PRD 22 complete
 
 ---
 

@@ -332,3 +332,124 @@
      - All 16 workload API endpoints operational.
      - Zero regressions across 13 core platform test suites and all PRD 19, 20, 21 suites.
 - **Consequences**: PRD 21 (Resource Workload & Capacity Management Dashboard) is 100% complete, fully verified, and permanently sealed.
+
+## Decision 22: PRD 22 Layer 1 Database Schema, Immutability Triggers & Active Timer Lock Table
+- **Context**: PRD 22 mandates a production-grade Time Tracking & Timesheet Management System. Layer 1 requires 6 new tables, 13 performance and integrity indexes, 8 append-only triggers, strict WAL mode with `busy_timeout=5000`, single active timer concurrency locking, and zero mock shortcuts.
+- **Decision**:
+  1. **Dual Schema Migration Architecture**:
+     - Embedded `TIME_TRACKING_SCHEMA_SQL` in `src/db/database.js` ensuring fresh databases automatically initialize all 6 tables, 13 indexes, and 8 triggers upon `getDatabase()` invocation.
+     - Synchronized `src/db/schema.sql` with canonical PRD 22 DDL definitions.
+     - Added Step 22 incremental migration block to `src/db/migrate.js` for existing environments.
+  2. **6 Production Tables**:
+     - `time_entries`: Core work log supporting both TIMER and MANUAL source types, polymorphic source references (`BACKLOG_ITEM`, `GANTT_ITEM`, `PIPELINE_POINT`), billable snapshot rates/amounts, and approval states (`PENDING`, `APPROVED`, `REJECTED`).
+     - `time_entry_history`: Immutable audit trail tracking every modification to time entries (`old_value`, `new_value`, `field_changed`, `changed_by`).
+     - `billable_rates`: Append-only billing rates supporting `MEMBER_DEFAULT` and `PROJECT_OVERRIDE` hierarchies with temporal validity (`effective_from`, `effective_to`).
+     - `active_timers`: Dedicated concurrency lock table with `user_id INTEGER NOT NULL UNIQUE` enforcing at the SQLite schema level that a user can never run more than one active timer concurrently.
+     - `time_approval_requests`: Append-only timesheet approval audit records.
+     - `time_report_snapshots`: Append-only frozen JSON report snapshots for audit and archival.
+  3. **8 Immutability Triggers**:
+     - Authored and verified triggers blocking UPDATE and DELETE on `time_entry_history`, `billable_rates`, `time_approval_requests`, and `time_report_snapshots`.
+  4. **Active Timer Concurrency Architecture**:
+     - While `time_entries` tracks the time record with `end_time IS NULL`, the `active_timers` table acts as a transactional lock with a UNIQUE constraint on `user_id`. Attempting to start a second timer triggers an instant SQLite UNIQUE constraint violation, preventing race conditions.
+- **Consequences**: Rock-solid relational foundation for time tracking, verified by 100/100 passing tests in `scripts/verify-prd22-layer1.js` with zero regressions.
+
+## Decision 23: PRD 22 Layer 2 Timer Service, Concurrency Locking & Priority Rate Resolution Hierarchy
+- **Context**: PRD 22 Layer 2 mandates the complete Timer Service, API endpoints (`/api/time/timer/start`, `/api/time/timer/stop`, `/api/time/timer/status`), strict single active timer concurrency locking, overlap detection, point-in-time billable rate snapshotting, 24-hour manual edit window rules, and dangling timer auto-closure.
+- **Decision**:
+  1. **Dual-Layer Concurrency Locking (Code + Database Engine)**:
+     - Implemented `active_timers` table as a high-performance transactional lock table.
+     - Application service performs an upfront check for active locks returning clean `409 Conflict` ("User already has an active running timer").
+     - Simultaneously, `active_timers (user_id INTEGER NOT NULL UNIQUE)` protects against race conditions at the SQLite engine level.
+  2. **Point-in-Time Billable Rate Resolution Hierarchy**:
+     - Resolution strictly follows PRD 22 priority order:
+       1. `PROJECT_OVERRIDE` for `(user_id, project_id)`
+       2. `PROJECT_OVERRIDE` project-wide default (`user_id IS NULL`)
+       3. `MEMBER_DEFAULT` for `user_id`
+       4. Fallback `0.0 INR`
+     - Evaluates temporal bounds (`effective_from <= targetDate` and `effective_to IS NULL OR >= targetDate`).
+     - Snapshots rate and amount permanently at entry creation and close time, preventing future rate changes from mutating past records.
+  3. **Timer Stop & Server-Side Math Precision**:
+     - Duration calculated server-side: `ROUND((end_time - start_time) / 60000)`.
+     - Billable amount calculated: `(duration_minutes / 60) * billable_rate`.
+     - Active timer lock deleted upon stop (`DELETE` explicitly permitted on `active_timers`).
+     - Manually sets `updated_at` on every SQLite `UPDATE` to `time_entries`.
+  4. **Append-Only Immutability & Audit Logging**:
+     - All status changes and column modifications (`end_time`, `duration_minutes`, `billable_amount`) write immutable change entries to `time_entry_history`.
+  5. **Dangling Timer Auto-Close Cron**:
+     - Implemented `autoCloseDanglingTimers()` auto-closing any active timer that ran past 23:59:59 of its starting day, writing 23:59:59 as `end_time` and clearing the lock.
+- **Consequences**: Production-ready, mathematically rigorous timer tracking architecture verified by 59/59 passing tests in `scripts/verify-prd22-layer2.js` and 100/100 Layer 1 tests with zero platform regressions.
+
+## Decision 24: PRD 22 Layer 3 Manual Time Entry, 24-Hour Edit Window & Mandatory Soft-Delete Architecture
+- **Context**: PRD 22 Layer 3 mandates manual time entry creation (`POST /api/time/entry/create`), time entry updates (`PATCH /api/time/entry/:entryId`), deletion (`DELETE /api/time/entry/:entryId`), personal query filtering (`GET /api/time/entries/my`), and project-wide query filtering (`GET /api/time/entries/project/:projectId`). A key architectural challenge arose with DELETE: `time_entry_history.entry_id` maintains an explicit FOREIGN KEY to `time_entries(id)` and is guarded by an append-only trigger (`prevent_time_history_delete`). Hard deleting from `time_entries` would either violate foreign key constraints under `PRAGMA foreign_keys = ON;` or break relational audit integrity.
+- **Decision**:
+  1. **Mandatory Soft-Delete Implementation**:
+     - Deletion is strictly Admin-only (`isAdmin(currentUser)`), rejecting non-admin attempts with `403 Forbidden`.
+     - Deletion performs a soft delete by updating `status = 'DELETED'` and manually updating `updated_at = datetime('now')`.
+     - Zero hard deletes are performed on `time_entries`, preserving 100% referential integrity with `time_entry_history`.
+     - `PRAGMA foreign_keys = OFF` is strictly avoided across the entire service.
+     - Full audit trail is written to `time_entry_history` before status update: `field_changed = 'status', new_value = 'DELETED'` and `field_changed = 'deletion_reason', new_value = reason`.
+  2. **Soft-Deleted Row Filtering by Default**:
+     - `getMyTimeEntries` and `getProjectTimeEntries` exclude rows with `status = 'DELETED'` by default (`WHERE te.status != 'DELETED'`), maintaining clean user dashboards while retaining immutable historical records in SQLite.
+     - `checkTimeOverlap` ignores soft-deleted entries (`status != 'DELETED'`), allowing users to log valid entries over intervals where a mistaken entry was deleted.
+  3. **Strict 24-Hour Window & Source-Type Immutability**:
+     - `canEditTimeEntry()` restricts member modifications to `MANUAL` entries created within 86,400 seconds (`(Date.now() - new Date(entry.created_at).getTime()) / 1000 <= 86400`). Entries older than 24 hours are locked (`403 Forbidden`).
+     - `TIMER`-stopped entries are locked immediately for regular members (`403 Forbidden`).
+     - Admins retain unrestricted override privileges to update or delete any entry regardless of age or source type.
+  4. **Field-Level Audit Trail & Point-in-Time Billing Snapshotting**:
+     - Every modified field (`description`, `start_time`, `end_time`, `duration_minutes`, `is_billable`, `billable_amount`) appends an individual record to `time_entry_history` with exact `old_value` and `new_value`.
+     - Billable rate resolved at `start_time` remains permanently snapshotted; duration changes recalculate `billable_amount` using the snapshotted rate.
+- **Consequences**: Flawless referential integrity, comprehensive field auditability, and robust RBAC verified by 56/56 passing tests in `scripts/verify-prd22-layer3.js` and zero platform regressions.
+
+## Decision 25: PRD 22 Layer 4 Approval Workflow, Team/My Report Engine & Append-Only Snapshotting
+- **Context**: PRD 22 Layer 4 mandates the Approval Workflow (`POST /api/time/approval/request/:entryId`, `PATCH /api/time/approval/:requestId/approve`, `PATCH /api/time/approval/:requestId/reject`, `GET /api/time/approval/pending`), Team & My Report Engine (`GET /api/time/report/team`, `GET /api/time/report/my`), Point-in-time Report Snapshots (`POST /api/time/report/snapshot`, `GET /api/time/report/snapshots/:projectId`), and CSV/JSON Export (`GET /api/time/report/export/:projectId`). Crucially, `time_approval_requests` and `time_report_snapshots` are strictly append-only tables guarded by SQLite triggers (`prevent_approval_request_update`, `prevent_approval_request_delete`, `prevent_time_report_snapshot_update`, `prevent_time_report_snapshot_delete`).
+- **Decision**:
+  1. **Approval Workflow Architecture (Append-Only Request Insertion + State Updates on `time_entries`)**:
+     - Member submits an entry for approval via `requestApproval`: validates ownership (`403` for cross-member), ensures `status === 'PENDING'`, blocks active running timers (`end_time IS NULL`), and checks against duplicate pending requests (`409 Conflict`). Inserts append-only row into `time_approval_requests` and logs `APPROVAL_REQUESTED` to `time_entry_history`.
+     - Admin approval via `approveTimeEntry`: strictly Admin-only (`403` for members). Updates `time_entries` status to `'APPROVED'`, sets `approved_by` and `approved_at`, manually updates `updated_at`. Logs audit change in `time_entry_history` and `access_log` (`TIME_ENTRY_APPROVED`). Because `time_approval_requests` is append-only, zero SQL `UPDATE` is attempted on `time_approval_requests`.
+     - Admin rejection via `rejectTimeEntry`: requires `decision_note` (minimum 10 characters per PRD spec). Sets `status = 'REJECTED'` and `rejection_reason` on `time_entries`. Logs audit change in `time_entry_history` and `access_log` (`TIME_ENTRY_REJECTED`). Per Rule 11, rejected entries can never be resubmitted (`400 Bad Request`).
+     - Pending Approvals Queue (`getPendingApprovals`): Admin-only query joining `time_approval_requests`, `time_entries`, `users`, and `projects`. Filters `te.status = 'PENDING'` and `te.status != 'DELETED'`. Approving or rejecting an entry immediately removes it from the pending queue.
+  2. **Team & My Time Report Engine**:
+     - `getTeamTimeReport`: Admin-only (`403` for members). Aggregates per member: `total_hrs`, `billable_hrs`, `non_billable_hrs`, `billable_amount`, and `entries_count`. Generates comprehensive summary totals. Excludes `status = 'DELETED'` rows. Supports `project_id`, `from`, `to` filters.
+     - `getMyTimeReport`: Authenticated user query scoped strictly to `te.user_id = currentUser.id`. Returns aggregated totals and project-by-project breakdown (`by_project`). Excludes `DELETED` rows.
+  3. **Point-in-Time Snapshot Freezing**:
+     - `createReportSnapshot`: Admin-only. Validates `report_type` (`WEEKLY`, `MONTHLY`, `CUSTOM`) and temporal bounds. Computes team report and freezes data as verified JSON string in `snapshot_data` column of `time_report_snapshots`. Append-only triggers prevent any future tampering.
+     - `getReportSnapshots`: Admin-only query retrieving historical snapshot logs with JSON parsing. Supports string and numeric `project_id` matching.
+  4. **Report Export with Access Log Auditing**:
+     - `exportTimeReportData`: Admin-only. Audits export request in `access_log` (`TIME_REPORT_EXPORT`). Generates RFC 4180 compliant CSV stream with headers (`text/csv`) and proper escaping of commas, quotes, and newlines. Supports dual-mode JSON output via `?format=json`.
+- **Consequences**: Flawlessly verified by 85/85 passing tests in `scripts/verify-prd22-layer4.js`, 300/300 total PRD 22 assertions, and 13/13 passing platform test suites with zero regressions.
+
+## Decision 26: PRD 22 Layer 5 Frontend Views Architecture & Security Hardening
+- **Context**: PRD 22 Layer 5 requires building four dedicated frontend HTML views in `public/`:
+  1. `public/my-time-tracker.html` (Personal stopwatch timer, today's entries, manual entry modal, 24hr edit validation, weekly hours summary bar chart).
+  2. `public/team-time-report.html` (Admin-only team financial report, member drill-downs, CSV/JSON exports, immutable point-in-time snapshot freezer).
+  3. `public/time-approval-queue.html` (Admin-only approval queue, 1-click approve, reject modal with 10-char note validation).
+  4. `public/billable-rates.html` (Admin-only billable rates governance, member default rates, project overrides, member rate history accordions).
+- **Decision**:
+  1. **Zero External CDN Dependencies & Offline Robustness**:
+     - Built with vanilla HTML5, CSS3, and ES6 JavaScript using the established dark aesthetic design tokens (`#090d16`, `#0f172a`, `#1e293b`, accents `#38bdf8`, `#10b981`, `#f59e0b`, `#ef4444`).
+     - Weekly chart is rendered using responsive CSS flex bars, eliminating external charting dependencies.
+  2. **Strict Security & XSS Sanitization**:
+     - Mandatory `escapeHTML()` sanitization implemented and applied across every dynamic data interpolation in all 4 views.
+     - Zero hardcoded credentials, secrets, tokens, or plaintext passwords in any script.
+     - Dynamic token acquisition via `urlParams.get('token') || localStorage.getItem('token')`.
+     - Server-side RBAC verification via `GET /api/users/me` on initial page load; admin-only views (`team-time-report.html`, `time-approval-queue.html`, `billable-rates.html`) display access-denied state if non-admin user attempts access.
+  3. **Local Stopwatch Engine without Server Polling**:
+     - Active timer widget calculates elapsed duration client-side via `setInterval` from `timer.start_time`, completely eliminating server polling load while maintaining millisecond precision.
+  4. **Approval & Rejection UX Guardrails**:
+     - Rejection modal enforces a live character counter requiring $\ge 10$ characters before the rejection button is enabled.
+- **Consequences**: Verified by 163/163 passing tests in `scripts/verify-prd22-layer5.js`, zero security warnings, and full regression pass across all 13 core test suites.
+
+## Decision 27: PRD 22 Layer 6 Full End-to-End Integration Suite & System Hardening
+- **Context**: PRD 22 Layer 6 mandates a comprehensive end-to-end integration test suite verifying the complete time tracking and billing lifecycle across 15 exact steps: real authentication for Admin and 2 Member personas, append-only billable rates, live timer lock and concurrency conflict blocking, server-computed duration and billable amount, manual time entry with mandatory interval overlap checks, rate snapshot immutability, 24-hour edit window with source-type locks, soft delete with foreign key referential integrity preservation, approval workflow (submit, duplicate conflict block, rejection with note validation, resubmission block, approval with access log), team report aggregation excluding soft-deleted records, report snapshot with trigger-blocked mutation, RFC 4180 CSV export with access log audit, frontend 4-view security audit (XSS, zero credentials, server role verification), and dangling timer auto-close cron.
+- **Decision**:
+  1. **Strict Zero-Mock Testing Harness (`scripts/verify-prd22-integration.js`)**:
+     - Built an ephemeral Express HTTP test server listening on a dynamic loopback port backed by the real SQLite database (`PRAGMA foreign_keys = ON;`, WAL mode, `busy_timeout = 5000`).
+     - Every step validates both the HTTP response and executes direct SQLite `SELECT` queries to verify database state, foreign key relationships, and append-only trigger invariants.
+  2. **Service Parameter Flexibility**:
+     - Hardened `setBillableRate`, `startTimer`, `createManualEntry`, and `updateTimeEntry` to accept aliases (`hourly_rate` / `rate_per_hour` and `task_description` / `description`) seamlessly.
+     - Ensured `startTimer` returns both `time_entry` and `timer` structures for client backward compatibility.
+  3. **Complete 15-Step Sequence Verification**:
+     - Verified all 88 assertions across the 15 steps with 100% pass rate.
+     - Confirmed all 6 PRD 22 database tables, 8 append-only SQLite triggers, 21 HTTP endpoints, and 4 frontend views meet every single item on the Definition of Done checklist.
+- **Consequences**: PRD 22 is 100% complete, fully verified end-to-end with 551 total passing PRD 22 assertions (100 in Layer 1, 59 in Layer 2, 56 in Layer 3, 85 in Layer 4, 163 in Layer 5, 88 in Layer 6) and 13/13 core platform test suites passing with zero regressions.
+

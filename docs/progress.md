@@ -603,3 +603,112 @@
     - **Total Platform Test Suite Assertions Passing**: **1,067 / 1,067 PASS (100%)** with zero regressions.
     - **PRD 21 Status**: 100% COMPLETE AND PERMANENTLY SEALED.
 
+- **PRD 22: Time Tracking & Timesheet Management System**:
+  - **Layer 1 (Database, Schema & Immutability Triggers — 100% COMPLETE & VERIFIED)**:
+    - 6 SQLite Tables created: `time_entries`, `time_entry_history`, `billable_rates`, `active_timers`, `time_approval_requests`, `time_report_snapshots`.
+    - 8 Append-only / Immutability Triggers created and verified in `sqlite_master`:
+      - `prevent_time_history_update`, `prevent_time_history_delete`
+      - `prevent_billable_rate_update`, `prevent_billable_rate_delete`
+      - `prevent_approval_request_update`, `prevent_approval_request_delete`
+      - `prevent_time_report_snapshot_update`, `prevent_time_report_snapshot_delete`
+    - 13 Performance & Integrity Composite Indexes created:
+      - `idx_time_entries_user`, `idx_time_entries_project`, `idx_time_entries_status`, `idx_time_entries_start_time`, `idx_time_entries_source_ref`
+      - `idx_time_entry_history_entry`
+      - `idx_billable_rates_user`, `idx_billable_rates_project`, `idx_billable_rates_effective`
+      - `idx_active_timers_user`
+      - `idx_time_approval_requests_entry`, `idx_time_approval_requests_status`
+      - `idx_time_report_snapshots_project`
+    - Connection Pragmas verified: `PRAGMA journal_mode = WAL;`, `PRAGMA busy_timeout = 5000;`, `PRAGMA foreign_keys = ON;`.
+    - Single active timer lock enforcement verified via `active_timers (user_id UNIQUE)`.
+    - Verification test suite: `scripts/verify-prd22-layer1.js` -> **100 / 100 assertions PASS (100%)**.
+  - **Layer 2 (Timer Service, Lock Engine & Billable Rate Resolution — 100% COMPLETE & VERIFIED)**:
+    - Authored `src/services/timeTrackingService.js`:
+      - `startTimer`: Enforces single active timer rule via `active_timers` lock + service guard, snapshots billable rate at start time, checks time overlap, logs audit row to `time_entry_history`.
+      - `stopTimer`: Calculates duration in minutes `ROUND((end_time - start_time) / 60000)`, calculates snapshot billable amount `(duration / 60) * billable_rate`, releases lock from `active_timers` (DELETE permitted), manually updates `updated_at`, logs audit changes to `time_entry_history`.
+      - `getTimerStatus`: Returns live active timer with numeric `elapsed_seconds` counter; enforces user privacy (Member B sees `active: false`).
+      - `resolveBillableRate`: Implements full 4-tier priority hierarchy (`(user, project) > (project default) > (member default) > 0.0 INR`) with temporal validity bounds (`effective_from`, `effective_to`).
+      - `checkTimeOverlap`: Evaluates overlapping intervals for closed and running entries.
+      - `canEditTimeEntry`: Enforces 24-hour edit window for manual entries and locks timer-stopped entries immediately for non-admins.
+      - `autoCloseDanglingTimers`: Cron helper closing unstopped timers at 23:59:59 of their start day.
+    - Authored `src/routes/time.routes.js` and mounted at `/api/time` in `src/app.js`:
+      - `POST /api/time/timer/start`
+      - `POST /api/time/timer/stop`
+      - `GET /api/time/timer/status`
+      - `POST /api/time/rate/set`
+      - `GET /api/time/rate/member/:userId`
+      - `GET /api/time/rate/project/:projectId`
+      - `GET /api/time/entry/:entryId`
+    - Comprehensive Verification: `scripts/verify-prd22-layer2.js` -> **59 / 59 PASS (100%)**.
+  - **Layer 3 (Manual Entry, Edit Window & Soft-Delete Service + API — 100% COMPLETE & VERIFIED)**:
+    - Authored `src/services/timeTrackingService.js` Layer 3 implementation:
+      - `createManualEntry`: Validates `end_time >= start_time`, validates `source_ref_type` (`BACKLOG_ITEM`, `GANTT_ITEM`, `PIPELINE_POINT`, `NULL`), calculates server-side duration `ROUND((end - start) / 60)`, detects overlapping intervals returning `409 Conflict`, snapshots billable rate and amount, sets initial status to `PENDING`, writes `MANUAL_CREATED` audit row to `time_entry_history`, manually sets `updated_at`.
+      - `updateTimeEntry`: Enforces strict 24-hour edit window for `MANUAL` entries (`<= 86400 seconds`), immediately locks `TIMER`-stopped entries for regular members (`403 Forbidden`), allows Admin override anytime, logs field-level audit rows to `time_entry_history` for every modified field (`description`, `start_time`, `end_time`, `duration_minutes`, `is_billable`, `billable_amount`), recalculates `billable_amount` using snapshotted rate, enforces overlap detection, manually updates `updated_at`.
+      - `deleteTimeEntry`: Strictly Admin-only (`403 Forbidden` for members), executes soft delete (`status = 'DELETED'`), writes full audit trail (`field_changed = 'status', new_value = 'DELETED'` and `field_changed = 'deletion_reason', new_value = reason`), maintains 100% referential integrity with `PRAGMA foreign_keys = ON;` without hard deletes.
+      - `getMyTimeEntries`: Retrieves entries for authenticated user, filters by `project_id`, `from`, `to`, `status`, joins `projects.title`, and excludes `DELETED` entries by default.
+      - `getProjectTimeEntries`: Admin-only endpoint returning all project entries with `users.name` and `projects.title`, supports `user_id`, `from`, `to`, `status` filters, excludes `DELETED` entries by default.
+    - Authored `src/routes/time.routes.js` Layer 3 routes:
+      - `POST /api/time/entry/create`
+      - `PATCH /api/time/entry/:entryId`
+      - `DELETE /api/time/entry/:entryId`
+      - `GET /api/time/entries/my`
+      - `GET /api/time/entries/project/:projectId`
+    - Comprehensive Verification: `scripts/verify-prd22-layer3.js` -> **56 / 56 PASS (100%)**.
+  - **Layer 4 (Approval Workflow & Report Engine Service + API — 100% COMPLETE & VERIFIED)**:
+    - Authored `src/services/timeTrackingService.js` Layer 4 implementation:
+      - `requestApproval`: Validates entry ownership (`403` on cross-member attempt), validates `status === 'PENDING'`, blocks active running timers (`end_time IS NULL`), blocks already approved/rejected entries (`400`), prevents duplicate pending requests (`409 Conflict`), inserts into append-only `time_approval_requests`, appends `APPROVAL_REQUESTED` audit row to `time_entry_history`.
+      - `approveTimeEntry`: Strictly Admin-only (`403 Forbidden` for members), updates `time_entries` status to `'APPROVED'`, records `approved_by` and `approved_at`, manually sets `updated_at`, logs audit row to `time_entry_history`, logs `TIME_ENTRY_APPROVED` event to `access_log`.
+      - `rejectTimeEntry`: Strictly Admin-only, requires `decision_note` (min 10 characters), updates `time_entries` status to `'REJECTED'`, records `rejection_reason`, manually sets `updated_at`, blocks future resubmissions (`400 Bad Request`), logs audit rows to `time_entry_history`, logs `TIME_ENTRY_REJECTED` event to `access_log`.
+      - `getPendingApprovals`: Admin-only queue retrieving all pending approval requests joined with `time_entries`, `users.name`, `users.email`, and `projects.title`. Automatically excludes approved/rejected/deleted records.
+      - `getTeamTimeReport`: Admin-only aggregated report calculating per-member `total_hrs`, `billable_hrs`, `non_billable_hrs`, `billable_amount`, and `entries_count` along with overall summary totals. Excludes soft-deleted entries. Supports `project_id`, `from`, `to` filters.
+      - `getMyTimeReport`: Authenticated member summary report strictly scoped to `currentUser.id` with breakdown by project. Excludes soft-deleted entries.
+      - `createReportSnapshot`: Admin-only point-in-time report snapshot freezing team report JSON into append-only `time_report_snapshots`. Validates `report_type` (`WEEKLY`, `MONTHLY`, `CUSTOM`) and temporal bounds.
+      - `getReportSnapshots`: Admin-only retrieval of report snapshots supporting string and numeric `project_id` matching.
+      - `exportTimeReportData`: Admin-only export returning standard RFC 4180 CSV with headers (`text/csv`) and dual-mode JSON support (`?format=json`). Records `TIME_REPORT_EXPORT` audit event in `access_log`.
+    - Authored `src/routes/time.routes.js` Layer 4 routes:
+      - `POST /api/time/approval/request/:entryId`
+      - `PATCH /api/time/approval/:requestId/approve`
+      - `PATCH /api/time/approval/:requestId/reject`
+      - `GET /api/time/approval/pending`
+      - `GET /api/time/report/team`
+      - `GET /api/time/report/my`
+      - `POST /api/time/report/snapshot`
+      - `GET /api/time/report/snapshots/:projectId`
+      - `GET /api/time/report/export/:projectId`
+    - Comprehensive Verification: `scripts/verify-prd22-layer4.js` -> **85 / 85 PASS (100%)**.
+    - Total PRD 22 verified assertions: **300 / 300 PASS (100%)** across Layers 1, 2, 3 & 4.
+    - Full Platform Regression: `npm test` -> **13 / 13 test suites PASS (100%)**.
+  - **Layer 5 (Frontend Views: 4 HTML Views — 100% COMPLETE & VERIFIED)**:
+    - Authored all 4 frontend HTML views in `public/`:
+      - `public/my-time-tracker.html` (46.86 KB): Personal active stopwatch timer with client-side clock (no server polling), today's entries table with duration/billable/status badges, manual entry modal, 24hr edit validation, "Submit for Approval" action, and weekly hours summary bar chart.
+      - `public/team-time-report.html` (41.47 KB): Admin-only team financial report, date range picker & project filter, 5 top-level KPI summary cards, member workload & revenue table with clickable drill-down modal, CSV/JSON report exports, and append-only point-in-time snapshot freezer with JSON inspector.
+      - `public/time-approval-queue.html` (29.86 KB): Admin-only approval queue, pending/approved/rejected filter tabs, project filter, one-click entry approval, and rejection modal with $\ge 10$-character note validation and character counter.
+      - `public/billable-rates.html` (33.40 KB): Admin-only rate governance, policy banner, member default rates table, project-specific overrides table, member rate history accordions, and rate setter modal inserting into append-only `billable_rates`.
+    - Applied mandatory security standards across all views: zero hardcoded credentials/tokens, dynamic token acquisition from `localStorage`, strict XSS protection via `escapeHTML()`, server-verified role checks via `GET /api/users/me`, and zero external broken CDN dependencies.
+    - Comprehensive Verification: `scripts/verify-prd22-layer5.js` -> **163 / 163 PASS (100%)**.
+    - All 4 views verified served live with HTTP 200 OK and `Content-Type: text/html`.
+    - Total PRD 22 verified assertions: **463 / 463 PASS (100%)** across Layers 1, 2, 3, 4 & 5.
+    - Full Platform Regression: `npm test` -> **13 / 13 test suites PASS (100%)**.
+  - **Layer 6 (Full End-to-End Integration Suite & Hardening — 100% COMPLETE & VERIFIED)**:
+    - Authored and executed `scripts/verify-prd22-integration.js` covering the exact 15-step sequence with real HTTP + direct DB SELECT at every step (zero mocks):
+      1. Real login: Admin + 2 Member personas (Alice & Bob) authenticated via `POST /api/auth/login`, verified via `GET /api/users/me` and direct DB `users` query.
+      2. Billable rate set: `POST /api/time/rate/set` -> stored in append-only `billable_rates` table, verified via direct DB SELECT.
+      3. Timer start: `POST /api/time/timer/start` -> lock stored in `active_timers`, verified via direct DB SELECT.
+      4. Concurrent timer block: Second timer start for same user rejected with `409 Conflict`.
+      5. Timer stop: `POST /api/time/timer/stop` -> server computes duration and billable amount, releases `active_timers` lock, appends 5 audit rows to `time_entry_history`.
+      6. Manual entry: `POST /api/time/entry/create` -> overlap detected returning `409 Conflict`, invalid `source_ref_type` rejected returning `400 Bad Request`, valid entry snapshots rate into `time_entries`.
+      7. Rate snapshot immutability: New rate registered via `POST /api/time/rate/set` -> prior entry's snapshotted rate remains strictly unchanged in DB.
+      8. 24hr edit window: Fresh manual entry edited by member (`200 OK`), member edit on timer-stopped entry rejected (`403 Forbidden`), stale manual entry edit rejected (`403 Forbidden`), Admin overrides both (`200 OK`), all field edits audited in `time_entry_history`.
+      9. Soft delete: Admin soft-deletes entry (`status = 'DELETED'`), verified row preserved in DB, referential integrity intact (`PRAGMA foreign_keys = 1`), excluded from `GET /api/time/entries/my`.
+      10. Approval workflow: Member submits own entry (`201 Created`), duplicate submission returns `409 Conflict`, cross-member submission returns `403 Forbidden`, Admin rejection with short note (<10 chars) returns `400 Bad Request`, valid rejection (`200 OK`) blocks resubmission (`400 Bad Request`), Admin approval (`200 OK`) updates status and logs `TIME_ENTRY_APPROVED` to `access_log`.
+      11. Team report aggregate: Member access blocked (`403 Forbidden`), Admin access succeeds (`200 OK`), mathematical validation of billable/non-billable hours and amounts, verified `DELETED` entries excluded.
+      12. Report snapshot: Admin freezes team report via `POST /api/time/report/snapshot`, stored in append-only `time_report_snapshots`, `prevent_time_report_snapshot_update` trigger blocks UPDATE, `prevent_time_report_snapshot_delete` trigger blocks DELETE.
+      13. CSV export: `GET /api/time/report/export/:projectId` returns `Content-Type: text/csv` with RFC 4180 headers, records `TIME_REPORT_EXPORT` with project target in `access_log`.
+      14. Frontend security audit: Audited all 4 HTML views (`my-time-tracker.html`, `team-time-report.html`, `time-approval-queue.html`, `billable-rates.html`) confirming zero hardcoded credentials, dynamic localStorage token usage, universal `escapeHTML()` sanitization, and server-side role verification.
+      15. Dangling timer auto-close cron: Verified unstopped active timer from previous day is auto-closed at 23:59:59 with accurate computed duration and `active_timers` lock cleanly removed.
+    - Comprehensive Verification: `scripts/verify-prd22-integration.js` -> **88 / 88 PASS (100%)**.
+    - Full PRD 22 Platform Totals: **551 / 551 PASS (100%)** across Layers 1, 2, 3, 4, 5 & 6.
+    - Full Platform Regression: `npm test` -> **13 / 13 test suites PASS (100%)**.
+    - Definition of Done: All 17 items in `docs/22_TIME_TRACKING.md` verified and marked `[x]`.
+
+
+

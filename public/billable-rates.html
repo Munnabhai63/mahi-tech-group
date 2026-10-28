@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billable Rates Management — Mahi Tech Group</title>
+  <meta name="description" content="Admin billable rates governance, member default rates, project-level overrides, and immutable historical rate audit trails.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-accent: #818cf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #1e293b;
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      border: 1px solid var(--border-card);
+      font-size: 0.82rem;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #090d16;
+      border: none;
+      padding: 0.55rem 1.15rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #7dd3fc;
+    }
+
+    /* Main Container */
+    .app-main {
+      flex: 1;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+    }
+
+    /* Access Denied */
+    .access-denied-card {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 10px;
+      padding: 2.5rem;
+      text-align: center;
+      color: #f87171;
+    }
+
+    /* Card Panels */
+    .card-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.5rem;
+    }
+
+    .card-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .card-panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    /* Policy Banner */
+    .policy-banner {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Data Table */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    .data-table th {
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-card);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+    }
+
+    .data-table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      vertical-align: middle;
+    }
+
+    .data-table tr:hover {
+      background: rgba(30, 41, 59, 0.4);
+    }
+
+    /* Accordion */
+    .accordion-item {
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+      background: var(--bg-surface);
+    }
+
+    .accordion-header {
+      padding: 1rem 1.25rem;
+      background: var(--bg-card);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      transition: background 0.2s;
+    }
+
+    .accordion-header:hover {
+      background: #253349;
+    }
+
+    .accordion-body {
+      padding: 1.25rem;
+      display: none;
+      background: #0d1424;
+      border-top: 1px solid var(--border-card);
+    }
+
+    .accordion-item.active .accordion-body {
+      display: block;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-info {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .badge-muted {
+      background: rgba(148, 163, 184, 0.15);
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      animation: modalFadeIn 0.2s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      background: var(--bg-card);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .form-input, .form-select {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.55rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: var(--color-primary);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      z-index: 150;
+    }
+
+    .toast.show {
+      display: flex;
+      animation: slideInUp 0.3s ease-out;
+    }
+
+    @keyframes slideInUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/legacy-dashboard.html" class="brand-title">
+        <span>⏱️</span> MAHI TIME
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <span>Billable Rates Management</span>
+      </div>
+      <nav class="nav-links-sub">
+        <a href="/my-time-tracker.html" class="nav-link-sub">My Tracker</a>
+        <a href="/team-time-report.html" class="nav-link-sub">Team Report</a>
+        <a href="/time-approval-queue.html" class="nav-link-sub">Approval Queue</a>
+        <a href="/billable-rates.html" class="nav-link-sub active">Billable Rates</a>
+        <a href="/workload-dashboard.html" class="nav-link-sub">Workload</a>
+        <a href="/gantt-chart.html" class="nav-link-sub">Gantt</a>
+      </nav>
+    </div>
+
+    <div class="nav-actions">
+      <div class="user-badge">
+        <span>👤</span>
+        <span id="userName">Loading...</span>
+        <span class="badge badge-info" id="userRoleBadge">ADMIN</span>
+      </div>
+      <button type="button" class="btn-nav" id="btnLogout">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="app-main">
+
+    <!-- Access Denied Banner -->
+    <div id="accessDeniedBanner" class="access-denied-card" style="display: none;">
+      <h2>🔒 Admin Access Required</h2>
+      <p>Billable rate configuration and financial policies can only be managed by Administrators.</p>
+      <div style="margin-top: 1.5rem;">
+        <a href="/my-time-tracker.html" class="btn-primary">Return to My Time Tracker</a>
+      </div>
+    </div>
+
+    <!-- Admin Workspace -->
+    <div id="adminRatesWorkspace" style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+      <!-- POLICY BANNER -->
+      <section class="policy-banner">
+        <strong>⚖️ Rate Resolution & Immutability Rules:</strong> When a timer or manual entry is closed, the system resolves hourly rate via strict priority:
+        <code>PROJECT_OVERRIDE</code> (highest) &rarr; <code>MEMBER_DEFAULT</code> &rarr; <code>0</code> (fallback).
+        All rate changes are <strong>append-only</strong> in <code>billable_rates</code>. SQLite database triggers strictly block <code>UPDATE</code> and <code>DELETE</code> operations, ensuring immutable billing governance.
+      </section>
+
+      <!-- SECTION 1: Member Default Rates -->
+      <section class="card-panel" id="memberRatesSection">
+        <div class="card-panel-header">
+          <div class="card-panel-title">
+            <span>👤</span> Member Default Rates
+          </div>
+          <button type="button" class="btn-primary" id="btnOpenMemberRateModal">
+            <span>+</span> Set Member Default Rate
+          </button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="data-table" id="memberRatesTable">
+            <thead>
+              <tr>
+                <th>Member Name</th>
+                <th>Role</th>
+                <th>Current Default Rate (₹/hr)</th>
+                <th>Currency</th>
+                <th>Effective From</th>
+                <th>Set By</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="memberRatesTableBody">
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem 0;">
+                  Loading member rates...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 2: Project Override Rates -->
+      <section class="card-panel" id="projectOverridesSection">
+        <div class="card-panel-header">
+          <div class="card-panel-title">
+            <span>💼</span> Project-Specific Rate Overrides
+          </div>
+          <button type="button" class="btn-primary" id="btnOpenProjectOverrideModal">
+            <span>+</span> Add Project Override
+          </button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="data-table" id="projectOverridesTable">
+            <thead>
+              <tr>
+                <th>Project Title</th>
+                <th>Member Name</th>
+                <th>Override Rate (₹/hr)</th>
+                <th>Currency</th>
+                <th>Effective From</th>
+                <th>Set By</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="projectOverridesTableBody">
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem 0;">
+                  Loading project overrides...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 3: Rate History Accordion per Member -->
+      <section class="card-panel" id="rateHistorySection">
+        <div class="card-panel-header">
+          <div class="card-panel-title">
+            <span>📜</span> Member Rate Audit History (Accordion)
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">
+            Click on any member to inspect their complete append-only rate history
+          </div>
+        </div>
+
+        <div id="rateAccordionContainer">
+          <div style="text-align: center; color: var(--text-muted); padding: 2rem 0;">
+            Loading rate histories...
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL: Set / Update Billable Rate -->
+  <div class="modal-overlay" id="rateModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="rateModalTitle">Set Billable Rate</h3>
+        <button type="button" class="btn-nav" id="btnCloseRateModal" style="padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+      <form id="rateForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="rateUserSelect">Team Member *</label>
+            <select id="rateUserSelect" class="form-select" required>
+              <option value="">Select a Member...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="rateTypeSelect">Rate Scope *</label>
+            <select id="rateTypeSelect" class="form-select" required>
+              <option value="MEMBER_DEFAULT">Member Default (Applies to all projects)</option>
+              <option value="PROJECT_OVERRIDE">Project Override (Priority over default)</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="groupProjectSelect" style="display: none;">
+            <label class="form-label" for="rateProjectSelect">Project *</label>
+            <select id="rateProjectSelect" class="form-select">
+              <option value="">Select a Project...</option>
+            </select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="rateHourlyInput">Hourly Rate * (₹)</label>
+              <input type="number" id="rateHourlyInput" class="form-input" min="0" step="50" placeholder="e.g. 1500" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="rateCurrencySelect">Currency</label>
+              <select id="rateCurrencySelect" class="form-select">
+                <option value="INR">INR (₹)</option>
+                <option value="USD">USD ($)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="rateEffectiveDate">Effective From Date *</label>
+            <input type="date" id="rateEffectiveDate" class="form-input" required>
+          </div>
+
+          <div style="font-size: 0.75rem; color: var(--text-muted);">
+            ℹ️ Submitting inserts a new append-only row. Existing historical time entries retain the rate snapshot stored when they were closed.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-nav" id="btnCancelRateModal">Cancel</button>
+          <button type="submit" class="btn-primary" id="btnSubmitRate">Record Rate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toastNotification" role="alert" aria-live="polite">
+    <span id="toastIcon">ℹ️</span>
+    <span id="toastMessage">Notification</span>
+  </div>
+
+  <script>
+    // Pure Security Utility — escapeHTML against XSS
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Auth & App State
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/app.html#/login';
+    }
+
+    const state = {
+      token,
+      currentUser: null,
+      users: [],
+      projects: [],
+      memberRates: {},
+      projectOverrides: []
+    };
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toastNotification');
+      const icon = document.getElementById('toastIcon');
+      const message = document.getElementById('toastMessage');
+      if (!toast) return;
+
+      message.textContent = msg;
+      if (type === 'success') {
+        icon.textContent = '✅';
+        toast.style.borderColor = '#10b981';
+      } else if (type === 'error') {
+        icon.textContent = '⚠️';
+        toast.style.borderColor = '#ef4444';
+      } else {
+        icon.textContent = 'ℹ️';
+        toast.style.borderColor = '#38bdf8';
+      }
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3500);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      };
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, opts);
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Unauthorized');
+      }
+
+      let data = null;
+      try { data = await res.json(); } catch(e) {}
+
+      if (!res.ok) {
+        const err = new Error(data?.error || data?.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    // App Initialization
+    async function initApp() {
+      try {
+        state.currentUser = await apiRequest('/api/users/me');
+        document.getElementById('userName').textContent = state.currentUser.name || state.currentUser.email;
+
+        // Role verification (Admin only)
+        if (state.currentUser.role !== 'admin') {
+          document.getElementById('accessDeniedBanner').style.display = 'block';
+          document.getElementById('adminRatesWorkspace').style.display = 'none';
+          return;
+        }
+
+        // Set default effective date to today
+        document.getElementById('rateEffectiveDate').value = new Date().toISOString().split('T')[0];
+
+        // Load users and projects
+        await loadMetadata();
+
+        // Load billable rates
+        await loadRatesTables();
+
+      } catch (err) {
+        console.error('Failed to init Rates Management:', err);
+        showToast(err.message || 'Initialization failed', 'error');
+      }
+    }
+
+    async function loadMetadata() {
+      try {
+        const [usersData, projectsData] = await Promise.all([
+          apiRequest('/api/users'),
+          apiRequest('/api/projects')
+        ]);
+        state.users = usersData || [];
+        state.projects = projectsData || [];
+
+        // Populate modal selects
+        const userSelect = document.getElementById('rateUserSelect');
+        userSelect.innerHTML = '<option value="">Select a Member...</option>' + 
+          state.users.map(u => `<option value="${escapeHTML(u.id)}">${escapeHTML(u.name || u.email)} (${escapeHTML(u.role || 'member')})</option>`).join('');
+
+        const projSelect = document.getElementById('rateProjectSelect');
+        projSelect.innerHTML = '<option value="">Select a Project...</option>' + 
+          state.projects.map(p => `<option value="${escapeHTML(p.id)}">${escapeHTML(p.title || p.name || p.id)}</option>`).join('');
+
+      } catch (err) {
+        console.warn('Metadata load error:', err);
+      }
+    }
+
+    // Load All Member Rates & Overrides
+    async function loadRatesTables() {
+      const memberTbody = document.getElementById('memberRatesTableBody');
+      const overrideTbody = document.getElementById('projectOverridesTableBody');
+      const accordionWrap = document.getElementById('rateAccordionContainer');
+
+      try {
+        // Query rates for all members
+        const histories = await Promise.all(
+          state.users.map(u => apiRequest(`/api/time/rate/member/${u.id}`).catch(() => []))
+        );
+
+        let defaultRows = [];
+        let overrideRows = [];
+        let accordionHtml = [];
+
+        state.users.forEach((user, idx) => {
+          const userRates = histories[idx] || [];
+
+          // Find current default rate (latest MEMBER_DEFAULT effective <= today)
+          const defaultRate = userRates.find(r => r.rate_type === 'MEMBER_DEFAULT');
+
+          defaultRows.push(`
+            <tr data-user-id="${escapeHTML(user.id)}">
+              <td style="font-weight: 700;">
+                ${escapeHTML(user.name || user.email)}
+                <div style="font-size: 0.72rem; color: var(--text-muted);">${escapeHTML(user.email || '')}</div>
+              </td>
+              <td><span class="badge badge-info">${escapeHTML(user.role || 'MEMBER')}</span></td>
+              <td style="font-size: 1rem; font-weight: 700; color: var(--color-success);">
+                ${defaultRate ? `₹${Number(defaultRate.hourly_rate).toLocaleString('en-IN')}` : '<span style="color: var(--text-muted); font-size: 0.85rem;">Not Set (₹0)</span>'}
+              </td>
+              <td>${defaultRate ? escapeHTML(defaultRate.currency || 'INR') : 'INR'}</td>
+              <td>${defaultRate ? escapeHTML(defaultRate.effective_from) : '—'}</td>
+              <td>${defaultRate ? `User #${defaultRate.created_by}` : '—'}</td>
+              <td style="text-align: right;">
+                <button type="button" class="btn-nav btn-set-member-rate" data-user-id="${escapeHTML(user.id)}" data-rate="${defaultRate ? defaultRate.hourly_rate : ''}" style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">
+                  Update Rate
+                </button>
+              </td>
+            </tr>
+          `);
+
+          // Collect project overrides
+          const overrides = userRates.filter(r => r.rate_type === 'PROJECT_OVERRIDE');
+          overrides.forEach(ov => {
+            const proj = state.projects.find(p => String(p.id) === String(ov.project_id));
+            overrideRows.push(`
+              <tr>
+                <td style="font-weight: 700; color: var(--color-primary);">${escapeHTML(proj ? (proj.title || proj.name) : ov.project_id)}</td>
+                <td>${escapeHTML(user.name || user.email)}</td>
+                <td style="font-weight: 700; color: var(--color-success);">₹${Number(ov.hourly_rate).toLocaleString('en-IN')}</td>
+                <td>${escapeHTML(ov.currency || 'INR')}</td>
+                <td>${escapeHTML(ov.effective_from)}</td>
+                <td>User #${ov.created_by}</td>
+                <td><span class="badge badge-success">ACTIVE OVERRIDE</span></td>
+              </tr>
+            `);
+          });
+
+          // Accordion Item
+          accordionHtml.push(`
+            <div class="accordion-item" id="accItem-${user.id}">
+              <div class="accordion-header" data-user-id="${user.id}">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <span style="font-weight: 700;">${escapeHTML(user.name || user.email)}</span>
+                  <span class="badge badge-info">${escapeHTML(user.role || 'MEMBER')}</span>
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">
+                    Default: <strong>₹${defaultRate ? Number(defaultRate.hourly_rate).toLocaleString('en-IN') : 0}/hr</strong>
+                  </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--color-primary);">
+                  <span>${userRates.length} records</span>
+                  <span class="acc-chevron">&darr;</span>
+                </div>
+              </div>
+              <div class="accordion-body">
+                ${userRates.length === 0 ? '<div style="color: var(--text-muted); font-size: 0.82rem;">No rate history records recorded for this member.</div>' : `
+                  <table class="data-table" style="font-size: 0.8rem;">
+                    <thead>
+                      <tr>
+                        <th>Scope</th>
+                        <th>Project</th>
+                        <th>Hourly Rate</th>
+                        <th>Currency</th>
+                        <th>Effective From</th>
+                        <th>Created At</th>
+                        <th>Set By</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${userRates.map(r => `
+                        <tr>
+                          <td>
+                            <span class="badge ${r.rate_type === 'PROJECT_OVERRIDE' ? 'badge-primary' : 'badge-info'}">
+                              ${escapeHTML(r.rate_type)}
+                            </span>
+                          </td>
+                          <td>${r.project_id ? escapeHTML(r.project_id) : '— (All Projects)'}</td>
+                          <td style="font-weight: 700; color: var(--color-success);">₹${Number(r.hourly_rate).toLocaleString('en-IN')}</td>
+                          <td>${escapeHTML(r.currency || 'INR')}</td>
+                          <td>${escapeHTML(r.effective_from)}</td>
+                          <td>${new Date(r.created_at).toLocaleString()}</td>
+                          <td>User #${r.created_by}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                `}
+              </div>
+            </div>
+          `);
+        });
+
+        memberTbody.innerHTML = defaultRows.join('');
+        overrideTbody.innerHTML = overrideRows.length ? overrideRows.join('') : '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">No project-specific overrides configured.</td></tr>';
+        accordionWrap.innerHTML = accordionHtml.join('');
+
+        // Bind Set Member Rate buttons
+        document.querySelectorAll('.btn-set-member-rate').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const userId = btn.getAttribute('data-user-id');
+            const rate = btn.getAttribute('data-rate');
+            openRateModal('MEMBER_DEFAULT', userId, null, rate);
+          });
+        });
+
+        // Bind Accordion toggles
+        document.querySelectorAll('.accordion-header').forEach(hdr => {
+          hdr.addEventListener('click', () => {
+            const item = hdr.closest('.accordion-item');
+            item.classList.toggle('active');
+          });
+        });
+
+      } catch (err) {
+        console.error('Failed loading rates tables:', err);
+        memberTbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ef4444; padding: 1.5rem 0;">Failed to load rates: ${escapeHTML(err.message)}</td></tr>`;
+      }
+    }
+
+    // Modal Handlers
+    const rateModal = document.getElementById('rateModal');
+    const rateTypeSelect = document.getElementById('rateTypeSelect');
+    const groupProjectSelect = document.getElementById('groupProjectSelect');
+
+    rateTypeSelect.addEventListener('change', () => {
+      if (rateTypeSelect.value === 'PROJECT_OVERRIDE') {
+        groupProjectSelect.style.display = 'flex';
+        document.getElementById('rateProjectSelect').required = true;
+      } else {
+        groupProjectSelect.style.display = 'none';
+        document.getElementById('rateProjectSelect').required = false;
+      }
+    });
+
+    function openRateModal(rateType = 'MEMBER_DEFAULT', userId = null, projectId = null, currentRate = null) {
+      document.getElementById('rateModalTitle').textContent = rateType === 'PROJECT_OVERRIDE' ? 'Add Project Override Rate' : 'Set Member Default Rate';
+      rateTypeSelect.value = rateType;
+
+      if (rateType === 'PROJECT_OVERRIDE') {
+        groupProjectSelect.style.display = 'flex';
+        document.getElementById('rateProjectSelect').required = true;
+      } else {
+        groupProjectSelect.style.display = 'none';
+        document.getElementById('rateProjectSelect').required = false;
+      }
+
+      if (userId) document.getElementById('rateUserSelect').value = userId;
+      if (projectId) document.getElementById('rateProjectSelect').value = projectId;
+      if (currentRate) document.getElementById('rateHourlyInput').value = currentRate;
+
+      rateModal.classList.add('active');
+    }
+
+    document.getElementById('btnOpenMemberRateModal').addEventListener('click', () => openRateModal('MEMBER_DEFAULT'));
+    document.getElementById('btnOpenProjectOverrideModal').addEventListener('click', () => openRateModal('PROJECT_OVERRIDE'));
+
+    document.getElementById('btnCloseRateModal').addEventListener('click', () => rateModal.classList.remove('active'));
+    document.getElementById('btnCancelRateModal').addEventListener('click', () => rateModal.classList.remove('active'));
+
+    document.getElementById('rateForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const user_id = document.getElementById('rateUserSelect').value;
+      const rate_type = rateTypeSelect.value;
+      const project_id = rate_type === 'PROJECT_OVERRIDE' ? document.getElementById('rateProjectSelect').value : null;
+      const hourly_rate = parseFloat(document.getElementById('rateHourlyInput').value);
+      const currency = document.getElementById('rateCurrencySelect').value;
+      const effective_from = document.getElementById('rateEffectiveDate').value;
+
+      if (!user_id || isNaN(hourly_rate) || hourly_rate < 0 || !effective_from) {
+        showToast('Please fill all required rate fields with valid values', 'error');
+        return;
+      }
+
+      if (rate_type === 'PROJECT_OVERRIDE' && !project_id) {
+        showToast('Please select a project for project override rate', 'error');
+        return;
+      }
+
+      try {
+        await apiRequest('/api/time/rate/set', 'POST', {
+          user_id,
+          rate_type,
+          project_id,
+          hourly_rate,
+          currency,
+          effective_from
+        });
+        showToast('Billable rate recorded in append-only history!', 'success');
+        rateModal.classList.remove('active');
+        document.getElementById('rateHourlyInput').value = '';
+        await loadRatesTables();
+      } catch (err) {
+        showToast(err.message || 'Failed to record billable rate', 'error');
+      }
+    });
+
+    // Sign Out
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = '/app.html#/login';
+    });
+
+    // Launch
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>

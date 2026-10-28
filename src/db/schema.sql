@@ -1420,3 +1420,126 @@ BEGIN SELECT RAISE(ABORT, 'workload_snapshots is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS prevent_workload_alert_delete
 BEFORE DELETE ON workload_alerts
 BEGIN SELECT RAISE(ABORT, 'workload_alerts is append-only'); END;
+
+-- PRD 22: Time Tracking Tables & Triggers
+CREATE TABLE IF NOT EXISTS time_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  source_type TEXT DEFAULT 'MANUAL',
+  source_ref_type TEXT,
+  source_ref_id INTEGER,
+  description TEXT,
+  start_time TEXT NOT NULL,
+  end_time TEXT,
+  duration_minutes INTEGER,
+  is_billable INTEGER NOT NULL DEFAULT 0,
+  billable_rate REAL DEFAULT 0.0,
+  billable_amount REAL DEFAULT 0.0,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  approved_by INTEGER REFERENCES users(id),
+  approved_at TEXT,
+  rejection_reason TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS time_entry_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES time_entries(id),
+  changed_by INTEGER NOT NULL REFERENCES users(id),
+  field_changed TEXT NOT NULL,
+  old_value TEXT,
+  new_value TEXT,
+  changed_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS billable_rates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  rate_type TEXT NOT NULL,
+  user_id INTEGER REFERENCES users(id),
+  project_id INTEGER REFERENCES projects(id),
+  rate_per_hour REAL NOT NULL DEFAULT 0.0,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  effective_from TEXT NOT NULL,
+  effective_to TEXT,
+  set_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS active_timers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL UNIQUE,
+  time_entry_id INTEGER NOT NULL REFERENCES time_entries(id),
+  started_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS time_approval_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES time_entries(id),
+  requested_by INTEGER NOT NULL REFERENCES users(id),
+  requested_at TEXT DEFAULT (datetime('now')),
+  reviewed_by INTEGER REFERENCES users(id),
+  reviewed_at TEXT,
+  decision TEXT,
+  decision_note TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS time_report_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER REFERENCES projects(id),
+  report_type TEXT NOT NULL,
+  period_start TEXT NOT NULL,
+  period_end TEXT NOT NULL,
+  snapshot_data TEXT NOT NULL,
+  taken_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_project ON time_entries(project_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_status ON time_entries(status);
+CREATE INDEX IF NOT EXISTS idx_time_entries_start_time ON time_entries(start_time);
+CREATE INDEX IF NOT EXISTS idx_time_entries_source_ref ON time_entries(source_ref_type, source_ref_id);
+CREATE INDEX IF NOT EXISTS idx_time_entry_history_entry ON time_entry_history(entry_id);
+CREATE INDEX IF NOT EXISTS idx_billable_rates_user ON billable_rates(user_id);
+CREATE INDEX IF NOT EXISTS idx_billable_rates_project ON billable_rates(project_id);
+CREATE INDEX IF NOT EXISTS idx_billable_rates_effective ON billable_rates(effective_from);
+CREATE INDEX IF NOT EXISTS idx_active_timers_user ON active_timers(user_id);
+CREATE INDEX IF NOT EXISTS idx_time_approval_requests_entry ON time_approval_requests(entry_id);
+CREATE INDEX IF NOT EXISTS idx_time_approval_requests_status ON time_approval_requests(decision);
+CREATE INDEX IF NOT EXISTS idx_time_report_snapshots_project ON time_report_snapshots(project_id);
+
+CREATE TRIGGER IF NOT EXISTS prevent_time_history_update
+BEFORE UPDATE ON time_entry_history
+BEGIN SELECT RAISE(ABORT, 'time_entry_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_time_history_delete
+BEFORE DELETE ON time_entry_history
+BEGIN SELECT RAISE(ABORT, 'time_entry_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_billable_rate_update
+BEFORE UPDATE ON billable_rates
+BEGIN SELECT RAISE(ABORT, 'billable_rates is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_billable_rate_delete
+BEFORE DELETE ON billable_rates
+BEGIN SELECT RAISE(ABORT, 'billable_rates is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_approval_request_update
+BEFORE UPDATE ON time_approval_requests
+BEGIN SELECT RAISE(ABORT, 'time_approval_requests is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_approval_request_delete
+BEFORE DELETE ON time_approval_requests
+BEGIN SELECT RAISE(ABORT, 'time_approval_requests is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_time_report_snapshot_update
+BEFORE UPDATE ON time_report_snapshots
+BEGIN SELECT RAISE(ABORT, 'time_report_snapshots is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_time_report_snapshot_delete
+BEFORE DELETE ON time_report_snapshots
+BEGIN SELECT RAISE(ABORT, 'time_report_snapshots is append-only'); END;
+
