@@ -1543,3 +1543,114 @@ CREATE TRIGGER IF NOT EXISTS prevent_time_report_snapshot_delete
 BEFORE DELETE ON time_report_snapshots
 BEGIN SELECT RAISE(ABORT, 'time_report_snapshots is append-only'); END;
 
+-- PRD 23: Analytics & KPI Dashboard
+CREATE TABLE IF NOT EXISTS kpi_definitions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  data_source TEXT NOT NULL,
+  metric_type TEXT NOT NULL,
+  calculation_query TEXT NOT NULL,
+  unit TEXT,
+  target_value REAL,
+  alert_threshold_low REAL,
+  alert_threshold_high REAL,
+  refresh_interval_minutes INTEGER DEFAULT 60,
+  is_active INTEGER DEFAULT 1,
+  is_built_in INTEGER DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS kpi_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kpi_id INTEGER NOT NULL REFERENCES kpi_definitions(id),
+  value REAL NOT NULL,
+  period_label TEXT,
+  snapshotted_at TEXT DEFAULT (datetime('now')),
+  calculation_metadata TEXT
+);
+
+CREATE TABLE IF NOT EXISTS analytics_dashboards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  owner_id INTEGER NOT NULL REFERENCES users(id),
+  scope TEXT NOT NULL DEFAULT 'PERSONAL',
+  is_default INTEGER DEFAULT 0,
+  layout TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS dashboard_widgets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  dashboard_id INTEGER NOT NULL REFERENCES analytics_dashboards(id),
+  kpi_id INTEGER REFERENCES kpi_definitions(id),
+  widget_type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  config TEXT,
+  position_x INTEGER DEFAULT 0,
+  position_y INTEGER DEFAULT 0,
+  width INTEGER DEFAULT 2,
+  height INTEGER DEFAULT 2,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS kpi_alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kpi_id INTEGER NOT NULL REFERENCES kpi_definitions(id),
+  alert_type TEXT NOT NULL,
+  triggered_value REAL NOT NULL,
+  threshold_value REAL NOT NULL,
+  message TEXT NOT NULL,
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS analytics_report_exports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  exported_by INTEGER NOT NULL REFERENCES users(id),
+  report_type TEXT NOT NULL,
+  filters TEXT,
+  export_format TEXT NOT NULL DEFAULT 'JSON',
+  row_count INTEGER,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_kpi_definitions_data_source ON kpi_definitions(data_source);
+CREATE INDEX IF NOT EXISTS idx_kpi_definitions_is_active ON kpi_definitions(is_active);
+CREATE INDEX IF NOT EXISTS idx_kpi_snapshots_kpi_id ON kpi_snapshots(kpi_id);
+CREATE INDEX IF NOT EXISTS idx_kpi_snapshots_snapshotted_at ON kpi_snapshots(snapshotted_at);
+CREATE INDEX IF NOT EXISTS idx_analytics_dashboards_owner ON analytics_dashboards(owner_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_dashboards_scope ON analytics_dashboards(scope);
+CREATE INDEX IF NOT EXISTS idx_dashboard_widgets_dashboard ON dashboard_widgets(dashboard_id);
+CREATE INDEX IF NOT EXISTS idx_dashboard_widgets_kpi ON dashboard_widgets(kpi_id);
+CREATE INDEX IF NOT EXISTS idx_kpi_alerts_kpi_id ON kpi_alerts(kpi_id);
+CREATE INDEX IF NOT EXISTS idx_kpi_alerts_acknowledged ON kpi_alerts(acknowledged_by);
+CREATE INDEX IF NOT EXISTS idx_analytics_report_exports_user ON analytics_report_exports(exported_by);
+
+CREATE TRIGGER IF NOT EXISTS prevent_kpi_snapshot_update
+BEFORE UPDATE ON kpi_snapshots
+BEGIN SELECT RAISE(ABORT, 'kpi_snapshots is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_kpi_snapshot_delete
+BEFORE DELETE ON kpi_snapshots
+BEGIN SELECT RAISE(ABORT, 'kpi_snapshots is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_kpi_alert_delete
+BEFORE DELETE ON kpi_alerts
+BEGIN SELECT RAISE(ABORT, 'kpi_alerts is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_analytics_export_update
+BEFORE UPDATE ON analytics_report_exports
+BEGIN SELECT RAISE(ABORT, 'analytics_report_exports is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_analytics_export_delete
+BEFORE DELETE ON analytics_report_exports
+BEGIN SELECT RAISE(ABORT, 'analytics_report_exports is append-only'); END;
+
+

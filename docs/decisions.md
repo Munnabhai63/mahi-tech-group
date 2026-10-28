@@ -453,3 +453,162 @@
      - Confirmed all 6 PRD 22 database tables, 8 append-only SQLite triggers, 21 HTTP endpoints, and 4 frontend views meet every single item on the Definition of Done checklist.
 - **Consequences**: PRD 22 is 100% complete, fully verified end-to-end with 551 total passing PRD 22 assertions (100 in Layer 1, 59 in Layer 2, 56 in Layer 3, 85 in Layer 4, 163 in Layer 5, 88 in Layer 6) and 13/13 core platform test suites passing with zero regressions.
 
+## Decision 23-A: PRD 23 Layer 1 Database Schema, Immutability Triggers & Seed Engine
+- **Context**: PRD 23 mandates the Analytics & KPI Dashboard system with support for custom KPI definitions across 8 platform data sources (Sprint, OKR, Time Tracking, Workload, Pipeline, Revenue, GitHub, Custom), periodic immutable snapshots, personal/team/company dashboards with customizable widget layouts, automated KPI threshold alerting, and audit-logged report exports.
+- **Decision**:
+  1. **6 Core Tables Implemented in SQLite (`PRAGMA foreign_keys = ON;`, `journal_mode = WAL`, `busy_timeout = 5000`)**:
+     - `kpi_definitions`: Core KPI registry storing name, data source, metric type, structured JSON `calculation_query`, unit, target, alert thresholds, and refresh interval ($\ge 15$ mins).
+     - `kpi_snapshots`: Append-only periodic time-series records of calculated KPI values and metadata.
+     - `analytics_dashboards`: Dashboard definitions scoped by `PERSONAL`, `TEAM`, or `COMPANY` with JSON layout configurations.
+     - `dashboard_widgets`: Individual configurable cards and charts linked to dashboards and optional KPIs with 12-column grid placement coordinates.
+     - `kpi_alerts`: Threshold breach event records with mutable acknowledgment fields (`acknowledged_by`, `acknowledged_at`).
+     - `analytics_report_exports`: Append-only audit records of generated analytics exports (JSON/CSV).
+  2. **5 Append-Only Immutability Triggers**:
+     - `prevent_kpi_snapshot_update` & `prevent_kpi_snapshot_delete` block modification or deletion of historical KPI snapshot records.
+     - `prevent_kpi_alert_delete` blocks deletion of alert records while preserving acknowledgment updates.
+     - `prevent_analytics_export_update` & `prevent_analytics_export_delete` block tampering with the export audit trail.
+  3. **10 Built-In Seeded KPI Definitions**:
+     - Seeded 10 platform KPIs automatically via `seedBuiltInKpis()`: Sprint Velocity, Sprint Completion Rate, OKR Progress (Company Level), Team Utilization, Billable Hours This Month, Pipeline Completion Rate, GitHub PR Merge Rate, Revenue This Month, Active Backlog Items, and Overloaded Members.
+     - Idempotent execution ensuring seeded definitions cannot be duplicated.
+- **Consequences**: Verified by 175/175 passing tests in `scripts/verify-prd23-layer1.js` and 13/13 passing core platform test suites.
+
+## Decision 23-B: PRD 23 Layer 2 KPI Engine, Snapshots, Alert Automation & Route Governance
+- **Context**: PRD 23 Layer 2 specifies the KPI calculation engine, append-only snapshot engine, threshold-breach alert auto-generation, seed KPI protection, background cron refresh, and 6 KPI REST endpoints (`POST /api/analytics/kpi/create`, `GET /api/analytics/kpis`, `GET /api/analytics/kpi/:kpiId`, `PATCH /api/analytics/kpi/:kpiId`, `DELETE /api/analytics/kpi/:kpiId`, `POST /api/analytics/kpi/:kpiId/refresh`).
+- **Decision**:
+  1. **Safe Server-Side KPI Calculation Engine (`calculateKpiValue`)**:
+     - Strict whitelist of 18 allowed system tables (`time_entries`, `sprints`, `backlog_items`, `sprint_velocity_log`, `okr_objectives`, `okr_key_results`, `workload_snapshots`, `workload_assignments`, `workload_alerts`, `member_capacity`, `pipeline_deliverables`, `pipeline_checklist_points`, `github_webhook_log`, `revenue_events`, `revenue_splits`, `ideas`, `votes`, `users`).
+     - Parses `calculation_query` JSON specifications into parameterized SQLite queries — never concatenates or executes arbitrary SQL from client or database.
+     - Supports validated aggregation types: `SUM`, `COUNT`, `AVERAGE`, `PERCENTAGE`, `LATEST`, and `RATIO`.
+     - Graceful fallback for empty or inactive external integrations (e.g. GitHub returns `0.0` without throwing or crashing).
+     - Dedicated calculation handlers for all 10 built-in KPIs with real SQL joins across sprints, velocity logs, OKRs, workload calculations, billable time entries, pipeline checklists, and revenue transactions.
+  2. **Append-Only Snapshot Engine (`refreshKpi`)**:
+     - Every refresh execution computes the metric server-side and executes an append-only `INSERT INTO kpi_snapshots (kpi_id, value, period_label, calculation_metadata, snapshotted_at)`.
+     - Never updates an existing snapshot (enforced by DB trigger `prevent_kpi_snapshot_update`).
+  3. **Alert Auto-Generation & Deduplication (`checkAndGenerateKpiAlert`)**:
+     - Compares snapshot value against `alert_threshold_low` and `alert_threshold_high`.
+     - Generates `BELOW_THRESHOLD` or `ABOVE_THRESHOLD` alerts when limits are breached.
+     - Implements deduplication check (`WHERE kpi_id = ? AND alert_type = ? AND acknowledged_at IS NULL LIMIT 1`) to prevent duplicate spam alert creation while an unacknowledged alert is open.
+  4. **Seeded KPI Protection & Delete Integrity (`deleteKpiDefinition`)**:
+     - Blocks deletion of seeded built-in KPIs (`is_built_in = 1` or IDs 1-10) with `400 Bad Request` ("Seeded built-in KPIs cannot be deleted. You can only deactivate them via PATCH with is_active = 0.").
+     - For non-seeded custom KPIs: if append-only snapshots or alerts exist, performs a soft-delete (`UPDATE kpi_definitions SET is_active = 0, updated_at = datetime('now')`) to preserve foreign-key integrity without violating SQLite append-only triggers. If no child records exist, hard deletes cleanly.
+  5. **Validation & Refresh Constraints**:
+     - Rejects `refresh_interval_minutes < 15` with `400 Bad Request` ("Minimum refresh interval is 15 minutes").
+     - Rejects missing names, invalid data sources, or unsupported agg types with `400 Bad Request`.
+     - Maintains `updated_at = datetime('now')` manually on all row modifications and writes audit entries to `access_log`.
+  6. **Background Cron Refresh Engine (`refreshDueKpis`)**:
+     - Scans active KPIs where `(julianday('now') - julianday(last_snapshot_at)) * 1440 >= refresh_interval_minutes`.
+     - Iteratively recalibrates values and records snapshots with full error handling and execution summaries.
+  7. **API Route Mounting & Admin+ RBAC**:
+     - Mounted on `/api/analytics` via `src/routes/analytics.routes.js`.
+     - KPI endpoints strictly enforce Admin+ authorization (`requireAdmin`), blocking unprivileged members with `403 Forbidden` and unauthenticated callers with `401 Unauthorized`.
+- **Consequences**: Layer 2 verified with 110/110 passing assertions in `scripts/verify-prd23-layer2.js`, Layer 1 maintains 175/175 passing tests, and core platform `npm test` suite passes 13/13 cleanly.
+
+## Decision 23-C: PRD 23 Layer 3 Dashboard Governance, 12-Column Grid Widget Engine & Privacy Redaction
+- **Context**: PRD 23 Layer 3 specifies the Dashboard & Widget management system (`analytics_dashboards`, `dashboard_widgets`). It requires strict role-based dashboard visibility and access control across three tiers (`PERSONAL`, `TEAM`, `COMPANY`), an enterprise 12-column responsive grid layout validation system for dashboard widgets, strict FK enforcement linking widgets to `kpi_definitions`, pre-computed snapshot querying (`ORDER BY snapshotted_at DESC, id DESC LIMIT 1`) with 30-snapshot sparkline trends, server-side data privacy sanitization preventing non-admin members from ever viewing raw individual contribution breakdowns, and protection preventing the deletion of the sole company-wide overview dashboard.
+- **Decision**:
+  1. **Strict 3-Tier Dashboard Scope Governance**:
+     - `PERSONAL`: Any authenticated user can create. Only the owner can view, edit, or delete; all other members receive `403 Forbidden`. Crucially, members can NEVER see or list another member's PERSONAL dashboard (`WHERE d.scope = 'TEAM' OR (d.scope = 'PERSONAL' AND d.owner_id = ?)`).
+     - `TEAM`: Created exclusively by Admin+ (`403 Forbidden` if member attempts creation). Visible to all authenticated team members (`GET /api/analytics/dashboards` & `GET /api/analytics/dashboard/:dashboardId`). Modifications and deletions are strictly Admin-only (`403 Forbidden` for regular members).
+     - `COMPANY`: Created, edited, deleted, and viewed exclusively by Admin+ (`403 Forbidden` for members on all operations). Completely hidden from non-admin dashboard listings.
+     - Sole Company Dashboard Defense: Attempting to delete a COMPANY dashboard when it is the only one in the system is rejected with `400 Bad Request` ("Cannot delete COMPANY scope dashboard as it is the only company dashboard").
+  2. **12-Column Grid Widget Engine (`dashboard_widgets`)**:
+     - Strict 12-column grid placement boundaries: requires `position_x >= 0`, `position_y >= 0`, `1 <= width <= 12`, `height >= 1`, and `position_x + width <= 12`. Any coordinate exceeding 12 columns per row is rejected server-side with `400 Bad Request`.
+     - Validated widget types: Strictly restricted to `NUMBER_CARD`, `BAR_CHART`, `LINE_CHART`, `PIE_CHART`, `PROGRESS_BAR`, `TABLE`, `HEATMAP`, `BURNDOWN`, `VELOCITY` (`400 Bad Request` for invalid types).
+     - FK Integrity: If `kpi_id` is supplied, existence is verified against `kpi_definitions` (`404 Not Found` if referenced KPI does not exist).
+     - Widget mutations (`createWidget`, `updateWidget`, `deleteWidget`) enforce ownership/admin permissions matching parent dashboard rules.
+  3. **Pre-computed Snapshot Engine & Trend Sparkline**:
+     - Widget data fetch never recalculates KPI metrics on the fly, eliminating computational overhead and preserving sub-millisecond response latencies.
+     - Pulls latest pre-computed snapshot directly from `kpi_snapshots` using `ORDER BY snapshotted_at DESC, id DESC LIMIT 1`.
+     - Fetches 30-point historical sparkline trend using `ORDER BY snapshotted_at DESC, id DESC LIMIT 30`.
+  4. **Server-Side Member Privacy Sanitization (`sanitizeCalculationMetadataForMember`)**:
+     - Mandatory server-side redaction strips sensitive individual member performance metrics (`members`, `memberResults`, `individual_contributions`, `member_breakdown`, `user_id`, `users`) from `calculation_metadata` whenever the viewer is not an Admin or SuperAdmin.
+  5. **Audit Logging & Manual `updated_at` Maintenance**:
+     - All mutations (`DASHBOARD_CREATED`, `DASHBOARD_UPDATED`, `DASHBOARD_DELETED`, `WIDGET_CREATED`, `WIDGET_UPDATED`, `WIDGET_DELETED`) write audit rows to `access_log`.
+     - `updated_at = datetime('now')` is updated manually in every service function that modifies a row.
+  6. **REST Endpoints Mounted on `/api/analytics`**:
+     - `POST /api/analytics/dashboard/create`
+     - `GET /api/analytics/dashboards`
+     - `GET /api/analytics/dashboard/:dashboardId`
+     - `PATCH /api/analytics/dashboard/:dashboardId`
+     - `DELETE /api/analytics/dashboard/:dashboardId`
+     - `POST /api/analytics/widget/create`
+     - `PATCH /api/analytics/widget/:widgetId`
+     - `DELETE /api/analytics/widget/:widgetId`
+- **Consequences**: Verified by 111/111 passing tests in `scripts/verify-prd23-layer3.js`, 175/175 Layer 1 tests, 110/110 Layer 2 tests, and 13/13 core platform test suites passing with zero regressions.
+
+## Decision 23-D: PRD 23 Layer 4 Report Analytics, Export Engine, Alert Governance & Snapshot History API
+- **Context**: PRD 23 Layer 4 mandates the Report Analytics endpoints (`/api/analytics/report/sprint`, `/api/analytics/report/okr`, `/api/analytics/report/time`, `/api/analytics/report/workload`, `/api/analytics/summary/company`), the dual-mode RFC 4180 Report Export Engine (`/api/analytics/report/export`), Alert Governance and Acknowledgment (`PATCH /api/analytics/alert/:alertId/acknowledge`, `GET /api/analytics/alerts`), KPI Snapshot History (`GET /api/analytics/kpi/:kpiId/snapshots`), and Seeded Built-in KPI Deactivation via `PATCH /api/analytics/kpi/:kpiId` with `is_active=0`.
+- **Decision**:
+  1. **Strict Alert Acknowledgment Workflow & Trigger Invariant Enforcement**:
+     - `acknowledgeKpiAlert`: Admin-only (`requireAdmin` / `403 Forbidden` for non-admin members).
+     - Updates `acknowledged_by = admin.id`, `acknowledged_at = datetime('now')`, and `updated_at = datetime('now')` on `kpi_alerts`.
+     - Validates that already-acknowledged alerts return `400 Bad Request` ("Alert is already acknowledged").
+     - Missing alerts return `404 Not Found`.
+     - Tested and verified that SQLite trigger `prevent_kpi_alert_delete` blocks all SQL `DELETE` attempts with `RAISE(ABORT)` while acknowledgment `UPDATE` is permitted.
+     - Logs `KPI_ALERT_ACKNOWLEDGED` to `access_log`.
+  2. **Scoped Alert Listing Governance (`getKpiAlerts`)**:
+     - Admin sees all system alerts across all scopes.
+     - Regular members only receive alerts for KPIs that are placed on dashboards accessible to them: specifically, widgets on their own `PERSONAL` dashboards or accessible `TEAM` dashboards (`WHERE w.kpi_id IS NOT NULL AND (d.scope = 'TEAM' OR (d.scope = 'PERSONAL' AND d.owner_id = ?))`).
+     - Company-scope KPI alerts are strictly hidden and redacted from non-admin members.
+  3. **Report Analytics Endpoints (Admin-Only)**:
+     - `getSprintAnalyticsReport`: Calculates average velocity, sprint comparison metrics, velocity trends across past sprints, and backlog health.
+     - `getOkrProgressReport`: Aggregates company-wide and team-level key result progress with status distributions.
+     - `getTimeAnalyticsReport`: Aggregates total hours, billable hours, billable amounts, project breakdowns, and member allocations while strictly excluding soft-deleted time entries (`status != 'DELETED'`).
+     - `getWorkloadAnalyticsReport`: Computes member utilization, overloaded member counts, and allocation status categories based on active capacity and time logs.
+     - `getCompanyKpiSummary`: Assembles executive summary cards for all 10 built-in KPIs with target comparisons, trend arrows (`UP`, `DOWN`, `FLAT`), and status indicators (`ON_TRACK`, `AT_RISK`, `CRITICAL`).
+  4. **Dual-Mode Report Export Engine & Immutability (`exportAnalyticsReport`)**:
+     - Admin-only (`403 Forbidden` for regular members).
+     - Dual-mode format support: `?format=csv` or `export_format: 'CSV'` generates compliant RFC 4180 CSV with headers, proper quoting, and newline escaping (`text/csv`); default or `JSON` format returns JSON payload.
+     - Inserts an append-only audit record into `analytics_report_exports`.
+     - Verified that SQLite triggers `prevent_analytics_export_update` and `prevent_analytics_export_delete` strictly block all `UPDATE` and `DELETE` queries on the export table with `RAISE(ABORT)`.
+     - Logs `ANALYTICS_REPORT_EXPORT` with `target_id` to `access_log`.
+  5. **KPI Snapshot History API (`getKpiSnapshots`)**:
+     - Admin-only (`403 Forbidden` for regular members).
+     - Returns paginated snapshots (`limit`, `offset`, `total_count`) for the requested KPI definition.
+  6. **Seeded Built-In KPI Deactivation (`updateKpiDefinition`)**:
+     - Deactivation via `PATCH /api/analytics/kpi/:kpiId` with `is_active=0` succeeds cleanly on built-in seeded KPIs (IDs 1-10 or `is_built_in=1`), whereas direct `DELETE` remains blocked with `400 Bad Request`.
+- **Consequences**: Flawlessly verified with 100/100 passing assertions in `scripts/verify-prd23-layer4.js`, full regression pass on Layer 1 (175/175), Layer 2 (110/110), Layer 3 (111/111), and 13/13 core platform test suites passing cleanly.
+
+## Decision 23-E: PRD 23 Layer 5 Frontend Views Architecture & Security Hardening
+- **Context**: PRD 23 Layer 5 mandates the implementation of five specialized frontend HTML views in `public/`:
+  1. `public/kpi-overview.html` (Company KPI Overview: executive cards for 10 built-in KPIs, status color coding, trend arrows, 30-snapshot drill-down modal, alert counter, Refresh All, and CSV export).
+  2. `public/dashboard-builder.html` (Custom Dashboard Builder: 12-column responsive CSS grid, 8-item drag-drop widget library, layout persistence, and 3-tier scope governance).
+  3. `public/sprint-analytics.html` (Sprint Velocity & Burndown: committed vs completed dual-bar velocity charts, circular completion gauge, sprint comparison table, and CSV export).
+  4. `public/team-analytics.html` (Team Performance & Workload: member contribution matrix, billable vs non-billable time distribution, top contributors leaderboard, and CSV export with member privacy safeguards).
+  5. `public/kpi-alerts.html` (KPI Alert Center: incident queue, ALL/UNACKNOWLEDGED/ACKNOWLEDGED filter tabs, single-click disable-guarded alert acknowledgment, and 30-day alert frequency bar chart).
+- **Decision**:
+  1. **Strict Offline Safety & Zero External CDN Dependencies**:
+     - Engineered entirely with native HTML5, CSS3, and ES6 JavaScript.
+     - Sparklines, line charts, velocity bars, circular completion gauges, and alert distribution histograms are generated via dynamic inline SVGs without relying on any external CDN libraries.
+  2. **End-to-End Security & XSS Sanitization**:
+     - Universal `escapeHTML()` sanitization implemented in all 5 views and applied across every dynamic string interpolation.
+     - Zero hardcoded credentials, secrets, tokens, or plaintext passwords in any script.
+     - Dynamic token acquisition via `urlParams.get('token') || localStorage.getItem('token')`.
+     - Server-side RBAC verification via `GET /api/users/me` on initial page load; admin-only views (`kpi-overview.html`, `team-analytics.html`, `kpi-alerts.html`) strictly display access-denied state if accessed by unprivileged members.
+  3. **Specific UI Rules Compliance**:
+     - KPI status badges follow explicit color codes (`ON_TRACK` = green, `AT_RISK` = yellow, `CRITICAL` = red).
+     - Trend arrows adhere to specification: `UP` = ↑ green, `DOWN` = ↓ red, `FLAT` = → grey.
+     - Dashboard builder visually respects 12-column layout via CSS Grid (`grid-template-columns: repeat(12, 1fr)`).
+     - Alert acknowledgment button is disabled immediately upon clicking to prevent double-click requests and 400 Bad Request responses.
+     - Sparklines exclusively consume pre-computed `trend_snapshots` from the API, eliminating client-side recalculation overhead.
+     - CSV export buttons trigger RFC 4180 file downloads via `Blob` and `Content-Disposition`.
+- **Consequences**: Flawlessly verified with 82/82 passing assertions in `scripts/verify-prd23-layer5.js`, 100% HTTP 200 serving verification from an active Express server, and full platform regression passing 13/13 test suites cleanly.
+
+## Decision 23-F: PRD 23 Layer 6 Full End-to-End Integration Suite & Definition of Done
+- **Context**: PRD 23 Layer 6 mandates a comprehensive end-to-end integration test suite verifying the complete Analytics & KPI Dashboard system across 18 sequential steps: real authentication for Admin and 2 Member personas, KPI calculation engine refreshing all 10 built-in KPIs with direct SQLite snapshot verification, graceful fallback for inactive GitHub webhook integrations without crashing, alert auto-generation on low-threshold breaches with direct SQLite verification, alert deduplication preventing duplicate unacknowledged alerts on second refresh, alert scope isolation preventing non-admin members from viewing company-scope alerts, alert acknowledgment governance (member 403, admin 200 with DB timestamp audit, re-acknowledge 400), dashboard personal scope isolation (cross-member 403, member team creation 403, admin creates team/company), 12-column widget grid boundary validation (overflow 400, invalid type 400, missing KPI 404), pre-computed snapshot fetching without live recalculation, server-side privacy redaction stripping member breakdown data for regular members while preserving for admin, sole company dashboard protection (delete sole 400, create second and delete second 200), sprint analytics report aggregation with numeric average velocity and comparison array, dual-mode report export (JSON 200 with audit row, CSV text/csv RFC 4180 with headers, append-only triggers blocking UPDATE and DELETE, access_log verification), company KPI summary cards with trend arrows and status classifications, frontend 5-file security audit (zero hardcoded credentials, universal escapeHTML, dynamic localStorage token, server role verification, HTTP 200 static serving), seeded KPI deactivation (is_active=0 200, delete blocked 400, reactivate 200), and 30+ snapshot trend sparkline generation with LIMIT 30 verification.
+- **Decision**:
+  1. **Dual Verification Architecture (Real HTTP + Direct SQLite SELECT)**:
+     - Authored `scripts/verify-prd23-integration.js` using an ephemeral Express server listening on dynamic loopback ports with zero mock shortcuts.
+     - Every step verifies HTTP response codes/payloads and corroborates results with direct SQLite `queryOne` / `queryAll` queries.
+  2. **Append-Only Immutability & Trigger Verification**:
+     - Verified triggers `prevent_kpi_snapshot_update`, `prevent_kpi_snapshot_delete`, `prevent_kpi_alert_delete`, `prevent_analytics_export_update`, and `prevent_analytics_export_delete` directly in SQLite.
+  3. **18-Step Sequence & Definition of Done Checklist**:
+     - All 18 steps executed and passed with 197 / 197 assertions passing (100%).
+     - All 20 items in the PRD 23 Definition of Done checklist verified and marked `[x]`.
+- **Consequences**: PRD 23 (Analytics & KPI Dashboard) is 100% complete, fully verified end-to-end, and permanently sealed.
+
+
+
+
+
+

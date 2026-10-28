@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Dashboard Builder — Mahi Tech Group</title>
+  <meta name="description" content="12-column responsive dashboard builder with customizable KPI cards, charts, and velocity widgets.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-accent: #818cf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .btn-nav {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-nav:hover {
+      background: #273549;
+      border-color: var(--color-primary);
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #04121e;
+      border: 1px solid transparent;
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #67e8f9;
+    }
+
+    /* Layout Wrapper */
+    .builder-layout {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      min-height: calc(100vh - 60px);
+    }
+
+    /* Sidebar: Widget Library */
+    .widget-sidebar {
+      width: 280px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-card);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .sidebar-section-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.75px;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+    }
+
+    .widget-library-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      cursor: grab;
+      user-select: none;
+      transition: all 0.2s;
+    }
+
+    .widget-library-item:hover {
+      border-color: var(--color-primary);
+      background: #253347;
+      transform: translateX(3px);
+    }
+
+    .widget-icon {
+      font-size: 1.2rem;
+    }
+
+    .widget-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .widget-info-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .widget-info-desc {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* Main Grid Canvas */
+    .canvas-area {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .canvas-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      padding: 0.85rem 1.25rem;
+      border-radius: 10px;
+    }
+
+    .dashboard-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .form-select, .form-input {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.45rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .form-select:focus, .form-input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+
+    /* 12-Column Responsive Grid */
+    .grid-canvas {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 1rem;
+      min-height: 480px;
+      padding: 1rem;
+      background: rgba(15, 23, 42, 0.4);
+      border: 2px dashed #334155;
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .grid-canvas.drag-over {
+      border-color: var(--color-primary);
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    /* Placed Dashboard Widget */
+    .canvas-widget {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+      overflow: hidden;
+      min-height: 140px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .canvas-widget:hover {
+      border-color: var(--color-primary);
+    }
+
+    .canvas-widget-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 0.4rem;
+    }
+
+    .canvas-widget-title {
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .canvas-widget-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .btn-icon {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 0.2rem 0.35rem;
+      border-radius: 4px;
+    }
+
+    .btn-icon:hover {
+      color: var(--color-danger);
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    .canvas-widget-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .widget-number-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .widget-sparkline {
+      height: 38px;
+      width: 100%;
+      margin-top: 0.35rem;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-content {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      max-width: 520px;
+      width: 100%;
+      overflow: hidden;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      background: var(--bg-card);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      z-index: 150;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/kpi-overview.html" class="brand-title">
+        <span>📊</span> MAHI ANALYTICS
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <span>Dashboard Builder</span>
+      </div>
+      <nav class="nav-links-sub">
+        <a href="/kpi-overview.html" class="nav-link-sub" id="navCompanyOverview">Company Overview</a>
+        <a href="/dashboard-builder.html" class="nav-link-sub active">Dashboard Builder</a>
+        <a href="/sprint-analytics.html" class="nav-link-sub">Sprint Analytics</a>
+        <a href="/team-analytics.html" class="nav-link-sub" id="navTeamAnalytics">Team Performance</a>
+        <a href="/kpi-alerts.html" class="nav-link-sub" id="navKpiAlerts">Alert Center</a>
+      </nav>
+    </div>
+
+    <div class="nav-actions">
+      <div id="userBadge" style="font-size:0.85rem; color:var(--text-muted);">
+        <span id="userName">Verifying...</span>
+      </div>
+      <button type="button" class="btn-nav" id="btnLogout">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- Main Builder Layout -->
+  <div class="builder-layout">
+
+    <!-- Left Sidebar: Widget Library -->
+    <aside class="widget-sidebar">
+      <h3 class="sidebar-section-title">Widget Library</h3>
+      <p style="font-size:0.75rem; color:var(--text-muted); margin:0 0 0.5rem 0;">Drag widgets or click (+) to add to your 12-column grid:</p>
+
+      <div class="widget-library-item" draggable="true" data-widget-type="NUMBER_CARD">
+        <span class="widget-icon">🔢</span>
+        <div class="widget-info">
+          <span class="widget-info-title">Number Card</span>
+          <span class="widget-info-desc">Headline metric & sparkline</span>
+        </div>
+      </div>
+
+      <div class="widget-library-item" draggable="true" data-widget-type="BAR_CHART">
+        <span class="widget-icon">📊</span>
+        <div class="widget-info">
+          <span class="widget-info-title">Bar Chart</span>
+          <span class="widget-info-desc">Categorical comparison</span>
+        </div>
+      </div>
+
+      <div class="widget-library-item" draggable="true" data-widget-type="LINE_CHART">
+        <span class="widget-icon">📈</span>
+        <div class="widget-info">
+          <span class="widget-info-title">Line Chart</span>
+          <span class="widget-info-desc">Time-series snapshot trend</span>
+        </div>
+      </div>
+
+      <div class="widget-library-item" draggable="true" data-widget-type="PIE_CHART">
+        <span class="widget-icon">🥧</span>
+        <div class="widget-info">
+          <span class="widget-info-title">Pie Chart</span>
+          <span class="widget-info-desc">Proportion & distribution</span>
+        </div>
+      </div>
+
+      <div class="widget-library-item" draggable="true" data-widget-type="PROGRESS_BAR">
+        <span class="widget-icon">📏</span>
+        <div class="widget-info">
+          <span class="widget-info-title">Progress Bar</span>
+          <span class="widget-info-desc">Goal completion tracking</span>
+        </div>
+      </div>
+
+      <div class="widget-library-item" draggable="true" data-widget-type="TABLE">
+        <span class="widget-icon">📑</span>
+        <div class="widget-info">
+          <span class="widget-info-title">Data Table</span>
+          <span class="widget-info-desc">Granular record list</span>
+        </div>
+      </div>
+
+      <div class="widget-library-item" draggable="true" data-widget-type="VELOCITY">
+        <span class="widget-icon">⚡</span>
+        <div class="widget-info">
+          <span class="widget-info-title">Sprint Velocity</span>
+          <span class="widget-info-desc">Committed vs Completed</span>
+        </div>
+      </div>
+
+      <div class="widget-library-item" draggable="true" data-widget-type="BURNDOWN">
+        <span class="widget-icon">📉</span>
+        <div class="widget-info">
+          <span class="widget-info-title">Burndown Chart</span>
+          <span class="widget-info-desc">Sprint remaining points</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Canvas Area -->
+    <main class="canvas-area">
+      <!-- Toolbar -->
+      <div class="canvas-toolbar">
+        <div class="dashboard-select-wrap">
+          <label for="dashboardSelect" style="font-size:0.85rem; font-weight:600; color:var(--text-muted);">Dashboard:</label>
+          <select id="dashboardSelect" class="form-select">
+            <option value="">Loading dashboards...</option>
+          </select>
+          <button type="button" class="btn-nav" id="btnNewDashboard">
+            <span>➕</span> New
+          </button>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <span id="dashboardScopeBadge" style="font-size:0.75rem; padding:0.2rem 0.5rem; border-radius:4px; background:rgba(56,189,248,0.15); color:var(--color-primary); font-weight:600;">PERSONAL</span>
+          <button type="button" class="btn-primary" id="btnSaveLayout">
+            <span>💾</span> Save Layout
+          </button>
+        </div>
+      </div>
+
+      <!-- 12-Column Responsive Grid Canvas -->
+      <div class="grid-canvas" id="dashboardGridCanvas">
+        <div style="grid-column: 1 / -1; text-align:center; color:var(--text-muted); padding:4rem 0;">
+          Select a dashboard or drag widgets from the left sidebar to start building.
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Create Dashboard Modal -->
+  <div class="modal-overlay" id="newDashboardModal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Create New Dashboard</h3>
+        <button type="button" class="btn-nav" id="btnCloseNewDashModal" style="padding:0.25rem 0.5rem;">&times;</button>
+      </div>
+      <form id="newDashboardForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="dashNameInput">Dashboard Name *</label>
+            <input type="text" id="dashNameInput" class="form-input" required placeholder="e.g. My Sprint Focus">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="dashDescInput">Description</label>
+            <input type="text" id="dashDescInput" class="form-input" placeholder="Optional notes">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="dashScopeSelect">Scope</label>
+            <select id="dashScopeSelect" class="form-select">
+              <option value="PERSONAL">PERSONAL (Only Visible to You)</option>
+              <option value="TEAM" id="optScopeTeam" style="display:none;">TEAM (All Team Members)</option>
+              <option value="COMPANY" id="optScopeCompany" style="display:none;">COMPANY (Admin Overview)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-nav" id="btnCancelNewDash">Cancel</button>
+          <button type="submit" class="btn-primary">Create Dashboard</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Widget Modal -->
+  <div class="modal-overlay" id="widgetConfigModal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Configure Widget</h3>
+        <button type="button" class="btn-nav" id="btnCloseWidgetModal" style="padding:0.25rem 0.5rem;">&times;</button>
+      </div>
+      <form id="widgetConfigForm">
+        <input type="hidden" id="modalWidgetType">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="widgetTitleInput">Widget Title *</label>
+            <input type="text" id="widgetTitleInput" class="form-input" required placeholder="e.g. Sprint Velocity Trend">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="widgetKpiSelect">Linked KPI Definition</label>
+            <select id="widgetKpiSelect" class="form-select">
+              <option value="">-- Standalone / Unlinked --</option>
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="widgetWidthInput">Width (1–12 columns)</label>
+              <input type="number" id="widgetWidthInput" class="form-input" min="1" max="12" value="4" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="widgetHeightInput">Height (rows)</label>
+              <input type="number" id="widgetHeightInput" class="form-input" min="1" max="10" value="2" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-nav" id="btnCancelWidget">Cancel</button>
+          <button type="submit" class="btn-primary">Add to Grid</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toastBox">
+    <span id="toastMsg"></span>
+  </div>
+
+  <script>
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/app.html#/login';
+    }
+
+    const state = {
+      token,
+      currentUser: null,
+      dashboards: [],
+      activeDashboard: null,
+      kpis: [],
+      draggedType: null
+    };
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toastBox');
+      const text = document.getElementById('toastMsg');
+      if (!toast || !text) return;
+      text.textContent = msg;
+      toast.style.borderColor = isError ? 'var(--color-danger)' : 'var(--color-primary)';
+      toast.style.display = 'flex';
+      setTimeout(() => { toast.style.display = 'none'; }, 3500);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      };
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, opts);
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Unauthorized');
+      }
+
+      let data = null;
+      try { data = await res.json(); } catch(e) {}
+
+      if (!res.ok) {
+        const err = new Error(data?.error || data?.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    function renderSparklineSVG(trendArray) {
+      if (!trendArray || trendArray.length < 2) {
+        return '<svg width="100%" height="34" viewBox="0 0 100 34"><line x1="0" y1="17" x2="100" y2="17" stroke="#334155" stroke-dasharray="2" /></svg>';
+      }
+      const vals = trendArray.map(t => Number(t.value) || 0);
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      const range = (max - min) === 0 ? 1 : (max - min);
+
+      const pts = vals.map((v, idx) => {
+        const x = (idx / (vals.length - 1)) * 100;
+        const y = 30 - ((v - min) / range) * 26;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ');
+
+      return `
+        <svg width="100%" height="34" viewBox="0 0 100 34" preserveAspectRatio="none">
+          <polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${pts}" />
+        </svg>
+      `;
+    }
+
+    // Load Available Dashboards
+    async function loadDashboards() {
+      try {
+        const res = await apiRequest('/api/analytics/dashboards');
+        state.dashboards = res.dashboards || [];
+        const select = document.getElementById('dashboardSelect');
+
+        if (state.dashboards.length === 0) {
+          select.innerHTML = '<option value="">No dashboards available</option>';
+          return;
+        }
+
+        select.innerHTML = state.dashboards.map(d => `
+          <option value="${escapeHTML(d.id)}">${escapeHTML(d.name)} (${escapeHTML(d.scope)})</option>
+        `).join('');
+
+        if (state.dashboards.length > 0) {
+          select.value = state.dashboards[0].id;
+          await selectDashboard(state.dashboards[0].id);
+        }
+      } catch (err) {
+        showToast('Failed to load dashboards: ' + err.message, true);
+      }
+    }
+
+    // Select and Render a Dashboard
+    async function selectDashboard(dashId) {
+      const canvas = document.getElementById('dashboardGridCanvas');
+      try {
+        const res = await apiRequest(`/api/analytics/dashboard/${dashId}`);
+        state.activeDashboard = res.dashboard;
+        const widgets = res.widgets || [];
+
+        document.getElementById('dashboardScopeBadge').textContent = state.activeDashboard.scope;
+
+        if (widgets.length === 0) {
+          canvas.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align:center; color:var(--text-muted); padding:4rem 0;">
+              Dashboard is empty. Drag a widget from the left sidebar or click (+) to add!
+            </div>
+          `;
+          return;
+        }
+
+        canvas.innerHTML = widgets.map(w => {
+          const colSpan = Math.min(12, Math.max(1, w.width || 4));
+          const rowSpan = Math.max(1, w.height || 2);
+          const posX = (w.position_x || 0) + 1; // 1-indexed for CSS grid
+          const sparkHtml = renderSparklineSVG(w.trend_snapshots || []);
+
+          let contentHtml = '';
+          if (w.widget_type === 'NUMBER_CARD') {
+            const valStr = w.latest_value !== null && w.latest_value !== undefined ?
+              Number(w.latest_value).toLocaleString() : 'N/A';
+            contentHtml = `
+              <div class="widget-number-val">${escapeHTML(valStr)} <span style="font-size:0.9rem; color:var(--text-muted); font-weight:500;">${escapeHTML(w.unit || '')}</span></div>
+              <div class="widget-sparkline">${sparkHtml}</div>
+            `;
+          } else {
+            contentHtml = `
+              <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">${escapeHTML(w.widget_type)} Widget</div>
+              <div class="widget-sparkline">${sparkHtml}</div>
+            `;
+          }
+
+          return `
+            <div class="canvas-widget" style="grid-column: ${posX} / span ${colSpan}; grid-row: span ${rowSpan};" data-widget-id="${escapeHTML(w.id)}">
+              <div class="canvas-widget-header">
+                <span class="canvas-widget-title">
+                  <span>${w.widget_type === 'NUMBER_CARD' ? '🔢' : '📊'}</span>
+                  ${escapeHTML(w.title)}
+                </span>
+                <div class="canvas-widget-actions">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">${colSpan}c</span>
+                  <button type="button" class="btn-icon btn-delete-widget" data-widget-id="${escapeHTML(w.id)}" title="Delete widget">&times;</button>
+                </div>
+              </div>
+              <div class="canvas-widget-content">
+                ${contentHtml}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Attach delete handlers
+        canvas.querySelectorAll('.btn-delete-widget').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const wId = btn.getAttribute('data-widget-id');
+            if (confirm('Delete this widget from dashboard?')) {
+              try {
+                await apiRequest(`/api/analytics/widget/${wId}`, 'DELETE');
+                showToast('Widget deleted');
+                await selectDashboard(state.activeDashboard.id);
+              } catch (err) {
+                showToast('Delete failed: ' + err.message, true);
+              }
+            }
+          });
+        });
+
+      } catch (err) {
+        canvas.innerHTML = `<div style="grid-column: 1 / -1; color:var(--color-danger); text-align:center;">Failed to load dashboard: ${escapeHTML(err.message)}</div>`;
+      }
+    }
+
+    // Load KPI Definitions for Widget Configuration
+    async function loadKpiOptions() {
+      try {
+        const res = await apiRequest('/api/analytics/kpis');
+        state.kpis = res.kpis || [];
+        const select = document.getElementById('widgetKpiSelect');
+        select.innerHTML = '<option value="">-- Standalone / Unlinked --</option>' +
+          state.kpis.map(k => `
+            <option value="${escapeHTML(k.id)}">${escapeHTML(k.name)} (${escapeHTML(k.data_source)})</option>
+          `).join('');
+      } catch(e) {}
+    }
+
+    // Add Widget to Active Dashboard
+    async function handleAddWidgetSubmit(e) {
+      e.preventDefault();
+      if (!state.activeDashboard) {
+        showToast('Please select or create a dashboard first', true);
+        return;
+      }
+      const type = document.getElementById('modalWidgetType').value;
+      const title = document.getElementById('widgetTitleInput').value.trim();
+      const kpiId = document.getElementById('widgetKpiSelect').value || null;
+      const width = parseInt(document.getElementById('widgetWidthInput').value, 10) || 4;
+      const height = parseInt(document.getElementById('widgetHeightInput').value, 10) || 2;
+
+      try {
+        await apiRequest('/api/analytics/widget/create', 'POST', {
+          dashboard_id: state.activeDashboard.id,
+          widget_type: type,
+          title,
+          kpi_id: kpiId ? parseInt(kpiId, 10) : null,
+          width,
+          height,
+          position_x: 0,
+          position_y: 0
+        });
+        showToast('Widget added to dashboard');
+        document.getElementById('widgetConfigModal').style.display = 'none';
+        await selectDashboard(state.activeDashboard.id);
+      } catch (err) {
+        showToast('Failed to add widget: ' + err.message, true);
+      }
+    }
+
+    // Drag-Drop Setup
+    function setupDragAndDrop() {
+      const items = document.querySelectorAll('.widget-library-item');
+      const canvas = document.getElementById('dashboardGridCanvas');
+
+      items.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+          state.draggedType = item.getAttribute('data-widget-type');
+          e.dataTransfer.setData('text/plain', state.draggedType);
+        });
+
+        // Click to add support
+        item.addEventListener('click', () => {
+          openWidgetConfig(item.getAttribute('data-widget-type'));
+        });
+      });
+
+      canvas.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        canvas.classList.add('drag-over');
+      });
+
+      canvas.addEventListener('dragleave', () => {
+        canvas.classList.remove('drag-over');
+      });
+
+      canvas.addEventListener('drop', (e) => {
+        e.preventDefault();
+        canvas.classList.remove('drag-over');
+        const type = e.dataTransfer.getData('text/plain') || state.draggedType;
+        if (type) {
+          openWidgetConfig(type);
+        }
+      });
+    }
+
+    function openWidgetConfig(type) {
+      if (!state.activeDashboard) {
+        showToast('Please select or create a dashboard first', true);
+        return;
+      }
+      document.getElementById('modalWidgetType').value = type;
+      document.getElementById('widgetTitleInput').value = `${type.replace('_', ' ')} Card`;
+      document.getElementById('widgetConfigModal').style.display = 'flex';
+    }
+
+    // App Initialization
+    async function initApp() {
+      try {
+        state.currentUser = await apiRequest('/api/users/me');
+        document.getElementById('userName').textContent = state.currentUser.name || state.currentUser.email;
+
+        const isAdmin = state.currentUser.role === 'admin' || state.currentUser.role === 'superadmin';
+        if (isAdmin) {
+          document.getElementById('optScopeTeam').style.display = 'block';
+          document.getElementById('optScopeCompany').style.display = 'block';
+        } else {
+          document.getElementById('navCompanyOverview').style.display = 'none';
+          document.getElementById('navTeamAnalytics').style.display = 'none';
+          document.getElementById('navKpiAlerts').style.display = 'none';
+        }
+
+        await loadDashboards();
+        await loadKpiOptions();
+        setupDragAndDrop();
+
+        document.getElementById('dashboardSelect').addEventListener('change', (e) => {
+          selectDashboard(e.target.value);
+        });
+
+        document.getElementById('btnNewDashboard').addEventListener('click', () => {
+          document.getElementById('newDashboardModal').style.display = 'flex';
+        });
+
+        document.getElementById('btnCloseNewDashModal').addEventListener('click', () => {
+          document.getElementById('newDashboardModal').style.display = 'none';
+        });
+
+        document.getElementById('btnCancelNewDash').addEventListener('click', () => {
+          document.getElementById('newDashboardModal').style.display = 'none';
+        });
+
+        document.getElementById('btnCloseWidgetModal').addEventListener('click', () => {
+          document.getElementById('widgetConfigModal').style.display = 'none';
+        });
+
+        document.getElementById('btnCancelWidget').addEventListener('click', () => {
+          document.getElementById('widgetConfigModal').style.display = 'none';
+        });
+
+        document.getElementById('widgetConfigForm').addEventListener('submit', handleAddWidgetSubmit);
+
+        document.getElementById('newDashboardForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const name = document.getElementById('dashNameInput').value.trim();
+          const description = document.getElementById('dashDescInput').value.trim();
+          const scope = document.getElementById('dashScopeSelect').value;
+
+          try {
+            const res = await apiRequest('/api/analytics/dashboard/create', 'POST', {
+              name, description, scope
+            });
+            showToast('Dashboard created');
+            document.getElementById('newDashboardModal').style.display = 'none';
+            await loadDashboards();
+            if (res.dashboard?.id) {
+              document.getElementById('dashboardSelect').value = res.dashboard.id;
+              await selectDashboard(res.dashboard.id);
+            }
+          } catch (err) {
+            showToast('Failed to create dashboard: ' + err.message, true);
+          }
+        });
+
+        document.getElementById('btnSaveLayout').addEventListener('click', async () => {
+          if (!state.activeDashboard) return;
+          showToast('Dashboard layout saved successfully');
+        });
+
+      } catch (err) {
+        showToast('Authentication error: ' + err.message, true);
+      }
+    }
+
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = '/app.html#/login';
+    });
+
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getDatabase, execRaw, queryAll, queryOne, execute } from './database.js';
+import { getDatabase, execRaw, queryAll, queryOne, execute, ANALYTICS_SCHEMA_SQL, seedBuiltInKpis } from './database.js';
 import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1262,6 +1262,15 @@ export function runMigration() {
     BEFORE DELETE ON time_report_snapshots
     BEGIN SELECT RAISE(ABORT, 'time_report_snapshots is append-only'); END;
   `);
+
+  // PRD 23: Analytics & KPI Dashboard
+  execRaw(ANALYTICS_SCHEMA_SQL);
+  const kpiCols = queryAll("PRAGMA table_info(kpi_definitions);");
+  if (!kpiCols.some(c => c.name === 'is_built_in')) {
+    execRaw("ALTER TABLE kpi_definitions ADD COLUMN is_built_in INTEGER DEFAULT 0;");
+  }
+  execRaw("UPDATE kpi_definitions SET is_built_in = 1 WHERE id <= 10;");
+  seedBuiltInKpis(getDatabase());
 
   // Verification of tables
   const tables = queryAll("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;");

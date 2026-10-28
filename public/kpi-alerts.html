@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KPI Alert Center — Mahi Tech Group</title>
+  <meta name="description" content="Centralized KPI threshold breach monitoring, incident alert log, and administrator acknowledgment queue.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-accent: #818cf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .btn-nav {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-nav:hover {
+      background: #273549;
+      border-color: var(--color-primary);
+    }
+
+    .btn-ack {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid var(--color-success);
+      color: var(--color-success);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-ack:hover:not(:disabled) {
+      background: rgba(16, 185, 129, 0.35);
+    }
+
+    .btn-ack:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      border-color: #475569;
+      color: #94a3b8;
+    }
+
+    .app-main {
+      flex: 1;
+      padding: 1.75rem;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin: 0 0 0.35rem 0;
+      color: var(--text-main);
+    }
+
+    .page-subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    .access-denied-box {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      color: #fca5a5;
+      display: none;
+    }
+
+    /* Filter Tabs */
+    .filter-tabs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      padding: 0.35rem;
+      border-radius: 8px;
+      width: fit-content;
+    }
+
+    .filter-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn.active {
+      background: var(--bg-card);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Alert Stats Grid */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .stat-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .stat-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    /* Panel Card */
+    .panel-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-card);
+      padding-bottom: 0.75rem;
+    }
+
+    .panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    .data-table th {
+      background: var(--bg-card);
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-card);
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .data-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .badge-type {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .badge-below {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--color-danger);
+    }
+
+    .badge-above {
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--color-warning);
+    }
+
+    .badge-acked {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--color-success);
+    }
+
+    .badge-unacked {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--color-danger);
+    }
+
+    /* History Chart Container */
+    .history-chart-wrap {
+      min-height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      z-index: 150;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/kpi-overview.html" class="brand-title">
+        <span>📊</span> MAHI ANALYTICS
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <span>KPI Alert Center</span>
+      </div>
+      <nav class="nav-links-sub">
+        <a href="/kpi-overview.html" class="nav-link-sub">Company Overview</a>
+        <a href="/dashboard-builder.html" class="nav-link-sub">Dashboard Builder</a>
+        <a href="/sprint-analytics.html" class="nav-link-sub">Sprint Analytics</a>
+        <a href="/team-analytics.html" class="nav-link-sub">Team Performance</a>
+        <a href="/kpi-alerts.html" class="nav-link-sub active">Alert Center</a>
+      </nav>
+    </div>
+
+    <div class="nav-actions">
+      <div id="userBadge" style="font-size:0.85rem; color:var(--text-muted);">
+        <span id="userName">Verifying...</span>
+      </div>
+      <button type="button" class="btn-nav" id="btnLogout">Sign Out</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- Non-Admin Restricted View -->
+    <div class="access-denied-box" id="accessDeniedBanner">
+      <h2>🔒 Access Restricted</h2>
+      <p>The centralized KPI Alert Center is reserved for Administrator roles to manage system-wide threshold breaches and execute legally attributed acknowledgments. Please visit <a href="/dashboard-builder.html" style="color:var(--color-primary);">Dashboard Builder</a>.</p>
+    </div>
+
+    <!-- Admin Content -->
+    <div id="adminContent" style="display:none; flex-direction:column; gap:1.5rem;">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">KPI Threshold Incident & Alert Center</h1>
+          <p class="page-subtitle">Real-time threshold breaches, automated incident generation, and acknowledgment audit trail</p>
+        </div>
+      </div>
+
+      <!-- Stat Highlights -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-title">Active Unacknowledged Alerts</span>
+          <div class="stat-val" style="color:var(--color-danger);" id="valUnackedCount">0</div>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Requires admin attention</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Total Incidents (30 Days)</span>
+          <div class="stat-val" id="valTotalAlerts">0</div>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Across all platform metrics</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Resolved / Acknowledged</span>
+          <div class="stat-val" style="color:var(--color-success);" id="valAckedCount">0</div>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Legally signed by admin</span>
+        </div>
+      </div>
+
+      <!-- Alert History Bar Chart -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <h3 class="panel-title">📈 Alert Frequency by KPI (Last 30 Days)</h3>
+        </div>
+        <div class="history-chart-wrap" id="alertHistoryChart">
+          <!-- Rendered SVG bar chart -->
+          <div style="color:var(--text-muted);">Loading alert distribution...</div>
+        </div>
+      </div>
+
+      <!-- Alerts List Table -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <h3 class="panel-title">🚨 Incident Acknowledgment Queue</h3>
+          <!-- Filter Tabs -->
+          <div class="filter-tabs">
+            <button type="button" class="filter-btn active" data-filter="ALL">ALL</button>
+            <button type="button" class="filter-btn" data-filter="UNACKNOWLEDGED">UNACKNOWLEDGED</button>
+            <button type="button" class="filter-btn" data-filter="ACKNOWLEDGED">ACKNOWLEDGED</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>KPI Name</th>
+                <th>Alert Type</th>
+                <th>Triggered Value</th>
+                <th>Threshold Value</th>
+                <th>Triggered At</th>
+                <th>Status / Attributed By</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="alertsTableBody">
+              <tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Loading alert queue...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toastBox">
+    <span id="toastMsg"></span>
+  </div>
+
+  <script>
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/app.html#/login';
+    }
+
+    const state = {
+      token,
+      currentUser: null,
+      alerts: [],
+      currentFilter: 'ALL'
+    };
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toastBox');
+      const text = document.getElementById('toastMsg');
+      if (!toast || !text) return;
+      text.textContent = msg;
+      toast.style.borderColor = isError ? 'var(--color-danger)' : 'var(--color-primary)';
+      toast.style.display = 'flex';
+      setTimeout(() => { toast.style.display = 'none'; }, 3500);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      };
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, opts);
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Unauthorized');
+      }
+
+      let data = null;
+      try { data = await res.json(); } catch(e) {}
+
+      if (!res.ok) {
+        const err = new Error(data?.error || data?.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    // Render SVG Alert History Chart
+    function renderAlertHistorySVG(alerts) {
+      if (!alerts || alerts.length === 0) {
+        return '<div style="color:var(--text-muted); padding:2rem 0;">No threshold breach incidents recorded. System is healthy!</div>';
+      }
+
+      // Group counts by KPI name
+      const countsByKpi = {};
+      alerts.forEach(a => {
+        const kName = a.kpi_name || `KPI #${a.kpi_id}`;
+        countsByKpi[kName] = (countsByKpi[kName] || 0) + 1;
+      });
+
+      const entries = Object.entries(countsByKpi);
+      const maxCount = Math.max(1, ...entries.map(e => e[1]));
+
+      const w = 680;
+      const h = 180;
+      const padLeft = 40;
+      const padBottom = 40;
+      const padTop = 20;
+      const padRight = 20;
+
+      const slotW = (w - padLeft - padRight) / Math.max(1, entries.length);
+      const barW = Math.min(36, slotW * 0.6);
+
+      const bars = entries.map(([name, count], idx) => {
+        const x = padLeft + idx * slotW + slotW / 2 - barW / 2;
+        const bH = (count / maxCount) * (h - padBottom - padTop);
+        const y = (h - padBottom) - bH;
+
+        return `
+          <rect x="${x}" y="${y}" width="${barW}" height="${bH}" fill="#ef4444" rx="4" />
+          <text x="${x + barW / 2}" y="${y - 5}" fill="#f8fafc" font-size="11" font-weight="700" text-anchor="middle">${count}</text>
+          <text x="${x + barW / 2}" y="${h - padBottom + 16}" fill="#94a3b8" font-size="10" text-anchor="middle">${escapeHTML(name.slice(0, 10))}</text>
+        `;
+      }).join('');
+
+      return `
+        <svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}">
+          <line x1="${padLeft}" y1="${h - padBottom}" x2="${w - padRight}" y2="${h - padBottom}" stroke="#334155" stroke-width="1" />
+          ${bars}
+        </svg>
+      `;
+    }
+
+    // Load Alert Incident Queue
+    async function loadAlerts() {
+      try {
+        const res = await apiRequest('/api/analytics/alerts');
+        state.alerts = res.alerts || [];
+
+        const unacked = state.alerts.filter(a => !a.acknowledged_at);
+        const acked = state.alerts.filter(a => !!a.acknowledged_at);
+
+        document.getElementById('valUnackedCount').textContent = unacked.length;
+        document.getElementById('valTotalAlerts').textContent = state.alerts.length;
+        document.getElementById('valAckedCount').textContent = acked.length;
+
+        // Render History Chart
+        document.getElementById('alertHistoryChart').innerHTML = renderAlertHistorySVG(state.alerts);
+
+        // Filter and Render Table
+        renderAlertsTable();
+
+      } catch (err) {
+        showToast('Failed to load alerts: ' + err.message, true);
+      }
+    }
+
+    // Render Filtered Alerts Table
+    function renderAlertsTable() {
+      const tbody = document.getElementById('alertsTableBody');
+      const filtered = state.alerts.filter(a => {
+        if (state.currentFilter === 'UNACKNOWLEDGED') return !a.acknowledged_at;
+        if (state.currentFilter === 'ACKNOWLEDGED') return !!a.acknowledged_at;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem 0;">No matching alerts found in this view.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(a => {
+        const isAcked = !!a.acknowledged_at;
+        const typeClass = a.alert_type === 'BELOW_THRESHOLD' ? 'badge-below' : 'badge-above';
+        const statusBadge = isAcked ?
+          `<span class="badge-type badge-acked">ACKNOWLEDGED (${escapeHTML(a.acknowledged_by || 'Admin')})</span>` :
+          `<span class="badge-type badge-unacked">UNACKNOWLEDGED</span>`;
+
+        const btnHtml = isAcked ?
+          `<button type="button" class="btn-ack" disabled>Acknowledged</button>` :
+          `<button type="button" class="btn-ack btn-ack-action" data-alert-id="${escapeHTML(a.id)}">Acknowledge</button>`;
+
+        return `
+          <tr>
+            <td style="font-weight:600; color:#fff;">${escapeHTML(a.kpi_name || `KPI #${a.kpi_id}`)}</td>
+            <td><span class="badge-type ${typeClass}">${escapeHTML(a.alert_type)}</span></td>
+            <td style="font-family:'Outfit'; font-weight:700; color:#fca5a5;">${escapeHTML(Number(a.triggered_value).toLocaleString())}</td>
+            <td style="color:var(--text-muted);">${escapeHTML(Number(a.threshold_value).toLocaleString())}</td>
+            <td style="font-size:0.8rem; color:var(--text-muted);">${escapeHTML(a.created_at || 'Recent')}</td>
+            <td>${statusBadge}</td>
+            <td>${btnHtml}</td>
+          </tr>
+        `;
+      }).join('');
+
+      // Attach Acknowledgment Event Listeners
+      tbody.querySelectorAll('.btn-ack-action').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const alertId = btn.getAttribute('data-alert-id');
+          btn.disabled = true;
+          btn.textContent = 'Saving...';
+          try {
+            await apiRequest(`/api/analytics/alert/${alertId}/acknowledge`, 'PATCH');
+            showToast('Incident acknowledged successfully');
+            await loadAlerts();
+          } catch (err) {
+            showToast('Acknowledgment failed: ' + err.message, true);
+            btn.disabled = false;
+            btn.textContent = 'Acknowledge';
+          }
+        });
+      });
+    }
+
+    // App Initialization
+    async function initApp() {
+      try {
+        state.currentUser = await apiRequest('/api/users/me');
+        document.getElementById('userName').textContent = state.currentUser.name || state.currentUser.email;
+
+        const isAdmin = state.currentUser.role === 'admin' || state.currentUser.role === 'superadmin';
+        if (!isAdmin) {
+          document.getElementById('accessDeniedBanner').style.display = 'block';
+          document.getElementById('adminContent').style.display = 'none';
+          return;
+        }
+
+        document.getElementById('adminContent').style.display = 'flex';
+        await loadAlerts();
+
+        // Setup Filter Buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.currentFilter = btn.getAttribute('data-filter');
+            renderAlertsTable();
+          });
+        });
+
+      } catch (err) {
+        document.getElementById('accessDeniedBanner').innerHTML = `<h2>Authentication Error</h2><p>${escapeHTML(err.message)}</p>`;
+        document.getElementById('accessDeniedBanner').style.display = 'block';
+      }
+    }
+
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = '/app.html#/login';
+    });
+
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>

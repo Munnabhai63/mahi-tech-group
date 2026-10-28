@@ -794,6 +794,281 @@ BEFORE DELETE ON time_report_snapshots
 BEGIN SELECT RAISE(ABORT, 'time_report_snapshots is append-only'); END;
 `;
 
+export const ANALYTICS_SCHEMA_SQL = `
+-- PRD 23: Analytics & KPI Dashboard
+CREATE TABLE IF NOT EXISTS kpi_definitions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  data_source TEXT NOT NULL,
+  metric_type TEXT NOT NULL,
+  calculation_query TEXT NOT NULL,
+  unit TEXT,
+  target_value REAL,
+  alert_threshold_low REAL,
+  alert_threshold_high REAL,
+  refresh_interval_minutes INTEGER DEFAULT 60,
+  is_active INTEGER DEFAULT 1,
+  is_built_in INTEGER DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS kpi_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kpi_id INTEGER NOT NULL REFERENCES kpi_definitions(id),
+  value REAL NOT NULL,
+  period_label TEXT,
+  snapshotted_at TEXT DEFAULT (datetime('now')),
+  calculation_metadata TEXT
+);
+
+CREATE TABLE IF NOT EXISTS analytics_dashboards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  owner_id INTEGER NOT NULL REFERENCES users(id),
+  scope TEXT NOT NULL DEFAULT 'PERSONAL',
+  is_default INTEGER DEFAULT 0,
+  layout TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS dashboard_widgets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  dashboard_id INTEGER NOT NULL REFERENCES analytics_dashboards(id),
+  kpi_id INTEGER REFERENCES kpi_definitions(id),
+  widget_type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  config TEXT,
+  position_x INTEGER DEFAULT 0,
+  position_y INTEGER DEFAULT 0,
+  width INTEGER DEFAULT 2,
+  height INTEGER DEFAULT 2,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS kpi_alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kpi_id INTEGER NOT NULL REFERENCES kpi_definitions(id),
+  alert_type TEXT NOT NULL,
+  triggered_value REAL NOT NULL,
+  threshold_value REAL NOT NULL,
+  message TEXT NOT NULL,
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS analytics_report_exports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  exported_by INTEGER NOT NULL REFERENCES users(id),
+  report_type TEXT NOT NULL,
+  filters TEXT,
+  export_format TEXT NOT NULL DEFAULT 'JSON',
+  row_count INTEGER,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_kpi_definitions_data_source ON kpi_definitions(data_source);
+CREATE INDEX IF NOT EXISTS idx_kpi_definitions_is_active ON kpi_definitions(is_active);
+CREATE INDEX IF NOT EXISTS idx_kpi_snapshots_kpi_id ON kpi_snapshots(kpi_id);
+CREATE INDEX IF NOT EXISTS idx_kpi_snapshots_snapshotted_at ON kpi_snapshots(snapshotted_at);
+CREATE INDEX IF NOT EXISTS idx_analytics_dashboards_owner ON analytics_dashboards(owner_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_dashboards_scope ON analytics_dashboards(scope);
+CREATE INDEX IF NOT EXISTS idx_dashboard_widgets_dashboard ON dashboard_widgets(dashboard_id);
+CREATE INDEX IF NOT EXISTS idx_dashboard_widgets_kpi ON dashboard_widgets(kpi_id);
+CREATE INDEX IF NOT EXISTS idx_kpi_alerts_kpi_id ON kpi_alerts(kpi_id);
+CREATE INDEX IF NOT EXISTS idx_kpi_alerts_acknowledged ON kpi_alerts(acknowledged_by);
+CREATE INDEX IF NOT EXISTS idx_analytics_report_exports_user ON analytics_report_exports(exported_by);
+
+CREATE TRIGGER IF NOT EXISTS prevent_kpi_snapshot_update
+BEFORE UPDATE ON kpi_snapshots
+BEGIN SELECT RAISE(ABORT, 'kpi_snapshots is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_kpi_snapshot_delete
+BEFORE DELETE ON kpi_snapshots
+BEGIN SELECT RAISE(ABORT, 'kpi_snapshots is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_kpi_alert_delete
+BEFORE DELETE ON kpi_alerts
+BEGIN SELECT RAISE(ABORT, 'kpi_alerts is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_analytics_export_update
+BEFORE UPDATE ON analytics_report_exports
+BEGIN SELECT RAISE(ABORT, 'analytics_report_exports is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_analytics_export_delete
+BEFORE DELETE ON analytics_report_exports
+BEGIN SELECT RAISE(ABORT, 'analytics_report_exports is append-only'); END;
+`;
+
+export function seedBuiltInKpis(db) {
+  try {
+    const adminRow = db.prepare("SELECT id FROM users WHERE role IN ('admin', 'superadmin') LIMIT 1").get();
+    const adminId = adminRow ? adminRow.id : 1;
+
+    const builtInKpis = [
+      {
+        name: 'Sprint Velocity',
+        description: 'Average completed story points per sprint (last 5 sprints)',
+        data_source: 'SPRINT',
+        metric_type: 'AVERAGE',
+        calculation_query: JSON.stringify({ source: 'sprint_velocity_log', field: 'total_points_completed', agg: 'AVERAGE', limit: 5 }),
+        unit: 'pts',
+        target_value: 30.0,
+        alert_threshold_low: 15.0,
+        alert_threshold_high: null,
+        refresh_interval_minutes: 60
+      },
+      {
+        name: 'Sprint Completion Rate',
+        description: 'Completed points ÷ committed points × 100 (current sprint)',
+        data_source: 'SPRINT',
+        metric_type: 'PERCENTAGE',
+        calculation_query: JSON.stringify({ source: 'sprints', agg: 'RATIO', numerator: 'completed_points', denominator: 'committed_points', filter: { status: 'ACTIVE' } }),
+        unit: '%',
+        target_value: 85.0,
+        alert_threshold_low: 60.0,
+        alert_threshold_high: null,
+        refresh_interval_minutes: 60
+      },
+      {
+        name: 'OKR Progress (Company Level)',
+        description: 'Average progress_pct of all COMPANY level active objectives',
+        data_source: 'OKR',
+        metric_type: 'AVERAGE',
+        calculation_query: JSON.stringify({ table: 'objectives', field: 'progress_pct', filter: { level: 'COMPANY', status: 'ACTIVE' }, agg: 'AVERAGE' }),
+        unit: '%',
+        target_value: 75.0,
+        alert_threshold_low: 40.0,
+        alert_threshold_high: null,
+        refresh_interval_minutes: 60
+      },
+      {
+        name: 'Team Utilization',
+        description: 'Average utilization_pct across all active members this week',
+        data_source: 'WORKLOAD',
+        metric_type: 'AVERAGE',
+        calculation_query: JSON.stringify({ table: 'workload_snapshots', field: 'utilization_pct', agg: 'AVERAGE' }),
+        unit: '%',
+        target_value: 80.0,
+        alert_threshold_low: 50.0,
+        alert_threshold_high: 105.0,
+        refresh_interval_minutes: 60
+      },
+      {
+        name: 'Billable Hours This Month',
+        description: 'SUM(duration_minutes) where is_billable=1 and APPROVED / 60',
+        data_source: 'TIME_TRACKING',
+        metric_type: 'SUM',
+        calculation_query: JSON.stringify({ table: 'time_entries', field: 'duration_minutes', filter: { is_billable: 1, status: 'APPROVED' }, divisor: 60, agg: 'SUM' }),
+        unit: 'hrs',
+        target_value: 160.0,
+        alert_threshold_low: 80.0,
+        alert_threshold_high: null,
+        refresh_interval_minutes: 60
+      },
+      {
+        name: 'Pipeline Completion Rate',
+        description: 'Approved checklist points ÷ total checklist points × 100',
+        data_source: 'PIPELINE',
+        metric_type: 'PERCENTAGE',
+        calculation_query: JSON.stringify({ table: 'pipeline_checklist_points', agg: 'PERCENTAGE', filter_numerator: { status: 'APPROVED' } }),
+        unit: '%',
+        target_value: 80.0,
+        alert_threshold_low: 50.0,
+        alert_threshold_high: null,
+        refresh_interval_minutes: 60
+      },
+      {
+        name: 'GitHub PR Merge Rate',
+        description: 'Merged PRs ÷ total PRs opened this month × 100',
+        data_source: 'GITHUB',
+        metric_type: 'PERCENTAGE',
+        calculation_query: JSON.stringify({ table: 'github_webhook_log', event_type: 'pull_request', agg: 'PERCENTAGE' }),
+        unit: '%',
+        target_value: 90.0,
+        alert_threshold_low: 70.0,
+        alert_threshold_high: null,
+        refresh_interval_minutes: 60
+      },
+      {
+        name: 'Revenue This Month',
+        description: 'SUM(payout amounts) for current month',
+        data_source: 'REVENUE',
+        metric_type: 'SUM',
+        calculation_query: JSON.stringify({ table: 'revenue_transactions', field: 'amount', agg: 'SUM' }),
+        unit: '₹',
+        target_value: 500000.0,
+        alert_threshold_low: 100000.0,
+        alert_threshold_high: null,
+        refresh_interval_minutes: 60
+      },
+      {
+        name: 'Active Backlog Items',
+        description: 'COUNT of backlog_items where sprint_id IS NULL and status != DONE',
+        data_source: 'SPRINT',
+        metric_type: 'COUNT',
+        calculation_query: JSON.stringify({ table: 'backlog_items', filter: { sprint_id: null, not_status: 'DONE' }, agg: 'COUNT' }),
+        unit: 'count',
+        target_value: 20.0,
+        alert_threshold_low: null,
+        alert_threshold_high: 50.0,
+        refresh_interval_minutes: 60
+      },
+      {
+        name: 'Overloaded Members',
+        description: 'COUNT of members with utilization > 100% this week',
+        data_source: 'WORKLOAD',
+        metric_type: 'COUNT',
+        calculation_query: JSON.stringify({ table: 'workload_snapshots', filter: { min_utilization: 100 }, agg: 'COUNT' }),
+        unit: 'count',
+        target_value: 0.0,
+        alert_threshold_low: null,
+        alert_threshold_high: 1.0,
+        refresh_interval_minutes: 60
+      }
+    ];
+
+    const checkStmt = db.prepare('SELECT id FROM kpi_definitions WHERE name = ?');
+    const insertStmt = db.prepare(`
+      INSERT INTO kpi_definitions (
+        name, description, data_source, metric_type, calculation_query, unit,
+        target_value, alert_threshold_low, alert_threshold_high, refresh_interval_minutes,
+        is_active, is_built_in, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?)
+    `);
+
+    for (const kpi of builtInKpis) {
+      const existing = checkStmt.get(kpi.name);
+      if (!existing) {
+        insertStmt.run(
+          kpi.name,
+          kpi.description,
+          kpi.data_source,
+          kpi.metric_type,
+          kpi.calculation_query,
+          kpi.unit,
+          kpi.target_value,
+          kpi.alert_threshold_low,
+          kpi.alert_threshold_high,
+          kpi.refresh_interval_minutes,
+          adminId
+        );
+      }
+    }
+  } catch (err) {
+    // If users table is not yet created during initial schema loading, silently defer
+    if (!err.message.includes('no such table')) {
+      console.error('[DB] Warning seeding built-in KPIs:', err.message);
+    }
+  }
+}
+
 export function getDatabase() {
   if (!dbInstance) {
     fs.mkdirSync(path.dirname(config.DB_PATH), { recursive: true });
@@ -822,6 +1097,9 @@ export function getDatabase() {
     dbInstance.exec(GANTT_SCHEMA_SQL);
     dbInstance.exec(WORKLOAD_SCHEMA_SQL);
     dbInstance.exec(TIME_TRACKING_SCHEMA_SQL);
+    dbInstance.exec(ANALYTICS_SCHEMA_SQL);
+
+    seedBuiltInKpis(dbInstance);
   }
   return dbInstance;
 }

@@ -480,24 +480,24 @@ scripts/verify-prd23-integration.js   (end-to-end)
 
 ## ✅ Definition of Done
 
-- [ ] 6 tables created and verified
-- [ ] 5 triggers tested (append-only confirmed with real DB calls)
-- [ ] 10 built-in KPIs seeded correctly
-- [ ] 22 API endpoints working with real HTTP calls
-- [ ] KPI calculation engine verified for all 10 built-in KPIs with real data
-- [ ] Snapshot append-only confirmed (real UPDATE/DELETE attempt blocked)
-- [ ] Alert auto-generated on threshold breach (real test)
-- [ ] Cron refresh tested (real interval fire)
-- [ ] Dashboard drag-drop layout save/load working
-- [ ] 5 frontend views functional
-- [ ] Member RBAC enforced (raw data hidden, real role-switch test)
-- [ ] Export audit logged (real test)
-- [ ] Seeded KPI delete blocked (real HTTP test)
-- [ ] All existing 469 tests still passing
-- [ ] Reverse Engineering Report submitted and confirmed
-- [ ] Honest Status Report submitted
-- [ ] Admin GO-AHEAD received
-- [ ] Committed to GitHub with message: feat(analytics): PRD 23 complete
+- [x] 6 tables created and verified
+- [x] 5 triggers tested (append-only confirmed with real DB calls)
+- [x] 10 built-in KPIs seeded correctly
+- [x] 22 API endpoints working with real HTTP calls
+- [x] KPI calculation engine verified for all 10 built-in KPIs with real data
+- [x] Snapshot append-only confirmed (real UPDATE/DELETE attempt blocked)
+- [x] Alert auto-generated on threshold breach (real test)
+- [x] Cron refresh tested (real interval fire)
+- [x] Dashboard drag-drop layout save/load working
+- [x] 5 frontend views functional
+- [x] Member RBAC enforced (raw data hidden, real role-switch test)
+- [x] Export audit logged (real test)
+- [x] Seeded KPI delete blocked (real HTTP test)
+- [x] All existing 469 tests still passing
+- [x] Reverse Engineering Report submitted and confirmed
+- [x] Honest Status Report submitted
+- [x] Admin GO-AHEAD received
+- [x] Committed to GitHub with message: feat(analytics): PRD 23 complete
 
 ---
 
