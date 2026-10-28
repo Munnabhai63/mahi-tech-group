@@ -210,4 +210,132 @@ router.patch('/alert/:alertId/acknowledge', authenticate, (req, res) => {
   }
 });
 
+// ===================================================================
+// WORKLOAD ASSIGNMENT & TEAM UTILIZATION ROUTES (LAYER 3)
+// ===================================================================
+
+/**
+ * POST /api/workload/assignment/create
+ * Creates a new workload assignment
+ * Role: Admin+
+ */
+router.post('/assignment/create', authenticate, (req, res) => {
+  try {
+    const result = workloadService.createAssignment(req.body, req.user);
+    return res.status(201).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * GET /api/workload/assignments/:userId
+ * Retrieves all active assignments for a member
+ * Role: Admin+ or own member
+ */
+router.get('/assignments/:userId', authenticate, (req, res) => {
+  try {
+    const { status = 'ACTIVE', projectId } = req.query;
+    const result = workloadService.getMemberAssignments(req.params.userId, req.user, {
+      status,
+      projectId
+    });
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * PATCH /api/workload/assignment/:assignmentId
+ * Updates estimated hours, date range, status, or title
+ * Role: Admin+
+ */
+router.patch('/assignment/:assignmentId', authenticate, (req, res) => {
+  try {
+    const result = workloadService.updateAssignment(req.params.assignmentId, req.body, req.user);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * DELETE /api/workload/assignment/:assignmentId
+ * Deletes a workload assignment
+ * Role: Admin+
+ */
+router.delete('/assignment/:assignmentId', authenticate, (req, res) => {
+  try {
+    const result = workloadService.deleteAssignment(req.params.assignmentId, req.user);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * POST /api/workload/prorate/calculate
+ * Helper route to compute multi-week proration math
+ * Server-side calculation
+ */
+router.post('/prorate/calculate', authenticate, (req, res) => {
+  try {
+    const { start_date, end_date, week_start_date, estimated_hrs } = req.body;
+    if (!start_date || !end_date || !week_start_date) {
+      return res.status(400).json({ error: 'start_date, end_date, and week_start_date are required' });
+    }
+    const prorated = workloadService.calculateProratedHours(
+      start_date,
+      end_date,
+      week_start_date,
+      estimated_hrs
+    );
+    return res.status(200).json({
+      start_date,
+      end_date,
+      week_start: workloadService.getWeekStart(week_start_date),
+      week_end: workloadService.getWeekEnd(week_start_date),
+      full_estimated_hrs: Number(estimated_hrs || 0),
+      prorated_week_hrs: prorated
+    });
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * GET /api/workload/member/workload/:userId
+ * Retrieves full weekly workload breakdown for a single member
+ * Role: Admin+ or own member
+ */
+router.get('/member/workload/:userId', authenticate, (req, res) => {
+  try {
+    if (!workloadService.isAdmin(req.user) && String(req.user.id) !== String(req.params.userId)) {
+      return res.status(403).json({ error: 'Forbidden: You can only view your own workload breakdown' });
+    }
+    const weekStart = req.query.week_start_date || new Date().toISOString().split('T')[0];
+    const result = workloadService.getMemberWeeklyWorkload(req.params.userId, weekStart);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * GET /api/workload/team/:projectId
+ * Team-wide utilization aggregation across all project members
+ * Role: Admin+
+ */
+router.get('/team/:projectId', authenticate, (req, res) => {
+  try {
+    const weekStart = req.query.week_start_date || new Date().toISOString().split('T')[0];
+    const result = workloadService.getTeamWorkload(req.params.projectId, weekStart, req.user);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
 export default router;
+

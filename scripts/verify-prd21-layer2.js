@@ -378,8 +378,10 @@ async function runSuite() {
   // -----------------------------------------------------------------
   console.log('\n--- SECTION 4: Overload & Underload Auto-Alert Generation ---');
 
-  const testWeekDate = '2026-12-07'; // Future Monday
-  execute('DELETE FROM workload_alerts WHERE user_id = ? AND week_start_date = ?', [memberUser.id, testWeekDate]);
+  // Acknowledge any prior alerts on test dates to respect append-only trigger
+  const runId = Date.now() % 10000;
+  const testWeekDate = '2028-01-03'; // Future Monday
+  execute("UPDATE workload_alerts SET acknowledged_at = datetime('now'), acknowledged_by = ? WHERE user_id = ? AND week_start_date = ?", [adminUser.id, memberUser.id, testWeekDate]);
 
   // Test 27: Overload scenario (>100%): 48 hrs on 32 cap -> 150% -> OVERLOADED alert created
   const alertOver = workloadService.evaluateAndCreateWorkloadAlert(memberUser.id, testWeekDate, 48, 32);
@@ -399,8 +401,8 @@ async function runSuite() {
   );
 
   // Test 29: Underload scenario (<30%): 8 hrs on 32 cap -> 25% -> UNDERLOADED alert created
-  const testWeekDate2 = '2026-12-14';
-  execute('DELETE FROM workload_alerts WHERE user_id = ? AND week_start_date = ?', [memberUser.id, testWeekDate2]);
+  const testWeekDate2 = '2028-01-10';
+  execute("UPDATE workload_alerts SET acknowledged_at = datetime('now'), acknowledged_by = ? WHERE user_id = ? AND week_start_date = ?", [adminUser.id, memberUser.id, testWeekDate2]);
   const alertUnder = workloadService.evaluateAndCreateWorkloadAlert(memberUser.id, testWeekDate2, 8, 32);
   assert(
     alertUnder.alert_created === true &&
