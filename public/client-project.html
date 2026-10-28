@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Project View — Mahi Tech Group</title>
+  <meta name="description" content="View shared project timelines, milestones, deliverables, and orders.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-primary-hover: #0284c7;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-purple: #a855f7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    .portal-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.875rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+
+    .nav-logo-badge {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--color-primary);
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--color-primary);
+    }
+
+    .nav-user {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .client-badge-pill {
+      font-size: 0.8125rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      color: var(--text-main);
+    }
+
+    .btn-signout {
+      background: transparent;
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      padding: 0.4rem 0.875rem;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-signout:hover {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    /* Main Container */
+    .main-content {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Project Header & Selector */
+    .project-header {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 1.75rem 2rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .project-title-area {
+      flex: 1;
+    }
+
+    .project-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+      color: var(--text-main);
+    }
+
+    .project-desc {
+      color: var(--text-muted);
+      font-size: 0.9375rem;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .project-select-wrapper {
+      min-width: 240px;
+    }
+
+    .project-select {
+      width: 100%;
+      padding: 0.65rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 0.875rem;
+      font-family: inherit;
+      outline: none;
+    }
+
+    /* Tabs Bar */
+    .tabs-bar {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-card);
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      padding: 0.75rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+    }
+
+    /* Tab Panes */
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    /* Card Panels */
+    .card-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Data Table / List Styles */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .data-table th {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .data-table td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.875rem;
+    }
+
+    .progress-bar-bg {
+      background: var(--bg-card);
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      width: 120px;
+    }
+
+    .progress-bar-fill {
+      background: var(--color-primary);
+      height: 100%;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-approved { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-rejected { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-achieved { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    .btn-action-sm {
+      padding: 0.35rem 0.75rem;
+      background: var(--color-primary);
+      color: #04101e;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-action-sm:hover {
+      background: var(--color-primary-hover);
+      color: #ffffff;
+    }
+
+    .empty-state {
+      padding: 3rem 1rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 1rem;
+    }
+
+    .modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      max-width: 500px;
+      width: 100%;
+      padding: 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+      color: var(--text-main);
+    }
+
+    .modal-subtitle {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin: 0 0 1.25rem 0;
+    }
+
+    .modal-form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .modal-form-label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-input, .modal-textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.875rem;
+      outline: none;
+    }
+
+    .modal-textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      border: none;
+      color: #04101e;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .star-rating {
+      display: flex;
+      gap: 0.5rem;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #475569;
+    }
+
+    .star-rating .star.active {
+      color: #f59e0b;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="portal-nav">
+    <a href="/client-dashboard.html" class="nav-brand">
+      <span class="nav-logo-badge">PORTAL</span>
+      <span class="nav-brand-title">Mahi Tech Group</span>
+    </a>
+
+    <div class="nav-links">
+      <a href="/client-dashboard.html" class="nav-link">Dashboard</a>
+      <a href="/client-project.html" class="nav-link active">Projects</a>
+      <a href="/client-orders.html" class="nav-link">My Orders</a>
+    </div>
+
+    <div class="nav-user">
+      <span id="clientNameBadge" class="client-badge-pill">Loading...</span>
+      <button id="signOutBtn" class="btn-signout">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Project Header & Selector -->
+    <header class="project-header">
+      <div class="project-title-area">
+        <h1 id="projectName" class="project-title">Select a Project</h1>
+        <p id="projectDesc" class="project-desc">Review your project timeline, milestones, deliverables, and requests.</p>
+      </div>
+      <div class="project-select-wrapper">
+        <select id="projectSelect" class="project-select" aria-label="Select Project">
+          <option value="">Loading projects...</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Tabs Navigation -->
+    <div class="tabs-bar">
+      <button class="tab-btn active" data-tab="timeline">Timeline</button>
+      <button class="tab-btn" data-tab="milestones">Milestones</button>
+      <button class="tab-btn" data-tab="orders">My Orders</button>
+      <button class="tab-btn" data-tab="feedback">Deliverables & Feedback</button>
+    </div>
+
+    <!-- TAB 1: Timeline -->
+    <div id="tab-timeline" class="tab-pane active">
+      <div class="card-panel">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Task / Item</th>
+              <th>Start Date</th>
+              <th>End Date</th>
+              <th>Status</th>
+              <th>Progress</th>
+            </tr>
+          </thead>
+          <tbody id="timelineBody">
+            <tr><td colspan="5" class="empty-state">Loading timeline items...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 2: Milestones -->
+    <div id="tab-milestones" class="tab-pane">
+      <div class="card-panel">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Milestone Title</th>
+              <th>Due Date</th>
+              <th>Status</th>
+              <th>Client Approval</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="milestonesBody">
+            <tr><td colspan="5" class="empty-state">Loading milestones...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 3: My Orders -->
+    <div id="tab-orders" class="tab-pane">
+      <div class="card-panel">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Order Title</th>
+              <th>Type</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Submitted</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody">
+            <tr><td colspan="6" class="empty-state">Loading orders...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 4: Deliverables & Feedback -->
+    <div id="tab-feedback" class="tab-pane">
+      <div class="card-panel">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Deliverable / Shared Item</th>
+              <th>Type</th>
+              <th>Date Shared</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="feedbackBody">
+            <tr><td colspan="4" class="empty-state">Loading shared items...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Milestone Approval Modal -->
+  <div id="approvalModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 id="approvalModalTitle" class="modal-title">Milestone Approval Request</h3>
+      <p class="modal-subtitle">Review and provide your sign-off or change notes for this milestone.</p>
+
+      <input type="hidden" id="approvalId">
+
+      <div class="modal-form-group">
+        <label class="modal-form-label" for="decisionNote">Decision Notes (Optional)</label>
+        <textarea id="decisionNote" class="modal-textarea" placeholder="Provide any comments or instructions..."></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="cancelApprovalBtn" class="btn-secondary">Cancel</button>
+        <button type="button" id="rejectApprovalBtn" class="btn-danger">Reject</button>
+        <button type="button" id="confirmApprovalBtn" class="btn-primary">Approve</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback Modal -->
+  <div id="feedbackModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 id="feedbackModalTitle" class="modal-title">Leave Deliverable Feedback</h3>
+      <p class="modal-subtitle">Rate this deliverable and share your feedback with our team.</p>
+
+      <input type="hidden" id="feedbackItemType">
+      <input type="hidden" id="feedbackItemId">
+
+      <div class="modal-form-group">
+        <label class="modal-form-label">Quality Rating</label>
+        <div id="starContainer" class="star-rating">
+          <span class="star active" data-val="1">&#9733;</span>
+          <span class="star active" data-val="2">&#9733;</span>
+          <span class="star active" data-val="3">&#9733;</span>
+          <span class="star active" data-val="4">&#9733;</span>
+          <span class="star active" data-val="5">&#9733;</span>
+        </div>
+      </div>
+
+      <div class="modal-form-group">
+        <label class="modal-form-label" for="feedbackText">Comments</label>
+        <textarea id="feedbackText" class="modal-textarea" placeholder="Tell us what you loved or what needs improvement..." required></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="cancelFeedbackBtn" class="btn-secondary">Cancel</button>
+        <button type="button" id="submitFeedbackBtn" class="btn-primary">Submit Feedback</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Escape HTML to prevent XSS injection
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Auth Guard
+    const clientToken = localStorage.getItem('clientToken');
+    if (!clientToken) {
+      window.location.replace('/client-login.html');
+    }
+
+    async function clientFetch(url, options = {}) {
+      const headers = Object.assign({}, options.headers, {
+        'Authorization': 'Bearer ' + clientToken
+      });
+      const response = await fetch(url, Object.assign({}, options, { headers }));
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('clientToken');
+        localStorage.removeItem('clientUser');
+        window.location.replace('/client-login.html');
+        return null;
+      }
+      return response;
+    }
+
+    // Sign out handler
+    document.getElementById('signOutBtn').addEventListener('click', async () => {
+      try {
+        await clientFetch('/api/client/auth/logout', { method: 'POST' });
+      } catch (e) {}
+      localStorage.removeItem('clientToken');
+      localStorage.removeItem('clientUser');
+      window.location.replace('/client-login.html');
+    });
+
+    let currentProjectId = null;
+    let selectedRating = 5;
+
+    // Tabs Switcher
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabPanes.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const target = btn.dataset.tab;
+        document.getElementById('tab-' + target).classList.add('active');
+      });
+    });
+
+    // Check query params for tab selection
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialTab = urlParams.get('tab');
+    if (initialTab && document.getElementById('tab-' + initialTab)) {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      tabPanes.forEach(p => p.classList.remove('active'));
+      const activeBtn = document.querySelector(`.tab-btn[data-tab="${initialTab}"]`);
+      if (activeBtn) activeBtn.classList.add('active');
+      document.getElementById('tab-' + initialTab).classList.add('active');
+    }
+
+    // Star Rating click listener
+    const stars = document.querySelectorAll('#starContainer .star');
+    stars.forEach(star => {
+      star.addEventListener('click', () => {
+        selectedRating = parseInt(star.dataset.val, 10);
+        stars.forEach(s => {
+          const val = parseInt(s.dataset.val, 10);
+          if (val <= selectedRating) s.classList.add('active');
+          else s.classList.remove('active');
+        });
+      });
+    });
+
+    // Initialize View
+    async function init() {
+      // 1. Verify User Profile
+      const meRes = await clientFetch('/api/client/auth/me');
+      if (!meRes || !meRes.ok) return;
+      const meData = await meRes.json();
+      document.getElementById('clientNameBadge').textContent = meData.client.name;
+
+      // 2. Fetch Projects
+      const projectsRes = await clientFetch('/api/client/projects');
+      if (!projectsRes || !projectsRes.ok) return;
+      const pData = await projectsRes.json();
+      const projects = Array.isArray(pData) ? pData : (pData.projects || []);
+
+      const selectEl = document.getElementById('projectSelect');
+      if (projects.length === 0) {
+        selectEl.innerHTML = '<option value="">No projects assigned</option>';
+        document.getElementById('projectName').textContent = 'No Projects Available';
+        return;
+      }
+
+      selectEl.innerHTML = projects.map(p => `
+        <option value="${p.id}">${escapeHTML(p.name || p.title)}</option>
+      `).join('');
+
+      // Auto-select projectId from URL or pick first
+      const requestedProjectId = urlParams.get('projectId');
+      if (requestedProjectId && projects.some(p => String(p.id) === String(requestedProjectId))) {
+        selectEl.value = requestedProjectId;
+      }
+
+      selectEl.addEventListener('change', () => {
+        loadProjectData(selectEl.value);
+      });
+
+      loadProjectData(selectEl.value);
+    }
+
+    async function loadProjectData(projectId) {
+      if (!projectId) return;
+      currentProjectId = projectId;
+
+      // 1. Project Overview
+      const overviewRes = await clientFetch(`/api/client/project/${projectId}/overview`);
+      if (overviewRes && overviewRes.ok) {
+        const overview = await overviewRes.json();
+        document.getElementById('projectName').textContent = overview.project.name || overview.project.title;
+        document.getElementById('projectDesc').textContent = overview.project.description || 'Shared project workspace.';
+
+        // Render Shared Deliverables for Feedback Tab
+        renderFeedbackTab(overview.shared_items || []);
+      }
+
+      // 2. Load Timeline
+      loadTimeline(projectId);
+
+      // 3. Load Milestones
+      loadMilestones(projectId);
+
+      // 4. Load Orders for Project
+      loadOrders(projectId);
+    }
+
+    async function loadTimeline(projectId) {
+      const tbody = document.getElementById('timelineBody');
+      const res = await clientFetch(`/api/client/project/${projectId}/timeline`);
+      if (!res || !res.ok) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No shared timeline items found.</td></tr>';
+        return;
+      }
+      const tData = await res.json();
+      const items = Array.isArray(tData) ? tData : (tData.timeline_items || []);
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No shared timeline items for this project.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(item => `
+        <tr>
+          <td><strong>${escapeHTML(item.title)}</strong></td>
+          <td>${escapeHTML(item.start_date || 'N/A')}</td>
+          <td>${escapeHTML(item.end_date || 'N/A')}</td>
+          <td><span class="badge badge-achieved">${escapeHTML(item.status || 'ACTIVE')}</span></td>
+          <td>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" style="width: ${Math.min(100, Math.max(0, item.progress || 0))}%"></div>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadMilestones(projectId) {
+      const tbody = document.getElementById('milestonesBody');
+      const res = await clientFetch(`/api/client/project/${projectId}/milestones`);
+      if (!res || !res.ok) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No shared milestones found.</td></tr>';
+        return;
+      }
+      const mData = await res.json();
+      const milestones = Array.isArray(mData) ? mData : (mData.milestones || []);
+      if (milestones.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No shared milestones for this project.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = milestones.map(m => {
+        let approvalBadge = '<span class="badge badge-pending">PENDING</span>';
+        let actionBtn = '-';
+
+        if (m.client_approval_status === 'APPROVED') {
+          approvalBadge = '<span class="badge badge-approved">APPROVED</span>';
+        } else if (m.client_approval_status === 'REJECTED') {
+          approvalBadge = '<span class="badge badge-rejected">REJECTED</span>';
+        } else if (m.client_approval_status === 'PENDING' && m.approval_id) {
+          actionBtn = `<button class="btn-action-sm" onclick="openApprovalModal(${m.approval_id}, '${escapeHTML(m.title)}')">Review</button>`;
+        }
+
+        return `
+          <tr>
+            <td><strong>${escapeHTML(m.title)}</strong></td>
+            <td>${escapeHTML(m.due_date || 'N/A')}</td>
+            <td><span class="badge badge-achieved">${escapeHTML(m.status || 'ACHIEVED')}</span></td>
+            <td>${approvalBadge}</td>
+            <td>${actionBtn}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function loadOrders(projectId) {
+      const tbody = document.getElementById('ordersBody');
+      const res = await clientFetch('/api/client/orders');
+      if (!res || !res.ok) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No orders found.</td></tr>';
+        return;
+      }
+      const oData = await res.json();
+      const allOrders = Array.isArray(oData) ? oData : (oData.orders || []);
+      const projectOrders = allOrders.filter(o => String(o.project_id) === String(projectId));
+
+      if (projectOrders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No orders submitted for this project.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = projectOrders.map(o => `
+        <tr>
+          <td><strong>${escapeHTML(o.title)}</strong></td>
+          <td>${escapeHTML(o.order_type)}</td>
+          <td>${escapeHTML(o.priority)}</td>
+          <td><span class="badge badge-pending">${escapeHTML(o.status)}</span></td>
+          <td>${new Date(o.created_at).toLocaleDateString()}</td>
+          <td><a href="/client-orders.html?orderId=${o.id}" class="btn-action-sm" style="text-decoration:none;display:inline-block">View Thread</a></td>
+        </tr>
+      `).join('');
+    }
+
+    function renderFeedbackTab(sharedItems) {
+      const tbody = document.getElementById('feedbackBody');
+      if (!sharedItems || sharedItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No shared deliverables currently available for feedback.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = sharedItems.map(item => `
+        <tr>
+          <td><strong>${escapeHTML(item.title || item.item_type + ' #' + item.item_id)}</strong></td>
+          <td>${escapeHTML(item.item_type)}</td>
+          <td>${item.shared_at ? new Date(item.shared_at).toLocaleDateString() : 'Active'}</td>
+          <td>
+            <button class="btn-action-sm" onclick="openFeedbackModal('${escapeHTML(item.item_type)}', ${item.item_id}, '${escapeHTML(item.title || '')}')">Leave Feedback</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Modal Helpers
+    window.openApprovalModal = function(approvalId, title) {
+      document.getElementById('approvalId').value = approvalId;
+      document.getElementById('approvalModalTitle').textContent = 'Approve: ' + title;
+      document.getElementById('decisionNote').value = '';
+      document.getElementById('approvalModal').style.display = 'flex';
+    };
+
+    document.getElementById('cancelApprovalBtn').addEventListener('click', () => {
+      document.getElementById('approvalModal').style.display = 'none';
+    });
+
+    async function handleApproval(decision) {
+      const approvalId = document.getElementById('approvalId').value;
+      const decision_note = document.getElementById('decisionNote').value.trim();
+
+      const res = await clientFetch(`/api/client/milestone/approval/${approvalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, decision_note })
+      });
+
+      if (res && res.ok) {
+        document.getElementById('approvalModal').style.display = 'none';
+        loadMilestones(currentProjectId);
+      } else {
+        alert('Failed to submit decision. Please try again.');
+      }
+    }
+
+    document.getElementById('confirmApprovalBtn').addEventListener('click', () => handleApproval('APPROVED'));
+    document.getElementById('rejectApprovalBtn').addEventListener('click', () => handleApproval('REJECTED'));
+
+    window.openFeedbackModal = function(itemType, itemId, title) {
+      document.getElementById('feedbackItemType').value = itemType;
+      document.getElementById('feedbackItemId').value = itemId;
+      document.getElementById('feedbackModalTitle').textContent = 'Feedback: ' + (title || itemType);
+      document.getElementById('feedbackText').value = '';
+      document.getElementById('feedbackModal').style.display = 'flex';
+    };
+
+    document.getElementById('cancelFeedbackBtn').addEventListener('click', () => {
+      document.getElementById('feedbackModal').style.display = 'none';
+    });
+
+    document.getElementById('submitFeedbackBtn').addEventListener('click', async () => {
+      const item_type = document.getElementById('feedbackItemType').value;
+      const item_id = parseInt(document.getElementById('feedbackItemId').value, 10);
+      const feedback_text = document.getElementById('feedbackText').value.trim();
+
+      if (!feedback_text) {
+        alert('Please enter your feedback comments.');
+        return;
+      }
+
+      const res = await clientFetch('/api/client/feedback/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: parseInt(currentProjectId, 10),
+          item_type,
+          item_id,
+          rating: selectedRating,
+          feedback_text
+        })
+      });
+
+      if (res && res.ok) {
+        alert('Feedback submitted successfully. Thank you!');
+        document.getElementById('feedbackModal').style.display = 'none';
+      } else {
+        alert('Failed to submit feedback. Ensure deliverable is shared.');
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>

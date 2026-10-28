@@ -201,6 +201,39 @@ export async function acceptInvite({ invite_token, new_password }, ip = null, us
 }
 
 /**
+ * Validate invite token without accepting it (for page load verification)
+ */
+export async function validateInviteToken(invite_token) {
+  if (!invite_token) {
+    const err = new Error('Invite token is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const client = queryOne('SELECT id, name, email, company_name, invite_token_expires_at FROM clients WHERE invite_token = ?', [invite_token.trim()]);
+  if (!client) {
+    const err = new Error('Invalid or already used invitation token');
+    err.status = 400;
+    throw err;
+  }
+
+  if (!client.invite_token_expires_at || new Date(client.invite_token_expires_at) <= new Date()) {
+    const err = new Error('Invitation token has expired. Please contact administrator for a new invite.');
+    err.status = 400;
+    throw err;
+  }
+
+  return {
+    valid: true,
+    client: {
+      name: client.name,
+      email: client.email,
+      company_name: client.company_name
+    }
+  };
+}
+
+/**
  * Client Login
  * Enforces rate limiting, status checks, password validation, and issues Client JWT
  */

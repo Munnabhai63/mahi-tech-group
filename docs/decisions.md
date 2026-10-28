@@ -719,3 +719,35 @@
   3. **Append-Only & Immutability Verification**:
      - Tested DB triggers on `client_order_messages`, `client_milestone_approvals`, and `client_deliverable_feedback` confirming UPDATE and DELETE attempts are strictly aborted by SQLite.
 - **Consequences**: Layer 4 verified with 111/111 passing assertions in `scripts/verify-prd24-layer4.js`. Zero regressions across Layer 1 (216/216), Layer 2 (74/74), Layer 3 (121/121), PRD 23 Integration (197/197), and core platform suite (13/13).
+
+## Decision 24-E: PRD 24 Layer 5 Frontend Views Architecture & Security Isolation
+- **Context**: PRD 24 Layer 5 specifies creating 6 frontend views in `public/` for the Client Portal subsystem:
+  1. `public/client-login.html`: Client login page with dedicated rate limiting and 429 lockout handling.
+  2. `public/client-invite.html`: Client invite acceptance page with token validation and account activation.
+  3. `public/client-dashboard.html`: Client dashboard with welcome header, project counts, pending approvals, recent activity feed.
+  4. `public/client-project.html`: Client project view with Timeline, Milestones (approval workflow), Orders, and Deliverable Feedback.
+  5. `public/client-orders.html`: Client order center with request modal, order list, status stepper, sanitized message thread, and reply box.
+  6. `public/admin-client-management.html`: Internal admin management view with client directory, invite generator, client detail modal (project access, deliverable sharing, activity log), and admin order management table with `internal_notes` and `is_internal` message toggle.
+- **Decision**:
+  1. **Strict Token & Storage Separation (Rule 2 & Rule 3)**:
+     - Client views store JWT exclusively under `localStorage.getItem('clientToken')` / `localStorage.setItem('clientToken', ...)`. Internal user tokens remain stored under `token`. They are never intermixed.
+     - `clientUser` stored in localStorage contains only sanitized properties (`id`, `name`, `email`, `company_name`, `role: 'CLIENT'`). It strictly omits password hash, `internal_notes`, or `is_internal`.
+  2. **Zero Hardcoded Credentials (Rule 1)**:
+     - All 6 HTML files contain zero hardcoded passwords, tokens, API secrets, or test emails in frontend JavaScript.
+  3. **Client API Routing Isolation (Rule 4 & Rule 5)**:
+     - Client portal pages (`client-dashboard.html`, `client-project.html`, `client-orders.html`, `client-invite.html`, `client-login.html`) communicate exclusively with `/api/client/*`. They never invoke `/api/admin/*`, `/api/superadmin/*`, or internal-only endpoints.
+     - All client API calls inject `Authorization: Bearer ` + `clientToken`.
+  4. **Complete Erasure of Internal Data (Rule 6, Rule 7, Rule 8)**:
+     - `is_internal` and `internal_notes` are never referenced, rendered, or present as hidden DOM fields or JS variables in client-facing views.
+     - No internal performance data, no internal revenue metrics, and no team member personal data (phone, salary, internal ID) are rendered on any client page.
+     - Admin navigation and admin controls are completely absent from client interfaces.
+  5. **Client-Side UX Validation with Server as Single Source of Truth (Rule 9)**:
+     - All forms (login, invite acceptance, order submission, reply, feedback, and milestone approval) implement client-side validation UX before issuing HTTP requests, with server-side validation acting as authoritative guard.
+  6. **Server-Verified Identity & Role-Based Navigation (Rule 10)**:
+     - Navigation and active session state are established only through server-verified `GET /api/client/auth/me` (or `/api/client/me`), never blindly trusting localStorage values.
+  7. **Internal Admin Management View (`admin-client-management.html`)**:
+     - Uses internal JWT (`localStorage.getItem('token')`), calls `/api/admin/clients/*` and `/api/admin/orders/*`.
+     - Supports full governance: client creation, invite link generation, status toggling, project access grant/revoke, deliverable sharing/unsharing, order status progression, and internal notes inspection.
+     - Supports `is_internal` message toggle (Admin can post internal notes or client-visible replies).
+- **Consequences**: Complete, secure, responsive frontend views verified by 101/101 passing tests in `scripts/verify-prd24-layer5.js`. Zero platform regressions across all 13 core test suites, PRD 23 integration, and PRD 24 Layers 1-4.
+

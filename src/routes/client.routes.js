@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   acceptInvite,
+  validateInviteToken,
   clientLogin,
   clientLogout,
   getClientProfile
@@ -35,6 +36,23 @@ function getClientMeta(req) {
 /* ==========================================================================
    Client Authentication Routes (/api/client/auth/*)
    ========================================================================== */
+
+/**
+ * GET /api/client/auth/validate-invite
+ * Public - Validates invite token without activating (checks expiry and existence)
+ */
+router.get('/auth/validate-invite', async (req, res, next) => {
+  try {
+    const token = req.query.token;
+    const result = await validateInviteToken(token);
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json({ valid: false, error: err.message });
+    }
+    next(err);
+  }
+});
 
 /**
  * POST /api/client/auth/accept-invite
@@ -89,10 +107,10 @@ router.post('/auth/logout', clientAuthMiddleware, (req, res, next) => {
 });
 
 /**
- * GET /api/client/auth/me
+ * GET /api/client/auth/me & GET /api/client/me
  * Client Auth Required - Returns authenticated client profile (no internal data)
  */
-router.get('/auth/me', clientAuthMiddleware, (req, res, next) => {
+const handleClientMe = (req, res, next) => {
   try {
     const profile = getClientProfile(req.client.id);
     return res.status(200).json({ client: profile });
@@ -102,7 +120,10 @@ router.get('/auth/me', clientAuthMiddleware, (req, res, next) => {
     }
     next(err);
   }
-});
+};
+
+router.get('/auth/me', clientAuthMiddleware, handleClientMe);
+router.get('/me', clientAuthMiddleware, handleClientMe);
 
 /* ==========================================================================
    Client-Facing Routes (/api/client/*)
