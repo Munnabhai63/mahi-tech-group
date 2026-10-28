@@ -1070,6 +1070,173 @@ BEFORE DELETE ON client_activity_log
 BEGIN SELECT RAISE(ABORT, 'client_activity_log is append-only'); END;
 `;
 
+export const BUDGET_FINANCIAL_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS project_budgets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id) UNIQUE,
+  total_budget REAL NOT NULL DEFAULT 0.0,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  budget_type TEXT NOT NULL DEFAULT 'FIXED',
+  alert_threshold_pct REAL NOT NULL DEFAULT 80.0,
+  start_date TEXT NOT NULL,
+  end_date TEXT,
+  notes TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS budget_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  changed_by INTEGER NOT NULL REFERENCES users(id),
+  field_changed TEXT NOT NULL,
+  old_value TEXT,
+  new_value TEXT,
+  reason TEXT NOT NULL,
+  changed_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS expense_categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS project_expenses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  category_id INTEGER NOT NULL REFERENCES expense_categories(id),
+  submitted_by INTEGER NOT NULL REFERENCES users(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  amount REAL NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  expense_date TEXT NOT NULL,
+  receipt_path TEXT,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  approved_by INTEGER REFERENCES users(id),
+  approved_at TEXT,
+  rejected_by INTEGER REFERENCES users(id),
+  rejected_at TEXT,
+  rejection_reason TEXT,
+  is_billable INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS expense_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  expense_id INTEGER NOT NULL REFERENCES project_expenses(id),
+  changed_by INTEGER NOT NULL REFERENCES users(id),
+  field_changed TEXT NOT NULL,
+  old_value TEXT,
+  new_value TEXT,
+  changed_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  client_id INTEGER REFERENCES clients(id),
+  invoice_number TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'DRAFT',
+  issue_date TEXT NOT NULL,
+  due_date TEXT NOT NULL,
+  subtotal REAL NOT NULL DEFAULT 0.0,
+  tax_pct REAL NOT NULL DEFAULT 0.0,
+  tax_amount REAL NOT NULL DEFAULT 0.0,
+  total_amount REAL NOT NULL DEFAULT 0.0,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  notes TEXT,
+  internal_notes TEXT,
+  paid_amount REAL DEFAULT 0.0,
+  paid_at TEXT,
+  payment_reference TEXT,
+  sent_at TEXT,
+  viewed_at TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS invoice_line_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  invoice_id INTEGER NOT NULL REFERENCES invoices(id),
+  description TEXT NOT NULL,
+  line_type TEXT NOT NULL DEFAULT 'SERVICE',
+  quantity REAL NOT NULL DEFAULT 1.0,
+  unit_price REAL NOT NULL DEFAULT 0.0,
+  amount REAL NOT NULL DEFAULT 0.0,
+  source_type TEXT,
+  source_id INTEGER,
+  position INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS budget_alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  alert_type TEXT NOT NULL,
+  triggered_at_pct REAL,
+  triggered_amount REAL,
+  message TEXT NOT NULL,
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_budgets_project ON project_budgets(project_id);
+CREATE INDEX IF NOT EXISTS idx_budget_history_project ON budget_history(project_id);
+CREATE INDEX IF NOT EXISTS idx_expense_categories_name ON expense_categories(name);
+CREATE INDEX IF NOT EXISTS idx_expense_categories_active ON expense_categories(is_active);
+CREATE INDEX IF NOT EXISTS idx_project_expenses_project ON project_expenses(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_expenses_category ON project_expenses(category_id);
+CREATE INDEX IF NOT EXISTS idx_project_expenses_submitter ON project_expenses(submitted_by);
+CREATE INDEX IF NOT EXISTS idx_project_expenses_status ON project_expenses(status);
+CREATE INDEX IF NOT EXISTS idx_expense_history_expense ON expense_history(expense_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_project ON invoices(project_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_client ON invoices(client_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_number ON invoices(invoice_number);
+CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+CREATE INDEX IF NOT EXISTS idx_invoice_line_items_invoice ON invoice_line_items(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_budget_alerts_project ON budget_alerts(project_id);
+CREATE INDEX IF NOT EXISTS idx_budget_alerts_type ON budget_alerts(alert_type);
+
+CREATE TRIGGER IF NOT EXISTS prevent_budget_history_update
+BEFORE UPDATE ON budget_history
+BEGIN SELECT RAISE(ABORT, 'budget_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_budget_history_delete
+BEFORE DELETE ON budget_history
+BEGIN SELECT RAISE(ABORT, 'budget_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_expense_history_update
+BEFORE UPDATE ON expense_history
+BEGIN SELECT RAISE(ABORT, 'expense_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_expense_history_delete
+BEFORE DELETE ON expense_history
+BEGIN SELECT RAISE(ABORT, 'expense_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_invoice_line_item_update
+BEFORE UPDATE ON invoice_line_items
+BEGIN SELECT RAISE(ABORT, 'invoice_line_items is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_invoice_line_item_delete
+BEFORE DELETE ON invoice_line_items
+BEGIN SELECT RAISE(ABORT, 'invoice_line_items is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_budget_alert_delete
+BEFORE DELETE ON budget_alerts
+BEGIN SELECT RAISE(ABORT, 'budget_alerts is append-only'); END;
+`;
+
+
 
 export function seedBuiltInKpis(db) {
   try {
@@ -1234,6 +1401,41 @@ export function seedBuiltInKpis(db) {
   }
 }
 
+export function seedDefaultExpenseCategories(db) {
+  try {
+    const adminRow = db.prepare("SELECT id FROM users WHERE role IN ('admin', 'superadmin') LIMIT 1").get();
+    const adminId = adminRow ? adminRow.id : 1;
+
+    const defaultCategories = [
+      { name: 'SOFTWARE', description: 'Software licenses, subscriptions, and developer tools' },
+      { name: 'HARDWARE', description: 'Equipment, servers, peripherals, and testing devices' },
+      { name: 'TRAVEL', description: 'Travel, lodging, transport, and on-site client visits' },
+      { name: 'MARKETING', description: 'Marketing campaigns, advertising, collateral, and promotion' },
+      { name: 'CONTRACTOR', description: 'External contractors, freelancers, and specialist consulting' },
+      { name: 'OFFICE', description: 'Office supplies, utilities, workspace, and facilities' },
+      { name: 'TRAINING', description: 'Training courses, certifications, conferences, and books' },
+      { name: 'MISCELLANEOUS', description: 'Sundry and uncategorized project expenses' }
+    ];
+
+    const checkStmt = db.prepare('SELECT id FROM expense_categories WHERE name = ?');
+    const insertStmt = db.prepare(`
+      INSERT INTO expense_categories (name, description, is_active, created_by)
+      VALUES (?, ?, 1, ?)
+    `);
+
+    for (const cat of defaultCategories) {
+      const existing = checkStmt.get(cat.name);
+      if (!existing) {
+        insertStmt.run(cat.name, cat.description, adminId);
+      }
+    }
+  } catch (err) {
+    if (!err.message.includes('no such table')) {
+      console.error('[DB] Warning seeding default expense categories:', err.message);
+    }
+  }
+}
+
 export function getDatabase() {
   if (!dbInstance) {
     fs.mkdirSync(path.dirname(config.DB_PATH), { recursive: true });
@@ -1264,8 +1466,10 @@ export function getDatabase() {
     dbInstance.exec(TIME_TRACKING_SCHEMA_SQL);
     dbInstance.exec(ANALYTICS_SCHEMA_SQL);
     dbInstance.exec(CLIENT_PORTAL_SCHEMA_SQL);
+    dbInstance.exec(BUDGET_FINANCIAL_SCHEMA_SQL);
 
     seedBuiltInKpis(dbInstance);
+    seedDefaultExpenseCategories(dbInstance);
   }
   return dbInstance;
 }

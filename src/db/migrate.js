@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getDatabase, execRaw, queryAll, queryOne, execute, ANALYTICS_SCHEMA_SQL, seedBuiltInKpis, CLIENT_PORTAL_SCHEMA_SQL } from './database.js';
+import { getDatabase, execRaw, queryAll, queryOne, execute, ANALYTICS_SCHEMA_SQL, seedBuiltInKpis, CLIENT_PORTAL_SCHEMA_SQL, BUDGET_FINANCIAL_SCHEMA_SQL, seedDefaultExpenseCategories } from './database.js';
 import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1274,6 +1274,10 @@ export function runMigration() {
 
   // PRD 24: Client Portal
   execRaw(CLIENT_PORTAL_SCHEMA_SQL);
+
+  // PRD 25: Budget & Financial Management
+  execRaw(BUDGET_FINANCIAL_SCHEMA_SQL);
+  seedDefaultExpenseCategories(getDatabase());
 
   // Verification of tables
   const tables = queryAll("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;");

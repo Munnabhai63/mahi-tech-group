@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Expenses — Mahi Tech Group</title>
+  <meta name="description" content="Submit and track your personal project expense reimbursements and approval status.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-accent: #818cf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .btn-nav {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .main-container {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .page-subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0.35rem 0 0 0;
+    }
+
+    .section-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .badge-yellow { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .badge-blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+    .badge-grey { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+
+    th {
+      background: #1e293b;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-card);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      cursor: pointer;
+    }
+
+    /* Form controls */
+    select, input, textarea {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      color: #fff;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      border-color: var(--color-primary);
+    }
+
+    /* Buttons */
+    .btn {
+      background: var(--color-primary);
+      color: #04101e;
+      border: none;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn:hover { background: #7dd3fc; }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: #2c3a50;
+      border-color: var(--color-primary);
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(4, 7, 14, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop.active { display: flex; }
+
+    .modal-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Status Timeline */
+    .timeline {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 0;
+      position: relative;
+    }
+
+    .timeline-step {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .timeline-step.active {
+      color: var(--color-primary);
+    }
+
+    .timeline-step.completed {
+      color: var(--color-success);
+    }
+
+    .timeline-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--border-card);
+    }
+
+    .timeline-step.active .timeline-dot {
+      background: var(--color-primary);
+      box-shadow: 0 0 8px var(--color-primary);
+    }
+
+    .timeline-step.completed .timeline-dot {
+      background: var(--color-success);
+    }
+
+    #toastContainer {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+
+    .toast.success { border-color: var(--color-success); color: #34d399; }
+    .toast.error { border-color: var(--color-danger); color: #f87171; }
+  </style>
+</head>
+<body>
+
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/app.html" class="brand-title">
+        <span>⚡</span> Mahi Tech Group
+      </a>
+      <nav class="nav-links-sub">
+        <a href="/finance-dashboard.html" class="nav-link-sub">Financial Dashboard</a>
+        <a href="/project-budget.html" class="nav-link-sub">Project Budgets</a>
+        <a href="/my-expenses.html" class="nav-link-sub active">My Expenses</a>
+        <a href="/invoice-manager.html" class="nav-link-sub">Invoices</a>
+        <a href="/budget-alerts.html" class="nav-link-sub">Alerts & Reports</a>
+      </nav>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <button id="btnLogout" class="btn-nav">Sign Out</button>
+    </div>
+  </header>
+
+  <main class="main-container">
+
+    <div class="page-header">
+      <div>
+        <h1 class="page-title"><span>🧾</span> My Submitted Expenses</h1>
+        <p class="page-subtitle">Submit project expense receipts, check review status, and view approval feedback</p>
+      </div>
+      <div>
+        <button id="btnOpenSubmitModal" class="btn">+ Submit New Expense</button>
+      </div>
+    </div>
+
+    <!-- Expenses Table -->
+    <div class="section-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; margin: 0;">Submission History</h2>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <select id="filterStatus">
+            <option value="">All Statuses</option>
+            <option value="PENDING">PENDING</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="REJECTED">REJECTED</option>
+          </select>
+          <button id="btnFilter" class="btn btn-secondary">Filter</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Project</th>
+              <th>Category</th>
+              <th>Amount</th>
+              <th>Expense Date</th>
+              <th>Status</th>
+              <th>Feedback Note</th>
+            </tr>
+          </thead>
+          <tbody id="myExpensesTableBody">
+            <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading your expenses...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Submit Expense Modal -->
+  <div id="submitModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Submit New Expense</h3>
+        <button id="btnCloseSubmit" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">&times;</button>
+      </div>
+      <form id="submitExpenseForm" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label">Project</label>
+          <select id="selectProject" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expense Category</label>
+          <select id="selectCategory" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expense Title</label>
+          <input type="text" id="expenseTitle" placeholder="e.g. Domain registration, SSL certificate" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description / Business Purpose</label>
+          <textarea id="expenseDescription" rows="2" placeholder="Describe the project requirement..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Amount (₹)</label>
+          <input type="number" step="0.01" min="0.01" id="expenseAmount" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expense Date</label>
+          <input type="date" id="expenseDate" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Receipt File / Link (optional)</label>
+          <input type="text" id="receiptPath" placeholder="Receipt link or path">
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+          <input type="checkbox" id="checkBillable" checked>
+          <label for="checkBillable" style="font-size: 0.85rem; color: #fff;">Billable to client</label>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+          <button type="button" id="btnCancelSubmit" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn">Submit for Review</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Detail / Edit Modal -->
+  <div id="detailModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="detailModalTitle">Expense Details</h3>
+        <button id="btnCloseDetail" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">&times;</button>
+      </div>
+
+      <div class="timeline" id="statusTimeline"></div>
+
+      <div id="rejectionAlertBox" style="display:none; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.3); border-radius:8px; padding:0.75rem 1rem;">
+        <div style="font-weight: 600; font-size: 0.82rem; color: #f87171;">Rejection Feedback:</div>
+        <div id="rejectionAlertText" style="font-size: 0.85rem; color: #fff; margin-top: 0.25rem;"></div>
+      </div>
+
+      <form id="editExpenseForm" style="display: flex; flex-direction: column; gap: 1rem;">
+        <input type="hidden" id="editExpenseId">
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input type="text" id="editTitle" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="editDescription" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Amount (₹)</label>
+          <input type="number" step="0.01" id="editAmount" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expense Date</label>
+          <input type="date" id="editDate" required>
+        </div>
+        <div id="editActions" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+          <button type="button" id="btnCloseDetailBtn" class="btn btn-secondary">Close</button>
+          <button type="submit" id="btnSaveEdit" class="btn">Update Expense</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    let myExpenses = [];
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      if (!token) {
+        window.location.href = '/app.html#/login';
+        throw new Error('Not logged in');
+      }
+      const headers = { 'Authorization': `Bearer ${token}` };
+      if (body) headers['Content-Type'] = 'application/json';
+      const res = await fetch(endpoint, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : null
+      });
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Session expired');
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+
+    function formatCurrency(val, curr = 'INR') {
+      const num = Number(val) || 0;
+      return '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    async function loadDropdowns() {
+      try {
+        const projects = await apiRequest('/api/projects');
+        const projSelect = document.getElementById('selectProject');
+        projSelect.innerHTML = '';
+        for (const p of projects) {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.title;
+          projSelect.appendChild(opt);
+        }
+
+        const categories = await apiRequest('/api/finance/categories');
+        const catSelect = document.getElementById('selectCategory');
+        catSelect.innerHTML = '';
+        for (const c of categories) {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
+          catSelect.appendChild(opt);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function loadMyExpenses() {
+      try {
+        const status = document.getElementById('filterStatus').value;
+        let url = '/api/finance/expenses/my';
+        if (status) url += `?status=${status}`;
+
+        myExpenses = await apiRequest(url);
+        const tbody = document.getElementById('myExpensesTableBody');
+        tbody.innerHTML = '';
+
+        if (!myExpenses || myExpenses.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No expense submissions found.</td></tr>';
+          return;
+        }
+
+        for (const exp of myExpenses) {
+          const tr = document.createElement('tr');
+          let badgeClass = 'badge-yellow';
+          if (exp.status === 'APPROVED') badgeClass = 'badge-green';
+          else if (exp.status === 'REJECTED') badgeClass = 'badge-red';
+
+          tr.innerHTML = `
+            <td style="font-weight: 600; color: #fff;">${exp.title}</td>
+            <td>${exp.project_title || 'Project #' + exp.project_id}</td>
+            <td>${exp.category_name || '-'}</td>
+            <td style="font-weight: 700;">${formatCurrency(exp.amount, exp.currency)}</td>
+            <td style="color: var(--text-muted);">${exp.expense_date}</td>
+            <td><span class="badge ${badgeClass}">${exp.status}</span></td>
+            <td style="color: ${exp.rejection_reason ? '#f87171' : 'var(--text-muted)'}; font-size: 0.82rem;">${exp.rejection_reason || '-'}</td>
+          `;
+          tr.addEventListener('click', () => openDetailModal(exp));
+          tbody.appendChild(tr);
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function openDetailModal(exp) {
+      document.getElementById('editExpenseId').value = exp.id;
+      document.getElementById('editTitle').value = exp.title;
+      document.getElementById('editDescription').value = exp.description || '';
+      document.getElementById('editAmount').value = exp.amount;
+      document.getElementById('editDate').value = exp.expense_date;
+
+      const isPending = exp.status === 'PENDING';
+      document.getElementById('editTitle').disabled = !isPending;
+      document.getElementById('editDescription').disabled = !isPending;
+      document.getElementById('editAmount').disabled = !isPending;
+      document.getElementById('editDate').disabled = !isPending;
+      document.getElementById('btnSaveEdit').style.display = isPending ? 'inline-flex' : 'none';
+
+      // Rejection box
+      const rejectBox = document.getElementById('rejectionAlertBox');
+      if (exp.status === 'REJECTED' && exp.rejection_reason) {
+        rejectBox.style.display = 'block';
+        document.getElementById('rejectionAlertText').textContent = exp.rejection_reason;
+      } else {
+        rejectBox.style.display = 'none';
+      }
+
+      // Timeline
+      const timeline = document.getElementById('statusTimeline');
+      timeline.innerHTML = `
+        <div class="timeline-step completed">
+          <div class="timeline-dot"></div>
+          <span>SUBMITTED</span>
+        </div>
+        <div style="flex:1; height:2px; background:var(--border-card);"></div>
+        <div class="timeline-step ${exp.status === 'PENDING' ? 'active' : 'completed'}">
+          <div class="timeline-dot"></div>
+          <span>PENDING REVIEW</span>
+        </div>
+        <div style="flex:1; height:2px; background:var(--border-card);"></div>
+        <div class="timeline-step ${exp.status === 'APPROVED' ? 'completed' : (exp.status === 'REJECTED' ? 'active' : '')}">
+          <div class="timeline-dot" style="${exp.status === 'REJECTED' ? 'background:var(--color-danger); box-shadow:0 0 8px var(--color-danger);' : ''}"></div>
+          <span style="${exp.status === 'REJECTED' ? 'color:var(--color-danger);' : ''}">${exp.status === 'REJECTED' ? 'REJECTED' : 'APPROVED'}</span>
+        </div>
+      `;
+
+      document.getElementById('detailModal').classList.add('active');
+    }
+
+    // Modal controls
+    const submitModal = document.getElementById('submitModal');
+    document.getElementById('btnOpenSubmitModal').addEventListener('click', () => {
+      document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+      submitModal.classList.add('active');
+    });
+    document.getElementById('btnCloseSubmit').addEventListener('click', () => submitModal.classList.remove('active'));
+    document.getElementById('btnCancelSubmit').addEventListener('click', () => submitModal.classList.remove('active'));
+
+    document.getElementById('submitExpenseForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await apiRequest('/api/finance/expense/submit', 'POST', {
+          project_id: parseInt(document.getElementById('selectProject').value, 10),
+          category_id: parseInt(document.getElementById('selectCategory').value, 10),
+          title: document.getElementById('expenseTitle').value.trim(),
+          description: document.getElementById('expenseDescription').value.trim(),
+          amount: parseFloat(document.getElementById('expenseAmount').value),
+          currency: 'INR',
+          expense_date: document.getElementById('expenseDate').value,
+          receipt_path: document.getElementById('receiptPath').value.trim() || null,
+          is_billable: document.getElementById('checkBillable').checked ? 1 : 0
+        });
+        showToast('Expense submitted successfully', 'success');
+        submitModal.classList.remove('active');
+        document.getElementById('expenseTitle').value = '';
+        document.getElementById('expenseDescription').value = '';
+        document.getElementById('expenseAmount').value = '';
+        loadMyExpenses();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    const detailModal = document.getElementById('detailModal');
+    document.getElementById('btnCloseDetail').addEventListener('click', () => detailModal.classList.remove('active'));
+    document.getElementById('btnCloseDetailBtn').addEventListener('click', () => detailModal.classList.remove('active'));
+
+    document.getElementById('editExpenseForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('editExpenseId').value;
+      try {
+        await apiRequest(`/api/finance/expense/${id}`, 'PATCH', {
+          title: document.getElementById('editTitle').value.trim(),
+          description: document.getElementById('editDescription').value.trim(),
+          amount: parseFloat(document.getElementById('editAmount').value),
+          expense_date: document.getElementById('editDate').value
+        });
+        showToast('Expense updated successfully', 'success');
+        detailModal.classList.remove('active');
+        loadMyExpenses();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('btnFilter').addEventListener('click', loadMyExpenses);
+
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = '/app.html#/login';
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadDropdowns();
+      loadMyExpenses();
+    });
+  </script>
+</body>
+</html>

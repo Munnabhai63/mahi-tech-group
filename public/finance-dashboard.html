@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financial Dashboard — Mahi Tech Group</title>
+  <meta name="description" content="Company-wide financial management rollup, project budgets, consumption burn rates, invoices, and alerts.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-accent: #818cf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .btn-nav {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-nav:hover {
+      background: #273549;
+      border-color: var(--color-primary);
+    }
+
+    .main-container {
+      max-width: 1360px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .page-subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0.35rem 0 0 0;
+    }
+
+    /* Metric Cards Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--color-primary);
+    }
+
+    .metric-card.consumed::before { background: var(--color-warning); }
+    .metric-card.remaining::before { background: var(--color-success); }
+    .metric-card.invoiced::before { background: var(--color-accent); }
+    .metric-card.paid::before { background: var(--color-success); }
+    .metric-card.outstanding::before { background: var(--color-danger); }
+
+    .metric-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Table */
+    .table-responsive {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+
+    th {
+      background: #1e293b;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-card);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Progress bar */
+    .progress-bar-wrap {
+      width: 120px;
+      height: 8px;
+      background: #202b3c;
+      border-radius: 999px;
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+    }
+
+    .fill-green { background: var(--color-success); }
+    .fill-yellow { background: var(--color-warning); }
+    .fill-red { background: var(--color-danger); }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .badge-yellow { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .badge-blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+    .badge-purple { background: rgba(129, 140, 248, 0.15); color: #a5b4fc; }
+    .badge-grey { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+
+    /* Dual Column Layout */
+    .dual-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* Buttons */
+    .btn {
+      background: var(--color-primary);
+      color: #04101e;
+      border: none;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      background: #7dd3fc;
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: #2c3a50;
+      border-color: var(--color-primary);
+    }
+
+    /* Access Denied */
+    .access-denied-box {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    /* Toast */
+    #toastContainer {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .toast.success { border-color: var(--color-success); color: #34d399; }
+    .toast.error { border-color: var(--color-danger); color: #f87171; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/app.html" class="brand-title">
+        <span>⚡</span> Mahi Tech Group
+      </a>
+      <nav class="nav-links-sub">
+        <a href="/finance-dashboard.html" class="nav-link-sub active">Financial Dashboard</a>
+        <a href="/project-budget.html" class="nav-link-sub">Project Budgets</a>
+        <a href="/my-expenses.html" class="nav-link-sub">My Expenses</a>
+        <a href="/invoice-manager.html" class="nav-link-sub">Invoices</a>
+        <a href="/budget-alerts.html" class="nav-link-sub">Alerts & Reports</a>
+      </nav>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <span id="userRoleBadge" class="badge badge-blue">Admin</span>
+      <button id="btnLogout" class="btn-nav">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="main-container">
+
+    <div id="accessDeniedPanel" class="access-denied-box" style="display: none;">
+      <span style="font-size: 2.5rem;">🔒</span>
+      <h2 style="margin: 0; font-family: 'Outfit', sans-serif;">Access Denied</h2>
+      <p style="color: var(--text-muted); max-width: 500px; margin: 0;">
+        Company-wide financial dashboards and revenue rollups are restricted to Admin roles.
+        You can submit and track your own project expenses via the My Expenses portal.
+      </p>
+      <a href="/my-expenses.html" class="btn">Go to My Expenses</a>
+    </div>
+
+    <div id="dashboardContent" style="display: flex; flex-direction: column; gap: 2rem;">
+
+      <!-- Header -->
+      <div class="page-header">
+        <div>
+          <h1 class="page-title"><span>💰</span> Financial Management Dashboard</h1>
+          <p class="page-subtitle">Real-time company-wide budget consumption, billing milestones, and cashflow health</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <a href="/project-budget.html" class="btn btn-secondary">+ Manage Budgets</a>
+          <a href="/invoice-manager.html" class="btn">+ Create Invoice</a>
+        </div>
+      </div>
+
+      <!-- Rollup Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <span class="metric-label">Total Allocated Budget</span>
+          <span id="statTotalBudget" class="metric-value">₹0.00</span>
+        </div>
+        <div class="metric-card consumed">
+          <span class="metric-label">Total Consumed (Burn)</span>
+          <span id="statTotalConsumed" class="metric-value">₹0.00</span>
+        </div>
+        <div class="metric-card remaining">
+          <span class="metric-label">Total Remaining</span>
+          <span id="statTotalRemaining" class="metric-value">₹0.00</span>
+        </div>
+        <div class="metric-card invoiced">
+          <span class="metric-label">Total Invoiced</span>
+          <span id="statTotalInvoiced" class="metric-value">₹0.00</span>
+        </div>
+        <div class="metric-card paid">
+          <span class="metric-label">Total Paid (Revenue)</span>
+          <span id="statTotalPaid" class="metric-value">₹0.00</span>
+        </div>
+        <div class="metric-card outstanding">
+          <span class="metric-label">Total Outstanding</span>
+          <span id="statTotalOutstanding" class="metric-value">₹0.00</span>
+        </div>
+      </div>
+
+      <!-- Project-wise Table -->
+      <div class="section-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 class="section-title"><span>📊</span> Project-Wise Budget Consumption</h2>
+          <span id="projectCountBadge" class="badge badge-grey">0 Projects</span>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>Budget</th>
+                <th>Consumed</th>
+                <th>Remaining</th>
+                <th>Consumption Rate</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="projectsTableBody">
+              <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading financial data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Dual Grid: Alerts & Invoices -->
+      <div class="dual-grid">
+
+        <!-- Recent Alerts -->
+        <div class="section-card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="section-title"><span>⚠️</span> Recent Budget Alerts</h2>
+            <a href="/budget-alerts.html" style="color: var(--color-primary); font-size: 0.8rem; text-decoration: none;">View All →</a>
+          </div>
+          <div id="recentAlertsList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">No active budget alerts.</div>
+          </div>
+        </div>
+
+        <!-- Recent Invoices -->
+        <div class="section-card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="section-title"><span>📑</span> Recent Client Invoices</h2>
+            <a href="/invoice-manager.html" style="color: var(--color-primary); font-size: 0.8rem; text-decoration: none;">Manage Invoices →</a>
+          </div>
+          <div id="recentInvoicesList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">No invoices generated yet.</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <div id="toastContainer"></div>
+
+  <script>
+    const token = localStorage.getItem('token');
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      if (!token) {
+        window.location.href = '/app.html#/login';
+        throw new Error('Not logged in');
+      }
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+      if (body) {
+        headers['Content-Type'] = 'application/json';
+      }
+      const res = await fetch(endpoint, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : null
+      });
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Session expired');
+      }
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Request failed');
+      }
+      return data;
+    }
+
+    function formatCurrency(val, curr = 'INR') {
+      const num = Number(val) || 0;
+      return '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    async function acknowledgeAlert(alertId) {
+      try {
+        await apiRequest(`/api/finance/alert/${alertId}/acknowledge`, 'PATCH');
+        showToast('Alert acknowledged', 'success');
+        loadDashboard();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadDashboard() {
+      try {
+        const data = await apiRequest('/api/finance/dashboard');
+
+        // Populate Rollups
+        document.getElementById('statTotalBudget').textContent = formatCurrency(data.total_budget);
+        document.getElementById('statTotalConsumed').textContent = formatCurrency(data.total_consumed);
+        document.getElementById('statTotalRemaining').textContent = formatCurrency(data.total_remaining);
+        document.getElementById('statTotalInvoiced').textContent = formatCurrency(data.total_invoiced);
+        document.getElementById('statTotalPaid').textContent = formatCurrency(data.total_paid);
+        document.getElementById('statTotalOutstanding').textContent = formatCurrency(data.total_outstanding);
+
+        // Projects Table
+        const tbody = document.getElementById('projectsTableBody');
+        tbody.innerHTML = '';
+        document.getElementById('projectCountBadge').textContent = `${(data.projects || []).length} Projects`;
+
+        if (!data.projects || data.projects.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No project budgets configured yet.</td></tr>';
+        } else {
+          for (const p of data.projects) {
+            const tr = document.createElement('tr');
+            const fillClass = p.status_color === 'red' ? 'fill-red' : (p.status_color === 'yellow' ? 'fill-yellow' : 'fill-green');
+            const badgeClass = p.status_color === 'red' ? 'badge-red' : (p.status_color === 'yellow' ? 'badge-yellow' : 'badge-green');
+
+            tr.innerHTML = `
+              <td style="font-weight: 600; color: #fff;">${p.project_title}</td>
+              <td>${formatCurrency(p.total_budget, p.currency)}</td>
+              <td>${formatCurrency(p.consumed, p.currency)}</td>
+              <td>${formatCurrency(p.remaining, p.currency)}</td>
+              <td>
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar-fill ${fillClass}" style="width: ${Math.min(p.consumed_pct, 100)}%;"></div>
+                </div>
+                <span>${p.consumed_pct.toFixed(1)}%</span>
+              </td>
+              <td><span class="badge ${badgeClass}">${p.alert_status}</span></td>
+              <td>
+                <a href="/project-budget.html?projectId=${p.project_id}" class="btn btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">View Budget</a>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          }
+        }
+
+        // Recent Alerts
+        const alertsList = document.getElementById('recentAlertsList');
+        alertsList.innerHTML = '';
+        if (!data.recent_alerts || data.recent_alerts.length === 0) {
+          alertsList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">No unacknowledged budget alerts.</div>';
+        } else {
+          for (const a of data.recent_alerts) {
+            const item = document.createElement('div');
+            item.style.cssText = 'background: rgba(255,255,255,0.02); border: 1px solid var(--border-card); border-radius: 8px; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;';
+            item.innerHTML = `
+              <div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: #f87171;">${a.project_title} • ${a.alert_type}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">${a.message}</div>
+              </div>
+              <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="acknowledgeAlert(${a.id})">Acknowledge</button>
+            `;
+            alertsList.appendChild(item);
+          }
+        }
+
+        // Recent Invoices
+        const invoicesList = document.getElementById('recentInvoicesList');
+        invoicesList.innerHTML = '';
+        if (!data.recent_invoices || data.recent_invoices.length === 0) {
+          invoicesList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">No invoices generated yet.</div>';
+        } else {
+          for (const inv of data.recent_invoices) {
+            const item = document.createElement('div');
+            item.style.cssText = 'background: rgba(255,255,255,0.02); border: 1px solid var(--border-card); border-radius: 8px; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;';
+
+            let invBadge = 'badge-grey';
+            if (inv.status === 'PAID') invBadge = 'badge-green';
+            else if (inv.status === 'SENT') invBadge = 'badge-blue';
+            else if (inv.status === 'VIEWED') invBadge = 'badge-purple';
+            else if (inv.status === 'OVERDUE') invBadge = 'badge-red';
+
+            item.innerHTML = `
+              <div>
+                <div style="font-size: 0.85rem; font-weight: 600; color: #fff;">${inv.invoice_number}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">${inv.project_title} • Due: ${inv.due_date}</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 0.9rem; font-weight: 700; color: #fff;">${formatCurrency(inv.total_amount, inv.currency)}</div>
+                <span class="badge ${invBadge}">${inv.status}</span>
+              </div>
+            `;
+            invoicesList.appendChild(item);
+          }
+        }
+
+      } catch (err) {
+        if (err.message.includes('Forbidden') || err.message.includes('role required')) {
+          document.getElementById('dashboardContent').style.display = 'none';
+          document.getElementById('accessDeniedPanel').style.display = 'flex';
+        } else {
+          showToast(err.message, 'error');
+        }
+      }
+    }
+
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = '/app.html#/login';
+    });
+
+    window.addEventListener('DOMContentLoaded', loadDashboard);
+  </script>
+</body>
+</html>

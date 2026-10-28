@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Budget & Expenses — Mahi Tech Group</title>
+  <meta name="description" content="Project budget allocation, burn rate monitoring, expense approvals, and time tracking cost breakdown.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-accent: #818cf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .btn-nav {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .main-container {
+      max-width: 1360px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .page-subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0.35rem 0 0 0;
+    }
+
+    /* Cards */
+    .section-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .metric-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .metric-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .badge-yellow { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .badge-blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+    .badge-purple { background: rgba(129, 140, 248, 0.15); color: #a5b4fc; }
+    .badge-grey { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+
+    th {
+      background: #1e293b;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-card);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Form controls */
+    select, input, textarea {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      color: #fff;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      border-color: var(--color-primary);
+    }
+
+    /* Buttons */
+    .btn {
+      background: var(--color-primary);
+      color: #04101e;
+      border: none;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn:hover { background: #7dd3fc; }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: #2c3a50;
+      border-color: var(--color-primary);
+    }
+
+    .btn-success { background: var(--color-success); color: #fff; }
+    .btn-success:hover { background: #059669; }
+
+    .btn-danger { background: var(--color-danger); color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(4, 7, 14, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop.active { display: flex; }
+
+    .modal-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Accordion */
+    .accordion-header {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .accordion-body {
+      display: none;
+      padding: 1rem 0;
+    }
+
+    .accordion-body.open { display: block; }
+
+    #toastContainer {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+
+    .toast.success { border-color: var(--color-success); color: #34d399; }
+    .toast.error { border-color: var(--color-danger); color: #f87171; }
+  </style>
+</head>
+<body>
+
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/app.html" class="brand-title">
+        <span>⚡</span> Mahi Tech Group
+      </a>
+      <nav class="nav-links-sub">
+        <a href="/finance-dashboard.html" class="nav-link-sub">Financial Dashboard</a>
+        <a href="/project-budget.html" class="nav-link-sub active">Project Budgets</a>
+        <a href="/my-expenses.html" class="nav-link-sub">My Expenses</a>
+        <a href="/invoice-manager.html" class="nav-link-sub">Invoices</a>
+        <a href="/budget-alerts.html" class="nav-link-sub">Alerts & Reports</a>
+      </nav>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <button id="btnLogout" class="btn-nav">Sign Out</button>
+    </div>
+  </header>
+
+  <main class="main-container">
+
+    <div class="page-header">
+      <div>
+        <h1 class="page-title"><span>🎯</span> Project Budget & Expense Approvals</h1>
+        <p class="page-subtitle">Track project burn rate, time-based costs, and review team expenses</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <label for="projectSelect" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Active Project:</label>
+        <select id="projectSelect" style="min-width: 200px;"></select>
+        <button id="btnOpenEditBudget" class="btn btn-secondary">Edit Budget</button>
+        <button id="btnOpenSubmitExpense" class="btn">+ Submit Expense</button>
+      </div>
+    </div>
+
+    <!-- Budget Summary Cards -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-label">Allocated Budget</span>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <span id="statBudget" class="metric-value">₹0.00</span>
+          <span id="budgetTypeBadge" class="badge badge-blue">FIXED</span>
+        </div>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Total Consumption</span>
+        <span id="statConsumed" class="metric-value">₹0.00</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Remaining Budget</span>
+        <span id="statRemaining" class="metric-value">₹0.00</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Approved Time Cost</span>
+        <span id="statTimeCost" class="metric-value">₹0.00</span>
+      </div>
+    </div>
+
+    <!-- Consumption Progress Card -->
+    <div class="section-card" style="padding: 1rem 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+        <span style="font-weight: 600; color: #fff;">Budget Consumption Burn Rate</span>
+        <span id="burnRateText" style="font-weight: 700; color: var(--color-primary);">0% Consumed</span>
+      </div>
+      <div style="width: 100%; height: 10px; background: #1e293b; border-radius: 999px; overflow: hidden; margin-top: 0.5rem;">
+        <div id="burnProgressBar" style="height: 100%; width: 0%; background: var(--color-success); border-radius: 999px; transition: width 0.3s;"></div>
+      </div>
+    </div>
+
+    <!-- Budget History Accordion -->
+    <div class="section-card">
+      <div id="accordionToggle" class="accordion-header">
+        <span>📜 Budget Modification Audit History</span>
+        <span id="accordionArrow">▼</span>
+      </div>
+      <div id="accordionContent" class="accordion-body">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Field Changed</th>
+                <th>Old Value</th>
+                <th>New Value</th>
+                <th>Mandatory Reason</th>
+                <th>Changed At</th>
+              </tr>
+            </thead>
+            <tbody id="budgetHistoryTableBody">
+              <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1rem;">No budget modifications recorded.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expense List & Filters -->
+    <div class="section-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; margin: 0;">📋 Project Expenses</h2>
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          <select id="filterStatus">
+            <option value="">All Statuses</option>
+            <option value="PENDING">PENDING</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="REJECTED">REJECTED</option>
+          </select>
+          <select id="filterCategory">
+            <option value="">All Categories</option>
+          </select>
+          <button id="btnApplyFilters" class="btn btn-secondary">Filter</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Category</th>
+              <th>Amount</th>
+              <th>Date</th>
+              <th>Submitted By</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="expensesTableBody">
+            <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading expenses...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Edit Budget Modal -->
+  <div id="editBudgetModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Project Budget</h3>
+        <button id="btnCloseEditBudget" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">&times;</button>
+      </div>
+      <form id="editBudgetForm" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label">Total Budget Amount (₹)</label>
+          <input type="number" step="0.01" id="inputTotalBudget" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Budget Type</label>
+          <select id="inputBudgetType">
+            <option value="FIXED">FIXED</option>
+            <option value="TIME_AND_MATERIAL">TIME_AND_MATERIAL</option>
+            <option value="RETAINER">RETAINER</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Alert Threshold Percentage (%)</label>
+          <input type="number" step="1" min="1" max="100" id="inputAlertThreshold" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mandatory Change Reason (min 10 chars)</label>
+          <textarea id="inputChangeReason" rows="3" placeholder="Explain why the budget is being updated..." required></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+          <button type="button" id="btnCancelEditBudget" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Reject Reason Modal -->
+  <div id="rejectModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Reject Expense Request</h3>
+        <button id="btnCloseRejectModal" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">&times;</button>
+      </div>
+      <form id="rejectForm" style="display: flex; flex-direction: column; gap: 1rem;">
+        <input type="hidden" id="rejectExpenseId">
+        <div class="form-group">
+          <label class="form-label">Mandatory Rejection Reason (min 10 chars)</label>
+          <textarea id="inputRejectionReason" rows="3" placeholder="Provide clear reason why this expense cannot be approved..." required></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" id="btnCancelReject" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-danger">Confirm Rejection</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Submit Expense Modal -->
+  <div id="submitExpenseModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Submit Project Expense</h3>
+        <button id="btnCloseSubmitModal" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">&times;</button>
+      </div>
+      <form id="submitExpenseForm" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select id="expenseCategorySelect" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input type="text" id="expenseTitle" placeholder="e.g. Server hosting, domain renewal" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="expenseDescription" rows="2" placeholder="Itemized justification..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Amount (₹)</label>
+          <input type="number" step="0.01" id="expenseAmount" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date of Expense</label>
+          <input type="date" id="expenseDate" required>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" id="btnCancelSubmitModal" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn">Submit for Approval</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    let currentProjectId = null;
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      if (!token) {
+        window.location.href = '/app.html#/login';
+        throw new Error('Not logged in');
+      }
+      const headers = { 'Authorization': `Bearer ${token}` };
+      if (body) headers['Content-Type'] = 'application/json';
+      const res = await fetch(endpoint, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : null
+      });
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Session expired');
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+
+    function formatCurrency(val, curr = 'INR') {
+      const num = Number(val) || 0;
+      return '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    async function loadProjects() {
+      try {
+        const projects = await apiRequest('/api/projects');
+        const select = document.getElementById('projectSelect');
+        select.innerHTML = '';
+        for (const p of projects) {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.title;
+          select.appendChild(opt);
+        }
+        const urlParams = new URLSearchParams(window.location.search);
+        const pidParam = urlParams.get('projectId');
+        if (pidParam && projects.some(p => String(p.id) === pidParam)) {
+          select.value = pidParam;
+        }
+        currentProjectId = select.value;
+        if (currentProjectId) {
+          loadProjectBudget(currentProjectId);
+          loadExpenses(currentProjectId);
+          loadBudgetHistory(currentProjectId);
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadCategories() {
+      try {
+        const categories = await apiRequest('/api/finance/categories');
+        const filterCat = document.getElementById('filterCategory');
+        const modalCat = document.getElementById('expenseCategorySelect');
+        filterCat.innerHTML = '<option value="">All Categories</option>';
+        modalCat.innerHTML = '';
+        for (const c of categories) {
+          const opt1 = document.createElement('option');
+          opt1.value = c.id;
+          opt1.textContent = c.name;
+          filterCat.appendChild(opt1);
+
+          const opt2 = document.createElement('option');
+          opt2.value = c.id;
+          opt2.textContent = c.name;
+          modalCat.appendChild(opt2);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function loadProjectBudget(projectId) {
+      try {
+        const budget = await apiRequest(`/api/finance/budget/${projectId}`);
+        document.getElementById('statBudget').textContent = formatCurrency(budget.total_budget, budget.currency);
+        document.getElementById('statConsumed').textContent = formatCurrency(budget.consumed, budget.currency);
+        document.getElementById('statRemaining').textContent = formatCurrency(budget.remaining, budget.currency);
+        document.getElementById('statTimeCost').textContent = formatCurrency(budget.time_cost_total || 0, budget.currency);
+        document.getElementById('budgetTypeBadge').textContent = budget.budget_type;
+
+        const pct = Math.min(budget.consumed_pct || 0, 100);
+        document.getElementById('burnRateText').textContent = `${(budget.consumed_pct || 0).toFixed(1)}% Consumed (${budget.alert_status})`;
+        const bar = document.getElementById('burnProgressBar');
+        bar.style.width = `${pct}%`;
+        bar.style.background = pct >= 100 ? 'var(--color-danger)' : (pct >= 70 ? 'var(--color-warning)' : 'var(--color-success)');
+
+        // Populate edit modal defaults
+        document.getElementById('inputTotalBudget').value = budget.total_budget;
+        document.getElementById('inputBudgetType').value = budget.budget_type;
+        document.getElementById('inputAlertThreshold').value = budget.alert_threshold_pct;
+      } catch (err) {
+        if (err.message.includes('not found')) {
+          document.getElementById('statBudget').textContent = 'Not Set';
+          document.getElementById('statConsumed').textContent = '₹0.00';
+          document.getElementById('statRemaining').textContent = '₹0.00';
+          document.getElementById('statTimeCost').textContent = '₹0.00';
+        } else {
+          showToast(err.message, 'error');
+        }
+      }
+    }
+
+    async function loadBudgetHistory(projectId) {
+      try {
+        const history = await apiRequest(`/api/finance/budget/${projectId}/history`);
+        const tbody = document.getElementById('budgetHistoryTableBody');
+        tbody.innerHTML = '';
+        if (!history || history.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1rem;">No budget modifications recorded.</td></tr>';
+          return;
+        }
+        for (const h of history) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight: 600; color: #fff;">${h.field_changed}</td>
+            <td style="color: var(--text-muted);">${h.old_value || 'None'}</td>
+            <td style="color: var(--color-primary); font-weight: 600;">${h.new_value}</td>
+            <td>${h.reason}</td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">${h.changed_at}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function loadExpenses(projectId) {
+      try {
+        const status = document.getElementById('filterStatus').value;
+        const categoryId = document.getElementById('filterCategory').value;
+        let url = `/api/finance/expenses/project/${projectId}?`;
+        if (status) url += `status=${status}&`;
+        if (categoryId) url += `category_id=${categoryId}&`;
+
+        const expenses = await apiRequest(url);
+        const tbody = document.getElementById('expensesTableBody');
+        tbody.innerHTML = '';
+
+        if (!expenses || expenses.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No expenses found for current filters.</td></tr>';
+          return;
+        }
+
+        for (const exp of expenses) {
+          const tr = document.createElement('tr');
+          let badgeClass = 'badge-yellow';
+          if (exp.status === 'APPROVED') badgeClass = 'badge-green';
+          else if (exp.status === 'REJECTED') badgeClass = 'badge-red';
+
+          let actionsHtml = '-';
+          if (exp.status === 'PENDING') {
+            actionsHtml = `
+              <div style="display: flex; gap: 0.35rem;">
+                <button class="btn btn-success" style="font-size: 0.72rem; padding: 0.2rem 0.5rem;" onclick="approveExpense(${exp.id})">Approve</button>
+                <button class="btn btn-danger" style="font-size: 0.72rem; padding: 0.2rem 0.5rem;" onclick="openRejectModal(${exp.id})">Reject</button>
+              </div>
+            `;
+          }
+
+          tr.innerHTML = `
+            <td style="font-weight: 600; color: #fff;">${exp.title}</td>
+            <td>${exp.category_name || '-'}</td>
+            <td style="font-weight: 700;">${formatCurrency(exp.amount, exp.currency)}</td>
+            <td style="color: var(--text-muted);">${exp.expense_date}</td>
+            <td>${exp.submitted_by_name || 'Member'}</td>
+            <td><span class="badge ${badgeClass}">${exp.status}</span></td>
+            <td>${actionsHtml}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function approveExpense(id) {
+      try {
+        await apiRequest(`/api/finance/expense/${id}/approve`, 'PATCH');
+        showToast('Expense approved. Budget consumption recalculated.', 'success');
+        loadProjectBudget(currentProjectId);
+        loadExpenses(currentProjectId);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function openRejectModal(id) {
+      document.getElementById('rejectExpenseId').value = id;
+      document.getElementById('inputRejectionReason').value = '';
+      document.getElementById('rejectModal').classList.add('active');
+    }
+
+    // Event listeners
+    document.getElementById('projectSelect').addEventListener('change', (e) => {
+      currentProjectId = e.target.value;
+      loadProjectBudget(currentProjectId);
+      loadExpenses(currentProjectId);
+      loadBudgetHistory(currentProjectId);
+    });
+
+    document.getElementById('btnApplyFilters').addEventListener('click', () => {
+      loadExpenses(currentProjectId);
+    });
+
+    // Accordion
+    document.getElementById('accordionToggle').addEventListener('click', () => {
+      const body = document.getElementById('accordionContent');
+      body.classList.toggle('open');
+      document.getElementById('accordionArrow').textContent = body.classList.contains('open') ? '▲' : '▼';
+    });
+
+    // Edit Budget Modal
+    const editModal = document.getElementById('editBudgetModal');
+    document.getElementById('btnOpenEditBudget').addEventListener('click', () => editModal.classList.add('active'));
+    document.getElementById('btnCloseEditBudget').addEventListener('click', () => editModal.classList.remove('active'));
+    document.getElementById('btnCancelEditBudget').addEventListener('click', () => editModal.classList.remove('active'));
+
+    document.getElementById('editBudgetForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const reason = document.getElementById('inputChangeReason').value.trim();
+      if (reason.length < 10) {
+        showToast('Reason must be at least 10 characters', 'error');
+        return;
+      }
+      try {
+        await apiRequest(`/api/finance/budget/${currentProjectId}`, 'PATCH', {
+          total_budget: parseFloat(document.getElementById('inputTotalBudget').value),
+          budget_type: document.getElementById('inputBudgetType').value,
+          alert_threshold_pct: parseFloat(document.getElementById('inputAlertThreshold').value),
+          reason
+        });
+        showToast('Budget successfully updated', 'success');
+        editModal.classList.remove('active');
+        document.getElementById('inputChangeReason').value = '';
+        loadProjectBudget(currentProjectId);
+        loadBudgetHistory(currentProjectId);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // Reject Modal
+    const rejectModal = document.getElementById('rejectModal');
+    document.getElementById('btnCloseRejectModal').addEventListener('click', () => rejectModal.classList.remove('active'));
+    document.getElementById('btnCancelReject').addEventListener('click', () => rejectModal.classList.remove('active'));
+
+    document.getElementById('rejectForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('rejectExpenseId').value;
+      const reason = document.getElementById('inputRejectionReason').value.trim();
+      if (reason.length < 10) {
+        showToast('Rejection reason must be at least 10 characters', 'error');
+        return;
+      }
+      try {
+        await apiRequest(`/api/finance/expense/${id}/reject`, 'PATCH', { rejection_reason: reason });
+        showToast('Expense rejected', 'success');
+        rejectModal.classList.remove('active');
+        loadExpenses(currentProjectId);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // Submit Expense Modal
+    const submitModal = document.getElementById('submitExpenseModal');
+    document.getElementById('btnOpenSubmitExpense').addEventListener('click', () => {
+      document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+      submitModal.classList.add('active');
+    });
+    document.getElementById('btnCloseSubmitModal').addEventListener('click', () => submitModal.classList.remove('active'));
+    document.getElementById('btnCancelSubmitModal').addEventListener('click', () => submitModal.classList.remove('active'));
+
+    document.getElementById('submitExpenseForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await apiRequest('/api/finance/expense/submit', 'POST', {
+          project_id: parseInt(currentProjectId, 10),
+          category_id: parseInt(document.getElementById('expenseCategorySelect').value, 10),
+          title: document.getElementById('expenseTitle').value.trim(),
+          description: document.getElementById('expenseDescription').value.trim(),
+          amount: parseFloat(document.getElementById('expenseAmount').value),
+          currency: 'INR',
+          expense_date: document.getElementById('expenseDate').value,
+          is_billable: 1
+        });
+        showToast('Expense submitted for approval', 'success');
+        submitModal.classList.remove('active');
+        document.getElementById('expenseTitle').value = '';
+        document.getElementById('expenseDescription').value = '';
+        document.getElementById('expenseAmount').value = '';
+        loadExpenses(currentProjectId);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = '/app.html#/login';
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadProjects();
+      loadCategories();
+    });
+  </script>
+</body>
+</html>

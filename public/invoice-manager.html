@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice Manager — Mahi Tech Group</title>
+  <meta name="description" content="Manage client billing invoices, line item creation, status lifecycle, and payment reconciliation.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-accent: #818cf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .btn-nav {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .main-container {
+      max-width: 1360px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .page-subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0.35rem 0 0 0;
+    }
+
+    .section-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-grey { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+    .badge-blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+    .badge-purple { background: rgba(129, 140, 248, 0.15); color: #a5b4fc; }
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .badge-black { background: rgba(15, 23, 42, 0.6); color: #64748b; border: 1px solid #334155; }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+
+    th {
+      background: #1e293b;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-card);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Buttons */
+    .btn {
+      background: var(--color-primary);
+      color: #04101e;
+      border: none;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn:hover { background: #7dd3fc; }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: #2c3a50;
+      border-color: var(--color-primary);
+    }
+
+    .btn-success { background: var(--color-success); color: #fff; }
+    .btn-success:hover { background: #059669; }
+
+    .btn-danger { background: var(--color-danger); color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(4, 7, 14, 0.8);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop.active { display: flex; }
+
+    .modal-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 650px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    select, input, textarea {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      color: #fff;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      border-color: var(--color-primary);
+    }
+
+    #toastContainer {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+
+    .toast.success { border-color: var(--color-success); color: #34d399; }
+    .toast.error { border-color: var(--color-danger); color: #f87171; }
+  </style>
+</head>
+<body>
+
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/app.html" class="brand-title">
+        <span>⚡</span> Mahi Tech Group
+      </a>
+      <nav class="nav-links-sub">
+        <a href="/finance-dashboard.html" class="nav-link-sub">Financial Dashboard</a>
+        <a href="/project-budget.html" class="nav-link-sub">Project Budgets</a>
+        <a href="/my-expenses.html" class="nav-link-sub">My Expenses</a>
+        <a href="/invoice-manager.html" class="nav-link-sub active">Invoices</a>
+        <a href="/budget-alerts.html" class="nav-link-sub">Alerts & Reports</a>
+      </nav>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <button id="btnLogout" class="btn-nav">Sign Out</button>
+    </div>
+  </header>
+
+  <main class="main-container">
+
+    <div class="page-header">
+      <div>
+        <h1 class="page-title"><span>📑</span> Client Invoice Manager</h1>
+        <p class="page-subtitle">Auto-generated invoice numbering, server-computed line item totals, and payment recording</p>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button id="btnRunOverdueCron" class="btn btn-secondary">⚡ Run Overdue Cron</button>
+        <button id="btnOpenCreateInvoice" class="btn">+ Create Invoice</button>
+      </div>
+    </div>
+
+    <!-- Invoices List -->
+    <div class="section-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; margin: 0;">Client Invoices</h2>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <select id="filterProjectSelect" style="min-width: 180px;">
+            <option value="">All Projects</option>
+          </select>
+          <button id="btnRefreshInvoices" class="btn btn-secondary">Refresh</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice Number</th>
+              <th>Project</th>
+              <th>Client</th>
+              <th>Total Amount</th>
+              <th>Status</th>
+              <th>Issue Date</th>
+              <th>Due Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="invoicesTableBody">
+            <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading invoices...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Create Invoice Modal (Multi-step) -->
+  <div id="createInvoiceModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="createModalHeading">Step 1: Create Invoice Header</h3>
+        <button id="btnCloseCreateModal" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">&times;</button>
+      </div>
+
+      <!-- Step 1 Form -->
+      <form id="createInvoiceForm" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label">Project</label>
+          <select id="invProjectSelect" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Client (optional)</label>
+          <select id="invClientSelect">
+            <option value="">None / External</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Invoice Title</label>
+          <input type="text" id="invTitle" placeholder="e.g. Milestone 1 Deliverables" required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Issue Date</label>
+            <input type="date" id="invIssueDate" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Due Date</label>
+            <input type="date" id="invDueDate" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tax Percentage (%)</label>
+          <input type="number" step="0.1" min="0" max="100" id="invTaxPct" value="18.0" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Client Notes (visible on invoice)</label>
+          <textarea id="invNotes" rows="2" placeholder="Payment terms, bank details..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Internal Notes (Admin only — NEVER shown to client)</label>
+          <textarea id="invInternalNotes" rows="2" placeholder="Confidential admin comments..."></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+          <button type="button" id="btnCancelCreateModal" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn">Create Invoice Draft</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Invoice Detail & Line Items Modal -->
+  <div id="invoiceDetailModal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 720px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="detailInvoiceNumber">MTG-INV-...</h3>
+          <span id="detailStatusBadge" class="badge badge-grey" style="margin-top: 0.25rem;">DRAFT</span>
+        </div>
+        <button id="btnCloseDetailModal" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">&times;</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-card);">
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Issue Date</div>
+          <div id="detailIssueDate" style="font-weight: 600; color: #fff;">-</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Due Date</div>
+          <div id="detailDueDate" style="font-weight: 600; color: #fff;">-</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Tax %</div>
+          <div id="detailTaxPct" style="font-weight: 600; color: #fff;">18%</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Total Amount</div>
+          <div id="detailTotalAmount" style="font-size: 1.1rem; font-weight: 800; color: var(--color-primary);">₹0.00</div>
+        </div>
+      </div>
+
+      <!-- Internal notes warning -->
+      <div id="detailInternalNotesBox" style="background: rgba(129, 140, 248, 0.08); border: 1px solid rgba(129, 140, 248, 0.3); border-radius: 8px; padding: 0.75rem 1rem;">
+        <span style="font-size: 0.75rem; font-weight: 700; color: #a5b4fc; text-transform: uppercase;">🔒 Internal Admin Notes (Hidden from Client)</span>
+        <div id="detailInternalNotesText" style="font-size: 0.85rem; color: #fff; margin-top: 0.25rem;"></div>
+      </div>
+
+      <!-- Line Items Section -->
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h4 style="margin: 0; font-family: 'Outfit', sans-serif;">Line Items</h4>
+          <button id="btnOpenAddLineItem" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">+ Add Line Item</button>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Amount (Calculated)</th>
+              </tr>
+            </thead>
+            <tbody id="lineItemsTableBody">
+              <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1rem;">No line items added yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add Line Item Form (Embedded) -->
+      <form id="addLineItemForm" style="display: none; background: #0f172a; border: 1px solid var(--border-card); border-radius: 8px; padding: 1rem; flex-direction: column; gap: 0.75rem;">
+        <div style="font-weight: 600; font-size: 0.85rem; color: #fff;">Add Line Item (Locked once SENT)</div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input type="text" id="lineDesc" placeholder="e.g. Core backend API development" required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Quantity</label>
+            <input type="number" step="0.1" min="0.1" id="lineQty" value="1" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Unit Price (₹)</label>
+            <input type="number" step="0.01" min="0" id="linePrice" placeholder="5000.00" required>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+          <button type="button" id="btnCancelAddLine" class="btn btn-secondary" style="font-size: 0.75rem;">Cancel</button>
+          <button type="submit" class="btn" style="font-size: 0.75rem;">Save Item</button>
+        </div>
+      </form>
+
+      <!-- Totals Summary -->
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; font-size: 0.88rem; padding-top: 0.5rem; border-top: 1px solid var(--border-card);">
+        <div>Subtotal: <span id="detailSubtotal" style="font-weight: 600; color: #fff;">₹0.00</span></div>
+        <div>Tax Amount: <span id="detailTaxAmount" style="font-weight: 600; color: #fff;">₹0.00</span></div>
+        <div style="font-size: 1.1rem; font-weight: 800; color: #fff;">Total: <span id="detailGrandTotal" style="color: var(--color-primary);">₹0.00</span></div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-card); padding-top: 1rem; margin-top: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem;">
+          <button id="btnActionSend" class="btn btn-secondary">Send to Client</button>
+          <button id="btnActionMarkPaid" class="btn btn-success">Mark as Paid</button>
+          <button id="btnActionCancel" class="btn btn-danger">Cancel Invoice</button>
+        </div>
+        <button id="btnCloseDetailFooter" class="btn btn-secondary">Close</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Mark Paid Modal -->
+  <div id="markPaidModal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Record Invoice Payment</h3>
+        <button id="btnCloseMarkPaid" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;">&times;</button>
+      </div>
+      <form id="markPaidForm" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label">Payment Amount (₹)</label>
+          <input type="number" step="0.01" id="paidAmount" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Payment Reference / UTR #</label>
+          <input type="text" id="paidRef" placeholder="e.g. UTR-2026-99342" required>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" id="btnCancelMarkPaid" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-success">Confirm Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    let currentInvoices = [];
+    let activeInvoice = null;
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      if (!token) {
+        window.location.href = '/app.html#/login';
+        throw new Error('Not logged in');
+      }
+      const headers = { 'Authorization': `Bearer ${token}` };
+      if (body) headers['Content-Type'] = 'application/json';
+      const res = await fetch(endpoint, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : null
+      });
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Session expired');
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+
+    function formatCurrency(val, curr = 'INR') {
+      const num = Number(val) || 0;
+      return '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    async function loadProjects() {
+      try {
+        const projects = await apiRequest('/api/projects');
+        const filterSel = document.getElementById('filterProjectSelect');
+        const invSel = document.getElementById('invProjectSelect');
+        filterSel.innerHTML = '<option value="">All Projects</option>';
+        invSel.innerHTML = '';
+        for (const p of projects) {
+          const opt1 = document.createElement('option');
+          opt1.value = p.id;
+          opt1.textContent = p.title;
+          filterSel.appendChild(opt1);
+
+          const opt2 = document.createElement('option');
+          opt2.value = p.id;
+          opt2.textContent = p.title;
+          invSel.appendChild(opt2);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function loadInvoices() {
+      try {
+        const pid = document.getElementById('filterProjectSelect').value;
+        const tbody = document.getElementById('invoicesTableBody');
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading invoices...</td></tr>';
+
+        // Load dashboard invoices or project invoices
+        let invoices = [];
+        if (pid) {
+          invoices = await apiRequest(`/api/finance/invoices/project/${pid}`);
+        } else {
+          const dash = await apiRequest('/api/finance/dashboard');
+          invoices = dash.recent_invoices || [];
+        }
+        currentInvoices = invoices;
+        tbody.innerHTML = '';
+
+        if (!invoices || invoices.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No invoices created yet.</td></tr>';
+          return;
+        }
+
+        for (const inv of invoices) {
+          const tr = document.createElement('tr');
+          let badgeClass = 'badge-grey';
+          if (inv.status === 'PAID') badgeClass = 'badge-green';
+          else if (inv.status === 'SENT') badgeClass = 'badge-blue';
+          else if (inv.status === 'VIEWED') badgeClass = 'badge-purple';
+          else if (inv.status === 'OVERDUE') badgeClass = 'badge-red';
+          else if (inv.status === 'CANCELLED') badgeClass = 'badge-black';
+
+          tr.innerHTML = `
+            <td style="font-weight: 700; color: #fff;">${inv.invoice_number}</td>
+            <td>${inv.project_title || 'Project #' + inv.project_id}</td>
+            <td>${inv.client_id || 'External Client'}</td>
+            <td style="font-weight: 700;">${formatCurrency(inv.total_amount, inv.currency)}</td>
+            <td><span class="badge ${badgeClass}">${inv.status}</span></td>
+            <td style="color: var(--text-muted);">${inv.issue_date}</td>
+            <td style="color: var(--text-muted);">${inv.due_date}</td>
+            <td>
+              <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="viewInvoiceDetail(${inv.id})">View Details</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function viewInvoiceDetail(invoiceId) {
+      try {
+        const inv = await apiRequest(`/api/finance/invoice/${invoiceId}`);
+        activeInvoice = inv;
+
+        document.getElementById('detailInvoiceNumber').textContent = inv.invoice_number;
+        const statusBadge = document.getElementById('detailStatusBadge');
+        statusBadge.textContent = inv.status;
+
+        let badgeClass = 'badge-grey';
+        if (inv.status === 'PAID') badgeClass = 'badge-green';
+        else if (inv.status === 'SENT') badgeClass = 'badge-blue';
+        else if (inv.status === 'VIEWED') badgeClass = 'badge-purple';
+        else if (inv.status === 'OVERDUE') badgeClass = 'badge-red';
+        else if (inv.status === 'CANCELLED') badgeClass = 'badge-black';
+        statusBadge.className = `badge ${badgeClass}`;
+
+        document.getElementById('detailIssueDate').textContent = inv.issue_date;
+        document.getElementById('detailDueDate').textContent = inv.due_date;
+        document.getElementById('detailTaxPct').textContent = `${inv.tax_pct}%`;
+        document.getElementById('detailTotalAmount').textContent = formatCurrency(inv.total_amount, inv.currency);
+        document.getElementById('detailSubtotal').textContent = formatCurrency(inv.subtotal, inv.currency);
+        document.getElementById('detailTaxAmount').textContent = formatCurrency(inv.tax_amount, inv.currency);
+        document.getElementById('detailGrandTotal').textContent = formatCurrency(inv.total_amount, inv.currency);
+
+        // Internal notes (Admin view)
+        const notesBox = document.getElementById('detailInternalNotesBox');
+        if (inv.internal_notes) {
+          notesBox.style.display = 'block';
+          document.getElementById('detailInternalNotesText').textContent = inv.internal_notes;
+        } else {
+          notesBox.style.display = 'none';
+        }
+
+        // Line items table
+        const tbody = document.getElementById('lineItemsTableBody');
+        tbody.innerHTML = '';
+        if (!inv.line_items || inv.line_items.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1rem;">No line items added yet.</td></tr>';
+        } else {
+          for (const li of inv.line_items) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td style="font-weight: 500; color: #fff;">${li.description}</td>
+              <td>${li.quantity}</td>
+              <td>${formatCurrency(li.unit_price, inv.currency)}</td>
+              <td style="font-weight: 700;">${formatCurrency(li.amount, inv.currency)}</td>
+            `;
+            tbody.appendChild(tr);
+          }
+        }
+
+        // Action button states
+        const isDraft = inv.status === 'DRAFT';
+        const isCancellable = isDraft || inv.status === 'SENT' || inv.status === 'VIEWED';
+        const isPayable = inv.status === 'SENT' || inv.status === 'VIEWED' || inv.status === 'OVERDUE';
+
+        document.getElementById('btnOpenAddLineItem').style.display = isDraft ? 'inline-flex' : 'none';
+        document.getElementById('btnActionSend').style.display = isDraft ? 'inline-flex' : 'none';
+        document.getElementById('btnActionMarkPaid').style.display = isPayable ? 'inline-flex' : 'none';
+        document.getElementById('btnActionCancel').style.display = isCancellable ? 'inline-flex' : 'none';
+
+        document.getElementById('addLineItemForm').style.display = 'none';
+        document.getElementById('invoiceDetailModal').classList.add('active');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // Modal controls
+    const createModal = document.getElementById('createInvoiceModal');
+    document.getElementById('btnOpenCreateInvoice').addEventListener('click', () => {
+      document.getElementById('invIssueDate').value = new Date().toISOString().split('T')[0];
+      const due = new Date();
+      due.setDate(due.getDate() + 30);
+      document.getElementById('invDueDate').value = due.toISOString().split('T')[0];
+      createModal.classList.add('active');
+    });
+    document.getElementById('btnCloseCreateModal').addEventListener('click', () => createModal.classList.remove('active'));
+    document.getElementById('btnCancelCreateModal').addEventListener('click', () => createModal.classList.remove('active'));
+
+    document.getElementById('createInvoiceForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const result = await apiRequest('/api/finance/invoice/create', 'POST', {
+          project_id: parseInt(document.getElementById('invProjectSelect').value, 10),
+          client_id: document.getElementById('invClientSelect').value || null,
+          title: document.getElementById('invTitle').value.trim(),
+          issue_date: document.getElementById('invIssueDate').value,
+          due_date: document.getElementById('invDueDate').value,
+          tax_pct: parseFloat(document.getElementById('invTaxPct').value),
+          notes: document.getElementById('invNotes').value.trim() || null,
+          internal_notes: document.getElementById('invInternalNotes').value.trim() || null
+        });
+        showToast(`Invoice ${result.invoice.invoice_number} created in DRAFT`, 'success');
+        createModal.classList.remove('active');
+        loadInvoices();
+        viewInvoiceDetail(result.invoice.id);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // Detail Modal Controls
+    const detailModal = document.getElementById('invoiceDetailModal');
+    document.getElementById('btnCloseDetailModal').addEventListener('click', () => detailModal.classList.remove('active'));
+    document.getElementById('btnCloseDetailFooter').addEventListener('click', () => detailModal.classList.remove('active'));
+
+    document.getElementById('btnOpenAddLineItem').addEventListener('click', () => {
+      document.getElementById('addLineItemForm').style.display = 'flex';
+    });
+    document.getElementById('btnCancelAddLine').addEventListener('click', () => {
+      document.getElementById('addLineItemForm').style.display = 'none';
+    });
+
+    document.getElementById('addLineItemForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activeInvoice) return;
+      try {
+        await apiRequest(`/api/finance/invoice/${activeInvoice.id}/line-item/add`, 'POST', {
+          description: document.getElementById('lineDesc').value.trim(),
+          quantity: parseFloat(document.getElementById('lineQty').value),
+          unit_price: parseFloat(document.getElementById('linePrice').value)
+        });
+        showToast('Line item added. Totals recalculated server-side.', 'success');
+        document.getElementById('lineDesc').value = '';
+        document.getElementById('linePrice').value = '';
+        viewInvoiceDetail(activeInvoice.id);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // Send Invoice
+    document.getElementById('btnActionSend').addEventListener('click', async () => {
+      if (!activeInvoice) return;
+      try {
+        await apiRequest(`/api/finance/invoice/${activeInvoice.id}/send`, 'PATCH');
+        showToast('Invoice sent to client. Line items locked.', 'success');
+        viewInvoiceDetail(activeInvoice.id);
+        loadInvoices();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // Cancel Invoice
+    document.getElementById('btnActionCancel').addEventListener('click', async () => {
+      if (!activeInvoice) return;
+      if (!confirm('Are you sure you want to cancel this invoice?')) return;
+      try {
+        await apiRequest(`/api/finance/invoice/${activeInvoice.id}/cancel`, 'PATCH', { reason: 'Cancelled by admin' });
+        showToast('Invoice cancelled', 'success');
+        viewInvoiceDetail(activeInvoice.id);
+        loadInvoices();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // Mark as Paid
+    const markPaidModal = document.getElementById('markPaidModal');
+    document.getElementById('btnActionMarkPaid').addEventListener('click', () => {
+      if (!activeInvoice) return;
+      document.getElementById('paidAmount').value = activeInvoice.total_amount;
+      markPaidModal.classList.add('active');
+    });
+    document.getElementById('btnCloseMarkPaid').addEventListener('click', () => markPaidModal.classList.remove('active'));
+    document.getElementById('btnCancelMarkPaid').addEventListener('click', () => markPaidModal.classList.remove('active'));
+
+    document.getElementById('markPaidForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activeInvoice) return;
+      try {
+        await apiRequest(`/api/finance/invoice/${activeInvoice.id}/mark-paid`, 'PATCH', {
+          paid_amount: parseFloat(document.getElementById('paidAmount').value),
+          payment_reference: document.getElementById('paidRef').value.trim()
+        });
+        showToast('Invoice marked as PAID', 'success');
+        markPaidModal.classList.remove('active');
+        viewInvoiceDetail(activeInvoice.id);
+        loadInvoices();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // Overdue Cron
+    document.getElementById('btnRunOverdueCron').addEventListener('click', async () => {
+      try {
+        const res = await apiRequest('/api/finance/cron/overdue-check', 'POST');
+        showToast(`Processed: ${res.updated_count} invoices transitioned to OVERDUE`, 'success');
+        loadInvoices();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('btnRefreshInvoices').addEventListener('click', loadInvoices);
+    document.getElementById('filterProjectSelect').addEventListener('change', loadInvoices);
+
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = '/app.html#/login';
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadProjects();
+      loadInvoices();
+    });
+  </script>
+</body>
+</html>
