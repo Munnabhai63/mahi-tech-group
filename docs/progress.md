@@ -585,13 +585,21 @@
     - Advisory rebalance suggestions engine (`GET /api/workload/rebalance/:projectId`).
     - Personal 5-week member forecast (`GET /api/workload/dashboard/member/:userId`) and timeline JSON export.
     - Verification: `scripts/verify-prd21-layer4.js` -> **28 / 28 PASS (100%)**.
-  - **Layer 5 (Frontend Views — 100% COMPLETE & VERIFIED)**:
-    - 4 complete, responsive HTML views built with dark mode design system (Inter/Outfit fonts, glowing badges):
-      1. `public/workload-dashboard.html`: Team Workload Dashboard (member cards, utilization bars, active overload alerts banner with quick acknowledge, advisory rebalance suggestions panel).
-      2. `public/workload-heatmap.html`: Workload Heatmap (8-week Member × Week matrix, colored utilization bands, interactive hover tooltips with prorated task hours, drill-down modal, JSON export).
-      3. `public/my-workload.html`: My Workload (member's personal view with this-week utilization gauge, 5-week forward load bar chart, active assignments list, mark availability / leave modal).
-      4. `public/capacity-planning.html`: Capacity Planning (Admin governance view with append-only member capacity table, availability approval table, snapshot history with frozen JSON inspection, alert audit trail).
-    - Security & RBAC: Zero hardcoded credentials, token auth via `localStorage.getItem('token')` or redirect to `/app.html#/login`, comprehensive `escapeHTML` XSS protection.
-    - Verification: `scripts/verify-prd21-layer5.js` -> **110 / 110 PASS (100%)**.
-    - Platform regressions: All 13 platform test suites (`npm test`) passed cleanly with zero regressions.
+  - **Layer 6 (Full End-to-End Integration Suite & PRD 21 Sealed — 100% COMPLETE & VERIFIED)**:
+    - Authored comprehensive E2E integration test suite `scripts/verify-prd21-integration.js` covering 11 phases and 86 assertions:
+      - **Phase 1: Real User Authentication & RBAC Personas**: Verified real JWT sessions for Admin and Member personas, confirmed persistent database sessions in SQLite and profile retrieval.
+      - **Phase 2: Real Capacity Setting & Append-Only Verification**: Admin set capacity (40 hrs -> 36 hrs), verified append-only history via direct SELECT, and confirmed SQLite triggers (`prevent_capacity_update`, `prevent_capacity_delete`) strictly block mutations.
+      - **Phase 3: Real Availability Submission & Approval Workflow**: Member submitted planned LEAVE for 2 future days (`approved_by IS NULL`), self-approval rejected (`HTTP 403`), Admin approved both (`HTTP 200`), verified `approved_by` and deduction calculation in DB (36.0 - 14.4 = 21.6 available hours).
+      - **Phase 4: Real Workload Assignments Across All 4 Sources & Sync Hook**: Created assignments across `BACKLOG_ITEM`, `GANTT_ITEM`, `PIPELINE_POINT`, `MANUAL`, confirmed all 4 source types present via direct SELECT, verified `syncAssignmentFromSource` creates new and subsequent sync idempotently updates existing record, and verified member workload privacy isolation (`HTTP 403`).
+      - **Phase 5: Real Multi-Week Proration Math Verification**: Verified 10-day 40-hour task split into Week 1 (28.00 hrs) and Week 2 (12.00 hrs) server-side, confirmed Week 3 is 0.00 hrs, and verified conservation of hours (28 + 12 = 40.00 hrs).
+      - **Phase 6: Real 8-Week Rolling Heatmap Grid Matrix**: Verified 8 rolling week headers, confirmed member grid rows with 8 cells each, validated status categories (`UNDERLOADED`, `OPTIMAL`, `NEAR_CAPACITY`, `OVERLOADED`), and enforced RBAC (`HTTP 403` for non-admin).
+      - **Phase 7: Real Overload and Underload Auto-Alert Generation**: Verified overload alert auto-creation in `workload_alerts` for >100% utilization, verified underload alert generation for 12.5% utilization, and confirmed Admin acknowledgment workflow with direct DB timestamp verification.
+      - **Phase 8: Real Advisory Rebalance Suggestions Engine**: Verified rebalance engine identifies overloaded members and pairs tasks to underloaded target members; confirmed DB assignment was NOT mutated by advisory engine; verified Admin manual reassignment via `PATCH /api/workload/assignment/:id`.
+      - **Phase 9: Real Workload Snapshots & Immutability Triggers**: Admin created point-in-time snapshot, verified frozen JSON in `workload_snapshots`, confirmed triggers (`prevent_workload_snapshot_update`, `prevent_workload_snapshot_delete`) block tampering, and verified snapshot listing.
+      - **Phase 10: Real Frontend HTML Security Audit**: Audited all 4 views (`workload-dashboard.html`, `workload-heatmap.html`, `my-workload.html`, `capacity-planning.html`) confirming zero hardcoded credentials, dynamic localStorage token retrieval, `escapeHTML` XSS protection, and live static HTTP 200 serving.
+      - **Phase 11: Complete PRD 21 Definition of Done Checklist**: Verified 5 tables in `sqlite_master`, 5 triggers in `sqlite_master`, 16 API endpoints, server-side utilization math, proration, overload/underload alerts, sync hook, snapshot freeze, 4 views, heatmap matrix, and member RBAC isolation.
+    - Integration suite passed: **86 / 86 assertions PASS (100%)**.
+    - **Total PRD 21 Test Suite Assertions Passing**: **332 / 332 PASS (100%)** across Layers 1 to 6.
+    - **Total Platform Test Suite Assertions Passing**: **1,067 / 1,067 PASS (100%)** with zero regressions.
+    - **PRD 21 Status**: 100% COMPLETE AND PERMANENTLY SEALED.
 

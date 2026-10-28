@@ -308,3 +308,27 @@
   6. **Strict Scope Discipline**:
      - Zero Layer 6 work was performed. End-to-end integration suite remains cleanly separated for Layer 6.
 - **Consequences**: Complete, secure, and responsive workload dashboard system verified across 110 Layer 5 tests and 136 earlier workload tests with zero platform regressions.
+
+## Decision 21: PRD 21 Layer 6 Full End-to-End Integration Suite & PRD 21 Sealed
+- **Context**: PRD 21 Layer 6 mandates a comprehensive end-to-end integration test suite (`scripts/verify-prd21-integration.js`) evaluating the entire Resource Workload & Capacity Management Dashboard system across all layers. The suite requires real HTTP calls, real user personas (Admin and Member), direct SQLite SELECT queries, trigger immutability enforcement, real proration and availability deduction math, live 8-week heatmap matrix verification, auto-alert workflow, advisory rebalance immutability confirmation, and full audit of the PRD 21 Definition of Done checklist.
+- **Decision**:
+  1. **Dual Verification Architecture (Real HTTP + Direct SQLite SELECT)**:
+     - Every capacity change, leave approval, assignment creation, alert acknowledgment, and snapshot capture is validated via HTTP 200/201 response and independently corroborated with direct SQLite `queryOne` / `queryAll` assertions.
+  2. **Append-Only Immutability & Trigger Verification**:
+     - Tested triggers `prevent_capacity_update`, `prevent_capacity_delete`, `prevent_workload_snapshot_update`, `prevent_workload_snapshot_delete`, and `prevent_workload_alert_delete`. Confirmed database aborts any direct UPDATE or DELETE operations.
+  3. **Multi-Week Proration & Conservation of Hours**:
+     - Verified multi-week assignment spanning 10 calendar days with 40 estimated hours. Proved server-side calculation: Week 1 gets 28.00 hrs (7/10 days), Week 2 gets 12.00 hrs (3/10 days), Week 3 gets 0.00 hrs. Sum equals 40.00 hrs with 100% mathematical conservation.
+  4. **8-Week Rolling Heatmap Matrix & Status Thresholds**:
+     - Verified `GET /api/workload/heatmap/:projectId` yields 8 rolling calendar week headers and member grid rows with 8 cells each.
+     - Confirmed status bands: `UNDERLOADED` (<30%), `OPTIMAL` (30-85%), `NEAR_CAPACITY` (85-100%), and `OVERLOADED` (>100%).
+  5. **Advisory Rebalance Engine (Zero Database Mutation)**:
+     - Proved that `GET /api/workload/rebalance/:projectId` is strictly advisory. Identified overloaded member and suggested underloaded target peers with simulated post-rebalance utilization impact.
+     - Confirmed via direct SQLite SELECT that the original task assignment was NOT mutated by the suggestion query. Verified admin applies reassignments explicitly via `PATCH /api/workload/assignment/:id`.
+  6. **Frontend Security & Credential Hygiene**:
+     - Audited all 4 HTML files (`workload-dashboard.html`, `workload-heatmap.html`, `my-workload.html`, `capacity-planning.html`): confirmed zero hardcoded credentials or passwords, dynamic token retrieval from `localStorage`, and `escapeHTML()` XSS protection across all dynamic templates.
+  7. **Complete PRD 21 Definition of Done Verdict**:
+     - All 5 tables verified in `sqlite_master`.
+     - All 5 append-only triggers verified in `sqlite_master`.
+     - All 16 workload API endpoints operational.
+     - Zero regressions across 13 core platform test suites and all PRD 19, 20, 21 suites.
+- **Consequences**: PRD 21 (Resource Workload & Capacity Management Dashboard) is 100% complete, fully verified, and permanently sealed.

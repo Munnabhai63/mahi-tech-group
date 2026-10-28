@@ -37,7 +37,7 @@ export function getWeekEnd(dateStr) {
  * Sets a member's weekly capacity hours (Append-Only)
  * Role: Admin+
  */
-export function setMemberCapacity({ user_id, weekly_capacity_hrs, effective_from }, currentUser) {
+export function setMemberCapacity({ user_id, weekly_capacity_hrs, capacity_hours, effective_from }, currentUser) {
   if (!isAdmin(currentUser)) {
     const err = new Error('Forbidden: Admin role required to configure member capacity');
     err.status = 403;
@@ -57,7 +57,7 @@ export function setMemberCapacity({ user_id, weekly_capacity_hrs, effective_from
     throw err;
   }
 
-  const capacityHrs = Number(weekly_capacity_hrs);
+  const capacityHrs = Number(weekly_capacity_hrs !== undefined ? weekly_capacity_hrs : capacity_hours);
   if (isNaN(capacityHrs) || capacityHrs <= 0 || capacityHrs > 168) {
     const err = new Error('weekly_capacity_hrs must be a positive number between 1 and 168');
     err.status = 400;
@@ -778,17 +778,30 @@ export function updateAssignment(assignmentId, updates = {}, currentUser) {
     newStatus = s;
   }
 
+  let newUserId = existing.user_id;
+  if (updates.user_id) {
+    const targetUser = queryOne('SELECT id FROM users WHERE id = ?', [updates.user_id]);
+    if (!targetUser) {
+      const err = new Error('Target user not found');
+      err.status = 404;
+      throw err;
+    }
+    newUserId = updates.user_id;
+  }
+
   const newTitle = updates.title ? updates.title.trim() : existing.title;
 
   execute(`
     UPDATE workload_assignments
-    SET estimated_hrs = ?, start_date = ?, end_date = ?, status = ?, title = ?, updated_at = datetime('now')
+    SET user_id = ?, estimated_hrs = ?, start_date = ?, end_date = ?, status = ?, title = ?, updated_at = datetime('now')
     WHERE id = ?
-  `, [newEstimatedHrs, newStartDate, newEndDate, newStatus, newTitle, assignmentId]);
+  `, [newUserId, newEstimatedHrs, newStartDate, newEndDate, newStatus, newTitle, assignmentId]);
 
-  // Recalculate auto-alerts for old and new date spans
+  // Recalculate auto-alerts for old and new user / date spans
   recalculateSpannedWeeksAlerts(existing.user_id, existing.start_date, existing.end_date);
-  if (newStartDate !== existing.start_date || newEndDate !== existing.end_date) {
+  if (newUserId !== existing.user_id) {
+    recalculateSpannedWeeksAlerts(newUserId, newStartDate, newEndDate);
+  } else if (newStartDate !== existing.start_date || newEndDate !== existing.end_date) {
     recalculateSpannedWeeksAlerts(existing.user_id, newStartDate, newEndDate);
   }
 
@@ -862,17 +875,19 @@ export function syncAssignmentFromSource(
   );
 
   if (existing) {
-    return updateAssignment(
+    const res = updateAssignment(
       existing.id,
       { estimated_hrs, start_date, end_date, status, title },
       currentUser
     );
+    return { created: false, ...res };
   }
 
-  return createAssignment(
+  const res = createAssignment(
     { user_id, project_id, source_type: srcType, source_id, title, estimated_hrs, start_date, end_date },
     currentUser
   );
+  return { created: true, ...res };
 }
 
 /**
