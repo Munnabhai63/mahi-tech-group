@@ -697,3 +697,25 @@
      - Every admin action is captured in `access_log` via `logAccess`.
      - Relevant client lifecycle mutations are captured in `client_activity_log` via `logClientActivity`.
 - **Consequences**: Layer 3 verified with 121/121 passing assertions in `scripts/verify-prd24-layer3.js`. Complete regression safety maintained: Layer 1 (216/216), Layer 2 (74/74), PRD 23 Integration (197/197), and core platform test suite (13/13).
+
+## Decision 24-D: PRD 24 Layer 4 Client-Facing API, Read Engine & Zero-Trust Access Isolation
+- **Context**: PRD 24 Layer 4 mandates the Client-Facing API & Read Engine across all 10 client endpoints (`/api/client/*`). Strict security invariants dictate: (1) All routes enforce `clientAuthMiddleware` (CLIENT JWT only; internal JWTs and unauthenticated callers receive 401); (2) `is_internal = 1` messages MUST NEVER be returned (SQL `WHERE is_internal = 0` mandatory); (3) `internal_notes` field MUST be stripped at service layer before serialization; (4) Zero-trust `client_shared_items` (only `is_active = 1` items accessible); (5) Client can only access projects where `client_project_access.is_active = 1` (any other project -> 403); (6) Deliverable feedback requires mandatory pre-insert check against `client_shared_items` (403 if unshared); (7) Milestone approvals can only be decided once by authenticated client owner (403 on other clients, 400 on already decided); (8) All actions log to `client_activity_log`; (9) `updated_at` manually updated on SQLite mutations; (10) Static/named routes ordered before parameterized routes.
+- **Decision**:
+  1. **Client-Facing Service Engine (`src/services/clientFacingService.js`)**:
+     - `getClientProjects`: Returns projects with active access (`cpa.is_active = 1 AND cpa.client_id = client.id`), excluding internal team metadata.
+     - `getClientProjectOverview`: Enforces active project check; queries shared milestones, gantt items, and backlog items joined strictly with `client_shared_items`. Completely omits unshared items.
+     - `getClientProjectTimeline`: Returns only shared gantt items for the granted project.
+     - `getClientProjectMilestones`: Returns only shared milestones with approval status (`cma.decision`, `cma.decision_note`, `cma.requested_at`, `cma.decided_at`).
+     - `submitClientOrder`: Validates title/description, checks project access if provided, inserts into `client_orders`, and strips `internal_notes`.
+     - `getClientOrders`: Queries client's own orders, omitting `internal_notes` from SQL query and stripping defensively before returning.
+     - `getClientOrderDetail`: Enforces client ownership (403 if belonging to another client), strips `internal_notes`, and fetches messages with mandatory `WHERE order_id = ? AND is_internal = 0` filter.
+     - `addClientOrderMessage`: Enforces order ownership, inserts message with `sender_type = 'CLIENT'`, `is_internal = 0`, updates order `updated_at`, and logs activity.
+     - `decideMilestoneApproval`: Validates decision (`APPROVED` | `REJECTED`), checks client ownership, blocks re-deciding, updates approval record, and on approval updates `gantt_milestones (status = 'ACHIEVED', achieved_at = datetime('now'), updated_at = datetime('now'))`.
+     - `submitClientFeedback`: Enforces active project access, runs pre-insert check against `client_shared_items` (403 if unshared), validates rating (1-5), inserts into `client_deliverable_feedback`, and logs activity.
+  2. **Route Architecture & Ordering (`src/routes/client.routes.js`)**:
+     - Mounted via `/api/client` in `src/app.js`.
+     - Static routes (`/orders/submit`, `/orders`, `/projects`, `/feedback/submit`) mounted before parameterized routes (`/orders/:orderId`, `/project/:projectId/...`).
+     - All routes guarded by `clientAuthMiddleware`.
+  3. **Append-Only & Immutability Verification**:
+     - Tested DB triggers on `client_order_messages`, `client_milestone_approvals`, and `client_deliverable_feedback` confirming UPDATE and DELETE attempts are strictly aborted by SQLite.
+- **Consequences**: Layer 4 verified with 111/111 passing assertions in `scripts/verify-prd24-layer4.js`. Zero regressions across Layer 1 (216/216), Layer 2 (74/74), Layer 3 (121/121), PRD 23 Integration (197/197), and core platform suite (13/13).

@@ -943,8 +943,36 @@
       - `scripts/verify-prd23-integration.js` -> **197 / 197 PASS (100%)**
       - `npm test` -> **13 / 13 test suites PASS (100%)**
     - Client Logout Token Blacklist Note: Per specification in `docs/24_CLIENT_PORTAL.md`, client JWT tokens are stateless without a `client_sessions` table. Client logout logs `LOGOUT` to `client_activity_log`. Immediate revocation of client access is enforced server-side via `clients.status === 'ACTIVE'` check on every request in `authenticateClientToken`.
-    - Layer 4 Status: Strictly HALTED pending explicit user GO-AHEAD.
-
-
-
-
+  - **Layer 4 (Client-Facing API & Read Engine — 100% COMPLETE & VERIFIED)**:
+    - Service Engine: Built `src/services/clientFacingService.js` with 10 client-facing functions implementing zero-trust isolation:
+      - `getClientProjects`: Returns projects with active access (`cpa.is_active = 1 AND cpa.client_id = client.id`), excluding internal team metadata.
+      - `getClientProjectOverview`: Enforces active project access; queries shared milestones, gantt items, and backlog items joined strictly with `client_shared_items`. Completely omits unshared items.
+      - `getClientProjectTimeline`: Returns only shared gantt items for the granted project.
+      - `getClientProjectMilestones`: Returns only shared milestones with approval status (`cma.decision`, `cma.decision_note`, `cma.requested_at`, `cma.decided_at`).
+      - `submitClientOrder`: Validates title/description, checks project access if provided, inserts into `client_orders`, and strips `internal_notes`.
+      - `getClientOrders`: Queries client's own orders, omitting `internal_notes` from SQL query and stripping defensively before returning.
+      - `getClientOrderDetail`: Enforces client ownership (403 if belonging to another client), strips `internal_notes`, and fetches messages with mandatory `WHERE order_id = ? AND is_internal = 0` filter.
+      - `addClientOrderMessage`: Enforces order ownership, inserts message with `sender_type = 'CLIENT'`, `is_internal = 0`, updates order `updated_at`, and logs activity.
+      - `decideMilestoneApproval`: Validates decision (`APPROVED` | `REJECTED`), checks client ownership, blocks re-deciding, updates approval record, and on approval updates `gantt_milestones (status = 'ACHIEVED', achieved_at = datetime('now'), updated_at = datetime('now'))`.
+      - `submitClientFeedback`: Enforces active project access, runs pre-insert check against `client_shared_items` (403 if unshared), validates rating (1-5), inserts into `client_deliverable_feedback`, and logs activity.
+    - Route Architecture: Updated `src/routes/client.routes.js` to mount all 10 client-facing endpoints guarded with `clientAuthMiddleware`. Static and named routes ordered before parameterized routes.
+    - Mandatory Security Invariants Verified:
+      - Invariant 1 (Client JWT only, internal tokens receive 401): VERIFIED
+      - Invariant 2 (`is_internal = 1` messages never returned, SQL filter mandatory): VERIFIED
+      - Invariant 3 (`internal_notes` stripped from client order responses): VERIFIED
+      - Invariant 4 (`client_shared_items` zero-trust access gate): VERIFIED
+      - Invariant 5 (Client project access check, 403 on ungranted projects): VERIFIED
+      - Invariant 6 (Pre-insert check for deliverable feedback, 403 on unshared items): VERIFIED
+      - Invariant 7 (Client milestone approval restricted to owner & pending): VERIFIED
+      - Invariant 8 (All client actions logged to `client_activity_log`): VERIFIED
+      - Invariant 9 (`updated_at` manually updated on SQLite row mutations): VERIFIED
+      - Invariant 10 (Route ordering: static before parameterized routes): VERIFIED
+    - Comprehensive Verification: `scripts/verify-prd24-layer4.js` -> **111 / 111 PASS (100%)**.
+    - Full Regression Passes:
+      - `scripts/verify-prd24-layer1.js` -> **216 / 216 PASS (100%)**
+      - `scripts/verify-prd24-layer2.js` -> **74 / 74 PASS (100%)**
+      - `scripts/verify-prd24-layer3.js` -> **121 / 121 PASS (100%)**
+      - `scripts/verify-prd24-layer4.js` -> **111 / 111 PASS (100%)**
+      - `scripts/verify-prd23-integration.js` -> **197 / 197 PASS (100%)**
+      - `npm test` -> **13 / 13 test suites PASS (100%)**
+    - Layer 5 Status: Strictly HALTED pending explicit user GO-AHEAD.

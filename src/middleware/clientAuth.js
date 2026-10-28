@@ -153,3 +153,9 @@ export function authenticateClientToken(req, res, next) {
     return res.status(401).json({ error: 'Unauthorized: Invalid client token signature' });
   }
 }
+
+/**
+ * Standard alias for client authentication middleware
+ */
+export const clientAuthMiddleware = authenticateClientToken;
+
