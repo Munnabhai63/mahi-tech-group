@@ -1008,5 +1008,30 @@
       - `scripts/verify-prd24-layer5.js` -> **101 / 101 PASS (100%)**
       - `scripts/verify-prd23-integration.js` -> **197 / 197 PASS (100%)**
       - `npm test` -> **13 / 13 test suites PASS (100%)**
-    - Layer 6 Status: Strictly HALTED pending explicit user GO-AHEAD.
+    - Layer 6 (Full End-to-End Integration Suite & PRD 24 Sealed — 100% COMPLETE & VERIFIED):
+      - Authored and executed `scripts/verify-prd24-layer6.js` and `scripts/verify-prd24-integration.js` covering 10 distinct end-to-end flows with real HTTP + direct DB SELECT (zero mocks):
+        - **Flow 1: Full Invite Lifecycle (33/33 PASS)**: Admin invite creation, invite_token cryptographic validation, expired token rejection, one-time acceptance, bcrypt password hashing, status transition (`INVITED` -> `ACTIVE`), login token issuance, account suspension (`403 Forbidden` on login and active token), reactivate, and post-reactivation re-login.
+        - **Flow 2: Full Project Access Flow (19/19 PASS)**: Admin grants project access (`APPROVE`), verified in `client_project_access` and `/api/client/projects`, soft-revocation (`is_active = 0`), disappearance from client list, `403 Forbidden` on revoked project overview, and re-grant reactivation.
+        - **Flow 3: Full Shared Item + Feedback Flow (20/20 PASS)**: Admin shares Gantt item (`GANTT_ITEM`), appearance in client overview & timeline, client submits deliverable feedback (5 stars), SQLite `client_deliverable_feedback` row verified, admin soft-unshares (`is_active = 0`), item disappears from client view, and subsequent feedback on unshared item blocked with `403 Forbidden`.
+        - **Flow 4: Full Order + Messaging Flow (21/21 PASS)**: Client submits order (internal_notes stripped from response), admin posts internal message (`is_internal = 1`), admin posts external message (`is_internal = 0`), client fetches order detail (internal_notes strictly absent, `is_internal = 1` message strictly absent from messages array, external message present), and client replies (`sender_type = 'CLIENT'`, `is_internal = 0`).
+        - **Flow 5: Full Milestone Approval Flow (18/18 PASS)**: Admin shares milestone, requests client approval (initial decision pending / NULL per PRD Table 6), client views pending approval, client approves with sign-off note, SQLite updates decision to `APPROVED`, underlying `gantt_milestones.status` auto-transitioned to `ACHIEVED` (`achieved_at` timestamp set), re-decide blocked with `400 Bad Request`, and SQLite trigger strictly blocks subsequent SQL UPDATE.
+        - **Flow 6: Cross-Client Isolation Sweep (10/10 PASS)**: Client B authenticated; attempts by Client B to access Client A order, reply to Client A order, decide Client A milestone approval, access ungranted Project 1 overview, timeline, milestones, or submit feedback all return `403 Forbidden`. Client B order list strictly omits Client A orders.
+        - **Flow 7: Append-Only Trigger Final Sweep (8/8 PASS)**: Real SQL UPDATE and DELETE on `client_order_messages`, `client_milestone_approvals`, `client_deliverable_feedback`, and `client_activity_log` all strictly aborted by SQLite triggers (`RAISE(ABORT, '... is append-only')`).
+        - **Flow 8: Rate Limiting Integration (9/9 PASS)**: 5 failed client login attempts return `401 Unauthorized`, 6th attempt returns `429 Too Many Requests` (15-minute lockout), and lockout window reset allows immediate successful login.
+        - **Flow 9: Bi-Directional JWT Guard Final Confirmation (8/8 PASS)**: Internal user JWT on `/api/client/projects`, `/orders`, `/auth/me`, `/project/:id/overview` strictly rejected with `401 Unauthorized`. Client JWT on `/api/admin/clients`, `/members`, `/orders`, `/clients/invite` strictly rejected with `403 Forbidden`.
+        - **Flow 10: is_internal + internal_notes Final Deep-Scan Sweep (14/14 PASS)**: Deep-scanned all 7 client GET endpoints (`/api/client/auth/me`, `/projects`, `/project/:id/overview`, `/project/:id/timeline`, `/project/:id/milestones`, `/orders`, `/orders/:id`) after full data population; confirmed 0 occurrences of `is_internal` or `internal_notes`.
+    - Comprehensive Verification:
+      - `scripts/verify-prd24-layer1.js` -> **216 / 216 PASS (100%)**
+      - `scripts/verify-prd24-layer2.js` -> **74 / 74 PASS (100%)**
+      - `scripts/verify-prd24-layer3.js` -> **121 / 121 PASS (100%)**
+      - `scripts/verify-prd24-layer4.js` -> **111 / 111 PASS (100%)**
+      - `scripts/verify-prd24-layer5.js` -> **101 / 101 PASS (100%)**
+      - `scripts/verify-prd24-layer6.js` -> **160 / 160 PASS (100%)**
+      - `scripts/verify-prd24-integration.js` -> **160 / 160 PASS (100%)**
+      - **Total PRD 24 Passing Assertions**: **783 / 783 PASS (100%)**
+    - Platform Regression Verification:
+      - `scripts/verify-prd23-integration.js` -> **197 / 197 PASS (100%)**
+      - `npm test` -> **13 / 13 test suites PASS (100%)**
+    - PRD 24 Status: **100% COMPLETE, VERIFIED & SEALED**.
+    - Next PRD: **PRD 25 (Budget & Financial Management)** pending explicit user GO-AHEAD.
 

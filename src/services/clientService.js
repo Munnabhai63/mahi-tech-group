@@ -159,8 +159,11 @@ export function updateClient(adminUser, clientId, updates = {}, ip = null) {
  * 4. POST /api/admin/clients/:clientId/access/grant
  * Grant client access to a project
  */
-export function grantProjectAccess(adminUser, clientId, { project_id, access_level = 'VIEW' }, ip = null) {
+export function grantProjectAccess(adminUser, clientId, body = {}, ip = null) {
   assertAdmin(adminUser);
+
+  const project_id = body.project_id || body.projectId;
+  const access_level = body.access_level || body.accessLevel || 'VIEW';
 
   if (!project_id) {
     const err = new Error('project_id is required');
@@ -256,8 +259,10 @@ export function grantProjectAccess(adminUser, clientId, { project_id, access_lev
  * 5. PATCH /api/admin/clients/:clientId/access/revoke
  * Soft-revoke client access to a project (is_active = 0)
  */
-export function revokeProjectAccess(adminUser, clientId, { project_id }, ip = null) {
+export function revokeProjectAccess(adminUser, clientId, body = {}, ip = null) {
   assertAdmin(adminUser);
+
+  const project_id = body.project_id || body.projectId;
 
   if (!project_id) {
     const err = new Error('project_id is required');
@@ -304,7 +309,7 @@ export function revokeProjectAccess(adminUser, clientId, { project_id }, ip = nu
     message: 'Project access revoked successfully',
     id: access.id,
     client_id: Number(clientId),
-    project_id: Number(project_id),
+    project_id: project_id,
     is_active: 0
   };
 }
@@ -313,8 +318,12 @@ export function revokeProjectAccess(adminUser, clientId, { project_id }, ip = nu
  * 6. POST /api/admin/clients/:clientId/share/item
  * Share a specific project deliverable/item with client (explicit opt-in only)
  */
-export function shareItem(adminUser, clientId, { project_id, item_type, item_id }, ip = null) {
+export function shareItem(adminUser, clientId, body = {}, ip = null) {
   assertAdmin(adminUser);
+
+  const project_id = body.project_id || body.projectId;
+  const item_type = body.item_type || body.itemType;
+  const item_id = body.item_id || body.itemId;
 
   if (!project_id || !item_type || !item_id) {
     const err = new Error('project_id, item_type, and item_id are required');
@@ -680,8 +689,19 @@ export function addOrderMessage(user, orderId, { message, is_internal = 0, attac
  * 12. POST /api/admin/milestone/request-approval
  * Admin requests client approval for a milestone
  */
-export function requestMilestoneApproval(adminUser, { client_id, project_id, milestone_id }, ip = null) {
+export function requestMilestoneApproval(adminUser, body = {}, ip = null) {
   assertAdmin(adminUser);
+
+  const client_id = body.client_id || body.clientId;
+  let project_id = body.project_id || body.projectId;
+  const milestone_id = body.milestone_id || body.milestoneId;
+
+  if (!project_id && milestone_id) {
+    const msRow = queryOne('SELECT project_id FROM gantt_milestones WHERE id = ?', [milestone_id]);
+    if (msRow) {
+      project_id = msRow.project_id;
+    }
+  }
 
   if (!client_id || !project_id || !milestone_id) {
     const err = new Error('client_id, project_id, and milestone_id are required');
@@ -765,7 +785,8 @@ export function requestMilestoneApproval(adminUser, { client_id, project_id, mil
 
   return {
     message: 'Milestone approval requested successfully',
-    approval_request: approvalRequest
+    approval_request: approvalRequest,
+    approval: approvalRequest
   };
 }
 

@@ -133,10 +133,10 @@ router.patch('/clients/:clientId/status', authenticate, requireAdmin, (req, res,
 });
 
 /**
- * POST /api/admin/clients/:clientId/access/grant
+ * POST /api/admin/clients/:clientId/access/grant (and alias /projects/grant)
  * Grants client access to a project
  */
-router.post('/clients/:clientId/access/grant', authenticate, requireAdmin, (req, res, next) => {
+router.post(['/clients/:clientId/access/grant', '/clients/:clientId/projects/grant'], authenticate, requireAdmin, (req, res, next) => {
   try {
     const ip = req.ip || req.socket?.remoteAddress;
     const result = clientService.grantProjectAccess(req.user, req.params.clientId, req.body || {}, ip);
@@ -150,7 +150,7 @@ router.post('/clients/:clientId/access/grant', authenticate, requireAdmin, (req,
 });
 
 /**
- * PATCH /api/admin/clients/:clientId/access/revoke
+ * PATCH /api/admin/clients/:clientId/access/revoke (and DELETE alias)
  * Soft-revokes client access to a project (is_active = 0)
  */
 router.patch('/clients/:clientId/access/revoke', authenticate, requireAdmin, (req, res, next) => {
@@ -166,11 +166,24 @@ router.patch('/clients/:clientId/access/revoke', authenticate, requireAdmin, (re
   }
 });
 
+router.delete('/clients/:clientId/projects/:projectId', authenticate, requireAdmin, (req, res, next) => {
+  try {
+    const ip = req.ip || req.socket?.remoteAddress;
+    const result = clientService.revokeProjectAccess(req.user, req.params.clientId, { project_id: req.params.projectId }, ip);
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json({ error: err.message });
+    }
+    next(err);
+  }
+});
+
 /**
- * POST /api/admin/clients/:clientId/share/item
+ * POST /api/admin/clients/:clientId/share/item (and alias /items/share)
  * Shares a specific project deliverable/item with client
  */
-router.post('/clients/:clientId/share/item', authenticate, requireAdmin, (req, res, next) => {
+router.post(['/clients/:clientId/share/item', '/clients/:clientId/items/share'], authenticate, requireAdmin, (req, res, next) => {
   try {
     const ip = req.ip || req.socket?.remoteAddress;
     const result = clientService.shareItem(req.user, req.params.clientId, req.body || {}, ip);
@@ -184,10 +197,23 @@ router.post('/clients/:clientId/share/item', authenticate, requireAdmin, (req, r
 });
 
 /**
- * PATCH /api/admin/clients/:clientId/share/item/:shareId/unshare
+ * PATCH /api/admin/clients/:clientId/share/item/:shareId/unshare (and DELETE alias)
  * Soft-unshares a project item from client (is_active = 0)
  */
 router.patch('/clients/:clientId/share/item/:shareId/unshare', authenticate, requireAdmin, (req, res, next) => {
+  try {
+    const ip = req.ip || req.socket?.remoteAddress;
+    const result = clientService.unshareItem(req.user, req.params.clientId, req.params.shareId, ip);
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json({ error: err.message });
+    }
+    next(err);
+  }
+});
+
+router.delete(['/clients/:clientId/share/item/:shareId', '/clients/:clientId/items/:shareId'], authenticate, requireAdmin, (req, res, next) => {
   try {
     const ip = req.ip || req.socket?.remoteAddress;
     const result = clientService.unshareItem(req.user, req.params.clientId, req.params.shareId, ip);
@@ -256,10 +282,10 @@ router.patch('/orders/:orderId/status', authenticate, requireAdmin, (req, res, n
 });
 
 /**
- * POST /api/admin/orders/:orderId/message
+ * POST /api/admin/orders/:orderId/message (and alias /orders/:orderId/messages)
  * Adds team message to client order (Admin+ or assigned Member)
  */
-router.post('/orders/:orderId/message', authenticate, (req, res, next) => {
+router.post(['/orders/:orderId/message', '/orders/:orderId/messages'], authenticate, (req, res, next) => {
   try {
     const ip = req.ip || req.socket?.remoteAddress;
     const { message, is_internal, attachments } = req.body || {};
@@ -278,13 +304,17 @@ router.post('/orders/:orderId/message', authenticate, (req, res, next) => {
 });
 
 /**
- * POST /api/admin/milestone/request-approval
+ * POST /api/admin/milestone/request-approval (and alias /milestones/:milestoneId/request-approval)
  * Requests client approval for a milestone
  */
-router.post('/milestone/request-approval', authenticate, requireAdmin, (req, res, next) => {
+router.post(['/milestone/request-approval', '/milestones/:milestoneId/request-approval'], authenticate, requireAdmin, (req, res, next) => {
   try {
     const ip = req.ip || req.socket?.remoteAddress;
-    const result = clientService.requestMilestoneApproval(req.user, req.body || {}, ip);
+    const payload = { ...(req.body || {}) };
+    if (req.params.milestoneId && !payload.milestone_id && !payload.milestoneId) {
+      payload.milestone_id = req.params.milestoneId;
+    }
+    const result = clientService.requestMilestoneApproval(req.user, payload, ip);
     return res.status(201).json(result);
   } catch (err) {
     if (err.status) {

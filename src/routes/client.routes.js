@@ -61,7 +61,8 @@ router.get('/auth/validate-invite', async (req, res, next) => {
 router.post('/auth/accept-invite', async (req, res, next) => {
   try {
     const { ip, userAgent } = getClientMeta(req);
-    const { invite_token, new_password } = req.body || {};
+    const invite_token = req.body?.invite_token || req.body?.token;
+    const new_password = req.body?.new_password || req.body?.password;
 
     const result = await acceptInvite({ invite_token, new_password }, ip, userAgent);
     return res.status(200).json(result);

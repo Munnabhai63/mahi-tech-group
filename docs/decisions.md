@@ -751,3 +751,32 @@
      - Supports `is_internal` message toggle (Admin can post internal notes or client-visible replies).
 - **Consequences**: Complete, secure, responsive frontend views verified by 101/101 passing tests in `scripts/verify-prd24-layer5.js`. Zero platform regressions across all 13 core test suites, PRD 23 integration, and PRD 24 Layers 1-4.
 
+## Decision 24-F: PRD 24 Layer 6 Full End-to-End Integration Suite & System Sealing
+- **Context**: PRD 24 Layer 6 mandates full end-to-end integration verification, regression protection, and sealing of the Client Portal subsystem across 10 mandatory integration flows:
+  1. Full Invite Lifecycle (Admin Invite -> Token -> Accept -> Login -> Suspend -> 403 -> Reactivate -> Login).
+  2. Full Project Access Flow (Grant -> /projects List -> Revoke -> Disappear & 403 -> Re-grant -> Reappear).
+  3. Full Shared Item + Feedback Flow (Share Gantt Item -> Overview/Timeline -> Submit Feedback -> DB Row -> Unshare -> Disappear -> 403 on Unshared).
+  4. Full Order + Messaging Flow (Submit Order -> Internal Msg [is_internal=1] -> External Msg [is_internal=0] -> Client Fetch [is_internal strictly absent, external present] -> Client Reply -> DB Confirmed sender_type=CLIENT, is_internal=0).
+  5. Full Milestone Approval Flow (Share Milestone -> Request Approval -> Pending View -> Client Approves -> DB Status ACHIEVED -> Re-decide 400 -> DB Trigger Block).
+  6. Cross-Client Isolation Sweep (Client A & B: Orders, Messages, Approvals, Feedback, Projects all return 403).
+  7. Append-Only Trigger Final Sweep (Real SQL UPDATE & DELETE on client_order_messages, client_milestone_approvals, client_deliverable_feedback, client_activity_log all abort).
+  8. Rate Limiting Integration (5 failed attempts -> 6th returns 429 -> lockout window reset logic).
+  9. Bi-Directional JWT Guard Final Confirmation (Internal JWT on /api/client/* -> 401; Client JWT on /api/admin/* -> 403).
+  10. is_internal + internal_notes Final Deep-Scan Sweep (Deep-scan all 7 client GET endpoints after full population -> zero occurrences of is_internal or internal_notes).
+- **Decision**:
+  1. **Integration Test Suite Implementation (`scripts/verify-prd24-layer6.js` & `scripts/verify-prd24-integration.js`)**:
+     - Authored and verified the 10 flows using real ephemeral Express HTTP servers and real SQLite database operations without mocks.
+     - Normalized `item_type` in `submitClientFeedback` to uppercase (`cleanItemType`) to ensure case-insensitive matching against `client_shared_items`.
+     - Provided `approval` and `approval_request` aliases in `requestMilestoneApproval` for flexible client/admin payload consumption.
+     - Verified initial milestone approval state aligns with PRD Table 6 definition (`decision` is `NULL` for pending state, guarded by SQLite trigger preventing updates once decided).
+  2. **Zero Regression & Full Platform Health**:
+     - Layer 1: 216 / 216 PASS
+     - Layer 2: 74 / 74 PASS
+     - Layer 3: 121 / 121 PASS
+     - Layer 4: 111 / 111 PASS
+     - Layer 5: 101 / 101 PASS
+     - Layer 6 / Integration: 160 / 160 PASS
+     - PRD 23 Integration: 197 / 197 PASS
+     - Core Test Suite: 13 / 13 test suites PASS (100%)
+- **Consequences**: PRD 24 is 100% complete, fully verified, and sealed with 783/783 total passing assertions. Ready for PRD 25.
+

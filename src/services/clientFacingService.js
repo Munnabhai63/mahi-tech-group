@@ -561,7 +561,11 @@ export function submitClientFeedback(client, data, ip = null, userAgent = null) 
     throw err;
   }
 
-  const { project_id, item_type, item_id, rating = null, feedback_text = null } = data || {};
+  const project_id = data?.project_id || data?.projectId;
+  const item_type = data?.item_type || data?.itemType;
+  const item_id = data?.item_id !== undefined ? data.item_id : data?.itemId;
+  const rating = data?.rating !== undefined ? data.rating : null;
+  const feedback_text = data?.feedback_text !== undefined ? data.feedback_text : (data?.feedbackText || null);
 
   if (!project_id) {
     const err = new Error('project_id is required');
@@ -574,6 +578,8 @@ export function submitClientFeedback(client, data, ip = null, userAgent = null) 
     err.status = 400;
     throw err;
   }
+
+  const cleanItemType = String(item_type).trim().toUpperCase();
 
   if (item_id === undefined || item_id === null) {
     const err = new Error('item_id is required');
@@ -605,8 +611,8 @@ export function submitClientFeedback(client, data, ip = null, userAgent = null) 
   // Mandatory Security Rule: Pre-insert check verifying item is explicitly shared with client
   const sharedItem = queryOne(`
     SELECT id FROM client_shared_items
-    WHERE client_id = ? AND project_id = ? AND item_type = ? AND item_id = ? AND is_active = 1
-  `, [client.id, project_id, item_type, item_id]);
+    WHERE client_id = ? AND project_id = ? AND UPPER(item_type) = ? AND item_id = ? AND is_active = 1
+  `, [client.id, project_id, cleanItemType, item_id]);
 
   if (!sharedItem) {
     const err = new Error('Forbidden: Feedback can only be submitted on items explicitly shared with your account');
@@ -620,7 +626,7 @@ export function submitClientFeedback(client, data, ip = null, userAgent = null) 
   `, [
     client.id,
     project_id,
-    item_type,
+    cleanItemType,
     item_id,
     rating ? Number(rating) : null,
     feedback_text ? feedback_text.trim() : null
@@ -635,7 +641,7 @@ export function submitClientFeedback(client, data, ip = null, userAgent = null) 
   logClientActivity({
     clientId: client.id,
     action: 'LEAVE_FEEDBACK',
-    itemType: item_type,
+    itemType: cleanItemType,
     itemId: item_id,
     ipAddress: ip,
     userAgent
