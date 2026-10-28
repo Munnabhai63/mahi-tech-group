@@ -264,9 +264,18 @@ export function getBudgetByProjectId(projectId, currentUser) {
   return {
     budget,
     consumption,
-    alerts: activeAlerts
+    alerts: activeAlerts,
+    total_budget: consumption.total_budget,
+    currency: consumption.currency,
+    consumed: consumption.total_consumption,
+    remaining: consumption.remaining_budget,
+    consumed_pct: consumption.consumed_pct,
+    alert_status: consumption.alert_status,
+    budget_type: budget.budget_type,
+    alert_threshold_pct: budget.alert_threshold_pct
   };
 }
+
 
 /**
  * PATCH /api/finance/budget/:projectId
@@ -1765,6 +1774,10 @@ export function recordInvoiceViewed(invoiceId, currentUser = null, ipAddress = n
  * If date(due_date) < date('now'), transitions status to OVERDUE and generates budget_alerts record.
  */
 export function processOverdueInvoices(currentUser = null, ipAddress = null) {
+  if (currentUser) {
+    verifyAdminRole(currentUser, 'run overdue invoice cron');
+  }
+
   const overdueInvoices = queryAll(`
     SELECT * FROM invoices
     WHERE status IN ('SENT', 'VIEWED')
