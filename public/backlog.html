@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Backlog — Mahi Tech Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #38bdf8;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #e2e8f0;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      color: #ffffff;
+      border-color: #475569;
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #1e293b;
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      border: 1px solid var(--border-card);
+    }
+
+    .role-badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    /* Main Container */
+    .backlog-wrapper {
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 1.5rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* Controls Bar */
+    .controls-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .form-select, .form-input {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .form-select:focus, .form-input:focus {
+      border-color: #38bdf8;
+    }
+
+    .btn-add-item {
+      background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+      border: 1px solid #60a5fa;
+      color: #ffffff;
+      padding: 0.5rem 1.1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    }
+
+    .btn-add-item:hover {
+      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+      transform: translateY(-1px);
+    }
+
+    /* Backlog List */
+    .backlog-list-wrap {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .backlog-list-header {
+      padding: 0.9rem 1.25rem;
+      background: rgba(30, 41, 59, 0.4);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .backlog-item-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border-card);
+      background: var(--bg-surface);
+      transition: background 0.15s ease, border-color 0.15s ease;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .backlog-item-row:last-child {
+      border-bottom: none;
+    }
+
+    .backlog-item-row:hover {
+      background: #1e293b;
+    }
+
+    .backlog-item-row.is-dragging {
+      opacity: 0.4;
+      background: #334155;
+      cursor: grabbing;
+    }
+
+    .backlog-item-row.drag-target {
+      border-top: 2px solid #38bdf8;
+    }
+
+    .drag-handle {
+      color: #64748b;
+      cursor: grab;
+      font-size: 1.1rem;
+    }
+
+    .item-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .item-title-line {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.25rem;
+      flex-wrap: wrap;
+    }
+
+    .item-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin: 0;
+    }
+
+    .item-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Badges */
+    .badge-type {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .badge-type.STORY { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-type.BUG { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-type.TASK { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge-type.EPIC { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
+
+    .badge-priority {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .priority-CRITICAL { color: #f87171; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); }
+    .priority-HIGH { color: #fbbf24; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); }
+    .priority-MEDIUM { color: #60a5fa; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); }
+    .priority-LOW { color: #94a3b8; background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.25); }
+
+    .item-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .pts-input-box {
+      width: 60px;
+      text-align: center;
+      padding: 0.3rem 0.4rem;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .move-sprint-select {
+      max-width: 160px;
+      font-size: 0.8rem;
+    }
+
+    .btn-delete-item {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 0.3rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-delete-item:hover {
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    /* Modal Form */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 520px;
+      padding: 1.75rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 0.35rem;
+    }
+
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+    }
+
+    /* Toast */
+    .toast-box {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      color: #f8fafc;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+      z-index: 200;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3.5rem 1.5rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="top-nav" id="backlogNav">
+    <div class="brand-wrap">
+      <a href="/sprint-list.html" class="brand-title" id="navLogoLink">
+        <span>⚡</span> MAHI TECH GROUP
+      </a>
+      <span style="color: var(--border-card);">/</span>
+      <div class="nav-breadcrumbs">
+        <span id="projectBreadcrumb">Project</span>
+        <span style="color: var(--border-card);">/</span>
+        <strong>Product Backlog</strong>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <a href="/sprint-board.html" class="btn-nav" id="linkSprintBoard">📌 Sprint Board</a>
+      <a href="/sprint-list.html" class="btn-nav" id="linkSprintList">🏃 All Sprints</a>
+      <a href="/velocity-chart.html" class="btn-nav" id="linkVelocityChart">📊 Velocity & Burndown</a>
+      
+      <div class="user-pill" id="userPill">
+        <span id="userRoleBadge" class="role-badge">USER</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Backlog Container -->
+  <main class="backlog-wrapper">
+
+    <!-- Controls & Filters -->
+    <section class="controls-panel" id="controlsPanel">
+      <div class="filter-group">
+        <input type="text" id="filterSearch" class="form-input" placeholder="Search backlog..." style="width: 200px;">
+        
+        <select id="filterType" class="form-select">
+          <option value="ALL">All Types</option>
+          <option value="STORY">Stories</option>
+          <option value="BUG">Bugs</option>
+          <option value="TASK">Tasks</option>
+          <option value="EPIC">Epics</option>
+        </select>
+
+        <select id="filterPriority" class="form-select">
+          <option value="ALL">All Priorities</option>
+          <option value="CRITICAL">Critical</option>
+          <option value="HIGH">High</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="LOW">Low</option>
+        </select>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <span id="backlogSummaryStats" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+          0 items • 0 total pts
+        </span>
+        <button class="btn-add-item" id="btnOpenAddModal">
+          ＋ Add Item
+        </button>
+      </div>
+    </section>
+
+    <!-- Backlog Items List -->
+    <section class="backlog-list-wrap">
+      <div class="backlog-list-header">
+        <span>Backlog Tasks (Drag to Reorder)</span>
+        <span>Story Points & Actions</span>
+      </div>
+      <div id="backlogItemsContainer">
+        <div class="empty-state">Loading backlog items...</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Add Item Modal -->
+  <div class="modal-backdrop" id="addItemModal">
+    <div class="modal-card">
+      <h3 style="margin-top:0; color: #38bdf8; font-family: 'Outfit', sans-serif;">Add Backlog Item</h3>
+      <form id="addItemForm">
+        <div class="form-group">
+          <label>Title *</label>
+          <input type="text" id="itemTitleInput" class="form-input" required placeholder="Short summary of task or feature">
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="itemDescInput" class="form-input" rows="3" placeholder="Context, requirements or acceptance criteria"></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label>Type</label>
+            <select id="itemTypeInput" class="form-select">
+              <option value="STORY">STORY</option>
+              <option value="BUG">BUG</option>
+              <option value="TASK">TASK</option>
+              <option value="EPIC">EPIC</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Priority</label>
+            <select id="itemPriorityInput" class="form-select">
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="HIGH">HIGH</option>
+              <option value="CRITICAL">CRITICAL</option>
+              <option value="LOW">LOW</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Story Points (0-999)</label>
+            <input type="number" id="itemPointsInput" class="form-input" min="0" max="999" value="0">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+          <button type="button" class="btn-nav" id="btnCancelAdd">Cancel</button>
+          <button type="submit" class="btn-add-item" id="btnSubmitAdd">Create Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Box -->
+  <div class="toast-box" id="toastBox">
+    <span id="toastMsg">Action completed</span>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const urlParams = new URLSearchParams(window.location.search);
+      let projectId = urlParams.get('projectId') || urlParams.get('id');
+
+      const authToken = localStorage.getItem('mtg_auth_token') || localStorage.getItem('token') || '';
+      let currentUser = null;
+      let rawBacklogItems = [];
+      let projectSprints = [];
+      let draggedRowId = null;
+
+      // Elements
+      const backlogItemsContainer = document.getElementById('backlogItemsContainer');
+      const backlogSummaryStats = document.getElementById('backlogSummaryStats');
+      const projectBreadcrumb = document.getElementById('projectBreadcrumb');
+      const userRoleBadge = document.getElementById('userRoleBadge');
+      const filterSearch = document.getElementById('filterSearch');
+      const filterType = document.getElementById('filterType');
+      const filterPriority = document.getElementById('filterPriority');
+
+      const addItemModal = document.getElementById('addItemModal');
+      const btnOpenAddModal = document.getElementById('btnOpenAddModal');
+      const btnCancelAdd = document.getElementById('btnCancelAdd');
+      const addItemForm = document.getElementById('addItemForm');
+
+      const toastBox = document.getElementById('toastBox');
+      const toastMsg = document.getElementById('toastMsg');
+
+      function showToast(msg, isError = false) {
+        toastMsg.textContent = msg;
+        toastBox.style.borderLeft = isError ? '4px solid #ef4444' : '4px solid #10b981';
+        toastBox.style.display = 'flex';
+        setTimeout(() => { toastBox.style.display = 'none'; }, 3000);
+      }
+
+      async function api(path, method = 'GET', body = null) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        const opts = { method, headers };
+        if (body && method !== 'GET') opts.body = JSON.stringify(body);
+        const res = await fetch(path, opts);
+        let data = null;
+        try { data = await res.json(); } catch (e) {}
+        return { status: res.status, ok: res.ok, data };
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function isAdminOrLead() {
+        if (!currentUser) return false;
+        const role = (currentUser.role || '').toLowerCase();
+        const subRole = (currentUser.sub_role || '').toLowerCase();
+        return role === 'admin' || role === 'lead' || subRole === 'lead';
+      }
+
+      async function init() {
+        // Fetch Current User
+        const meRes = await api('/api/users/me');
+        if (meRes.ok && meRes.data) {
+          currentUser = meRes.data;
+          userRoleBadge.textContent = currentUser.role || 'member';
+        }
+
+        // If no projectId, redirect or pick first
+        if (!projectId) {
+          const projsRes = await api('/api/projects');
+          if (projsRes.ok && Array.isArray(projsRes.data) && projsRes.data.length > 0) {
+            projectId = projsRes.data[0].id;
+          } else {
+            backlogItemsContainer.innerHTML = '<div class="empty-state">No project specified. Provide ?projectId= in the URL.</div>';
+            return;
+          }
+        }
+
+        projectBreadcrumb.textContent = `Project #${projectId}`;
+        document.getElementById('linkSprintBoard').href = `/sprint-board.html?projectId=${projectId}`;
+        document.getElementById('linkSprintList').href = `/sprint-list.html?projectId=${projectId}`;
+        document.getElementById('linkVelocityChart').href = `/velocity-chart.html?projectId=${projectId}`;
+
+        await Promise.all([loadSprints(), loadBacklog()]);
+
+        // Event Listeners for Filters
+        filterSearch.addEventListener('input', applyFilters);
+        filterType.addEventListener('change', applyFilters);
+        filterPriority.addEventListener('change', applyFilters);
+
+        // Modal Events
+        btnOpenAddModal.addEventListener('click', () => { addItemModal.style.display = 'flex'; });
+        btnCancelAdd.addEventListener('click', () => { addItemModal.style.display = 'none'; });
+        addItemForm.addEventListener('submit', handleCreateItem);
+      }
+
+      async function loadSprints() {
+        const res = await api(`/api/sprint/project/${projectId}`);
+        if (res.ok && Array.isArray(res.data)) {
+          projectSprints = res.data;
+        }
+      }
+
+      async function loadBacklog() {
+        const res = await api(`/api/backlog/project/${projectId}`);
+        if (!res.ok) {
+          showToast(res.data?.error || 'Failed to fetch backlog', true);
+          backlogItemsContainer.innerHTML = '<div class="empty-state">Error loading backlog.</div>';
+          return;
+        }
+
+        rawBacklogItems = res.data || [];
+        applyFilters();
+      }
+
+      function applyFilters() {
+        const search = (filterSearch.value || '').toLowerCase().trim();
+        const type = filterType.value;
+        const priority = filterPriority.value;
+
+        const filtered = rawBacklogItems.filter(item => {
+          if (type !== 'ALL' && item.type !== type) return false;
+          if (priority !== 'ALL' && item.priority !== priority) return false;
+          if (search) {
+            const t = (item.title || '').toLowerCase();
+            const d = (item.description || '').toLowerCase();
+            if (!t.includes(search) && !d.includes(search)) return false;
+          }
+          return true;
+        });
+
+        renderBacklogList(filtered);
+      }
+
+      function renderBacklogList(items) {
+        backlogItemsContainer.innerHTML = '';
+
+        const totalPoints = items.reduce((sum, it) => sum + (Number(it.story_points) || 0), 0);
+        backlogSummaryStats.textContent = `${items.length} items • ${totalPoints} total pts`;
+
+        if (items.length === 0) {
+          backlogItemsContainer.innerHTML = '<div class="empty-state">Backlog is empty. Click "+ Add Item" to create one.</div>';
+          return;
+        }
+
+        const canMove = isAdminOrLead();
+
+        items.forEach((item, index) => {
+          const row = document.createElement('div');
+          row.className = 'backlog-item-row';
+          row.id = `backlog-row-${item.id}`;
+          row.draggable = true;
+          row.dataset.itemId = item.id;
+          row.dataset.position = index;
+
+          const type = escapeHtml(item.type || 'STORY');
+          const priority = escapeHtml(item.priority || 'MEDIUM');
+          const title = escapeHtml(item.title);
+          const desc = item.description ? `<p class="item-desc">${escapeHtml(item.description)}</p>` : '';
+          const points = Number(item.story_points) || 0;
+
+          // Sprint options for Move to Sprint dropdown
+          let sprintOptions = '<option value="">Move to Sprint...</option>';
+          projectSprints.forEach(s => {
+            sprintOptions += `<option value="${s.id}">${escapeHtml(s.name)} (${s.status})</option>`;
+          });
+
+          row.innerHTML = `
+            <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+            
+            <div class="item-body">
+              <div class="item-title-line">
+                <span class="badge-type ${type}">${type}</span>
+                <span class="badge-priority priority-${priority}">${priority}</span>
+                <h4 class="item-title">${title}</h4>
+              </div>
+              ${desc}
+            </div>
+
+            <div class="item-controls">
+              <input type="number" 
+                min="0" max="999" 
+                value="${points}" 
+                class="form-input pts-input-box" 
+                title="Story Points (0-999)" 
+                data-item-id="${item.id}">
+              
+              <select class="form-select move-sprint-select" 
+                data-item-id="${item.id}" 
+                ${!canMove ? 'disabled title="Admin only"' : ''}>
+                ${sprintOptions}
+              </select>
+
+              <button class="btn-delete-item" data-item-id="${item.id}" title="Delete Item">🗑️</button>
+            </div>
+          `;
+
+          // Drag Events
+          row.addEventListener('dragstart', handleRowDragStart);
+          row.addEventListener('dragover', handleRowDragOver);
+          row.addEventListener('dragleave', handleRowDragLeave);
+          row.addEventListener('drop', handleRowDrop);
+          row.addEventListener('dragend', handleRowDragEnd);
+
+          // Story points update on blur / change
+          const ptsInput = row.querySelector('.pts-input-box');
+          ptsInput.addEventListener('change', async (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (isNaN(val) || val < 0 || val > 999) {
+              showToast('Story points must be between 0 and 999', true);
+              e.target.value = points;
+              return;
+            }
+            const res = await api(`/api/backlog/item/${item.id}`, 'PATCH', { story_points: val });
+            if (!res.ok) {
+              showToast(res.data?.error || 'Failed to update points', true);
+              e.target.value = points;
+            } else {
+              showToast('Story points updated');
+              item.story_points = val;
+              applyFilters();
+            }
+          });
+
+          // Move to Sprint change event
+          const moveSelect = row.querySelector('.move-sprint-select');
+          moveSelect.addEventListener('change', async (e) => {
+            const targetSprintId = e.target.value;
+            if (!targetSprintId) return;
+
+            const res = await api(`/api/backlog/item/${item.id}/move`, 'PATCH', { sprint_id: Number(targetSprintId) });
+            if (!res.ok) {
+              showToast(res.data?.error || 'Failed to move item to sprint', true);
+              e.target.value = '';
+            } else {
+              showToast('Item moved to sprint successfully!');
+              await loadBacklog();
+            }
+          });
+
+          // Delete Item button
+          const btnDel = row.querySelector('.btn-delete-item');
+          btnDel.addEventListener('click', async () => {
+            if (!confirm(`Delete backlog item "${item.title}"?`)) return;
+            const res = await api(`/api/backlog/item/${item.id}`, 'DELETE');
+            if (!res.ok) {
+              showToast(res.data?.error || 'Cannot delete item', true);
+            } else {
+              showToast('Item deleted successfully');
+              await loadBacklog();
+            }
+          });
+
+          backlogItemsContainer.appendChild(row);
+        });
+      }
+
+      // Drag and Drop for Reordering Backlog Items
+      function handleRowDragStart(e) {
+        draggedRowId = this.dataset.itemId;
+        this.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', draggedRowId);
+      }
+
+      function handleRowDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        this.classList.add('drag-target');
+      }
+
+      function handleRowDragLeave() {
+        this.classList.remove('drag-target');
+      }
+
+      async function handleRowDrop(e) {
+        e.preventDefault();
+        this.classList.remove('drag-target');
+
+        const targetItemId = this.dataset.itemId;
+        if (!draggedRowId || draggedRowId === targetItemId) return;
+
+        const targetPos = parseInt(this.dataset.position, 10);
+
+        // API Call: PATCH /api/backlog/item/:itemId/reorder with { position: targetPos }
+        const res = await api(`/api/backlog/item/${draggedRowId}/reorder`, 'PATCH', { position: targetPos });
+        if (!res.ok) {
+          showToast(res.data?.error || 'Failed to reorder backlog item', true);
+        } else {
+          showToast('Backlog item position updated');
+        }
+        await loadBacklog();
+      }
+
+      function handleRowDragEnd() {
+        this.classList.remove('is-dragging');
+        document.querySelectorAll('.backlog-item-row').forEach(r => r.classList.remove('drag-target'));
+      }
+
+      // Add Item Form Submit
+      async function handleCreateItem(e) {
+        e.preventDefault();
+        const title = document.getElementById('itemTitleInput').value.trim();
+        const description = document.getElementById('itemDescInput').value.trim();
+        const type = document.getElementById('itemTypeInput').value;
+        const priority = document.getElementById('itemPriorityInput').value;
+        const points = parseInt(document.getElementById('itemPointsInput').value, 10) || 0;
+
+        if (!title) {
+          showToast('Title is required', true);
+          return;
+        }
+
+        const res = await api('/api/backlog/item/create', 'POST', {
+          project_id: projectId,
+          title,
+          description,
+          type,
+          priority,
+          story_points: points
+        });
+
+        if (!res.ok) {
+          showToast(res.data?.error || 'Failed to create item', true);
+        } else {
+          showToast('Backlog item created successfully!');
+          addItemForm.reset();
+          addItemModal.style.display = 'none';
+          await loadBacklog();
+        }
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
