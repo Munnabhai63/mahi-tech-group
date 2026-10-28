@@ -28,6 +28,8 @@ import {
 import { createNotification } from '../services/notificationService.js';
 import { confirmMeetingNotes } from '../services/meetingService.js';
 import * as pipelineService from '../services/pipelineService.js';
+import * as clientAuthService from '../services/clientAuthService.js';
+import adminClientsRouter from './adminClients.routes.js';
 
 const router = express.Router();
 
@@ -1551,5 +1553,8 @@ router.patch('/projects/:id/pipeline/approve-live', authenticate, (req, res, nex
     next(err);
   }
 });
+
+// Mount PRD 24 Admin Client Management routes
+router.use(adminClientsRouter);
 
 export default router;

@@ -1653,4 +1653,171 @@ CREATE TRIGGER IF NOT EXISTS prevent_analytics_export_delete
 BEFORE DELETE ON analytics_report_exports
 BEGIN SELECT RAISE(ABORT, 'analytics_report_exports is append-only'); END;
 
+-- ===================================================================
+-- PRD 24: Client Portal
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS clients (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  company_name TEXT,
+  phone TEXT,
+  password_hash TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ACTIVE',
+  invite_token TEXT,
+  invite_token_expires_at TEXT,
+  invite_accepted_at TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS client_project_access (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  access_level TEXT NOT NULL DEFAULT 'VIEW',
+  granted_by INTEGER NOT NULL REFERENCES users(id),
+  granted_at TEXT DEFAULT (datetime('now')),
+  revoked_by INTEGER REFERENCES users(id),
+  revoked_at TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  UNIQUE(client_id, project_id)
+);
+
+CREATE TABLE IF NOT EXISTS client_shared_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  item_type TEXT NOT NULL,
+  item_id INTEGER NOT NULL,
+  shared_by INTEGER NOT NULL REFERENCES users(id),
+  shared_at TEXT DEFAULT (datetime('now')),
+  unshared_by INTEGER REFERENCES users(id),
+  unshared_at TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS client_orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  project_id INTEGER REFERENCES projects(id),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  order_type TEXT NOT NULL DEFAULT 'NEW_REQUEST',
+  priority TEXT NOT NULL DEFAULT 'MEDIUM',
+  status TEXT NOT NULL DEFAULT 'SUBMITTED',
+  attachments TEXT,
+  assigned_to INTEGER REFERENCES users(id),
+  due_date TEXT,
+  internal_notes TEXT,
+  rejection_reason TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS client_order_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER NOT NULL REFERENCES client_orders(id),
+  sender_type TEXT NOT NULL,
+  sender_client_id INTEGER REFERENCES clients(id),
+  sender_user_id INTEGER REFERENCES users(id),
+  message TEXT NOT NULL,
+  is_internal INTEGER NOT NULL DEFAULT 0,
+  attachments TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS client_milestone_approvals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  milestone_id INTEGER NOT NULL REFERENCES gantt_milestones(id),
+  requested_by INTEGER NOT NULL REFERENCES users(id),
+  requested_at TEXT DEFAULT (datetime('now')),
+  decision TEXT,
+  decision_note TEXT,
+  decided_at TEXT,
+  UNIQUE(client_id, milestone_id)
+);
+
+CREATE TABLE IF NOT EXISTS client_deliverable_feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  item_type TEXT NOT NULL,
+  item_id INTEGER NOT NULL,
+  rating INTEGER,
+  feedback_text TEXT,
+  status TEXT NOT NULL DEFAULT 'SUBMITTED',
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS client_activity_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  action TEXT NOT NULL,
+  item_type TEXT,
+  item_id INTEGER,
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
+CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status);
+CREATE INDEX IF NOT EXISTS idx_clients_invite_token ON clients(invite_token);
+CREATE INDEX IF NOT EXISTS idx_client_project_access_client ON client_project_access(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_project_access_project ON client_project_access(project_id);
+CREATE INDEX IF NOT EXISTS idx_client_shared_items_client ON client_shared_items(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_shared_items_project ON client_shared_items(project_id);
+CREATE INDEX IF NOT EXISTS idx_client_shared_items_item ON client_shared_items(item_type, item_id);
+CREATE INDEX IF NOT EXISTS idx_client_orders_client ON client_orders(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_orders_project ON client_orders(project_id);
+CREATE INDEX IF NOT EXISTS idx_client_orders_status ON client_orders(status);
+CREATE INDEX IF NOT EXISTS idx_client_order_messages_order ON client_order_messages(order_id);
+CREATE INDEX IF NOT EXISTS idx_client_milestone_approvals_client ON client_milestone_approvals(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_milestone_approvals_milestone ON client_milestone_approvals(milestone_id);
+CREATE INDEX IF NOT EXISTS idx_client_feedback_client ON client_deliverable_feedback(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_feedback_project ON client_deliverable_feedback(project_id);
+CREATE INDEX IF NOT EXISTS idx_client_activity_log_client ON client_activity_log(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_activity_log_action ON client_activity_log(action);
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_order_message_update
+BEFORE UPDATE ON client_order_messages
+BEGIN SELECT RAISE(ABORT, 'client_order_messages is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_order_message_delete
+BEFORE DELETE ON client_order_messages
+BEGIN SELECT RAISE(ABORT, 'client_order_messages is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_milestone_approval_update
+BEFORE UPDATE ON client_milestone_approvals
+WHEN (OLD.decision IS NOT NULL)
+BEGIN SELECT RAISE(ABORT, 'client_milestone_approvals is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_milestone_approval_delete
+BEFORE DELETE ON client_milestone_approvals
+BEGIN SELECT RAISE(ABORT, 'client_milestone_approvals is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_feedback_update
+BEFORE UPDATE ON client_deliverable_feedback
+BEGIN SELECT RAISE(ABORT, 'client_deliverable_feedback is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_feedback_delete
+BEFORE DELETE ON client_deliverable_feedback
+BEGIN SELECT RAISE(ABORT, 'client_deliverable_feedback is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_activity_log_update
+BEFORE UPDATE ON client_activity_log
+BEGIN SELECT RAISE(ABORT, 'client_activity_log is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_activity_log_delete
+BEFORE DELETE ON client_activity_log
+BEGIN SELECT RAISE(ABORT, 'client_activity_log is append-only'); END;
+
+
 

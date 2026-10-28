@@ -8,6 +8,8 @@ export const config = {
   PORT: process.env.PORT || 4000,
   JWT_SECRET: process.env.JWT_SECRET || 'mahi-tech-group-secure-jwt-secret-key-2026-production',
   JWT_EXPIRES_IN: '7d',
+  CLIENT_JWT_SECRET: process.env.CLIENT_JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('CLIENT_JWT_SECRET env var is required in production'); })() : 'dev-insecure-client-jwt-secret-local-only'),
+  CLIENT_JWT_EXPIRES_IN: '7d',
   DB_PATH: process.env.DB_PATH || path.join(__dirname, '../../database.sqlite'),
   BCRYPT_SALT_ROUNDS: 12,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
@@ -16,4 +18,8 @@ export const config = {
 
 if (!process.env.ENCRYPTION_KEY) {
   process.env.ENCRYPTION_KEY = config.ENCRYPTION_KEY;
+}
+
+if (!process.env.CLIENT_JWT_SECRET && process.env.NODE_ENV !== 'production') {
+  console.warn('WARNING: CLIENT_JWT_SECRET not set, using insecure default for non-production environment');
 }

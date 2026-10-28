@@ -876,9 +876,74 @@
       - Definition of Done: All 20 items in `docs/23_ANALYTICS_KPI_DASHBOARD.md` verified and marked `[x]`.
       - **PRD 23 Status**: 100% COMPLETE AND PERMANENTLY SEALED.
 
-
-
-
+- **PRD 24 — Client Portal**:
+  - **Reverse Engineering Mandate (100% COMPLETE)**:
+    - Authored comprehensive Reverse Engineering Report (`docs/prd24_reverse_engineering_report.md`) dissecting 5 market leaders: Notion, Monday.com, Basecamp, HubSpot, and Copilot.app.
+    - Synthesized access-control models, client identity isolation, explicit item sharing patterns, threaded order communication, and append-only milestone approval workflows.
+    - Discarded all competitor visual branding, styling, copy, and structural vulnerabilities.
+  - **Layer 1 (Database, Schema & Immutability Triggers — 100% COMPLETE & VERIFIED)**:
+    - Created 8 new relational tables in `src/db/schema.sql`, `src/db/database.js` (`CLIENT_PORTAL_SCHEMA_SQL`), and `src/db/migrate.js`:
+      - `clients`: Isolated external client directory (separate from `users`).
+      - `client_project_access`: Project container authorization with `access_level` (`VIEW`, `COMMENT`, `APPROVE`).
+      - `client_shared_items`: Explicit opt-in sharing registry (`GANTT_ITEM`, `MILESTONE`, `BACKLOG_ITEM`, `DELIVERABLE`, `DOCUMENT`).
+      - `client_orders`: Client intake request pipeline with `internal_notes` field.
+      - `client_order_messages`: Threaded messages with `is_internal` flag.
+      - `client_milestone_approvals`: Client milestone sign-off ledger with `decision`, `decision_note`, and `decided_at`.
+      - `client_deliverable_feedback`: 5-star rating and feedback repository.
+      - `client_activity_log`: Immutable client activity audit trail.
+    - Created 18 performance and integrity indexes in SQLite.
+    - Created 8 append-only SQLite DB triggers enforcing strict immutability:
+      - `prevent_client_order_message_update` & `prevent_client_order_message_delete`
+      - `prevent_client_milestone_approval_update` & `prevent_client_milestone_approval_delete`
+      - `prevent_client_feedback_update` & `prevent_client_feedback_delete`
+      - `prevent_client_activity_log_update` & `prevent_client_activity_log_delete`
+    - Verified strict database pragmas: `journal_mode = WAL`, `busy_timeout = 5000`, `foreign_keys = ON`.
+    - Comprehensive Verification: `scripts/verify-prd24-layer1.js` -> **216 / 216 PASS (100%)**.
+    - Core Platform Regression: `npm test` -> **13 / 13 test suites PASS (100%)**.
+  - **Layer 2 (Client Auth System & Security Isolation — 100% COMPLETE & VERIFIED)**:
+    - Dedicated Client Auth Namespace: `/api/client/auth/*` (`accept-invite`, `login`, `logout`, `me`) mounted via `src/routes/client.routes.js`.
+    - Dedicated Admin Client Management API: `POST /api/admin/clients/invite`, `POST /api/admin/clients/create`, `POST /api/admin/clients/:clientId/invite/resend`, `PATCH /api/admin/clients/:clientId/status` in `src/routes/admin.js`.
+    - Business Service Engine: `src/services/clientAuthService.js` handling client invite creation, 32-byte cryptographic token generation, 72-hour server-side expiration checks, bcrypt password hashing, one-time token nullification, login, logout, profile fetching, and append-only activity logging.
+    - Dedicated Client JWT Signing Secret: `process.env.CLIENT_JWT_SECRET` / `config.CLIENT_JWT_SECRET` with strictly mandated payload `{ clientId, email, role: 'CLIENT' }`.
+    - Bi-Directional Token Isolation:
+      - Internal endpoints (`src/middleware/auth.js`) strictly reject any token where `role === 'CLIENT'` (`403 Forbidden`).
+      - Client portal endpoints (`src/middleware/clientAuth.js`) strictly reject internal user tokens (`401 Unauthorized`).
+    - Sliding Window Rate Limiting: `clientLoginLimiter` middleware enforcing max 5 failed login attempts per 15 min per IP, returning `429 Too Many Requests` on subsequent attempts until lockout window expires or login succeeds.
+    - Client Status Lifecycle & Suspensions: `INVITED` -> `ACTIVE` (on accept) -> `SUSPENDED` (admin action). Suspended client login blocked with `403 Forbidden`.
+    - Activity Logging: Every auth event (`LOGIN`, `LOGOUT`, `FAILED_LOGIN`, `INVITE_ACCEPTED`) recorded in `client_activity_log` with IP address and user agent.
+    - Comprehensive Verification: `scripts/verify-prd24-layer2.js` -> **74 / 74 PASS (100%)**.
+    - Full Regression Passes:
+      - `scripts/verify-prd24-layer1.js` -> **216 / 216 PASS (100%)**
+      - `scripts/verify-prd24-layer2.js` -> **74 / 74 PASS (100%)**
+      - `scripts/verify-prd23-integration.js` -> **197 / 197 PASS (100%)**
+      - `npm test` -> **13 / 13 test suites PASS (100%)**
+  - **Layer 3 (Admin Client Management API & Access Governance — 100% COMPLETE & VERIFIED)**:
+    - Mandatory Fix Applied: Removed predictable fallback signing secret in `src/config.js`; throws error in production and issues warning in development.
+    - Admin Client Operations Engine: Built `src/services/clientService.js` with 13 comprehensive functions:
+      - `listClients`: Enriches client listing with `active_projects_count`.
+      - `getClientDetail`: Full client profile, project access history, shared items, and activity trail.
+      - `updateClient`: Updates client contact info/status with manual SQLite `updated_at`.
+      - `grantProjectAccess`: Inserts/reactivates project containers (`UNIQUE(client_id, project_id)`).
+      - `revokeProjectAccess`: Soft revocation (`is_active = 0, revoked_by, revoked_at`) — zero hard deletes.
+      - `shareItem`: Explicit opt-in sharing with existence checks (Business Rule 15).
+      - `unshareItem`: Soft unshare (`is_active = 0, unshared_by, unshared_at`) — zero hard deletes.
+      - `getClientActivityLog`: Returns client activity stream.
+      - `getAdminOrders`: Fetches orders with `internal_notes` visible to admin personas.
+      - `updateOrderStatus`: Updates order progress and team assignment with manual `updated_at`.
+      - `addOrderMessage`: Appends internal (`is_internal = 1`) or external (`is_internal = 0`) messages, backed by append-only triggers.
+      - `requestMilestoneApproval`: Initiates milestone sign-off requests in `client_milestone_approvals`.
+      - `getMilestoneApprovals`: Returns pending and historical milestone approval requests.
+    - Admin Routes: Built `src/routes/adminClients.routes.js` with 15 endpoints mounted via `src/routes/admin.js` requiring internal JWT and `requireAdmin` role check (403 for members).
+    - Access Logging: Every admin mutation and query logged to `access_log` via `logAccess`.
+    - Comprehensive Verification: `scripts/verify-prd24-layer3.js` -> **121 / 121 PASS (100%)**.
+    - Full Regression Passes:
+      - `scripts/verify-prd24-layer1.js` -> **216 / 216 PASS (100%)**
+      - `scripts/verify-prd24-layer2.js` -> **74 / 74 PASS (100%)**
+      - `scripts/verify-prd24-layer3.js` -> **121 / 121 PASS (100%)**
+      - `scripts/verify-prd23-integration.js` -> **197 / 197 PASS (100%)**
+      - `npm test` -> **13 / 13 test suites PASS (100%)**
+    - Client Logout Token Blacklist Note: Per specification in `docs/24_CLIENT_PORTAL.md`, client JWT tokens are stateless without a `client_sessions` table. Client logout logs `LOGOUT` to `client_activity_log`. Immediate revocation of client access is enforced server-side via `clients.status === 'ACTIVE'` check on every request in `authenticateClientToken`.
+    - Layer 4 Status: Strictly HALTED pending explicit user GO-AHEAD.
 
 
 

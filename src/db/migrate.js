@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getDatabase, execRaw, queryAll, queryOne, execute, ANALYTICS_SCHEMA_SQL, seedBuiltInKpis } from './database.js';
+import { getDatabase, execRaw, queryAll, queryOne, execute, ANALYTICS_SCHEMA_SQL, seedBuiltInKpis, CLIENT_PORTAL_SCHEMA_SQL } from './database.js';
 import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1271,6 +1271,9 @@ export function runMigration() {
   }
   execRaw("UPDATE kpi_definitions SET is_built_in = 1 WHERE id <= 10;");
   seedBuiltInKpis(getDatabase());
+
+  // PRD 24: Client Portal
+  execRaw(CLIENT_PORTAL_SCHEMA_SQL);
 
   // Verification of tables
   const tables = queryAll("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;");

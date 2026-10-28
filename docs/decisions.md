@@ -607,8 +607,93 @@
      - All 20 items in the PRD 23 Definition of Done checklist verified and marked `[x]`.
 - **Consequences**: PRD 23 (Analytics & KPI Dashboard) is 100% complete, fully verified end-to-end, and permanently sealed.
 
+## Decision 24-A: PRD 24 Layer 1 Database Schema, Triggers & Client Isolation Architecture
+- **Context**: PRD 24 mandates the Client Portal for Mahi Tech Group. Non-negotiable security rules require that client users are never stored in the main `users` table, client sessions and tokens are strictly segregated from internal users, client access is restricted exclusively to explicitly shared items, internal comments and notes are never returned, and append-only ledgers are enforced at the SQLite engine level.
+- **Decision**:
+  1. **Strict Client Identity & Data Segregation**:
+     - Client users reside in a dedicated `clients` table (`name`, `email`, `company_name`, `phone`, `password_hash`, `status`, `invite_token`, `invite_token_expires_at`, `invite_accepted_at`, `created_by`).
+     - Access containers managed via `client_project_access` (`UNIQUE(client_id, project_id)`).
+     - Fine-grained explicit asset access managed via `client_shared_items` (`GANTT_ITEM`, `MILESTONE`, `BACKLOG_ITEM`, `DELIVERABLE`, `DOCUMENT`).
+  2. **8 Production SQLite Tables**:
+     - `clients`: Isolated external client directory.
+     - `client_project_access`: Project container authorization with `access_level` (`VIEW`, `COMMENT`, `APPROVE`).
+     - `client_shared_items`: Explicit opt-in sharing registry.
+     - `client_orders`: Client intake request pipeline with `internal_notes` column.
+     - `client_order_messages`: Threaded messages with `is_internal` flag.
+     - `client_milestone_approvals`: Sign-off ledger with `decision`, `decision_note`, and `decided_at`.
+     - `client_deliverable_feedback`: 5-star rating and feedback repository.
+     - `client_activity_log`: Immutable client audit log.
+  3. **8 Append-Only Immutability Triggers**:
+     - `prevent_client_order_message_update` & `prevent_client_order_message_delete`: Block modifying or deleting message history.
+     - `prevent_client_milestone_approval_update` (aborts once decided via `WHEN (OLD.decision IS NOT NULL)`) & `prevent_client_milestone_approval_delete`: Protect milestone approvals from tampering.
+     - `prevent_client_feedback_update` & `prevent_client_feedback_delete`: Ensure feedback entries cannot be altered after submission.
+     - `prevent_client_activity_log_update` & `prevent_client_activity_log_delete`: Guarantee audit trail immutability.
+  4. **Performance & Integrity Indexes**:
+     - 18 composite and single-column indexes created across all 8 client portal tables.
+  5. **Pragmas & Zero Mocks**:
+     - Verified `PRAGMA journal_mode = WAL;`, `PRAGMA busy_timeout = 5000;`, and `PRAGMA foreign_keys = ON;`.
+- **Consequences**: Layer 1 verified with 216/216 passing assertions in `scripts/verify-prd24-layer1.js` with zero regressions on core platform test suites.
 
+## Decision 24-B: PRD 24 Layer 2 Client Auth System & Bi-Directional Security Isolation Architecture
+- **Context**: PRD 24 Layer 2 specifies implementing a completely isolated Client Authentication System. Strict rules dictate: client users are never mixed with internal user records or sessions; client JWT tokens use a dedicated secret (`CLIENT_JWT_SECRET`); bi-directional token isolation prevents client tokens from accessing internal `/api/*` endpoints and internal user tokens from accessing `/api/client/*` endpoints; invite tokens must be cryptographically random (minimum 32 bytes) with 72-hour server-side expiration and one-time use; rate limiting must enforce 5 attempts per 15 minutes per IP with 429 lockout; and all auth events must be logged to the append-only `client_activity_log`.
+- **Decision**:
+  1. **Complete Namespace & Service Segregation**:
+     - Client routes mounted under `/api/client/auth/*` (`accept-invite`, `login`, `logout`, `me`) in `src/routes/client.routes.js`.
+     - Admin invitation endpoints mounted under `POST /api/admin/clients/invite` and `POST /api/admin/clients/create` (Admin role strictly enforced; members receive 403 Forbidden).
+     - Business logic encapsulated in `src/services/clientAuthService.js`.
+  2. **Dedicated Client JWT & Session Isolation**:
+     - Client JWT signed using dedicated secret `config.CLIENT_JWT_SECRET` (`process.env.CLIENT_JWT_SECRET`).
+     - Payload strictly contains `{ clientId, email, role: 'CLIENT' }`.
+     - Completely decoupled from internal user `sessions` table.
+  3. **Bi-Directional Security Isolation Guards**:
+     - **Guard 1 (Internal Endpoints)**: `src/middleware/auth.js` inspects all incoming tokens and rejects any token where `role === 'CLIENT'` with `403 Forbidden: Client tokens are not permitted on internal endpoints`.
+     - **Guard 2 (Client Endpoints)**: `src/middleware/clientAuth.js` verifies tokens against `CLIENT_JWT_SECRET` and rejects internal user tokens with `401 Unauthorized: Internal user tokens are not permitted on client routes`.
+  4. **Cryptographic Invitation Lifecycle & Expiration**:
+     - Generated with `crypto.randomBytes(32).toString('hex')` (64 hex characters / 32 bytes).
+     - Server-side expiration enforced at 72 hours (`invite_token_expires_at`). Expired tokens return `400 Bad Request`.
+     - Initial unmatchable bcrypt placeholder hash prevents premature login while in `INVITED` state (attempting login returns `400 Bad Request`).
+     - Upon acceptance (`POST /api/client/auth/accept-invite`), `password_hash` is updated to bcrypt hash (>=8 chars), `invite_token` is nulled (`NULL`), `invite_accepted_at` is set, and status becomes `ACTIVE`.
+     - One-time use enforced: re-using the accepted token is rejected with `400 Bad Request`.
+     - Admin can resend invite via `POST /api/admin/clients/:clientId/invite/resend`, generating a fresh 32-byte token with renewed 72h expiry.
+  5. **Rate Limiting Protection (Sliding Window)**:
+     - `clientLoginLimiter` middleware tracks failed attempts per IP address over a 15-minute sliding window.
+     - Max 5 failed attempts allowed; 6th attempt returns `429 Too Many Requests: Too many failed login attempts. Account temporarily locked for 15 minutes.`
+     - Successful login automatically resets the IP counter.
+  6. **Account Status Lifecycle & Suspension**:
+     - `INVITED` -> `ACTIVE` (on accept) -> `SUSPENDED` (admin action).
+     - Admin updates client status via `PATCH /api/admin/clients/:clientId/status`.
+     - Suspended client login returns `403 Forbidden: Account has been suspended. Please contact administrator.`
+     - Active client tokens for suspended clients are rejected with `403 Forbidden` on every authenticated request.
+  7. **Append-Only Client Activity Logging**:
+     - Every auth event (`LOGIN`, `LOGOUT`, `FAILED_LOGIN`, `INVITE_ACCEPTED`) recorded in `client_activity_log` with client ID, IP address, and user agent.
+     - Protected by DB triggers `prevent_client_activity_log_update` and `prevent_client_activity_log_delete`.
+- **Consequences**: Layer 2 verified with 74/74 passing assertions in `scripts/verify-prd24-layer2.js`, 216/216 passing in Layer 1 verification, and 100% platform regression across all 13 core test suites and PRD 23 integration suite.
 
-
-
-
+## Decision 24-C: PRD 24 Layer 3 Admin Client Management API & Access Governance Architecture
+- **Context**: PRD 24 Layer 3 requires full Admin Client Management capabilities across 15 endpoints. Non-negotiable rules require: (1) All admin client management routes require internal JWT with `requireAdmin` role check (members receive 403 Forbidden); (2) Project access grant inserts into `client_project_access` with UNIQUE constraint; (3) Project access revocation is soft (`UPDATE is_active = 0, revoked_by, revoked_at`) — never hard delete; (4) Shared item registration is explicit opt-in only (`INSERT INTO client_shared_items`) with item existence validation across supported tables; (5) Shared item unsharing is soft (`UPDATE is_active = 0, unshared_by, unshared_at`) — never hard delete; (6) Every admin action is recorded in `access_log`; (7) Order management and team/internal messaging adhere strictly to DB append-only triggers and RBAC filters; (8) Predictable fallback signing secrets are strictly eliminated.
+- **Decision**:
+  1. **Config Hardening (CLIENT_JWT_SECRET)**:
+     - Updated `src/config.js` to eliminate predictable fallback strings in production (`process.env.CLIENT_JWT_SECRET || (isProduction ? throw Error : devFallback)`), with explicit warnings emitted in non-production environments when unset.
+  2. **Admin Client Management Service (`src/services/clientService.js`)**:
+     - `listClients`: Enriches client listing with `active_projects_count` via `LEFT JOIN client_project_access`.
+     - `getClientDetail`: Returns full client profile, active and past project access, active and past shared items, and recent activity log entries.
+     - `updateClient`: Updates client contact and status with manual `updated_at` timestamps in SQLite.
+     - `grantProjectAccess`: Validates project existence, verifies `access_level` (`VIEW`, `COMMENT`, `APPROVE`), and inserts or reactivates access rows with `granted_by` audit fields.
+     - `revokeProjectAccess`: Implements soft revocation setting `is_active = 0`, `revoked_by = admin.id`, and `revoked_at = datetime('now')`. Re-granting cleanly reactivates the record without violating `UNIQUE(client_id, project_id)`.
+     - `shareItem`: Implements explicit opt-in sharing (Business Rule 15) by verifying that the referenced item exists in its respective table (`gantt_items`, `gantt_milestones`, `roadmap_items`, `sprints`, `tasks`, `release_notes`) and project scope before insertion.
+     - `unshareItem`: Implements soft unshare (`is_active = 0`, `unshared_by = admin.id`, `unshared_at = datetime('now')`).
+     - `getClientActivityLog`: Returns client event stream for audit inspection.
+     - `getAdminOrders`: Allows admins to view orders with `internal_notes` visible, filterable by `client_id` and `status`.
+     - `updateOrderStatus`: Updates order status and assigned team members, logging to `client_activity_log`.
+     - `addOrderMessage`: Allows team members and admins to append messages to client orders (`is_internal = 1` for internal team notes, `is_internal = 0` for client-visible communication), protected by append-only triggers.
+     - `requestMilestoneApproval`: Initiates milestone sign-off requests in `client_milestone_approvals`.
+     - `getMilestoneApprovals`: Returns pending and historical milestone approval requests.
+  3. **Route Mounting & RBAC (`src/routes/adminClients.routes.js`)**:
+     - Mounted via `src/routes/admin.js`.
+     - All routes enforce internal authentication (`authenticate`) and require administrator privilege (`requireAdmin`).
+     - Members attempting to access any admin client management endpoint receive `403 Forbidden`.
+     - Client JWT tokens attempting to access admin endpoints are blocked by `authenticate` guard (`role === 'CLIENT'` rejected).
+  4. **Dual Audit Logging**:
+     - Every admin action is captured in `access_log` via `logAccess`.
+     - Relevant client lifecycle mutations are captured in `client_activity_log` via `logClientActivity`.
+- **Consequences**: Layer 3 verified with 121/121 passing assertions in `scripts/verify-prd24-layer3.js`. Complete regression safety maintained: Layer 1 (216/216), Layer 2 (74/74), PRD 23 Integration (197/197), and core platform test suite (13/13).
