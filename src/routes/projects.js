@@ -117,22 +117,34 @@ router.get('/my-tasks', authenticate, (req, res) => {
 });
 
 /**
- * 2b. GET /api/projects/my (Authenticated)
- * Returns projects where the current user is owner or an active member
+ * 2b. GET /api/projects and GET /api/projects/my (Authenticated)
+ * Returns all projects for admin, or projects where current user is owner/member
  */
-router.get('/my', authenticate, (req, res) => {
+router.get(['/', '/my'], authenticate, (req, res) => {
   const limit = req.query.limit ? Math.min(Number(req.query.limit), 100) : 50;
   const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+  const isAdmin = req.user.role === 'admin';
 
-  const projects = queryAll(`
-    SELECT DISTINCT p.*, u.name as owner_name, u.email as owner_email
-    FROM projects p
-    JOIN users u ON p.owner_id = u.id
-    LEFT JOIN project_members pm ON p.id = pm.project_id AND pm.user_id = ? AND pm.removed_at IS NULL
-    WHERE p.owner_id = ? OR pm.user_id = ?
-    ORDER BY p.created_at DESC
-    LIMIT ? OFFSET ?
-  `, [req.user.id, req.user.id, req.user.id, limit, offset]);
+  let projects;
+  if (isAdmin && req.path === '/') {
+    projects = queryAll(`
+      SELECT DISTINCT p.*, u.name as owner_name, u.email as owner_email
+      FROM projects p
+      JOIN users u ON p.owner_id = u.id
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [limit, offset]);
+  } else {
+    projects = queryAll(`
+      SELECT DISTINCT p.*, u.name as owner_name, u.email as owner_email
+      FROM projects p
+      JOIN users u ON p.owner_id = u.id
+      LEFT JOIN project_members pm ON p.id = pm.project_id AND pm.user_id = ? AND pm.removed_at IS NULL
+      WHERE p.owner_id = ? OR pm.user_id = ?
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [req.user.id, req.user.id, req.user.id, limit, offset]);
+  }
 
   return res.status(200).json({
     count: projects.length,

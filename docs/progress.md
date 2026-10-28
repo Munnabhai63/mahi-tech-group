@@ -562,3 +562,36 @@
     - Integration suite passed: **96 / 96 assertions PASS (100%)**.
     - **Total Active Platform Test Assertions Passing**: **981 / 981 PASS (100%)** with zero regressions.
     - **PRD 20 Status**: 100% COMPLETE AND PERMANENTLY SEALED.
+
+- **PRD 21: Resource Workload & Capacity Management Dashboard**:
+  - **Layer 1 (Database + Migrations — 100% COMPLETE & VERIFIED)**:
+    - 5 SQLite Tables created: `member_capacity`, `member_availability`, `workload_assignments`, `workload_snapshots`, `workload_alerts`.
+    - 5 Append-only / Mutation-blocking Triggers created and tested: `prevent_member_capacity_update`, `prevent_member_capacity_delete`, `prevent_workload_snapshot_update`, `prevent_workload_snapshot_delete`, `prevent_workload_alert_delete`.
+    - 11 Performance composite indexes added.
+    - Verification: `scripts/verify-prd21-layer1.js` -> **42 / 42 PASS (100%)**.
+  - **Layer 2 (Capacity + Availability Service + Server-Side Math — 100% COMPLETE & VERIFIED)**:
+    - Implemented capacity management (append-only), availability management (LEAVE, HOLIDAY, PARTIAL, TRAINING).
+    - Server-side utilization formula `(allocated_hours / available_hours) * 100`.
+    - Automated overload (>100%) and underload (<30%) alert generation engine.
+    - Verification: `scripts/verify-prd21-layer2.js` -> **34 / 34 PASS (100%)**.
+  - **Layer 3 (Assignment Service, Proration & Team Aggregation — 100% COMPLETE & VERIFIED)**:
+    - Assignment CRUD in `workload_assignments` supporting BACKLOG, GANTT, PIPELINE, MANUAL sources.
+    - Multi-week proration engine splitting hours proportionally across overlapping calendar weeks: `(overlap_days / total_days) * estimated_hrs`.
+    - Team-wide utilization aggregation (`GET /api/workload/team/:projectId`).
+    - Verification: `scripts/verify-prd21-layer3.js` -> **32 / 32 PASS (100%)**.
+  - **Layer 4 (Heatmap, Snapshots & Advisory Rebalance Engine — 100% COMPLETE & VERIFIED)**:
+    - 8-Week rolling heatmap grid (`GET /api/workload/heatmap/:projectId`).
+    - Workload snapshot API (`POST/GET /api/workload/snapshot`) storing frozen point-in-time JSON.
+    - Advisory rebalance suggestions engine (`GET /api/workload/rebalance/:projectId`).
+    - Personal 5-week member forecast (`GET /api/workload/dashboard/member/:userId`) and timeline JSON export.
+    - Verification: `scripts/verify-prd21-layer4.js` -> **28 / 28 PASS (100%)**.
+  - **Layer 5 (Frontend Views — 100% COMPLETE & VERIFIED)**:
+    - 4 complete, responsive HTML views built with dark mode design system (Inter/Outfit fonts, glowing badges):
+      1. `public/workload-dashboard.html`: Team Workload Dashboard (member cards, utilization bars, active overload alerts banner with quick acknowledge, advisory rebalance suggestions panel).
+      2. `public/workload-heatmap.html`: Workload Heatmap (8-week Member × Week matrix, colored utilization bands, interactive hover tooltips with prorated task hours, drill-down modal, JSON export).
+      3. `public/my-workload.html`: My Workload (member's personal view with this-week utilization gauge, 5-week forward load bar chart, active assignments list, mark availability / leave modal).
+      4. `public/capacity-planning.html`: Capacity Planning (Admin governance view with append-only member capacity table, availability approval table, snapshot history with frozen JSON inspection, alert audit trail).
+    - Security & RBAC: Zero hardcoded credentials, token auth via `localStorage.getItem('token')` or redirect to `/app.html#/login`, comprehensive `escapeHTML` XSS protection.
+    - Verification: `scripts/verify-prd21-layer5.js` -> **110 / 110 PASS (100%)**.
+    - Platform regressions: All 13 platform test suites (`npm test`) passed cleanly with zero regressions.
+

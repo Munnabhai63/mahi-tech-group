@@ -283,3 +283,28 @@
      - All 17 API endpoints verified and operational.
      - Zero regressions across 13 core platform test suites and all PRD 19/20 suites.
 - **Consequences**: PRD 20 is 100% complete, fully verified, and permanently sealed.
+
+## Decision 20: PRD 21 Resource Workload & Capacity Management Dashboard (Layers 1-5)
+- **Context**: PRD 21 specifies implementing an enterprise Resource Workload & Capacity Management system with 5 append-only SQLite tables, 5 triggers, 16 API endpoints, server-side utilization math, multi-week task proration, 8-week heatmap, automated overload/underload alerts, advisory rebalance suggestions, and 4 dedicated frontend HTML views.
+- **Decision**:
+  1. **Immutable Capacity & Workload Snapshots (Layer 1)**:
+     - `member_capacity` is append-only (`prevent_member_capacity_update`, `prevent_member_capacity_delete`).
+     - `workload_snapshots` and `workload_alerts` cannot be deleted (`prevent_workload_snapshot_delete`, `prevent_workload_alert_delete`).
+  2. **100% Server-Side Utilization Math (Layer 2)**:
+     - Utilization formula: $\text{utilization\_pct} = (\text{allocated\_hours} / \text{available\_hours}) \times 100$.
+     - Client is never trusted for utilization math. Overload (>100%) and underload (<30%) alerts are evaluated and created server-side.
+  3. **Multi-Week Proration Engine & Team Aggregation (Layer 3)**:
+     - When a task spans multiple calendar weeks, hours are prorated based on the exact day overlap with that calendar week: $\text{prorated\_hours} = (\text{overlap\_days} / \text{total\_days}) \times \text{estimated\_hours}$.
+     - Total hours across all weeks sum to 100% of the task's estimated hours.
+  4. **Heatmap, Snapshots & Advisory Rebalance (Layer 4)**:
+     - 8-Week rolling heatmap grid (`GET /api/workload/heatmap/:projectId`).
+     - Rebalance suggestions engine is purely advisory — it analyzes overloaded members and suggests underloaded peers without mutating database records.
+  5. **Four Frontend Views (Layer 5)**:
+     - `public/workload-dashboard.html`: Team Workload Dashboard with animated utilization progress bars, overload alerts banner, and rebalance suggestions panel.
+     - `public/workload-heatmap.html`: Workload Heatmap with 8-week Member × Week matrix, colored utilization bands, and interactive hover tooltips.
+     - `public/my-workload.html`: Member's personal view with 5-week forward load bar chart and leave availability request modal.
+     - `public/capacity-planning.html`: Admin governance view with append-only capacity table, availability approval table, snapshot history, and alert audit trail.
+     - Zero hardcoded credentials; auth via `localStorage.getItem('token')` or redirect to `/app.html#/login`. Comprehensive `escapeHTML` on all dynamic renders.
+  6. **Strict Scope Discipline**:
+     - Zero Layer 6 work was performed. End-to-end integration suite remains cleanly separated for Layer 6.
+- **Consequences**: Complete, secure, and responsive workload dashboard system verified across 110 Layer 5 tests and 136 earlier workload tests with zero platform regressions.

@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workload Heatmap (8-Week Grid) — Mahi Tech Group</title>
+  <meta name="description" content="8-Week rolling workload heatmap grid visualizing team resource utilization, peak capacity bottlenecks, and prorated task hours.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-underload: #3b82f6;
+      --color-nearcap: #eab308;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .select-project {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      max-width: 220px;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border: 1px solid #38bdf8;
+      color: #fff;
+      padding: 0.45rem 0.95rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Container */
+    .heatmap-container {
+      flex: 1;
+      padding: 1.5rem 2rem;
+      max-width: 1440px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Header */
+    .heatmap-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-title-wrap h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.7rem;
+      margin: 0 0 0.3rem 0;
+      letter-spacing: -0.02em;
+    }
+
+    .header-title-wrap p {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    /* Heatmap Controls & Legend Bar */
+    .controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 0.75rem 1.25rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .nav-weeks-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .legend-group {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+    }
+
+    .legend-color-box {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+    }
+
+    /* Heatmap Table Grid */
+    .heatmap-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      overflow-x: auto;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .heatmap-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 6px;
+      min-width: 950px;
+    }
+
+    .heatmap-table th {
+      background: #1e293b;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.65rem 0.5rem;
+      text-align: center;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .heatmap-table th.th-member {
+      text-align: left;
+      padding-left: 1rem;
+      width: 240px;
+      min-width: 240px;
+    }
+
+    .heatmap-table th.th-summary {
+      width: 100px;
+      min-width: 100px;
+    }
+
+    .member-cell {
+      background: #1e293b;
+      padding: 0.65rem 0.85rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .member-cell-title {
+      font-weight: 600;
+      color: #fff;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .member-cell-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* Heatmap Data Cell */
+    .heat-cell {
+      text-align: center;
+      padding: 0.75rem 0.4rem;
+      border-radius: 6px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      user-select: none;
+    }
+
+    .heat-cell:hover {
+      transform: scale(1.06);
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+      z-index: 10;
+    }
+
+    /* Utilization Color Classes */
+    .heat-zero {
+      background: #1e293b;
+      color: #64748b;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .heat-underloaded {
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.45);
+    }
+
+    .heat-optimal {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.45);
+    }
+
+    .heat-near-capacity {
+      background: rgba(234, 179, 8, 0.25);
+      color: #fde047;
+      border: 1px solid rgba(234, 179, 8, 0.5);
+    }
+
+    .heat-overloaded {
+      background: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.6);
+      box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.3);
+    }
+
+    /* Interactive Floating Tooltip */
+    .heatmap-tooltip {
+      position: fixed;
+      background: #0f172a;
+      border: 1px solid #38bdf8;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.78rem;
+      color: #fff;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
+      pointer-events: none;
+      z-index: 100;
+      display: none;
+      max-width: 280px;
+      line-height: 1.4;
+    }
+
+    .tooltip-header {
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 0.35rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 0.25rem;
+    }
+
+    .tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.2rem;
+      color: #cbd5e1;
+    }
+
+    .tooltip-tasks-title {
+      font-weight: 600;
+      color: #f8fafc;
+      margin-top: 0.4rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .tooltip-task-item {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Detail Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 580px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      margin: 0;
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .modal-footer {
+      padding: 0.85rem 1.25rem;
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.65rem;
+      background: rgba(15, 23, 42, 0.5);
+    }
+
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      z-index: 120;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/app.html" class="brand-title">
+        <span>⚡</span> Mahi Tech Group
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <span>Workload Management</span>
+        <span>/</span>
+        <span style="color:#fff; font-weight:600;">Workload Heatmap</span>
+      </div>
+    </div>
+
+    <!-- Sub Navigation Tabs -->
+    <div class="nav-links-sub">
+      <a href="/workload-dashboard.html" class="nav-link-sub">Team Dashboard</a>
+      <a href="/workload-heatmap.html" class="nav-link-sub active">Heatmap</a>
+      <a href="/my-workload.html" class="nav-link-sub">My Workload</a>
+      <a href="/capacity-planning.html" class="nav-link-sub">Capacity Planning</a>
+    </div>
+
+    <div class="nav-actions">
+      <select id="projectSelect" class="select-project" title="Select Project"></select>
+      <button type="button" id="btnExportJson" class="btn-primary" title="Export 5-week workload timeline JSON">
+        <span>📥</span> Export JSON
+      </button>
+      <a href="/gantt-chart.html" class="btn-nav"><span>📊</span> Gantt</a>
+      <a href="/app.html" class="btn-nav"><span>🏠</span> App</a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="heatmap-container">
+
+    <!-- Header Section -->
+    <div class="heatmap-header">
+      <div class="header-title-wrap">
+        <h1>8-Week Rolling Workload Heatmap</h1>
+        <p>Interactive Member &times; Week matrix showing forward-looking utilization saturation, peak risks, and individual assigned tasks.</p>
+      </div>
+    </div>
+
+    <!-- Controls & Legend Bar -->
+    <div class="controls-bar">
+      <!-- Week Navigation -->
+      <div class="nav-weeks-group">
+        <button type="button" id="btnPrev4Weeks" class="btn-nav">&larr; 4 Weeks</button>
+        <button type="button" id="btnToday" class="btn-nav">Today</button>
+        <button type="button" id="btnNext4Weeks" class="btn-nav">4 Weeks &rarr;</button>
+        <input type="date" id="startWeekPicker" class="btn-nav" style="padding: 0.35rem 0.6rem; cursor: pointer;" title="Select Starting Date">
+      </div>
+
+      <!-- Color Legend -->
+      <div class="legend-group">
+        <div class="legend-item">
+          <div class="legend-color-box" style="background: rgba(59, 130, 246, 0.4); border: 1px solid #3b82f6;"></div>
+          <span>&lt;50% Underloaded</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color-box" style="background: rgba(16, 185, 129, 0.4); border: 1px solid #10b981;"></div>
+          <span>50-85% Optimal</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color-box" style="background: rgba(234, 179, 8, 0.4); border: 1px solid #eab308;"></div>
+          <span>86-100% Near Capacity</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color-box" style="background: rgba(239, 68, 68, 0.5); border: 1px solid #ef4444;"></div>
+          <span>&gt;100% Overloaded</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color-box" style="background: #1e293b; border: 1px solid #475569;"></div>
+          <span>0% / No Tasks</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Heatmap Table Grid Card -->
+    <div class="heatmap-card">
+      <table class="heatmap-table" id="heatmapTable">
+        <thead id="heatmapHeaderRow">
+          <!-- Dynamic 8 Week Headers -->
+        </thead>
+        <tbody id="heatmapBody">
+          <tr>
+            <td colspan="10" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+              ⏳ Loading 8-week workload heatmap grid...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <!-- Interactive Floating Tooltip -->
+  <div class="heatmap-tooltip" id="heatmapTooltip"></div>
+
+  <!-- Cell Detail Modal -->
+  <div class="modal-overlay" id="cellDetailModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="cellModalTitle">Member Week Detail</h3>
+        <button type="button" class="btn-nav" id="btnCloseCellModal" style="padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="cellModalSummary" style="margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+        <h4 style="font-size: 0.9rem; margin: 1rem 0 0.5rem 0; color: #fff;">Tasks Contributing to This Week</h4>
+        <div id="cellModalTaskList"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-nav" id="btnCloseCellModalBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toastNotification" role="alert" aria-live="polite">
+    <span id="toastIcon">ℹ️</span>
+    <span id="toastMessage">Notification</span>
+  </div>
+
+  <script>
+    // Pure Security Utility — escapeHTML against XSS
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Auth & App State
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/app.html#/login';
+    }
+
+    const state = {
+      token,
+      currentUser: null,
+      projects: [],
+      currentProjectId: null,
+      startWeekIso: getMonday(new Date()),
+      heatmapData: null
+    };
+
+    function getMonday(d) {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      date.setDate(diff);
+      return date.toISOString().split('T')[0];
+    }
+
+    function addDays(isoDate, days) {
+      const d = new Date(isoDate);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    }
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toastNotification');
+      const icon = document.getElementById('toastIcon');
+      const message = document.getElementById('toastMessage');
+      if (!toast) return;
+
+      message.textContent = msg;
+      if (type === 'success') {
+        icon.textContent = '✅';
+        toast.style.borderColor = '#10b981';
+      } else if (type === 'error') {
+        icon.textContent = '⚠️';
+        toast.style.borderColor = '#ef4444';
+      } else {
+        icon.textContent = 'ℹ️';
+        toast.style.borderColor = '#38bdf8';
+      }
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3500);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      };
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, opts);
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Unauthorized');
+      }
+
+      let data = null;
+      try { data = await res.json(); } catch(e) {}
+
+      if (!res.ok) {
+        const err = new Error(data?.error || data?.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    // App Initialization
+    async function initHeatmap() {
+      try {
+        state.currentUser = await apiRequest('/api/users/me');
+        if (state.currentUser.role !== 'admin') {
+          alert('Admin role required to view the Workload Heatmap.');
+          window.location.href = '/my-workload.html';
+          return;
+        }
+
+        document.getElementById('startWeekPicker').value = state.startWeekIso;
+        await loadProjects();
+        setupEventListeners();
+      } catch (err) {
+        console.error('Heatmap init failed:', err);
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadProjects() {
+      try {
+        const res = await apiRequest('/api/projects');
+        state.projects = Array.isArray(res) ? res : (res?.projects || []);
+
+        const select = document.getElementById('projectSelect');
+        select.innerHTML = '';
+
+        if (state.projects.length === 0) {
+          select.innerHTML = '<option value="">No projects available</option>';
+          return;
+        }
+
+        state.projects.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.title || `Project #${p.id}`;
+          select.appendChild(opt);
+        });
+
+        const paramProj = urlParams.get('project_id') || urlParams.get('projectId');
+        if (paramProj && state.projects.some(p => String(p.id) === String(paramProj))) {
+          state.currentProjectId = paramProj;
+        } else {
+          state.currentProjectId = state.projects[0].id;
+        }
+        select.value = state.currentProjectId;
+
+        await loadHeatmapGrid();
+      } catch (err) {
+        console.error('Failed to load projects:', err);
+        showToast('Error loading project list', 'error');
+      }
+    }
+
+    async function loadHeatmapGrid() {
+      if (!state.currentProjectId) return;
+      const tbody = document.getElementById('heatmapBody');
+      const thead = document.getElementById('heatmapHeaderRow');
+
+      try {
+        const data = await apiRequest(`/api/workload/heatmap/${state.currentProjectId}?start_date=${state.startWeekIso}`);
+        state.heatmapData = data;
+
+        // Render 8 Week Headers
+        const weeks = data.weeks || [];
+        thead.innerHTML = `
+          <tr>
+            <th class="th-member">Team Member</th>
+            ${weeks.map(w => {
+              const parts = w.week_start.split('-');
+              const shortDate = `${parts[1]}/${parts[2]}`;
+              return `<th>${w.week_label}<br><span style="font-size:0.68rem; color:#64748b; font-weight:normal;">${shortDate}</span></th>`;
+            }).join('')}
+            <th class="th-summary">Avg %</th>
+          </tr>
+        `;
+
+        // Render Member Rows
+        const rows = data.rows || [];
+        if (rows.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="${weeks.length + 2}" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+                No team members found in this project.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = rows.map((r, rIdx) => {
+          const cellsHtml = (r.cells || []).map((c, cIdx) => {
+            const util = Number(c.utilization_pct || 0);
+            let cls = 'heat-zero';
+
+            if (c.status === 'OVERLOADED') cls = 'heat-overloaded';
+            else if (c.status === 'NEAR_CAPACITY') cls = 'heat-near-capacity';
+            else if (c.status === 'OPTIMAL') cls = 'heat-optimal';
+            else if (util > 0) cls = 'heat-underloaded';
+
+            const displayVal = util > 0 ? `${util.toFixed(0)}%` : '&mdash;';
+
+            return `
+              <td class="heat-cell ${cls}"
+                  data-row="${rIdx}"
+                  data-col="${cIdx}"
+                  onclick="openCellDetail(${rIdx}, ${cIdx})">
+                ${displayVal}
+              </td>
+            `;
+          }).join('');
+
+          return `
+            <tr>
+              <td class="member-cell">
+                <div class="member-cell-title">${escapeHTML(r.user_name)}</div>
+                <div class="member-cell-sub">${escapeHTML(r.role || 'Member')} &bull; ${r.capacity_hours}h/wk</div>
+              </td>
+              ${cellsHtml}
+              <td class="member-cell" style="text-align: center; font-weight: 700; color: #fff;">
+                ${(r.avg_utilization_pct || 0).toFixed(0)}%
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        setupCellHoverTooltips();
+      } catch (err) {
+        console.error('Failed to load heatmap:', err);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10" style="text-align: center; padding: 2rem 1rem; color: #ef4444;">
+              Error: ${escapeHTML(err.message)}
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // Hover Tooltip Handlers
+    function setupCellHoverTooltips() {
+      const tooltip = document.getElementById('heatmapTooltip');
+      const cells = document.querySelectorAll('.heat-cell');
+
+      cells.forEach(cell => {
+        cell.addEventListener('mouseenter', (e) => {
+          const rIdx = Number(cell.dataset.row);
+          const cIdx = Number(cell.dataset.col);
+          const rowData = state.heatmapData?.rows?.[rIdx];
+          const cellData = rowData?.cells?.[cIdx];
+          if (!rowData || !cellData) return;
+
+          let taskListHtml = '';
+          if (cellData.task_count > 0 && cellData.tasks) {
+            taskListHtml = `
+              <div class="tooltip-tasks-title">Assigned Tasks (${cellData.task_count}):</div>
+              ${cellData.tasks.slice(0, 3).map(t => `
+                <div class="tooltip-task-item">&bull; ${escapeHTML(t.title)} (${t.prorated_week_hours}h)</div>
+              `).join('')}
+              ${cellData.tasks.length > 3 ? `<div class="tooltip-task-item" style="color: #38bdf8;">+${cellData.tasks.length - 3} more...</div>` : ''}
+            `;
+          } else {
+            taskListHtml = '<div style="color: #64748b; font-size: 0.72rem; margin-top: 0.3rem;">No active tasks in this week</div>';
+          }
+
+          tooltip.innerHTML = `
+            <div class="tooltip-header">${escapeHTML(rowData.user_name)} — ${escapeHTML(cellData.week_label)}</div>
+            <div class="tooltip-row"><span>Status:</span> <strong style="color: #fff;">${escapeHTML(cellData.status)}</strong></div>
+            <div class="tooltip-row"><span>Utilization:</span> <strong style="color: #38bdf8;">${cellData.utilization_pct}%</strong></div>
+            <div class="tooltip-row"><span>Allocated:</span> <span>${cellData.allocated_hours}h / ${cellData.available_hours}h</span></div>
+            ${taskListHtml}
+            <div style="font-size: 0.68rem; color: #94a3b8; margin-top: 0.4rem; text-align: center;">Click to drill down</div>
+          `;
+          tooltip.style.display = 'block';
+        });
+
+        cell.addEventListener('mousemove', (e) => {
+          tooltip.style.left = `${e.clientX + 14}px`;
+          tooltip.style.top = `${e.clientY + 14}px`;
+        });
+
+        cell.addEventListener('mouseleave', () => {
+          tooltip.style.display = 'none';
+        });
+      });
+    }
+
+    // Drill Down Modal
+    function openCellDetail(rIdx, cIdx) {
+      const rowData = state.heatmapData?.rows?.[rIdx];
+      const cellData = rowData?.cells?.[cIdx];
+      if (!rowData || !cellData) return;
+
+      document.getElementById('cellModalTitle').textContent = `${escapeHTML(rowData.user_name)} — ${escapeHTML(cellData.week_label)}`;
+      document.getElementById('cellModalSummary').innerHTML = `
+        <span class="stat-pill"><strong>Dates:</strong> ${escapeHTML(cellData.week_start)} to ${escapeHTML(cellData.week_end)}</span>
+        <span class="stat-pill"><strong>Capacity:</strong> ${rowData.capacity_hours}h</span>
+        <span class="stat-pill"><strong>Available:</strong> ${cellData.available_hours}h</span>
+        <span class="stat-pill"><strong>Allocated:</strong> ${cellData.allocated_hours}h</span>
+        <span class="stat-pill" style="border-color: #38bdf8; color: #38bdf8;"><strong>Utilization:</strong> ${cellData.utilization_pct}% (${cellData.status})</span>
+      `;
+
+      const taskContainer = document.getElementById('cellModalTaskList');
+      if (!cellData.tasks || cellData.tasks.length === 0) {
+        taskContainer.innerHTML = '<div style="color: #94a3b8; font-size: 0.85rem; padding: 1rem 0;">No assigned tasks contributing to this week.</div>';
+      } else {
+        taskContainer.innerHTML = cellData.tasks.map(t => `
+          <div style="background: #1e293b; border: 1px solid var(--border-card); padding: 0.65rem 0.85rem; border-radius: 6px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 600; color: #fff; font-size: 0.85rem;">${escapeHTML(t.title)}</div>
+              <div style="font-size: 0.72rem; color: #94a3b8;">Source: ${escapeHTML(t.source_type)} &bull; ${escapeHTML(t.start_date)} to ${escapeHTML(t.end_date)}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="color: #38bdf8; font-weight: 700; font-size: 0.85rem;">${t.prorated_week_hours}h</div>
+              <div style="font-size: 0.7rem; color: #94a3b8;">of ${t.estimated_hours}h total</div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('cellDetailModal').classList.add('open');
+    }
+
+    function setupEventListeners() {
+      // Project Selector change
+      document.getElementById('projectSelect').addEventListener('change', (e) => {
+        state.currentProjectId = e.target.value;
+        loadHeatmapGrid();
+      });
+
+      // Week Navigation
+      document.getElementById('btnPrev4Weeks').addEventListener('click', () => {
+        state.startWeekIso = addDays(state.startWeekIso, -28);
+        document.getElementById('startWeekPicker').value = state.startWeekIso;
+        loadHeatmapGrid();
+      });
+
+      document.getElementById('btnNext4Weeks').addEventListener('click', () => {
+        state.startWeekIso = addDays(state.startWeekIso, 28);
+        document.getElementById('startWeekPicker').value = state.startWeekIso;
+        loadHeatmapGrid();
+      });
+
+      document.getElementById('btnToday').addEventListener('click', () => {
+        state.startWeekIso = getMonday(new Date());
+        document.getElementById('startWeekPicker').value = state.startWeekIso;
+        loadHeatmapGrid();
+      });
+
+      document.getElementById('startWeekPicker').addEventListener('change', (e) => {
+        if (e.target.value) {
+          state.startWeekIso = getMonday(e.target.value);
+          loadHeatmapGrid();
+        }
+      });
+
+      // Export JSON Button
+      document.getElementById('btnExportJson').addEventListener('click', async () => {
+        if (!state.currentProjectId) return;
+        try {
+          const exportData = await apiRequest(`/api/workload/export/${state.currentProjectId}?week_start_date=${state.startWeekIso}`);
+          const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `workload_export_project_${state.currentProjectId}_${state.startWeekIso}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast('Workload timeline JSON exported successfully', 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+
+      // Modal close handlers
+      document.getElementById('btnCloseCellModal').addEventListener('click', () => {
+        document.getElementById('cellDetailModal').classList.remove('open');
+      });
+      document.getElementById('btnCloseCellModalBtn').addEventListener('click', () => {
+        document.getElementById('cellDetailModal').classList.remove('open');
+      });
+    }
+
+    // Launch App
+    window.addEventListener('DOMContentLoaded', initHeatmap);
+  </script>
+</body>
+</html>

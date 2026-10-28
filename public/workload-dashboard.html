@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Workload Dashboard — Mahi Tech Group</title>
+  <meta name="description" content="Team Workload Dashboard with utilization tracking, server-side capacity math, overload alerts, and advisory rebalance suggestions.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-underload: #3b82f6;
+      --color-nearcap: #eab308;
+      --color-purple: #a855f7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .select-project {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      max-width: 220px;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border: 1px solid #38bdf8;
+      color: #fff;
+      padding: 0.45rem 0.95rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .btn-danger-outline {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-danger-outline:hover {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    /* Main Container */
+    .dashboard-container {
+      flex: 1;
+      padding: 1.5rem 2rem;
+      max-width: 1440px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Header Bar */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-title-wrap h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.7rem;
+      margin: 0 0 0.3rem 0;
+      letter-spacing: -0.02em;
+    }
+
+    .header-title-wrap p {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    /* Week Navigation Controls */
+    .week-nav-bar {
+      display: flex;
+      align-items: center;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 0.35rem 0.5rem;
+      gap: 0.5rem;
+    }
+
+    .week-label {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #f8fafc;
+      padding: 0 0.5rem;
+      min-width: 210px;
+      text-align: center;
+    }
+
+    /* Summary Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--stat-color, var(--color-primary));
+    }
+
+    .stat-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .stat-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .stat-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    /* Alerts Banner */
+    .alerts-section {
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .alert-banner {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 8px;
+      padding: 0.85rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .alert-banner-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .alert-icon {
+      font-size: 1.25rem;
+    }
+
+    .alert-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #fca5a5;
+    }
+
+    .alert-desc {
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    /* Main Grid: Team Members & Rebalance Panel */
+    .content-layout {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 1100px) {
+      .content-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Section Card */
+    .panel-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Member Workload Table */
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    .workload-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .workload-table th {
+      text-align: left;
+      padding: 0.75rem 0.85rem;
+      background: #1e293b;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .workload-table td {
+      padding: 0.9rem 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: middle;
+    }
+
+    .workload-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .member-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .member-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #334155;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.8rem;
+      border: 1px solid var(--border-card);
+    }
+
+    .member-name {
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .member-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Utilization Progress Bar */
+    .util-bar-container {
+      width: 140px;
+    }
+
+    .util-bar-bg {
+      height: 8px;
+      background: #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 0.35rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .util-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .util-bar-fill.underloaded { background: var(--color-underload); }
+    .util-bar-fill.optimal { background: var(--color-success); }
+    .util-bar-fill.near-capacity { background: var(--color-nearcap); }
+    .util-bar-fill.overloaded {
+      background: repeating-linear-gradient(
+        45deg,
+        #ef4444,
+        #ef4444 6px,
+        #b91c1c 6px,
+        #b91c1c 12px
+      );
+    }
+
+    /* Status Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .badge-underloaded {
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+
+    .badge-optimal {
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .badge-near-capacity {
+      background: rgba(234, 179, 8, 0.15);
+      color: #fde047;
+      border: 1px solid rgba(234, 179, 8, 0.4);
+    }
+
+    .badge-overloaded {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      animation: pulse-border 2s infinite;
+    }
+
+    @keyframes pulse-border {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    /* Rebalance Suggestions Panel */
+    .rebalance-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .suggestion-card {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .sug-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sug-task-title {
+      font-weight: 600;
+      color: #f8fafc;
+      font-size: 0.85rem;
+    }
+
+    .sug-hours-tag {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--color-primary);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .sug-flow {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .sug-member-source {
+      color: #fca5a5;
+      font-weight: 600;
+    }
+
+    .sug-arrow {
+      color: #94a3b8;
+    }
+
+    .sug-member-target {
+      color: #6ee7b7;
+      font-weight: 600;
+    }
+
+    .sug-impact {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      background: rgba(0, 0, 0, 0.2);
+      padding: 0.35rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 2.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 520px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      margin: 0;
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .modal-footer {
+      padding: 0.85rem 1.25rem;
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.65rem;
+      background: rgba(15, 23, 42, 0.5);
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 0.35rem;
+    }
+
+    .form-control {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #fff;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      z-index: 120;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/app.html" class="brand-title">
+        <span>⚡</span> Mahi Tech Group
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <span>Workload Management</span>
+        <span>/</span>
+        <span style="color:#fff; font-weight:600;">Team Dashboard</span>
+      </div>
+    </div>
+
+    <!-- Sub Navigation Tabs -->
+    <div class="nav-links-sub">
+      <a href="/workload-dashboard.html" class="nav-link-sub active">Team Dashboard</a>
+      <a href="/workload-heatmap.html" class="nav-link-sub">Heatmap</a>
+      <a href="/my-workload.html" class="nav-link-sub">My Workload</a>
+      <a href="/capacity-planning.html" class="nav-link-sub">Capacity Planning</a>
+    </div>
+
+    <div class="nav-actions">
+      <select id="projectSelect" class="select-project" title="Select Project"></select>
+      <button type="button" id="btnTakeSnapshot" class="btn-primary" title="Freeze point-in-time workload snapshot">
+        <span>📸</span> Take Snapshot
+      </button>
+      <a href="/gantt-chart.html" class="btn-nav"><span>📊</span> Gantt</a>
+      <a href="/milestone-timeline.html" class="btn-nav"><span>🎯</span> Milestones</a>
+      <a href="/app.html" class="btn-nav"><span>🏠</span> App</a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="dashboard-container">
+
+    <!-- Dashboard Title & Week Selector -->
+    <div class="dashboard-header">
+      <div class="header-title-wrap">
+        <h1>Team Workload Dashboard</h1>
+        <p>Live resource utilization, server-side capacity calculations, active overload alerts, and advisory rebalance engine.</p>
+      </div>
+
+      <!-- Week Switcher -->
+      <div class="week-nav-bar">
+        <button type="button" id="btnPrevWeek" class="btn-nav" style="padding: 0.3rem 0.6rem;">&larr; Prev</button>
+        <span id="currentWeekLabel" class="week-label">Loading week...</span>
+        <button type="button" id="btnNextWeek" class="btn-nav" style="padding: 0.3rem 0.6rem;">Next &rarr;</button>
+        <button type="button" id="btnTodayWeek" class="btn-nav" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Today</button>
+      </div>
+    </div>
+
+    <!-- Active Overload Alerts Banner Section -->
+    <section class="alerts-section" id="alertsSection">
+      <div id="alertsContainer"></div>
+    </section>
+
+    <!-- Top Summary Metrics Grid -->
+    <section class="stats-grid">
+      <div class="stat-card" style="--stat-color: #38bdf8;">
+        <span class="stat-title">Total Members</span>
+        <span class="stat-value" id="statTotalMembers">0</span>
+        <span class="stat-sub">Active in this project</span>
+      </div>
+      <div class="stat-card" style="--stat-color: #ef4444;">
+        <span class="stat-title">Overloaded (>100%)</span>
+        <span class="stat-value" id="statOverloaded" style="color: #f87171;">0</span>
+        <span class="stat-sub">Immediate burn-out risk</span>
+      </div>
+      <div class="stat-card" style="--stat-color: #10b981;">
+        <span class="stat-title">Optimal (50% - 85%)</span>
+        <span class="stat-value" id="statOptimal" style="color: #34d399;">0</span>
+        <span class="stat-sub">Healthy velocity zone</span>
+      </div>
+      <div class="stat-card" style="--stat-color: #eab308;">
+        <span class="stat-title">Near Capacity (86% - 100%)</span>
+        <span class="stat-value" id="statNearCapacity" style="color: #fde047;">0</span>
+        <span class="stat-sub">Saturated buffer</span>
+      </div>
+      <div class="stat-card" style="--stat-color: #3b82f6;">
+        <span class="stat-title">Underloaded (<50%)</span>
+        <span class="stat-value" id="statUnderloaded" style="color: #93c5fd;">0</span>
+        <span class="stat-sub">Available bandwidth</span>
+      </div>
+    </section>
+
+    <!-- Content Layout: Member Cards & Rebalance Panel -->
+    <div class="content-layout">
+
+      <!-- Team Members Workload Table Panel -->
+      <section class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>👥</span> Member Utilization Breakdown
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);" id="memberCountHeader">
+            0 Members
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="workload-table">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Assigned Hrs</th>
+                <th>Capacity</th>
+                <th>Available</th>
+                <th>Utilization</th>
+                <th>Status</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="memberTableBody">
+              <tr>
+                <td colspan="7" class="empty-state">
+                  <div class="empty-state-icon">⏳</div>
+                  <div>Loading team workload data...</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Rebalance Suggestions Advisory Panel -->
+      <aside class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>⚖️</span> Rebalance Advisory
+          </div>
+          <span style="font-size: 0.72rem; color: var(--color-primary); background: rgba(56,189,248,0.1); padding: 0.2rem 0.5rem; border-radius: 4px;">
+            AI Advisory
+          </span>
+        </div>
+
+        <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0 0 1rem 0;">
+          Proactive recommendations to reassign tasks from overloaded team members to underloaded peers without shifting deliverables.
+        </p>
+
+        <div class="rebalance-panel" id="rebalanceContainer">
+          <div class="empty-state" style="padding: 1.5rem 0.5rem;">
+            <div class="empty-state-icon">🔍</div>
+            <div>Evaluating workload distribution...</div>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+
+  </main>
+
+  <!-- Reassign Task Modal -->
+  <div class="modal-overlay" id="reassignModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Reassign Task</h3>
+        <button type="button" class="btn-nav" id="btnCloseReassignModal" style="padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="reassignAssignmentId">
+        <div class="form-group">
+          <label class="form-label">Task Assignment</label>
+          <input type="text" id="reassignTaskTitle" class="form-control" readonly style="opacity: 0.85;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Current Assignee</label>
+          <input type="text" id="reassignCurrentAssignee" class="form-control" readonly style="opacity: 0.85;">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="reassignTargetMember">New Assignee (Target Member)</label>
+          <select id="reassignTargetMember" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estimated Hours</label>
+          <input type="text" id="reassignTaskHours" class="form-control" readonly style="opacity: 0.85;">
+        </div>
+        <div style="font-size: 0.75rem; color: #94a3b8; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px;">
+          ℹ️ Reassigning will automatically recalculate server-side utilization for both members and re-evaluate overload alerts.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-nav" id="btnCancelReassign">Cancel</button>
+        <button type="button" class="btn-primary" id="btnConfirmReassign">Confirm Reassign</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Member Week Detail Drawer / Modal -->
+  <div class="modal-overlay" id="memberDetailModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="memberDetailTitle">Member Weekly Workload</h3>
+        <button type="button" class="btn-nav" id="btnCloseDetailModal" style="padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="memberDetailMeta" style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted);"></div>
+        <h4 style="font-size: 0.9rem; margin: 0 0 0.5rem 0; color: #fff;">Active Assignments This Week</h4>
+        <div id="memberDetailAssignments"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-nav" id="btnCloseDetailModalBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toastNotification" role="alert" aria-live="polite">
+    <span id="toastIcon">ℹ️</span>
+    <span id="toastMessage">Notification</span>
+  </div>
+
+  <script>
+    // Pure Security Utility — escapeHTML against XSS
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Auth & App State
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/app.html#/login';
+    }
+
+    const state = {
+      token,
+      currentUser: null,
+      projects: [],
+      currentProjectId: null,
+      currentWeekStart: getMonday(new Date()),
+      teamData: null,
+      alerts: [],
+      rebalanceData: null
+    };
+
+    function getMonday(d) {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      date.setDate(diff);
+      return date.toISOString().split('T')[0];
+    }
+
+    function addDays(isoDate, days) {
+      const d = new Date(isoDate);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    }
+
+    function formatWeekDisplay(mondayIso) {
+      const sundayIso = addDays(mondayIso, 6);
+      return `${mondayIso} — ${sundayIso}`;
+    }
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toastNotification');
+      const icon = document.getElementById('toastIcon');
+      const message = document.getElementById('toastMessage');
+      if (!toast) return;
+
+      message.textContent = msg;
+      if (type === 'success') {
+        icon.textContent = '✅';
+        toast.style.borderColor = '#10b981';
+      } else if (type === 'error') {
+        icon.textContent = '⚠️';
+        toast.style.borderColor = '#ef4444';
+      } else {
+        icon.textContent = 'ℹ️';
+        toast.style.borderColor = '#38bdf8';
+      }
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3500);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      };
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, opts);
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Unauthorized');
+      }
+
+      let data = null;
+      try { data = await res.json(); } catch(e) {}
+
+      if (!res.ok) {
+        const err = new Error(data?.error || data?.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    // App Initialization
+    async function initDashboard() {
+      try {
+        state.currentUser = await apiRequest('/api/users/me');
+        if (state.currentUser.role !== 'admin') {
+          alert('Admin role required for Team Workload Dashboard. Redirecting to personal workload view.');
+          window.location.href = '/my-workload.html';
+          return;
+        }
+
+        await loadProjects();
+        setupEventListeners();
+      } catch (err) {
+        console.error('Initialization failed:', err);
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadProjects() {
+      try {
+        const res = await apiRequest('/api/projects');
+        state.projects = Array.isArray(res) ? res : (res?.projects || []);
+
+        const select = document.getElementById('projectSelect');
+        select.innerHTML = '';
+
+        if (state.projects.length === 0) {
+          select.innerHTML = '<option value="">No projects available</option>';
+          return;
+        }
+
+        state.projects.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.title || `Project #${p.id}`;
+          select.appendChild(opt);
+        });
+
+        const paramProj = urlParams.get('project_id') || urlParams.get('projectId');
+        if (paramProj && state.projects.some(p => String(p.id) === String(paramProj))) {
+          state.currentProjectId = paramProj;
+        } else {
+          state.currentProjectId = state.projects[0].id;
+        }
+        select.value = state.currentProjectId;
+
+        updateWeekLabel();
+        await loadAllDashboardData();
+      } catch (err) {
+        console.error('Failed to load projects:', err);
+        showToast('Error loading project list', 'error');
+      }
+    }
+
+    function updateWeekLabel() {
+      document.getElementById('currentWeekLabel').textContent = formatWeekDisplay(state.currentWeekStart);
+    }
+
+    async function loadAllDashboardData() {
+      if (!state.currentProjectId) return;
+      await Promise.all([
+        loadTeamWorkload(),
+        loadActiveAlerts(),
+        loadRebalanceSuggestions()
+      ]);
+    }
+
+    async function loadTeamWorkload() {
+      const tbody = document.getElementById('memberTableBody');
+      try {
+        const data = await apiRequest(`/api/workload/team/${state.currentProjectId}?week_start_date=${state.currentWeekStart}`);
+        state.teamData = data;
+
+        // Update top summary cards
+        const summary = data.summary || {};
+        document.getElementById('statTotalMembers').textContent = summary.total_members || 0;
+        document.getElementById('statOverloaded').textContent = summary.overloaded_count || 0;
+        document.getElementById('statOptimal').textContent = summary.optimal_count || 0;
+        document.getElementById('statNearCapacity').textContent = summary.near_capacity_count || 0;
+        document.getElementById('statUnderloaded').textContent = summary.underloaded_count || 0;
+        document.getElementById('memberCountHeader').textContent = `${(data.members || []).length} Members in Project`;
+
+        renderMemberTable(data.members || []);
+      } catch (err) {
+        console.error('Failed to load team workload:', err);
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color: #ef4444;">Error: ${escapeHTML(err.message)}</td></tr>`;
+      }
+    }
+
+    function renderMemberTable(members) {
+      const tbody = document.getElementById('memberTableBody');
+      if (members.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="empty-state">
+              <div class="empty-state-icon">👥</div>
+              <div>No team members found in this project.</div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = members.map(m => {
+        const util = Number(m.utilization_pct || 0);
+        const status = m.status || 'UNDERLOADED';
+        const statusClass = status.toLowerCase().replace('_', '-');
+        const fillWidth = Math.min(util, 100);
+
+        let initials = (m.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+        let reassignBtn = '';
+        if (status === 'OVERLOADED') {
+          reassignBtn = `
+            <button type="button" class="btn-danger-outline" onclick="openReassignForMember('${m.user_id}', '${escapeHTML(m.name)}')">
+              <span>⚠️</span> Reassign
+            </button>
+          `;
+        }
+
+        return `
+          <tr data-user-id="${m.user_id}">
+            <td>
+              <div class="member-info">
+                <div class="member-avatar">${escapeHTML(initials)}</div>
+                <div>
+                  <div class="member-name">${escapeHTML(m.name)}</div>
+                  <div class="member-sub">${escapeHTML(m.role || 'Member')} &bull; ${escapeHTML(m.email)}</div>
+                </div>
+              </div>
+            </td>
+            <td style="font-weight: 600;">${m.allocated_hours}h</td>
+            <td style="color: var(--text-muted);">${m.capacity_hours}h</td>
+            <td style="color: var(--text-muted);">${m.available_hours}h</td>
+            <td>
+              <div class="util-bar-container">
+                <div class="util-bar-bg">
+                  <div class="util-bar-fill ${statusClass}" style="width: ${fillWidth}%;"></div>
+                </div>
+                <span style="font-size: 0.75rem; font-weight: 700; color: #fff;">${util.toFixed(1)}%</span>
+              </div>
+            </td>
+            <td>
+              <span class="badge badge-${statusClass}">${escapeHTML(status.replace('_', ' '))}</span>
+            </td>
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 0.4rem;">
+                <button type="button" class="btn-nav" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="viewMemberDetail('${m.user_id}', '${escapeHTML(m.name)}')">
+                  Inspect
+                </button>
+                ${reassignBtn}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function loadActiveAlerts() {
+      const container = document.getElementById('alertsContainer');
+      const section = document.getElementById('alertsSection');
+
+      try {
+        const alerts = await apiRequest('/api/workload/alerts?unacknowledged=true');
+        state.alerts = alerts;
+
+        if (alerts.length === 0) {
+          section.style.display = 'none';
+          container.innerHTML = '';
+          return;
+        }
+
+        section.style.display = 'block';
+        container.innerHTML = alerts.map(a => `
+          <div class="alert-banner">
+            <div class="alert-banner-left">
+              <span class="alert-icon">${a.alert_type === 'OVERLOAD' ? '🚨' : '📉'}</span>
+              <div>
+                <div class="alert-title">${escapeHTML(a.alert_type)} ALERT: ${escapeHTML(a.user_name || 'Member')} (${a.utilization_pct}%)</div>
+                <div class="alert-desc">Week ${escapeHTML(a.week_start_date)} &bull; Available: ${a.available_hours}h &bull; Allocated: ${a.allocated_hours}h</div>
+              </div>
+            </div>
+            <button type="button" class="btn-nav" onclick="acknowledgeAlert(${a.id})">
+              <span>✔</span> Acknowledge
+            </button>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load alerts:', err);
+      }
+    }
+
+    async function acknowledgeAlert(alertId) {
+      try {
+        await apiRequest(`/api/workload/alert/${alertId}/acknowledge`, 'PATCH');
+        showToast('Alert acknowledged successfully', 'success');
+        await loadActiveAlerts();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadRebalanceSuggestions() {
+      const container = document.getElementById('rebalanceContainer');
+      try {
+        const data = await apiRequest(`/api/workload/rebalance/${state.currentProjectId}?week_start_date=${state.currentWeekStart}`);
+        state.rebalanceData = data;
+
+        if (!data.suggestions || data.suggestions.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state" style="padding: 1.5rem 0.5rem;">
+              <div class="empty-state-icon">✨</div>
+              <div style="font-weight: 600; color: #34d399;">Team Workload Balanced</div>
+              <div style="font-size: 0.75rem; margin-top: 0.25rem;">No members exceed 100% capacity this week.</div>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = data.suggestions.map((sug, idx) => `
+          <div class="suggestion-card">
+            <div class="sug-header">
+              <span class="sug-task-title">${escapeHTML(sug.task_title)}</span>
+              <span class="sug-hours-tag">${sug.estimated_hours} hrs</span>
+            </div>
+            <div class="sug-flow">
+              <span class="sug-member-source">${escapeHTML(sug.source_member.name)}</span>
+              <span class="sug-arrow">&rarr;</span>
+              <span class="sug-member-target">${escapeHTML(sug.suggested_target.name)}</span>
+            </div>
+            <div class="sug-impact">
+              Impact: ${escapeHTML(sug.source_member.name)} ${sug.source_member.current_utilization_pct}% &rarr; ${sug.projected_after.source_new_utilization_pct}%
+            </div>
+            <button type="button" class="btn-primary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem; justify-content: center; margin-top: 0.25rem;" onclick="applyQuickRebalance(${idx})">
+              Apply Reassignment
+            </button>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load rebalance suggestions:', err);
+        container.innerHTML = `<div class="empty-state" style="color: #ef4444;">Error loading rebalance suggestions.</div>`;
+      }
+    }
+
+    async function applyQuickRebalance(suggestionIndex) {
+      const sug = state.rebalanceData?.suggestions?.[suggestionIndex];
+      if (!sug) return;
+
+      if (!confirm(`Reassign "${sug.task_title}" from ${sug.source_member.name} to ${sug.suggested_target.name}?`)) {
+        return;
+      }
+
+      try {
+        await apiRequest(`/api/workload/assignment/${sug.assignment_id}`, 'PATCH', {
+          user_id: sug.suggested_target.id
+        });
+        showToast('Task reassigned successfully! Workload updated.', 'success');
+        await loadAllDashboardData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // Manual Reassign Modal Trigger
+    async function openReassignForMember(userId, userName) {
+      try {
+        const assignments = await apiRequest(`/api/workload/assignments/${userId}?projectId=${state.currentProjectId}`);
+        if (!assignments || assignments.length === 0) {
+          alert(`No active assignments found for ${userName} in this project.`);
+          return;
+        }
+
+        const task = assignments[0];
+        document.getElementById('reassignAssignmentId').value = task.id;
+        document.getElementById('reassignTaskTitle').value = task.title;
+        document.getElementById('reassignCurrentAssignee').value = userName;
+        document.getElementById('reassignTaskHours').value = `${task.estimated_hours} hrs`;
+
+        // Populate target member select
+        const targetSelect = document.getElementById('reassignTargetMember');
+        targetSelect.innerHTML = '';
+        (state.teamData?.members || []).forEach(m => {
+          if (String(m.user_id) !== String(userId)) {
+            const opt = document.createElement('option');
+            opt.value = m.user_id;
+            opt.textContent = `${m.name} (${m.utilization_pct}% utilized)`;
+            targetSelect.appendChild(opt);
+          }
+        });
+
+        document.getElementById('reassignModal').classList.add('open');
+      } catch (err) {
+        showToast('Error opening reassign modal: ' + err.message, 'error');
+      }
+    }
+
+    // Inspect Member Week Detail
+    async function viewMemberDetail(userId, userName) {
+      try {
+        const data = await apiRequest(`/api/workload/member/workload/${userId}?week_start_date=${state.currentWeekStart}`);
+        document.getElementById('memberDetailTitle').textContent = `${escapeHTML(userName)} — Workload Inspection`;
+        document.getElementById('memberDetailMeta').innerHTML = `
+          <strong>Week:</strong> ${escapeHTML(data.week_start_date)} to ${escapeHTML(data.week_end_date)} &bull;
+          <strong>Capacity:</strong> ${data.capacity_hours}h &bull;
+          <strong>Available:</strong> ${data.available_hours}h &bull;
+          <strong>Allocated:</strong> ${data.allocated_hours}h &bull;
+          <strong>Utilization:</strong> ${data.utilization_pct}% (${data.status})
+        `;
+
+        const container = document.getElementById('memberDetailAssignments');
+        if (!data.assignments || data.assignments.length === 0) {
+          container.innerHTML = '<div style="color: #94a3b8; font-size: 0.85rem;">No assignments in this week.</div>';
+        } else {
+          container.innerHTML = data.assignments.map(a => `
+            <div style="background: #1e293b; border: 1px solid var(--border-card); padding: 0.65rem 0.85rem; border-radius: 6px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 600; color: #fff;">${escapeHTML(a.title)}</div>
+                <div style="font-size: 0.75rem; color: #94a3b8;">Source: ${escapeHTML(a.source_type)} &bull; Span: ${escapeHTML(a.start_date)} to ${escapeHTML(a.end_date)}</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="color: #38bdf8; font-weight: 700;">${a.prorated_week_hours}h prorated</div>
+                <div style="font-size: 0.72rem; color: #94a3b8;">(${a.estimated_hours}h total)</div>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        document.getElementById('memberDetailModal').classList.add('open');
+      } catch (err) {
+        showToast('Error loading member workload: ' + err.message, 'error');
+      }
+    }
+
+    function setupEventListeners() {
+      // Project Selector change
+      document.getElementById('projectSelect').addEventListener('change', (e) => {
+        state.currentProjectId = e.target.value;
+        loadAllDashboardData();
+      });
+
+      // Week Navigation
+      document.getElementById('btnPrevWeek').addEventListener('click', () => {
+        state.currentWeekStart = addDays(state.currentWeekStart, -7);
+        updateWeekLabel();
+        loadAllDashboardData();
+      });
+
+      document.getElementById('btnNextWeek').addEventListener('click', () => {
+        state.currentWeekStart = addDays(state.currentWeekStart, 7);
+        updateWeekLabel();
+        loadAllDashboardData();
+      });
+
+      document.getElementById('btnTodayWeek').addEventListener('click', () => {
+        state.currentWeekStart = getMonday(new Date());
+        updateWeekLabel();
+        loadAllDashboardData();
+      });
+
+      // Take Workload Snapshot
+      document.getElementById('btnTakeSnapshot').addEventListener('click', async () => {
+        if (!state.currentProjectId) return;
+        try {
+          const res = await apiRequest(`/api/workload/snapshot/${state.currentProjectId}`, 'POST');
+          showToast(`Snapshot frozen! Captured ${res.total_members} members.`, 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+
+      // Close Modals
+      document.getElementById('btnCloseReassignModal').addEventListener('click', () => {
+        document.getElementById('reassignModal').classList.remove('open');
+      });
+      document.getElementById('btnCancelReassign').addEventListener('click', () => {
+        document.getElementById('reassignModal').classList.remove('open');
+      });
+      document.getElementById('btnCloseDetailModal').addEventListener('click', () => {
+        document.getElementById('memberDetailModal').classList.remove('open');
+      });
+      document.getElementById('btnCloseDetailModalBtn').addEventListener('click', () => {
+        document.getElementById('memberDetailModal').classList.remove('open');
+      });
+
+      // Submit Reassign Task
+      document.getElementById('btnConfirmReassign').addEventListener('click', async () => {
+        const assignmentId = document.getElementById('reassignAssignmentId').value;
+        const targetUserId = document.getElementById('reassignTargetMember').value;
+        if (!assignmentId || !targetUserId) return;
+
+        try {
+          await apiRequest(`/api/workload/assignment/${assignmentId}`, 'PATCH', {
+            user_id: targetUserId
+          });
+          document.getElementById('reassignModal').classList.remove('open');
+          showToast('Task successfully reassigned!', 'success');
+          await loadAllDashboardData();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    // Launch App
+    window.addEventListener('DOMContentLoaded', initDashboard);
+  </script>
+</body>
+</html>

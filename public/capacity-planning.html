@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Capacity Planning & Availability Governance — Mahi Tech Group</title>
+  <meta name="description" content="Admin capacity planning interface, append-only member capacity audit log, leave approval workflow, and frozen workload snapshots.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-underload: #3b82f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .select-project {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      max-width: 220px;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border: 1px solid #38bdf8;
+      color: #fff;
+      padding: 0.45rem 0.95rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .btn-success {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid #10b981;
+      color: #6ee7b7;
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-success:hover {
+      background: #10b981;
+      color: #fff;
+    }
+
+    /* Container */
+    .capacity-container {
+      flex: 1;
+      padding: 1.5rem 2rem;
+      max-width: 1440px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Header */
+    .capacity-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-title-wrap h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.7rem;
+      margin: 0 0 0.3rem 0;
+      letter-spacing: -0.02em;
+    }
+
+    .header-title-wrap p {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    /* Tabs Bar */
+    .section-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-card);
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.75rem 1.25rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: #fff;
+    }
+
+    .tab-btn.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+    }
+
+    /* Panels */
+    .panel-view {
+      display: none;
+    }
+
+    .panel-view.active {
+      display: block;
+    }
+
+    .card-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-card);
+      padding-bottom: 0.75rem;
+    }
+
+    .card-panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .data-table th {
+      text-align: left;
+      padding: 0.75rem 0.85rem;
+      background: #1e293b;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .data-table td {
+      padding: 0.85rem 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: middle;
+    }
+
+    .data-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .badge-approved {
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .badge-pending {
+      background: rgba(234, 179, 8, 0.15);
+      color: #fde047;
+      border: 1px solid rgba(234, 179, 8, 0.4);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 520px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      margin: 0;
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .modal-footer {
+      padding: 0.85rem 1.25rem;
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.65rem;
+      background: rgba(15, 23, 42, 0.5);
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 0.35rem;
+    }
+
+    .form-control {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #fff;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      z-index: 120;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/app.html" class="brand-title">
+        <span>⚡</span> Mahi Tech Group
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <span>Workload Management</span>
+        <span>/</span>
+        <span style="color:#fff; font-weight:600;">Capacity Planning</span>
+      </div>
+    </div>
+
+    <!-- Sub Navigation Tabs -->
+    <div class="nav-links-sub">
+      <a href="/workload-dashboard.html" class="nav-link-sub">Team Dashboard</a>
+      <a href="/workload-heatmap.html" class="nav-link-sub">Heatmap</a>
+      <a href="/my-workload.html" class="nav-link-sub">My Workload</a>
+      <a href="/capacity-planning.html" class="nav-link-sub active">Capacity Planning</a>
+    </div>
+
+    <div class="nav-actions">
+      <select id="projectSelect" class="select-project" title="Select Project"></select>
+      <button type="button" id="btnTakeSnapshot" class="btn-primary">
+        <span>📸</span> Take Snapshot
+      </button>
+      <a href="/app.html" class="btn-nav"><span>🏠</span> App</a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="capacity-container">
+
+    <!-- Header Section -->
+    <div class="capacity-header">
+      <div class="header-title-wrap">
+        <h1>Capacity Planning & Governance</h1>
+        <p>Set member weekly hours (append-only audit history), manage availability and leave approvals, and inspect frozen snapshots.</p>
+      </div>
+    </div>
+
+    <!-- Section Navigation Tabs -->
+    <div class="section-tabs">
+      <button type="button" class="tab-btn active" data-tab="tabCapacity">
+        <span>⚙️</span> Member Capacity
+      </button>
+      <button type="button" class="tab-btn" data-tab="tabAvailability">
+        <span>🏖️</span> Availability & Leaves
+      </button>
+      <button type="button" class="tab-btn" data-tab="tabSnapshots">
+        <span>📸</span> Snapshot History
+      </button>
+      <button type="button" class="tab-btn" data-tab="tabAlerts">
+        <span>🚨</span> Alert Audit Trail
+      </button>
+    </div>
+
+    <!-- TAB 1: Member Capacity Table -->
+    <section class="panel-view active" id="tabCapacity">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <div class="card-panel-title">
+            <span>⚙️</span> Standard Weekly Capacity (Append-Only)
+          </div>
+          <button type="button" class="btn-primary" id="btnOpenNewCapacityModal">
+            <span>+</span> Set Member Capacity
+          </button>
+        </div>
+
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+          ℹ️ <strong>Append-Only Integrity:</strong> Capacity adjustments create immutable historical records with an effective date. Historical calculations preserve the capacity active at that specific point in time.
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Member Name</th>
+                <th>Role</th>
+                <th>Current Capacity</th>
+                <th>Effective From</th>
+                <th>Set By</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="capacityTableBody">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem 0; color: var(--text-muted);">
+                  Loading team member capacities...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Availability & Leave Management -->
+    <section class="panel-view" id="tabAvailability">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <div class="card-panel-title">
+            <span>🏖️</span> Team Availability & Leave Calendar
+          </div>
+          <button type="button" class="btn-primary" id="btnOpenAdminAvailModal">
+            <span>+</span> Record Team Availability
+          </button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Type</th>
+                <th>Date Span</th>
+                <th>Deduction / Day</th>
+                <th>Status</th>
+                <th>Reason / Notes</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="availabilityAdminTableBody">
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 2rem 0; color: var(--text-muted);">
+                  Loading availability records...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Snapshot History -->
+    <section class="panel-view" id="tabSnapshots">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <div class="card-panel-title">
+            <span>📸</span> Point-in-Time Frozen Workload Snapshots
+          </div>
+          <button type="button" class="btn-primary" id="btnTriggerSnapshotTab">
+            <span>📸</span> Freeze Snapshot Now
+          </button>
+        </div>
+
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+          ℹ️ Snapshots store frozen point-in-time JSON metrics of every member's utilization. SQLite triggers strictly prevent mutations or deletions.
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Snapshot ID</th>
+                <th>Project</th>
+                <th>Total Members</th>
+                <th>Overloaded</th>
+                <th>Optimal</th>
+                <th>Created At</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="snapshotTableBody">
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 2rem 0; color: var(--text-muted);">
+                  Loading project snapshot history...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Alert Audit Trail -->
+    <section class="panel-view" id="tabAlerts">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <div class="card-panel-title">
+            <span>🚨</span> System Workload Alert Audit Trail
+          </div>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Auto-generated for utilization &gt;100% or &lt;30%</span>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Alert Type</th>
+                <th>Member</th>
+                <th>Week</th>
+                <th>Utilization</th>
+                <th>Available / Allocated</th>
+                <th>Triggered At</th>
+                <th>Status</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="alertAuditTableBody">
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 2rem 0; color: var(--text-muted);">
+                  Loading workload alerts...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal: Set / Update Member Capacity -->
+  <div class="modal-overlay" id="capacityModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Set Member Weekly Capacity</h3>
+        <button type="button" class="btn-nav" id="btnCloseCapModal" style="padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="capUserSelect">Select Team Member</label>
+          <select id="capUserSelect" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="capHoursInput">Weekly Capacity (Hours)</label>
+          <input type="number" id="capHoursInput" class="form-control" value="40" min="1" max="168" step="0.5" required>
+          <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 0.25rem;">Standard full-time = 40.0 hours/week</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="capEffectiveInput">Effective From Date</label>
+          <input type="date" id="capEffectiveInput" class="form-control" required>
+        </div>
+        <div style="font-size: 0.75rem; color: #94a3b8; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px;">
+          🔒 <strong>Audit Rule:</strong> This creates an append-only entry in <code>member_capacity</code>. Previous capacity records remain intact for historical audits.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-nav" id="btnCancelCapModal">Cancel</button>
+        <button type="button" class="btn-primary" id="btnSubmitCapacity">Save Capacity</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Admin Add Availability -->
+  <div class="modal-overlay" id="adminAvailModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Record Member Availability</h3>
+        <button type="button" class="btn-nav" id="btnCloseAdminAvailModal" style="padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="adminAvailUserSelect">Team Member</label>
+          <select id="adminAvailUserSelect" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="adminAvailType">Availability Type</label>
+          <select id="adminAvailType" class="form-control">
+            <option value="LEAVE">Leave / Vacation</option>
+            <option value="TRAINING">Training / Workshop</option>
+            <option value="PARTIAL">Partial Day (Reduced Hours)</option>
+            <option value="HOLIDAY">Company Holiday</option>
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label" for="adminAvailStart">Start Date</label>
+            <input type="date" id="adminAvailStart" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="adminAvailEnd">End Date</label>
+            <input type="date" id="adminAvailEnd" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="adminAvailHours">Deduction (Hours / Day)</label>
+          <input type="number" id="adminAvailHours" class="form-control" value="8" min="1" max="24" step="0.5">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="adminAvailNotes">Notes / Reason</label>
+          <textarea id="adminAvailNotes" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-nav" id="btnCancelAdminAvailModal">Cancel</button>
+        <button type="button" class="btn-primary" id="btnSubmitAdminAvail">Record Availability</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: View Snapshot Frozen Details -->
+  <div class="modal-overlay" id="snapshotDetailModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="snapshotDetailTitle">Frozen Snapshot Details</h3>
+        <button type="button" class="btn-nav" id="btnCloseSnapDetailModal" style="padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="snapshotDetailMeta" style="margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--text-muted);"></div>
+        <pre id="snapshotDetailJson" style="background: #0f172a; border: 1px solid var(--border-card); padding: 1rem; border-radius: 6px; font-family: monospace; font-size: 0.75rem; color: #38bdf8; max-height: 400px; overflow: auto;"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-nav" id="btnCloseSnapDetailModalBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toastNotification" role="alert" aria-live="polite">
+    <span id="toastIcon">ℹ️</span>
+    <span id="toastMessage">Notification</span>
+  </div>
+
+  <script>
+    // Pure Security Utility — escapeHTML against XSS
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Auth & App State
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/app.html#/login';
+    }
+
+    const state = {
+      token,
+      currentUser: null,
+      projects: [],
+      currentProjectId: null,
+      teamMembers: [],
+      snapshots: [],
+      alerts: []
+    };
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toastNotification');
+      const icon = document.getElementById('toastIcon');
+      const message = document.getElementById('toastMessage');
+      if (!toast) return;
+
+      message.textContent = msg;
+      if (type === 'success') {
+        icon.textContent = '✅';
+        toast.style.borderColor = '#10b981';
+      } else if (type === 'error') {
+        icon.textContent = '⚠️';
+        toast.style.borderColor = '#ef4444';
+      } else {
+        icon.textContent = 'ℹ️';
+        toast.style.borderColor = '#38bdf8';
+      }
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3500);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      };
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, opts);
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Unauthorized');
+      }
+
+      let data = null;
+      try { data = await res.json(); } catch(e) {}
+
+      if (!res.ok) {
+        const err = new Error(data?.error || data?.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    // App Initialization
+    async function initCapacityPlanning() {
+      try {
+        state.currentUser = await apiRequest('/api/users/me');
+        if (state.currentUser.role !== 'admin') {
+          alert('Admin role required for Capacity Planning.');
+          window.location.href = '/my-workload.html';
+          return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('capEffectiveInput').value = today;
+        document.getElementById('adminAvailStart').value = today;
+        document.getElementById('adminAvailEnd').value = today;
+
+        await loadProjects();
+        setupTabs();
+        setupEventListeners();
+      } catch (err) {
+        console.error('Failed to init Capacity Planning:', err);
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadProjects() {
+      try {
+        const res = await apiRequest('/api/projects');
+        state.projects = Array.isArray(res) ? res : (res?.projects || []);
+
+        const select = document.getElementById('projectSelect');
+        select.innerHTML = '';
+
+        if (state.projects.length === 0) {
+          select.innerHTML = '<option value="">No projects available</option>';
+          return;
+        }
+
+        state.projects.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.title || `Project #${p.id}`;
+          select.appendChild(opt);
+        });
+
+        const paramProj = urlParams.get('project_id') || urlParams.get('projectId');
+        if (paramProj && state.projects.some(p => String(p.id) === String(paramProj))) {
+          state.currentProjectId = paramProj;
+        } else {
+          state.currentProjectId = state.projects[0].id;
+        }
+        select.value = state.currentProjectId;
+
+        await loadAllSections();
+      } catch (err) {
+        console.error('Failed to load projects:', err);
+        showToast('Error loading project list', 'error');
+      }
+    }
+
+    async function loadAllSections() {
+      if (!state.currentProjectId) return;
+      await Promise.all([
+        loadCapacityData(),
+        loadAvailabilityData(),
+        loadSnapshotHistory(),
+        loadAlertHistory()
+      ]);
+    }
+
+    async function loadCapacityData() {
+      const tbody = document.getElementById('capacityTableBody');
+      try {
+        const team = await apiRequest(`/api/workload/team/${state.currentProjectId}`);
+        state.teamMembers = team.members || [];
+
+        // Populate user dropdowns in modals
+        const capSelect = document.getElementById('capUserSelect');
+        const availSelect = document.getElementById('adminAvailUserSelect');
+        capSelect.innerHTML = '';
+        availSelect.innerHTML = '';
+
+        state.teamMembers.forEach(m => {
+          const opt1 = document.createElement('option');
+          opt1.value = m.user_id;
+          opt1.textContent = `${m.name} (${m.role || 'Member'})`;
+          capSelect.appendChild(opt1);
+
+          const opt2 = document.createElement('option');
+          opt2.value = m.user_id;
+          opt2.textContent = `${m.name} (${m.role || 'Member'})`;
+          availSelect.appendChild(opt2);
+        });
+
+        if (state.teamMembers.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No members in project.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = state.teamMembers.map(m => `
+          <tr>
+            <td>
+              <div style="font-weight: 600; color: #fff;">${escapeHTML(m.name)}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted);">${escapeHTML(m.email)}</div>
+            </td>
+            <td><span style="font-size: 0.78rem; text-transform: uppercase; color: #cbd5e1;">${escapeHTML(m.role || 'Member')}</span></td>
+            <td><strong style="color: #38bdf8; font-size: 0.95rem;">${m.capacity_hours} hrs/wk</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">Current Active</td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">Admin</td>
+            <td style="text-align: right;">
+              <button type="button" class="btn-nav" style="font-size: 0.75rem; padding: 0.25rem 0.55rem;" onclick="openUpdateCapFor('${m.user_id}', ${m.capacity_hours})">
+                Update Capacity
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load capacities:', err);
+        tbody.innerHTML = `<tr><td colspan="6" style="color: #ef4444;">Error: ${escapeHTML(err.message)}</td></tr>`;
+      }
+    }
+
+    function openUpdateCapFor(userId, currentHours) {
+      document.getElementById('capUserSelect').value = userId;
+      document.getElementById('capHoursInput').value = currentHours;
+      document.getElementById('capacityModal').classList.add('open');
+    }
+
+    async function loadAvailabilityData() {
+      const tbody = document.getElementById('availabilityAdminTableBody');
+      try {
+        // Collect availability across project members
+        const availPromises = state.teamMembers.map(m =>
+          apiRequest(`/api/workload/availability/${m.user_id}`).catch(() => [])
+        );
+        const results = await Promise.all(availPromises);
+        const flattened = [];
+
+        results.forEach((list, idx) => {
+          const mem = state.teamMembers[idx];
+          list.forEach(item => {
+            flattened.push({ ...item, memberName: mem.name, memberRole: mem.role });
+          });
+        });
+
+        if (flattened.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No availability or leave records on file.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = flattened.map(item => {
+          let statusBadge = '<span class="badge badge-approved">Approved</span>';
+          let approveAction = '';
+
+          if (item.status === 'PENDING') {
+            statusBadge = '<span class="badge badge-pending">Pending Approval</span>';
+            approveAction = `
+              <button type="button" class="btn-success" onclick="approveLeaveRecord(${item.id})">
+                Approve Leave
+              </button>
+            `;
+          }
+
+          return `
+            <tr>
+              <td>
+                <div style="font-weight: 600; color: #fff;">${escapeHTML(item.memberName)}</div>
+                <div style="font-size: 0.72rem; color: var(--text-muted);">${escapeHTML(item.memberRole || 'Member')}</div>
+              </td>
+              <td><strong>${escapeHTML(item.availability_type)}</strong></td>
+              <td style="color: var(--text-muted); font-size: 0.8rem;">${escapeHTML(item.start_date)} to ${escapeHTML(item.end_date)}</td>
+              <td>${item.hours_per_day}h / day</td>
+              <td>${statusBadge}</td>
+              <td style="color: var(--text-muted); font-size: 0.8rem;">${escapeHTML(item.notes || '—')}</td>
+              <td style="text-align: right;">${approveAction}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load availability:', err);
+      }
+    }
+
+    async function approveLeaveRecord(availId) {
+      try {
+        await apiRequest(`/api/workload/availability/${availId}/approve`, 'PATCH');
+        showToast('Leave request approved! Available hours recalculated.', 'success');
+        await loadAvailabilityData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadSnapshotHistory() {
+      const tbody = document.getElementById('snapshotTableBody');
+      try {
+        const snapshots = await apiRequest(`/api/workload/snapshots/${state.currentProjectId}`);
+        state.snapshots = snapshots;
+
+        if (snapshots.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No snapshots recorded yet. Click "Freeze Snapshot Now" to record one.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = snapshots.map((s, idx) => {
+          const raw = s.snapshot_data ? JSON.parse(s.snapshot_data) : {};
+          const overloaded = raw.members ? raw.members.filter(m => m.status === 'OVERLOADED').length : 0;
+          const optimal = raw.members ? raw.members.filter(m => m.status === 'OPTIMAL').length : 0;
+
+          return `
+            <tr>
+              <td><span style="font-family: monospace; font-weight: 700; color: #38bdf8;">#${s.id}</span></td>
+              <td>Project #${s.project_id}</td>
+              <td><strong>${s.total_members}</strong></td>
+              <td style="color: #f87171; font-weight: 700;">${overloaded}</td>
+              <td style="color: #34d399; font-weight: 700;">${optimal}</td>
+              <td style="color: var(--text-muted); font-size: 0.8rem;">${escapeHTML(s.created_at)}</td>
+              <td style="text-align: right;">
+                <button type="button" class="btn-nav" style="font-size: 0.75rem; padding: 0.25rem 0.55rem;" onclick="viewSnapshotJson(${idx})">
+                  View JSON
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load snapshots:', err);
+      }
+    }
+
+    function viewSnapshotJson(snapshotIndex) {
+      const s = state.snapshots[snapshotIndex];
+      if (!s) return;
+
+      document.getElementById('snapshotDetailTitle').textContent = `Frozen Snapshot #${s.id} — Project #${s.project_id}`;
+      document.getElementById('snapshotDetailMeta').textContent = `Recorded: ${s.created_at} • Total Members: ${s.total_members} • Created By: Admin #${s.created_by}`;
+
+      let parsed = {};
+      try { parsed = JSON.parse(s.snapshot_data); } catch(e) {}
+      document.getElementById('snapshotDetailJson').textContent = JSON.stringify(parsed, null, 2);
+
+      document.getElementById('snapshotDetailModal').classList.add('open');
+    }
+
+    async function loadAlertHistory() {
+      const tbody = document.getElementById('alertAuditTableBody');
+      try {
+        const alerts = await apiRequest('/api/workload/alerts?unacknowledged=false');
+        state.alerts = alerts;
+
+        if (alerts.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No workload alert history.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = alerts.map(a => {
+          const isAck = Boolean(a.acknowledged_at);
+          const statusBadge = isAck
+            ? '<span class="badge badge-approved">Acknowledged</span>'
+            : '<span class="badge badge-pending">Active Alert</span>';
+
+          const ackBtn = isAck ? '—' : `
+            <button type="button" class="btn-nav" style="font-size: 0.72rem; padding: 0.2rem 0.5rem;" onclick="ackAlertFromTable(${a.id})">
+              Acknowledge
+            </button>
+          `;
+
+          const typeColor = a.alert_type === 'OVERLOAD' ? '#ef4444' : '#3b82f6';
+
+          return `
+            <tr>
+              <td><strong style="color: ${typeColor};">${escapeHTML(a.alert_type)}</strong></td>
+              <td style="font-weight: 600; color: #fff;">${escapeHTML(a.user_name || `User #${a.user_id}`)}</td>
+              <td style="color: var(--text-muted); font-size: 0.8rem;">Week ${escapeHTML(a.week_start_date)}</td>
+              <td><strong style="color: #fff;">${a.utilization_pct}%</strong></td>
+              <td style="color: var(--text-muted); font-size: 0.8rem;">${a.available_hours}h / ${a.allocated_hours}h</td>
+              <td style="color: var(--text-muted); font-size: 0.78rem;">${escapeHTML(a.created_at)}</td>
+              <td>${statusBadge}</td>
+              <td style="text-align: right;">${ackBtn}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load alert history:', err);
+      }
+    }
+
+    async function ackAlertFromTable(alertId) {
+      try {
+        await apiRequest(`/api/workload/alert/${alertId}/acknowledge`, 'PATCH');
+        showToast('Alert acknowledged', 'success');
+        await loadAlertHistory();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function setupTabs() {
+      const tabs = document.querySelectorAll('.tab-btn');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.panel-view').forEach(p => p.classList.remove('active'));
+
+          tab.classList.add('active');
+          const target = tab.dataset.tab;
+          document.getElementById(target).classList.add('active');
+        });
+      });
+    }
+
+    function setupEventListeners() {
+      // Project Selector change
+      document.getElementById('projectSelect').addEventListener('change', (e) => {
+        state.currentProjectId = e.target.value;
+        loadAllSections();
+      });
+
+      // Freeze Snapshot
+      const handleTakeSnapshot = async () => {
+        if (!state.currentProjectId) return;
+        try {
+          const res = await apiRequest(`/api/workload/snapshot/${state.currentProjectId}`, 'POST');
+          showToast(`Snapshot #${res.snapshot_id} frozen! Captured ${res.total_members} members.`, 'success');
+          await loadSnapshotHistory();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      };
+
+      document.getElementById('btnTakeSnapshot').addEventListener('click', handleTakeSnapshot);
+      document.getElementById('btnTriggerSnapshotTab').addEventListener('click', handleTakeSnapshot);
+
+      // Modals
+      const openCapModal = () => document.getElementById('capacityModal').classList.add('open');
+      const closeCapModal = () => document.getElementById('capacityModal').classList.remove('open');
+      document.getElementById('btnOpenNewCapacityModal').addEventListener('click', openCapModal);
+      document.getElementById('btnCloseCapModal').addEventListener('click', closeCapModal);
+      document.getElementById('btnCancelCapModal').addEventListener('click', closeCapModal);
+
+      const openAdminAvail = () => document.getElementById('adminAvailModal').classList.add('open');
+      const closeAdminAvail = () => document.getElementById('adminAvailModal').classList.remove('open');
+      document.getElementById('btnOpenAdminAvailModal').addEventListener('click', openAdminAvail);
+      document.getElementById('btnCloseAdminAvailModal').addEventListener('click', closeAdminAvail);
+      document.getElementById('btnCancelAdminAvailModal').addEventListener('click', closeAdminAvail);
+
+      document.getElementById('btnCloseSnapDetailModal').addEventListener('click', () => {
+        document.getElementById('snapshotDetailModal').classList.remove('open');
+      });
+      document.getElementById('btnCloseSnapDetailModalBtn').addEventListener('click', () => {
+        document.getElementById('snapshotDetailModal').classList.remove('open');
+      });
+
+      // Submit Capacity Set
+      document.getElementById('btnSubmitCapacity').addEventListener('click', async () => {
+        const user_id = document.getElementById('capUserSelect').value;
+        const capacity_hours = Number(document.getElementById('capHoursInput').value);
+        const effective_from = document.getElementById('capEffectiveInput').value;
+
+        if (!user_id || !capacity_hours || !effective_from) {
+          alert('All fields are required.');
+          return;
+        }
+
+        try {
+          await apiRequest('/api/workload/capacity/set', 'POST', {
+            user_id,
+            capacity_hours,
+            effective_from
+          });
+          closeCapModal();
+          showToast('Capacity updated (append-only record created)!', 'success');
+          await loadCapacityData();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+
+      // Submit Admin Availability
+      document.getElementById('btnSubmitAdminAvail').addEventListener('click', async () => {
+        const user_id = document.getElementById('adminAvailUserSelect').value;
+        const availability_type = document.getElementById('adminAvailType').value;
+        const start_date = document.getElementById('adminAvailStart').value;
+        const end_date = document.getElementById('adminAvailEnd').value;
+        const hours_per_day = Number(document.getElementById('adminAvailHours').value) || 8;
+        const notes = document.getElementById('adminAvailNotes').value.trim();
+
+        if (!user_id || !start_date || !end_date) {
+          alert('Please fill all required dates and member.');
+          return;
+        }
+
+        try {
+          await apiRequest('/api/workload/availability/set', 'POST', {
+            user_id,
+            start_date,
+            end_date,
+            availability_type,
+            hours_per_day,
+            notes
+          });
+          closeAdminAvail();
+          showToast('Availability entry created successfully!', 'success');
+          await loadAvailabilityData();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    // Launch App
+    window.addEventListener('DOMContentLoaded', initCapacityPlanning);
+  </script>
+</body>
+</html>
