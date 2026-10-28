@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OKR Alignment Tree — Mahi Tech Group</title>
+  <meta name="description" content="Visual hierarchy tree of strategic alignment across Company, Team, and Individual OKRs.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-purple: #a855f7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Nav */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .select-cycle {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #e2e8f0;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .btn-action-sm {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #cbd5e1;
+      padding: 0.35rem 0.75rem;
+      border-radius: 5px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-action-sm:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    /* Container */
+    .alignment-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.75rem 2rem 3rem;
+      width: 100%;
+    }
+
+    /* Hero / Header Bar */
+    .alignment-header-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .alignment-title-wrap h1 {
+      margin: 0 0 0.4rem;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .alignment-title-wrap p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Legend */
+    .legend-bar {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-high { background: var(--color-success); box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+    .dot-mid { background: var(--color-warning); box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+    .dot-low { background: var(--color-danger); box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+
+    /* Admin Badge */
+    .badge-admin-view {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      color: #c084fc;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Access Denied Alert */
+    .access-denied-box {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      padding: 2.5rem;
+      border-radius: 12px;
+      text-align: center;
+      margin: 2rem 0;
+      display: none;
+    }
+
+    .access-denied-box h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.4rem;
+      color: #ef4444;
+      margin-top: 0;
+    }
+
+    /* Controls Bar */
+    .tree-controls-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .search-input {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.5rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      width: 280px;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+
+    /* Visual Tree Hierarchy Structure */
+    .tree-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 2rem 2.5rem;
+      min-height: 480px;
+      overflow-x: auto;
+    }
+
+    .tree-root-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .tree-branch {
+      list-style: none;
+      margin: 0.75rem 0 0 2rem;
+      padding-left: 1.5rem;
+      border-left: 2px dashed rgba(255, 255, 255, 0.12);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .tree-branch.collapsed {
+      display: none;
+    }
+
+    .tree-node-wrapper {
+      position: relative;
+    }
+
+    .tree-branch > .tree-node-wrapper::before {
+      content: '';
+      position: absolute;
+      top: 24px;
+      left: -1.5rem;
+      width: 1.5rem;
+      height: 2px;
+      border-top: 2px dashed rgba(255, 255, 255, 0.12);
+    }
+
+    /* Node Card */
+    .okr-tree-node {
+      background: var(--bg-card);
+      border-radius: 10px;
+      border: 2px solid var(--border-card);
+      padding: 1rem 1.25rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.25rem;
+      max-width: 900px;
+      position: relative;
+    }
+
+    .okr-tree-node:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Color Coding Borders based on Progress */
+    .okr-tree-node.node--high {
+      border-color: #10b981;
+      border-left-width: 6px;
+    }
+
+    .okr-tree-node.node--mid {
+      border-color: #f59e0b;
+      border-left-width: 6px;
+    }
+
+    .okr-tree-node.node--low {
+      border-color: #ef4444;
+      border-left-width: 6px;
+    }
+
+    .node-main-content {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .btn-toggle-collapse {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      color: #94a3b8;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .btn-toggle-collapse:hover {
+      background: #1e293b;
+      color: #ffffff;
+      border-color: var(--color-primary);
+    }
+
+    .btn-toggle-collapse.no-children {
+      opacity: 0.35;
+      cursor: default;
+      border-style: dotted;
+    }
+
+    .node-info-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .node-header-tags {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.3rem;
+      flex-wrap: wrap;
+    }
+
+    .badge-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.55rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-company { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge-team { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-individual { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    .node-title-link {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #f8fafc;
+      text-decoration: none;
+      display: inline-block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+      transition: color 0.15s ease;
+    }
+
+    .node-title-link:hover {
+      color: var(--color-primary);
+      text-decoration: underline;
+    }
+
+    .node-meta-side {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    /* Owner Avatar */
+    .owner-badge-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .owner-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* Progress Dial / Badge */
+    .progress-pill-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      min-width: 90px;
+    }
+
+    .progress-number {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+
+    .progress-number.num--high { color: #10b981; }
+    .progress-number.num--mid { color: #f59e0b; }
+    .progress-number.num--low { color: #ef4444; }
+
+    .mini-track {
+      width: 80px;
+      height: 5px;
+      background: #0f172a;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-top: 0.25rem;
+    }
+
+    .mini-fill {
+      height: 100%;
+      border-radius: 9999px;
+    }
+
+    .mini-fill.fill-high { background: var(--color-success); }
+    .mini-fill.fill-mid { background: var(--color-warning); }
+    .mini-fill.fill-low { background: var(--color-danger); }
+
+    .btn-detail-link {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      color: #38bdf8;
+      padding: 0.35rem 0.65rem;
+      border-radius: 5px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-detail-link:hover {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 3.5rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 768px) {
+      .okr-tree-node {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .node-meta-side {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .tree-branch {
+        margin-left: 0.75rem;
+        padding-left: 0.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Sticky Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/okr-dashboard.html" class="brand-title">
+        <span>🎯</span> Mahi OKRs
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <a href="/okr-dashboard.html" style="color:inherit; text-decoration:none;">Dashboard</a>
+        <span>/</span>
+        <span style="color:#f8fafc; font-weight:600;">Alignment Tree</span>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <label for="cycleSelect" style="font-size:0.85rem; color:#94a3b8; font-weight:600;">Cycle:</label>
+      <select id="cycleSelect" class="select-cycle" aria-label="Select OKR Cycle">
+        <option value="Q1-2026" selected>Q1-2026 (Active)</option>
+        <option value="Q2-2026">Q2-2026</option>
+        <option value="Q3-2026">Q3-2026</option>
+        <option value="Q4-2026">Q4-2026</option>
+        <option value="ANNUAL-2026">ANNUAL-2026</option>
+      </select>
+
+      <a href="/okr-dashboard.html" class="btn-nav">
+        ← Back to Dashboard
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="alignment-container">
+
+    <!-- Header Card -->
+    <div class="alignment-header-card">
+      <div class="alignment-title-wrap">
+        <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.3rem;">
+          <h1><span>🌳</span> Strategic Alignment Hierarchy</h1>
+          <span class="badge-admin-view">Admin & Producer Only</span>
+        </div>
+        <p>Full cascading alignment tree from top-level Company Objectives down to Team initiatives and Individual Key Results.</p>
+      </div>
+
+      <!-- Color Legend -->
+      <div class="legend-bar">
+        <span style="font-weight:700; color:#e2e8f0; margin-right:0.25rem;">Progress Status:</span>
+        <div class="legend-item">
+          <div class="legend-dot dot-high"></div>
+          <span>&ge; 70% (On Track)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot dot-mid"></div>
+          <span>40% &ndash; 69% (At Risk)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot dot-low"></div>
+          <span>&lt; 40% (Off Track)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Access Denied Alert (for non-admin / 403) -->
+    <div class="access-denied-box" id="accessDeniedBox">
+      <h3>🔒 Restricted Access — Admin Privileges Required</h3>
+      <p style="margin: 0.5rem 0 1.25rem;">
+        The full company alignment hierarchy is visible exclusively to <strong>Admin</strong> and <strong>Producer</strong> leadership roles.
+      </p>
+      <a href="/okr-dashboard.html" class="btn-nav" style="background:#dc2626; color:#ffffff; border-color:#ef4444;">
+        Return to My OKR Dashboard
+      </a>
+    </div>
+
+    <!-- Tree Action Controls Bar -->
+    <div class="tree-controls-bar" id="treeControlsBar">
+      <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+        <button type="button" class="btn-action-sm" id="btnExpandAll">Expand All ＋</button>
+        <button type="button" class="btn-action-sm" id="btnCollapseAll">Collapse All －</button>
+        <span style="color:#64748b; font-size:0.8rem;" id="objectiveCounter">Loading hierarchy...</span>
+      </div>
+
+      <div>
+        <input type="text" id="inputSearchTree" class="search-input" placeholder="Filter by objective or owner...">
+      </div>
+    </div>
+
+    <!-- Visual Tree Container -->
+    <section class="tree-container" id="treeContainer" aria-label="OKR Visual Hierarchy Tree">
+      <div class="empty-state" id="loadingState">Loading alignment hierarchy for selected cycle...</div>
+      <ul class="tree-root-list" id="treeRootList" style="display:none;"></ul>
+    </section>
+
+  </main>
+
+  <script>
+    const token = localStorage.getItem('token') || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    // Read cycle from query param or default
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialCycle = urlParams.get('cycle') || 'Q1-2026';
+    const cycleSelect = document.getElementById('cycleSelect');
+    if (cycleSelect) cycleSelect.value = initialCycle;
+
+    // Support token in query params for testing
+    if (urlParams.get('token')) {
+      const qToken = urlParams.get('token');
+      localStorage.setItem('token', qToken);
+      headers['Authorization'] = `Bearer ${qToken}`;
+    }
+
+    let treeDataCache = null;
+
+    // Fetch and Render Alignment Tree
+    async function fetchAlignmentTree() {
+      const cycle = cycleSelect.value;
+      const loadingState = document.getElementById('loadingState');
+      const treeRootList = document.getElementById('treeRootList');
+      const accessDeniedBox = document.getElementById('accessDeniedBox');
+      const treeControlsBar = document.getElementById('treeControlsBar');
+      const objectiveCounter = document.getElementById('objectiveCounter');
+
+      loadingState.style.display = 'block';
+      loadingState.textContent = `Loading alignment hierarchy for ${cycle}...`;
+      treeRootList.style.display = 'none';
+      treeRootList.innerHTML = '';
+      accessDeniedBox.style.display = 'none';
+      treeControlsBar.style.display = 'flex';
+
+      try {
+        const res = await fetch(`/api/okr/alignment?cycle=${encodeURIComponent(cycle)}`, { headers });
+
+        if (res.status === 403) {
+          loadingState.style.display = 'none';
+          accessDeniedBox.style.display = 'block';
+          treeControlsBar.style.display = 'none';
+          return;
+        }
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          loadingState.textContent = `Error: ${errData.error || 'Failed to load alignment tree'}`;
+          return;
+        }
+
+        const data = await res.json();
+        treeDataCache = data;
+
+        const roots = data.root_objectives || [];
+        objectiveCounter.textContent = `${data.total_objectives || 0} Objectives in Hierarchy`;
+
+        if (roots.length === 0) {
+          loadingState.textContent = `No objectives found for cycle ${cycle}.`;
+          return;
+        }
+
+        loadingState.style.display = 'none';
+        treeRootList.style.display = 'flex';
+
+        // Render recursive tree
+        roots.forEach(rootObj => {
+          treeRootList.appendChild(createTreeNodeElement(rootObj));
+        });
+
+      } catch (err) {
+        console.error('Error fetching alignment tree:', err);
+        loadingState.textContent = `Network error: ${err.message}`;
+      }
+    }
+
+    // Build Single Tree Node (Recursive)
+    function createTreeNodeElement(obj) {
+      const li = document.createElement('li');
+      li.className = 'tree-node-wrapper';
+      li.id = `tree-wrapper-${obj.id}`;
+
+      const progress = Number(obj.progress_pct) || 0;
+      let colorClass = 'node--high';
+      let numColorClass = 'num--high';
+      let fillClass = 'fill-high';
+
+      if (progress < 40) {
+        colorClass = 'node--low';
+        numColorClass = 'num--low';
+        fillClass = 'fill-low';
+      } else if (progress < 70) {
+        colorClass = 'node--mid';
+        numColorClass = 'num--mid';
+        fillClass = 'fill-mid';
+      }
+
+      const hasChildren = Array.isArray(obj.children) && obj.children.length > 0;
+      const levelClass = `badge-${(obj.level || 'TEAM').toLowerCase()}`;
+      const initials = (obj.owner_name || 'MT').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+      const nodeDiv = document.createElement('div');
+      nodeDiv.className = `okr-tree-node ${colorClass}`;
+      nodeDiv.id = `tree-node-${obj.id}`;
+      nodeDiv.dataset.title = (obj.title || '').toLowerCase();
+      nodeDiv.dataset.owner = (obj.owner_name || '').toLowerCase();
+
+      nodeDiv.innerHTML = `
+        <div class="node-main-content">
+          <button type="button" class="btn-toggle-collapse ${hasChildren ? '' : 'no-children'}" 
+                  id="btnToggle-${obj.id}" aria-label="Toggle children" ${hasChildren ? '' : 'disabled'}>
+            ${hasChildren ? '−' : '•'}
+          </button>
+
+          <div class="node-info-wrap">
+            <div class="node-header-tags">
+              <span class="badge-pill ${levelClass}">${escapeHTML(obj.level || 'TEAM')}</span>
+              <span style="font-size:0.75rem; color:#64748b;">#${obj.id}</span>
+              ${hasChildren ? `<span style="font-size:0.72rem; color:#38bdf8;">(${obj.children.length} aligned)</span>` : ''}
+            </div>
+            <a href="/okr-objective-detail.html?id=${obj.id}" class="node-title-link" title="${escapeHTML(obj.title)}">
+              ${escapeHTML(obj.title)}
+            </a>
+          </div>
+        </div>
+
+        <div class="node-meta-side">
+          <div class="owner-badge-wrap">
+            <div class="owner-avatar" title="${escapeHTML(obj.owner_name || 'Unassigned')}">${initials}</div>
+            <span>${escapeHTML(obj.owner_name || 'Team')}</span>
+          </div>
+
+          <div class="progress-pill-wrap">
+            <div class="progress-number ${numColorClass}">${progress}%</div>
+            <div class="mini-track">
+              <div class="mini-fill ${fillClass}" style="width: ${progress}%;"></div>
+            </div>
+          </div>
+
+          <a href="/okr-objective-detail.html?id=${obj.id}" class="btn-detail-link" id="link-detail-${obj.id}">
+            View Details ↗
+          </a>
+        </div>
+      `;
+
+      li.appendChild(nodeDiv);
+
+      // Render Children if present
+      if (hasChildren) {
+        const childUl = document.createElement('ul');
+        childUl.className = 'tree-branch';
+        childUl.id = `branch-${obj.id}`;
+
+        obj.children.forEach(child => {
+          childUl.appendChild(createTreeNodeElement(child));
+        });
+
+        li.appendChild(childUl);
+
+        // Hook up toggle
+        const toggleBtn = nodeDiv.querySelector(`#btnToggle-${obj.id}`);
+        toggleBtn.addEventListener('click', () => {
+          const isCollapsed = childUl.classList.toggle('collapsed');
+          toggleBtn.textContent = isCollapsed ? '+' : '−';
+        });
+      }
+
+      return li;
+    }
+
+    // Expand All / Collapse All Handlers
+    document.getElementById('btnExpandAll').addEventListener('click', () => {
+      document.querySelectorAll('.tree-branch').forEach(b => b.classList.remove('collapsed'));
+      document.querySelectorAll('.btn-toggle-collapse:not(.no-children)').forEach(btn => btn.textContent = '−');
+    });
+
+    document.getElementById('btnCollapseAll').addEventListener('click', () => {
+      document.querySelectorAll('.tree-branch').forEach(b => b.classList.add('collapsed'));
+      document.querySelectorAll('.btn-toggle-collapse:not(.no-children)').forEach(btn => btn.textContent = '+');
+    });
+
+    // Realtime Search / Filter
+    document.getElementById('inputSearchTree').addEventListener('input', (e) => {
+      const query = e.target.value.trim().toLowerCase();
+      const nodes = document.querySelectorAll('.okr-tree-node');
+
+      nodes.forEach(node => {
+        const title = node.dataset.title || '';
+        const owner = node.dataset.owner || '';
+        const match = query === '' || title.includes(query) || owner.includes(query);
+        node.style.opacity = match ? '1' : '0.25';
+      });
+    });
+
+    // Cycle change listener
+    cycleSelect.addEventListener('change', fetchAlignmentTree);
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag));
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchAlignmentTree);
+  </script>
+</body>
+</html>
