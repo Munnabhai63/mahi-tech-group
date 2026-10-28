@@ -1114,3 +1114,448 @@ export function getTeamWorkload(projectId, weekStartDate, currentUser) {
     members: memberResults
   };
 }
+
+// ===================================================================
+// HEATMAP, SNAPSHOTS, REBALANCE & EXPORTS (LAYER 4)
+// ===================================================================
+
+/**
+ * Generates an 8-week rolling heatmap grid (Member × 8 Weeks)
+ * Role: Admin+
+ */
+export function getWorkloadHeatmap(projectId, startWeekDate, currentUser) {
+  if (!isAdmin(currentUser)) {
+    const err = new Error('Forbidden: Admin role required to view workload heatmap');
+    err.status = 403;
+    throw err;
+  }
+
+  let project = null;
+  if (projectId && projectId !== 'all') {
+    project = queryOne('SELECT id, title FROM projects WHERE id = ?', [projectId]);
+    if (!project) {
+      const err = new Error('Project not found');
+      err.status = 404;
+      throw err;
+    }
+  }
+
+  const startWeek = getWeekStart(startWeekDate);
+
+  // Generate 8 consecutive calendar weeks
+  const weeks = [];
+  let d = new Date(startWeek + 'T00:00:00Z');
+  for (let i = 0; i < 8; i++) {
+    const wStart = d.toISOString().split('T')[0];
+    const wEnd = getWeekEnd(wStart);
+    weeks.push({
+      index: i,
+      week_start: wStart,
+      week_end: wEnd,
+      label: `W${i + 1} (${wStart.slice(5)})`
+    });
+    d.setUTCDate(d.getUTCDate() + 7);
+  }
+
+  // Discover members for this project
+  let membersQuery = '';
+  let params = [];
+  if (projectId && projectId !== 'all') {
+    membersQuery = `
+      SELECT DISTINCT u.id, u.name, u.email, u.role
+      FROM users u
+      LEFT JOIN project_members pm ON pm.user_id = u.id AND pm.project_id = ? AND pm.removed_at IS NULL
+      LEFT JOIN projects p ON p.id = ? AND p.owner_id = u.id
+      LEFT JOIN workload_assignments wa ON wa.user_id = u.id AND wa.project_id = ? AND wa.status = 'ACTIVE'
+      WHERE u.status = 'active' AND (pm.id IS NOT NULL OR p.id IS NOT NULL OR wa.id IS NOT NULL)
+      ORDER BY u.name ASC
+    `;
+    params = [projectId, projectId, projectId];
+  } else {
+    membersQuery = `SELECT id, name, email, role FROM users WHERE status = 'active' ORDER BY name ASC`;
+  }
+
+  let users = queryAll(membersQuery, params);
+  if (users.length === 0 && projectId && projectId !== 'all') {
+    users = queryAll(`SELECT id, name, email, role FROM users WHERE status = 'active' LIMIT 5`);
+  }
+
+  const grid = [];
+
+  for (const u of users) {
+    const cells = [];
+    let sumUtil = 0.0;
+    let peakUtil = 0.0;
+    let overloadedWeeks = 0;
+
+    for (const w of weeks) {
+      const avail = calculateMemberWeeklyAvailability(u.id, w.week_start);
+      const assigned = calculateMemberAssignedHoursForWeek(u.id, w.week_start);
+      const util = calculateUtilization(assigned.assigned_hours, avail.available_hours);
+
+      sumUtil += util.utilization_pct;
+      if (util.utilization_pct > peakUtil) peakUtil = util.utilization_pct;
+      if (util.status === 'OVERLOADED') overloadedWeeks++;
+
+      cells.push({
+        week_index: w.index,
+        week_start: w.week_start,
+        week_end: w.week_end,
+        capacity_hrs: avail.weekly_capacity_hrs,
+        available_hrs: avail.available_hours,
+        assigned_hrs: assigned.assigned_hours,
+        utilization_pct: util.utilization_pct,
+        status: util.status,
+        tasks_count: assigned.assignments_count,
+        tasks: assigned.assignments.map(a => ({
+          id: a.id,
+          title: a.title,
+          prorated_week_hrs: a.prorated_week_hrs
+        }))
+      });
+    }
+
+    grid.push({
+      user_id: u.id,
+      name: u.name,
+      role: u.role,
+      metrics: {
+        avg_utilization_pct: Number((sumUtil / 8.0).toFixed(2)),
+        peak_utilization_pct: Number(peakUtil.toFixed(2)),
+        overloaded_weeks_count: overloadedWeeks
+      },
+      cells
+    });
+  }
+
+  return {
+    project_id: project ? project.id : 'all',
+    project_title: project ? project.title : 'All Projects Heatmap',
+    start_date: startWeek,
+    weeks_count: 8,
+    weeks,
+    total_members: grid.length,
+    grid
+  };
+}
+
+/**
+ * Creates an append-only snapshot of current workload for a project
+ * Role: Admin+
+ */
+export function createWorkloadSnapshot(projectId, currentUser) {
+  if (!isAdmin(currentUser)) {
+    const err = new Error('Forbidden: Admin role required to create workload snapshot');
+    err.status = 403;
+    throw err;
+  }
+
+  if (!projectId) {
+    const err = new Error('project_id is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const project = queryOne('SELECT id, title FROM projects WHERE id = ?', [projectId]);
+  if (!project) {
+    const err = new Error('Project not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const teamData = getTeamWorkload(projectId, null, currentUser);
+  const snapshotDate = new Date().toISOString().split('T')[0];
+
+  const snapshotRows = teamData.members.map(m => ({
+    user_id: m.user_id,
+    name: m.name,
+    role: m.role,
+    capacity_hrs: m.weekly_capacity_hrs,
+    available_hrs: m.available_hours,
+    assigned_hrs: m.assigned_hours,
+    utilization_pct: m.utilization_pct,
+    status: m.status
+  }));
+
+  const snapshotJson = JSON.stringify(snapshotRows);
+
+  execute(`
+    INSERT INTO workload_snapshots (project_id, snapshot_date, snapshot_data, taken_by)
+    VALUES (?, ?, ?, ?)
+  `, [projectId, snapshotDate, snapshotJson, currentUser.id]);
+
+  const inserted = queryOne(`
+    SELECT ws.*, p.title as project_title, u.name as taken_by_name
+    FROM workload_snapshots ws
+    JOIN projects p ON ws.project_id = p.id
+    JOIN users u ON ws.taken_by = u.id
+    WHERE ws.project_id = ?
+    ORDER BY ws.id DESC LIMIT 1
+  `, [projectId]);
+
+  logAccess({
+    userId: currentUser.id,
+    action: 'WORKLOAD_SNAPSHOT_CREATED',
+    resource: `workload_snapshot:${inserted.id}`,
+    ipAddress: '127.0.0.1'
+  });
+
+  return {
+    message: 'Workload snapshot created successfully',
+    snapshot: {
+      ...inserted,
+      snapshot_data: JSON.parse(inserted.snapshot_data)
+    }
+  };
+}
+
+/**
+ * Retrieves all snapshots taken for a project
+ * Role: Admin+
+ */
+export function getWorkloadSnapshots(projectId, currentUser) {
+  if (!isAdmin(currentUser)) {
+    const err = new Error('Forbidden: Admin role required to view workload snapshots');
+    err.status = 403;
+    throw err;
+  }
+
+  const project = queryOne('SELECT id, title FROM projects WHERE id = ?', [projectId]);
+  if (!project) {
+    const err = new Error('Project not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const rows = queryAll(`
+    SELECT ws.*, u.name as taken_by_name
+    FROM workload_snapshots ws
+    JOIN users u ON ws.taken_by = u.id
+    WHERE ws.project_id = ?
+    ORDER BY ws.id DESC
+  `, [projectId]);
+
+  const parsed = rows.map(r => ({
+    ...r,
+    snapshot_data: JSON.parse(r.snapshot_data)
+  }));
+
+  return {
+    project_id: projectId,
+    project_title: project.title,
+    count: parsed.length,
+    snapshots: parsed
+  };
+}
+
+/**
+ * Rebalance Suggestions Engine (Server-Side Only, Advisory)
+ * Identifies overloaded members and matches their tasks to underloaded members
+ * Role: Admin+
+ */
+export function getRebalanceSuggestions(projectId, weekStartDate, currentUser) {
+  if (!isAdmin(currentUser)) {
+    const err = new Error('Forbidden: Admin role required to view rebalance suggestions');
+    err.status = 403;
+    throw err;
+  }
+
+  const teamData = getTeamWorkload(projectId, weekStartDate, currentUser);
+
+  const overloaded = teamData.members.filter(m => m.status === 'OVERLOADED');
+  const underloaded = teamData.members.filter(m => m.status === 'UNDERLOADED');
+
+  if (overloaded.length === 0) {
+    return {
+      status: 'BALANCED',
+      message: 'Workload is balanced. No overloaded team members detected.',
+      week_start: teamData.week_start,
+      overloaded_count: 0,
+      underloaded_count: underloaded.length,
+      suggestions: []
+    };
+  }
+
+  const suggestions = [];
+
+  // Clone underloaded members to track simulated capacity while proposing reallocations
+  const targets = underloaded.map(u => ({
+    ...u,
+    simulated_assigned: u.assigned_hours
+  }));
+
+  for (const src of overloaded) {
+    let runningSourceAssigned = src.assigned_hours;
+
+    // Sort tasks largest to smallest by weekly prorated hours
+    const candidateTasks = [...(src.assignments || [])].sort(
+      (a, b) => b.prorated_week_hrs - a.prorated_week_hrs
+    );
+
+    for (const task of candidateTasks) {
+      if (runningSourceAssigned <= src.available_hours) {
+        break; // Source member is no longer overloaded
+      }
+
+      // Find an underloaded member who has room for this task
+      const target = targets.find(t => {
+        const potentialAssigned = t.simulated_assigned + task.prorated_week_hrs;
+        const potentialUtil = t.available_hours > 0 ? (potentialAssigned / t.available_hours) * 100 : 999;
+        return potentialUtil <= 90.0; // Keep target within optimal or safe range
+      });
+
+      if (target) {
+        const sourceBeforeUtil = calculateUtilization(runningSourceAssigned, src.available_hours);
+        const sourceAfterAssigned = Math.max(0, runningSourceAssigned - task.prorated_week_hrs);
+        const sourceAfterUtil = calculateUtilization(sourceAfterAssigned, src.available_hours);
+
+        const targetBeforeUtil = calculateUtilization(target.simulated_assigned, target.available_hours);
+        const targetAfterAssigned = target.simulated_assigned + task.prorated_week_hrs;
+        const targetAfterUtil = calculateUtilization(targetAfterAssigned, target.available_hours);
+
+        suggestions.push({
+          task_id: task.id,
+          task_title: task.title,
+          source_type: task.source_type,
+          estimated_hrs: task.full_estimated_hrs,
+          prorated_week_hrs: task.prorated_week_hrs,
+          current_owner: {
+            id: src.user_id,
+            name: src.name,
+            role: src.role
+          },
+          suggested_target: {
+            id: target.user_id,
+            name: target.name,
+            role: target.role
+          },
+          reason: `Reassigning "${task.title}" (${task.prorated_week_hrs} hrs) reduces ${src.name}'s utilization from ${sourceBeforeUtil.utilization_pct}% (${sourceBeforeUtil.status}) to ${sourceAfterUtil.utilization_pct}% (${sourceAfterUtil.status}), while raising ${target.name}'s utilization from ${targetBeforeUtil.utilization_pct}% to ${targetAfterUtil.utilization_pct}% (${targetAfterUtil.status}).`,
+          simulated_impact: {
+            source: {
+              before_pct: sourceBeforeUtil.utilization_pct,
+              after_pct: sourceAfterUtil.utilization_pct,
+              status_before: sourceBeforeUtil.status,
+              status_after: sourceAfterUtil.status
+            },
+            target: {
+              before_pct: targetBeforeUtil.utilization_pct,
+              after_pct: targetAfterUtil.utilization_pct,
+              status_before: targetBeforeUtil.status,
+              status_after: targetAfterUtil.status
+            }
+          }
+        });
+
+        // Update running temporary values
+        runningSourceAssigned = sourceAfterAssigned;
+        target.simulated_assigned = targetAfterAssigned;
+      }
+    }
+  }
+
+  return {
+    status: suggestions.length > 0 ? 'REBALANCE_AVAILABLE' : 'NO_SUITABLE_TARGETS',
+    project_id: projectId,
+    project_title: teamData.project_title,
+    week_start: teamData.week_start,
+    overloaded_count: overloaded.length,
+    underloaded_count: underloaded.length,
+    suggestions_count: suggestions.length,
+    suggestions
+  };
+}
+
+/**
+ * Team dashboard overview for all members
+ * Role: Admin+
+ */
+export function getTeamDashboard(weekStartDate, currentUser) {
+  return getTeamWorkload('all', weekStartDate, currentUser);
+}
+
+/**
+ * Forecasts workload for a single member across multiple upcoming weeks (default: 5 weeks)
+ * Role: Admin+ or own member
+ */
+export function getMemberWorkloadForecast(userId, startWeekDate, numberOfWeeks = 5, currentUser) {
+  if (!isAdmin(currentUser) && String(currentUser.id) !== String(userId)) {
+    const err = new Error('Forbidden: You can only view your own workload forecast');
+    err.status = 403;
+    throw err;
+  }
+
+  const user = queryOne('SELECT id, name, email, role FROM users WHERE id = ?', [userId]);
+  if (!user) {
+    const err = new Error('User not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const startWeek = getWeekStart(startWeekDate);
+  const weeks = [];
+  let d = new Date(startWeek + 'T00:00:00Z');
+
+  for (let i = 0; i < numberOfWeeks; i++) {
+    const wStart = d.toISOString().split('T')[0];
+    const workload = getMemberWeeklyWorkload(userId, wStart);
+    weeks.push({
+      week_index: i,
+      week_label: i === 0 ? 'Current Week' : `Week +${i}`,
+      ...workload
+    });
+    d.setUTCDate(d.getUTCDate() + 7);
+  }
+
+  return {
+    user: { id: user.id, name: user.name, role: user.role },
+    forecast_weeks_count: numberOfWeeks,
+    weeks
+  };
+}
+
+/**
+ * Exports JSON workload data for a project across current + next 4 weeks
+ * Role: Admin+
+ */
+export function exportWorkloadData(projectId, startWeekDate, currentUser) {
+  if (!isAdmin(currentUser)) {
+    const err = new Error('Forbidden: Admin role required to export workload data');
+    err.status = 403;
+    throw err;
+  }
+
+  const project = queryOne('SELECT id, title FROM projects WHERE id = ?', [projectId]);
+  if (!project) {
+    const err = new Error('Project not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const startWeek = getWeekStart(startWeekDate);
+  const weeksForecast = [];
+  let d = new Date(startWeek + 'T00:00:00Z');
+
+  for (let i = 0; i < 5; i++) {
+    const wStart = d.toISOString().split('T')[0];
+    const teamWeek = getTeamWorkload(projectId, wStart, currentUser);
+    weeksForecast.push({
+      week_offset: i,
+      week_start: teamWeek.week_start,
+      week_end: teamWeek.week_end,
+      summary: teamWeek.summary,
+      members: teamWeek.members
+    });
+    d.setUTCDate(d.getUTCDate() + 7);
+  }
+
+  return {
+    export_metadata: {
+      project_id: project.id,
+      project_title: project.title,
+      exported_at: new Date().toISOString(),
+      exported_by: currentUser.name,
+      weeks_exported: 5
+    },
+    timeline: weeksForecast
+  };
+}

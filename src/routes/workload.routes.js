@@ -337,5 +337,115 @@ router.get('/team/:projectId', authenticate, (req, res) => {
   }
 });
 
+// ===================================================================
+// HEATMAP, SNAPSHOTS, REBALANCE & EXPORTS (LAYER 4)
+// ===================================================================
+
+/**
+ * GET /api/workload/heatmap/:projectId
+ * 8-week rolling heatmap grid (Member × 8 Weeks)
+ * Role: Admin+
+ */
+router.get('/heatmap/:projectId', authenticate, (req, res) => {
+  try {
+    const startDate = req.query.start_date || new Date().toISOString().split('T')[0];
+    const result = workloadService.getWorkloadHeatmap(req.params.projectId, startDate, req.user);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * POST /api/workload/snapshot/:projectId
+ * POST /api/workload/snapshot
+ * Takes an append-only snapshot of current workload state
+ * Role: Admin+
+ */
+router.post(['/snapshot/:projectId', '/snapshot'], authenticate, (req, res) => {
+  try {
+    const projectId = req.params.projectId || req.body?.project_id;
+    const result = workloadService.createWorkloadSnapshot(projectId, req.user);
+    return res.status(201).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * GET /api/workload/snapshots/:projectId
+ * Retrieves all point-in-time snapshots for a project
+ * Role: Admin+
+ */
+router.get('/snapshots/:projectId', authenticate, (req, res) => {
+  try {
+    const result = workloadService.getWorkloadSnapshots(req.params.projectId, req.user);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * GET /api/workload/rebalance/:projectId
+ * Generates advisory task rebalance suggestions from overloaded to underloaded members
+ * Role: Admin+
+ */
+router.get('/rebalance/:projectId', authenticate, (req, res) => {
+  try {
+    const weekStart = req.query.week_start_date || new Date().toISOString().split('T')[0];
+    const result = workloadService.getRebalanceSuggestions(req.params.projectId, weekStart, req.user);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * GET /api/workload/dashboard
+ * Team dashboard overview for all members (current week)
+ * Role: Admin+
+ */
+router.get('/dashboard', authenticate, (req, res) => {
+  try {
+    const weekStart = req.query.week_start_date || new Date().toISOString().split('T')[0];
+    const result = workloadService.getTeamDashboard(weekStart, req.user);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * GET /api/workload/dashboard/member/:userId
+ * Member's personal dashboard (current week + next 4 weeks)
+ * Role: Admin+ or own member
+ */
+router.get('/dashboard/member/:userId', authenticate, (req, res) => {
+  try {
+    const startWeek = req.query.week_start_date || new Date().toISOString().split('T')[0];
+    const result = workloadService.getMemberWorkloadForecast(req.params.userId, startWeek, 5, req.user);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+/**
+ * GET /api/workload/export/:projectId
+ * Exports JSON workload timeline (current week + next 4 weeks)
+ * Role: Admin+
+ */
+router.get('/export/:projectId', authenticate, (req, res) => {
+  try {
+    const startWeek = req.query.week_start_date || new Date().toISOString().split('T')[0];
+    const result = workloadService.exportWorkloadData(req.params.projectId, startWeek, req.user);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
 export default router;
+
 
