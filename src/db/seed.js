@@ -54,7 +54,7 @@ export async function runSeed() {
 
   // 2. Seed Default Admin User & Demo Users (Development and Testing only)
   // In production, the first-run /setup wizard creates the initial Super Admin account.
-  if (process.env.NODE_ENV !== 'production' || process.env.SEED_DEFAULT_USERS === 'true') {
+  if ((process.env.NODE_ENV !== 'production' && process.env.SKIP_SEED_USERS !== 'true') || process.env.SEED_DEFAULT_USERS === 'true') {
     const adminEmail = 'admin@mahitechgroup.com';
     const existingAdmin = queryOne('SELECT id, email FROM users WHERE email = ?', [adminEmail]);
 

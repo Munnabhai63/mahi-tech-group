@@ -568,7 +568,7 @@
 
     // Dynamic Auth Token Retrieval
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token') || localStorage.getItem('token');
+    const token = urlParams.get('token') || localStorage.getItem('token') || localStorage.getItem('mtg_auth_token');
     if (!token) {
       window.location.href = '/app.html#/login';
     }

@@ -33,7 +33,7 @@ function handleServiceError(res, err) {
  * Body: { project_id, name, goal, start_date, end_date }
  * Role: Admin+
  */
-router.post('/create', authenticate, (req, res) => {
+router.post(['/create', '/'], authenticate, (req, res) => {
   try {
     const { project_id, name, goal, start_date, end_date } = req.body || {};
     const sprint = sprintService.createSprint({

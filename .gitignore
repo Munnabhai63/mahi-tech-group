@@ -23,7 +23,8 @@ scripts/route-manifest.json
 scripts/comprehensive-test-report.json
 scripts/db-schema-dump.json
 
-# PRD 17: GitHub App Private Keys
+# Test and verification artifacts
+reports/
 certs/
 *.pem
 

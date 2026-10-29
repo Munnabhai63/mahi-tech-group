@@ -330,7 +330,7 @@ export function startTimer({ project_id, source_ref_type, source_ref_id, descrip
  * - Manually sets updated_at
  * - Writes audit log to time_entry_history
  */
-export function stopTimer({ time_entry_id, end_time }, currentUser) {
+export function stopTimer({ time_entry_id, end_time } = {}, currentUser) {
   if (!currentUser || !currentUser.id) {
     const err = new Error('Unauthorized');
     err.status = 401;

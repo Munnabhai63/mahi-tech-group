@@ -14,8 +14,9 @@ const router = express.Router();
  * Direct project creation (Admin or Project Owner)
  */
 router.post('/', authenticate, (req, res) => {
-  const { title, description, category, priority, idea_id } = req.body || {};
-  if (!title) {
+  const { title, name, description, category, priority, idea_id } = req.body || {};
+  const projectTitle = title || name;
+  if (!projectTitle) {
     return res.status(400).json({ error: 'Project title is required' });
   }
 
@@ -27,13 +28,13 @@ router.post('/', authenticate, (req, res) => {
     execute(`
       INSERT INTO ideas (id, owner_id, title, description, status, submitted_at)
       VALUES (?, ?, ?, ?, 'APPROVED', CURRENT_TIMESTAMP)
-    `, [backingIdeaId, req.user.id, title, description || title]);
+    `, [backingIdeaId, req.user.id, projectTitle, description || projectTitle]);
   }
 
   execute(`
     INSERT INTO projects (id, idea_id, org_id, title, owner_id, current_stage, status)
     VALUES (?, ?, 'DEFAULT_ORG', ?, ?, 'RESEARCH_DEV_PARALLEL', 'ACTIVE')
-  `, [projectId, backingIdeaId, title, req.user.id]);
+  `, [projectId, backingIdeaId, projectTitle, req.user.id]);
 
   const project = queryOne('SELECT * FROM projects WHERE id = ?', [projectId]);
   return res.status(201).json({
