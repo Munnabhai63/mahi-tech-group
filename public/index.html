@@ -14,7 +14,20 @@
   <link rel="stylesheet" href="/css/site.css">
   <link rel="stylesheet" href="/css/hero-studio.css">
   <link rel="stylesheet" href="/css/homepage-studio.css">
-  <script>document.documentElement.classList.add('js');</script>
+  <script>
+    document.documentElement.classList.add('js');
+    if (window.location.hash && (
+      window.location.hash.startsWith('#/app') ||
+      window.location.hash.startsWith('#/invite') ||
+      window.location.hash.startsWith('#/login') ||
+      window.location.hash.startsWith('#/signup') ||
+      window.location.hash.startsWith('#/admin') ||
+      window.location.hash.startsWith('#/superadmin') ||
+      window.location.hash.startsWith('#/workspace')
+    )) {
+      window.location.replace('/app.html' + window.location.hash);
+    }
+  </script>
   <script type="module" src="/js/pages/home.js"></script>
   <noscript><style>[data-reveal], .studio-hero__title-line > span, .studio-hero__media, .studio-hero__eyebrow, .studio-hero__intro, .studio-hero__note, .studio-hero__marker, .studio-hero__footer { opacity: 1 !important; transform: none !important; clip-path: none !important; }</style></noscript>
 </head>

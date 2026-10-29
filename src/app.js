@@ -181,7 +181,8 @@ export function createApp() {
       p === '/dashboard' || p.startsWith('/dashboard/') ||
       p === '/login' || p === '/signup' ||
       p === '/admin' || p.startsWith('/admin/') ||
-      p === '/superadmin' || p.startsWith('/superadmin/')
+      p === '/superadmin' || p.startsWith('/superadmin/') ||
+      p === '/invite' || p.startsWith('/invite/')
     ) {
       const targetHash = p.startsWith('/app') ? p : `/${p.replace(/^\/+/, '')}`;
       return res.redirect(`/app.html#${targetHash}`);
