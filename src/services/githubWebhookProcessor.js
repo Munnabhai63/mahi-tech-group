@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { createNotification } from './notificationService.js';
+import { fireTrigger } from './automationEngine.js';
 
 /**
  * Retrieves recipient user IDs (Leads and Admins) for a given project
@@ -91,6 +92,23 @@ export async function processWebhookEvent(eventType, action, payload = {}, logId
           if (action === 'closed' && isMerged) {
             notifType = 'github_pr_merged';
             message = `PR '${title}' MERGED into ${baseBranch} by ${login}`;
+
+            try {
+              fireTrigger('GITHUB', 'PR_MERGED', 'PULL_REQUEST', pr.id || pr.number, null, {
+                project_id: projectId,
+                pr: {
+                  id: pr.id,
+                  number: pr.number,
+                  title,
+                  base_branch: baseBranch,
+                  html_url: htmlUrl,
+                  user: login,
+                  merged: true
+                }
+              });
+            } catch (tErr) {
+              console.error('[GithubWebhookProcessor] fireTrigger error:', tErr);
+            }
           }
 
           if (action === 'opened' || action === 'closed') {

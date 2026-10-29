@@ -1,5 +1,6 @@
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
+import { fireTrigger } from './automationEngine.js';
 
 /**
  * Helper to check if a user possesses administrative privileges
@@ -446,6 +447,25 @@ export function evaluateAndCreateWorkloadAlert(userId, weekStartDate, allocatedH
     WHERE user_id = ? AND week_start_date = ? AND alert_type = ?
     ORDER BY id DESC LIMIT 1
   `, [userId, weekStart, alertType]);
+
+  if (alertType === 'OVERLOADED' || util.utilization_pct > 100.0) {
+    try {
+      const member = queryOne('SELECT id, name, email FROM users WHERE id = ?', [userId]) || { id: userId, name: `User #${userId}` };
+      fireTrigger('WORKLOAD', 'MEMBER_OVERLOADED', 'WORKLOAD_ALERT', newAlert ? newAlert.id : userId, userId, {
+        utilization_pct: util.utilization_pct,
+        allocated_hours: util.allocated_hours,
+        available_hours: util.available_hours,
+        week_start_date: weekStart,
+        member: {
+          id: userId,
+          name: member.name,
+          email: member.email
+        }
+      });
+    } catch (tErr) {
+      console.error('[WorkloadService] fireTrigger error:', tErr);
+    }
+  }
 
   return {
     alert_created: true,

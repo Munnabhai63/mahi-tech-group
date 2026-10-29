@@ -1,4 +1,5 @@
 import { queryOne, queryAll, execute, getDatabase } from '../db/database.js';
+import { fireTrigger } from './automationEngine.js';
 
 /**
  * Check if a user has Admin or Producer role for Gantt management
@@ -534,6 +535,24 @@ export function updateItem(itemId, updates, user) {
   }
 
   const updatedItem = queryOne('SELECT * FROM gantt_items WHERE id = ?', [itemId]);
+
+  if (updatedItem && (updatedItem.progress_pct === 100 || updatedItem.status === 'COMPLETED') && (item.progress_pct !== 100 && item.status !== 'COMPLETED')) {
+    try {
+      fireTrigger('GANTT', 'TASK_COMPLETED', 'GANTT_ITEM', itemId, user.id, {
+        project_id: item.project_id,
+        item: {
+          id: itemId,
+          title: updatedItem.title,
+          status: updatedItem.status,
+          progress_pct: updatedItem.progress_pct,
+          project_id: item.project_id
+        }
+      });
+    } catch (tErr) {
+      console.error('[GanttService] fireTrigger error:', tErr);
+    }
+  }
+
   return {
     item: updatedItem,
     warnings
@@ -596,7 +615,26 @@ export function updateProgress(itemId, progressPct, user) {
     WHERE id = ?
   `, [pVal, newStatus, itemId]);
 
-  return queryOne('SELECT * FROM gantt_items WHERE id = ?', [itemId]);
+  const updated = queryOne('SELECT * FROM gantt_items WHERE id = ?', [itemId]);
+
+  if ((pVal === 100 || newStatus === 'COMPLETED') && (item.progress_pct !== 100 && item.status !== 'COMPLETED')) {
+    try {
+      fireTrigger('GANTT', 'TASK_COMPLETED', 'GANTT_ITEM', itemId, user.id, {
+        project_id: item.project_id,
+        item: {
+          id: itemId,
+          title: updated.title,
+          status: updated.status,
+          progress_pct: updated.progress_pct,
+          project_id: item.project_id
+        }
+      });
+    } catch (tErr) {
+      console.error('[GanttService] fireTrigger error:', tErr);
+    }
+  }
+
+  return updated;
 }
 
 /**
@@ -1016,7 +1054,26 @@ export function updateMilestone(milestoneId, updates, user) {
     WHERE id = ?
   `, [newTitle, newDate, newLinkedItem, newStatus, milestoneId]);
 
-  return queryOne('SELECT * FROM gantt_milestones WHERE id = ?', [milestoneId]);
+  const updatedMilestone = queryOne('SELECT * FROM gantt_milestones WHERE id = ?', [milestoneId]);
+
+  if (newStatus === 'MISSED' && milestone.status !== 'MISSED') {
+    try {
+      fireTrigger('GANTT', 'MILESTONE_MISSED', 'MILESTONE', milestoneId, user.id, {
+        project_id: milestone.project_id,
+        milestone: {
+          id: milestoneId,
+          title: newTitle,
+          milestone_date: newDate,
+          status: 'MISSED',
+          project_id: milestone.project_id
+        }
+      });
+    } catch (tErr) {
+      console.error('[GanttService] fireTrigger error:', tErr);
+    }
+  }
+
+  return updatedMilestone;
 }
 
 /**

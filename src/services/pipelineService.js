@@ -9,6 +9,7 @@ import {
   applyParticipationBlocks,
   getThreshold
 } from './pointPoolService.js';
+import { fireTrigger } from './automationEngine.js';
 
 /**
  * Helper to verify if user is Lead or Admin for a given project
@@ -751,6 +752,26 @@ export function approveHandoff(deliverableId, fromStage, toStage, handoffNotes =
     }
   } catch (notifErr) {
     console.error('[EVENT 5/9 NOTIFICATION ERROR]:', notifErr.message);
+  }
+
+  try {
+    fireTrigger('PIPELINE', 'PIPELINE_STAGE_COMPLETED', 'PIPELINE_DELIVERABLE', deliverableId, approverId, {
+      project_id: deliverable.project_id,
+      from_stage: upperFrom,
+      to_stage: upperTo,
+      deliverable: {
+        id: deliverableId,
+        title: deliverable.title,
+        project_id: deliverable.project_id,
+        current_stage: upperTo
+      },
+      stage: {
+        name: upperFrom,
+        next_stage: upperTo
+      }
+    });
+  } catch (tErr) {
+    console.error('[PipelineService] fireTrigger error:', tErr);
   }
 
   return createdHandoff;

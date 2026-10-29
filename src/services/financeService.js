@@ -16,6 +16,7 @@
 
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
+import { fireTrigger } from './automationEngine.js';
 
 // ===================================================================
 // RBAC HELPER
@@ -122,6 +123,21 @@ export function evaluateBudgetAlerts(projectId, currentUser = null) {
 
       const inserted = queryOne('SELECT * FROM budget_alerts WHERE project_id = ? ORDER BY id DESC LIMIT 1', [projectId]);
       generatedAlerts.push(inserted);
+
+      try {
+        fireTrigger('EXPENSE', 'BUDGET_THRESHOLD_REACHED', 'PROJECT', projectId, currentUser?.id || null, {
+          project_id: projectId,
+          spent_percentage: consumed_pct,
+          total_consumption,
+          alert_threshold_pct,
+          project: {
+            id: projectId,
+            name: budget.project_name || `Project #${projectId}`
+          }
+        });
+      } catch (tErr) {
+        console.error('[FinanceService] fireTrigger error:', tErr);
+      }
     }
   }
 
@@ -141,6 +157,20 @@ export function evaluateBudgetAlerts(projectId, currentUser = null) {
 
       const inserted = queryOne('SELECT * FROM budget_alerts WHERE project_id = ? ORDER BY id DESC LIMIT 1', [projectId]);
       generatedAlerts.push(inserted);
+
+      try {
+        fireTrigger('EXPENSE', 'BUDGET_EXCEEDED', 'PROJECT', projectId, currentUser?.id || null, {
+          project_id: projectId,
+          spent_percentage: consumed_pct,
+          total_consumption,
+          project: {
+            id: projectId,
+            name: budget.project_name || `Project #${projectId}`
+          }
+        });
+      } catch (tErr) {
+        console.error('[FinanceService] fireTrigger error:', tErr);
+      }
     }
   }
 
@@ -954,6 +984,22 @@ export function approveExpense(expenseId, currentUser, ipAddress = null) {
     ipAddress
   });
 
+  try {
+    fireTrigger('EXPENSE', 'EXPENSE_APPROVED', 'EXPENSE', expenseId, currentUser.id, {
+      project_id: expense.project_id,
+      expense: {
+        id: expenseId,
+        amount: expense.amount,
+        currency: expense.currency,
+        project_id: expense.project_id,
+        submitter_id: expense.created_by,
+        status: 'APPROVED'
+      }
+    });
+  } catch (tErr) {
+    console.error('[FinanceService] fireTrigger error:', tErr);
+  }
+
   return {
     message: 'Expense approved successfully',
     expense: updatedExpense,
@@ -1034,6 +1080,23 @@ export function rejectExpense(expenseId, data, currentUser, ipAddress = null) {
     targetId: String(expenseId),
     ipAddress
   });
+
+  try {
+    fireTrigger('EXPENSE', 'EXPENSE_REJECTED', 'EXPENSE', expenseId, currentUser.id, {
+      project_id: expense.project_id,
+      expense: {
+        id: expenseId,
+        amount: expense.amount,
+        currency: expense.currency,
+        project_id: expense.project_id,
+        submitter_id: expense.created_by,
+        rejection_reason: reason,
+        status: 'REJECTED'
+      }
+    });
+  } catch (tErr) {
+    console.error('[FinanceService] fireTrigger error:', tErr);
+  }
 
   return {
     message: 'Expense rejected successfully',
@@ -1810,6 +1873,22 @@ export function processOverdueInvoices(currentUser = null, ipAddress = null) {
           project_id, alert_type, triggered_amount, message, created_at
         ) VALUES (?, 'INVOICE_OVERDUE', ?, ?, datetime('now'))
       `, [inv.project_id, inv.total_amount, msg]);
+    }
+
+    try {
+      fireTrigger('EXPENSE', 'INVOICE_OVERDUE', 'INVOICE', inv.id, currentUser?.id || null, {
+        project_id: inv.project_id,
+        invoice: {
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          total_amount: inv.total_amount,
+          currency: inv.currency,
+          due_date: inv.due_date,
+          status: 'OVERDUE'
+        }
+      });
+    } catch (tErr) {
+      console.error('[FinanceService] fireTrigger error:', tErr);
     }
   }
 

@@ -3,6 +3,7 @@ import { queryOne, queryAll, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
 import { disconnectUserSockets } from './wsService.js';
 import { ejectUserFromActiveMeetings } from './meetingService.js';
+import { fireTrigger } from './automationEngine.js';
 
 export const DEFAULT_EXTERNAL_SERVICES_CHECKLIST = [
   { id: 'github_org', label: 'Remove from GitHub org', status: 'PENDING', type: 'manual_checklist', completed_at: null },
@@ -217,6 +218,21 @@ export function executeOffboardingKillswitch({ userId, adminUserId, reason, ipAd
 
   const finalOffboardingRecord = queryOne('SELECT * FROM offboarding WHERE id = ?', [offboardingId]);
   finalOffboardingRecord.revoked_services = JSON.parse(finalOffboardingRecord.revoked_services_json || '[]');
+
+  try {
+    fireTrigger('MEMBER', 'MEMBER_OFFBOARDED', 'USER', userId, adminUserId, {
+      member: {
+        id: userId,
+        name: user.name,
+        email: user.email,
+        frozen_amount: frozenAmount
+      },
+      offboarding_id: offboardingId,
+      reason
+    });
+  } catch (tErr) {
+    console.error('[OffboardingService] fireTrigger error:', tErr);
+  }
 
   return {
     success: true,

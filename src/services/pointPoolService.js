@@ -10,6 +10,7 @@ import {
   getAllAdmins,
   sendPipelineNotification
 } from './pipelineService.js';
+import { fireTrigger } from './automationEngine.js';
 
 /**
  * Helper to dispatch Point Pool notifications (persisting DB rows and pushing via WebSocket)
@@ -773,6 +774,22 @@ export function applyParticipationBlocks(projectId) {
         });
       } catch (notifErr) {
         console.error('[EVENT 4 REVENUE BLOCK NOTIFICATION ERROR]:', notifErr.message);
+      }
+
+      try {
+        fireTrigger('MEMBER', 'REVENUE_SHARE_BLOCKED', 'USER', m.id, null, {
+          project_id: projectId,
+          member: {
+            id: m.id,
+            name: m.name,
+            email: m.email
+          },
+          participation_pct: pct,
+          threshold_pct: threshold,
+          blocked_splits_count: splits.length
+        });
+      } catch (tErr) {
+        console.error('[PointPoolService] fireTrigger error:', tErr);
       }
     }
   }

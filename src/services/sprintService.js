@@ -1,4 +1,5 @@
 import { queryOne, queryAll, execute } from '../db/database.js';
+import { fireTrigger } from './automationEngine.js';
 
 /**
  * Helper to verify if user has Admin or Lead permissions for a sprint / project
@@ -324,7 +325,23 @@ export function startSprint(sprintId, userId) {
     WHERE id = ?
   `, [sprintId]);
 
-  return getSprintDetail(sprintId, userId);
+  const detail = getSprintDetail(sprintId, userId);
+  try {
+    fireTrigger('SPRINT', 'SPRINT_STARTED', 'SPRINT', sprintId, userId, {
+      project_id: sprint.project_id,
+      sprint: {
+        id: sprintId,
+        name: sprint.name,
+        goal: sprint.goal,
+        project_id: sprint.project_id,
+        status: 'ACTIVE'
+      }
+    });
+  } catch (tErr) {
+    console.error('[SprintService] fireTrigger error:', tErr);
+  }
+
+  return detail;
 }
 
 /**
@@ -399,6 +416,24 @@ export function completeSprint(sprintId, userId) {
 
   const velocityLog = queryOne('SELECT * FROM sprint_velocity_log WHERE id = ?', [Number(logResult.lastInsertRowid)]);
   const updatedSprint = getSprintDetail(sprintId, userId);
+
+  try {
+    fireTrigger('SPRINT', 'SPRINT_COMPLETED', 'SPRINT', sprintId, userId, {
+      project_id: sprint.project_id,
+      sprint: {
+        id: sprintId,
+        name: sprint.name,
+        goal: sprint.goal,
+        project_id: sprint.project_id,
+        status: 'COMPLETED',
+        committed_points: committed,
+        completed_points: completed,
+        completion_rate: rate
+      }
+    });
+  } catch (tErr) {
+    console.error('[SprintService] fireTrigger error:', tErr);
+  }
 
   return {
     sprint: updatedSprint,

@@ -1,5 +1,6 @@
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { logAccess } from './auditService.js';
+import { fireTrigger } from './automationEngine.js';
 
 /**
  * Checks whether a user possesses administrative privileges
@@ -1344,6 +1345,21 @@ export function approveTimeEntry(requestId, currentUser) {
     WHERE te.id = ?
   `, [entry.id]);
 
+  try {
+    fireTrigger('TIME', 'TIME_ENTRY_APPROVED', 'TIME_ENTRY', entry.id, currentUser.id, {
+      project_id: entry.project_id,
+      time: {
+        id: entry.id,
+        user_id: entry.user_id,
+        project_id: entry.project_id,
+        duration_seconds: entry.duration_seconds,
+        status: 'APPROVED'
+      }
+    });
+  } catch (tErr) {
+    console.error('[TimeTrackingService] fireTrigger error:', tErr);
+  }
+
   return {
     success: true,
     message: 'Time entry approved successfully',
@@ -1443,6 +1459,21 @@ export function rejectTimeEntry(requestId, decisionNote, currentUser) {
     LEFT JOIN users u ON u.id = te.user_id
     WHERE te.id = ?
   `, [entry.id]);
+
+  try {
+    fireTrigger('TIME', 'TIME_ENTRY_REJECTED', 'TIME_ENTRY', entry.id, currentUser.id, {
+      project_id: entry.project_id,
+      time: {
+        id: entry.id,
+        user_id: entry.user_id,
+        project_id: entry.project_id,
+        rejection_reason: trimmedNote,
+        status: 'REJECTED'
+      }
+    });
+  } catch (tErr) {
+    console.error('[TimeTrackingService] fireTrigger error:', tErr);
+  }
 
   return {
     success: true,

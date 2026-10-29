@@ -104,18 +104,24 @@ function handleSendNotification(params, triggerData, context) {
   }
 
   const inserted = [];
-  for (const uid of recipientIds) {
-    const userRow = queryOne('SELECT id FROM users WHERE id = ?;', [uid]);
-    if (!userRow) continue;
-
-    const notifId = crypto.randomUUID();
-    execute(
-      `INSERT INTO notifications (
-         id, user_id, event_type, message, link, read_status, created_at
-       ) VALUES (?, ?, 'AUTOMATION_NOTIFICATION', ?, ?, 0, datetime('now'));`,
-      [notifId, uid, message, params.link || null]
+  if (recipientIds.size > 0) {
+    const validUsers = queryAll(
+      `SELECT id FROM users WHERE id IN (${Array.from(recipientIds).map(() => '?').join(',')});`,
+      Array.from(recipientIds)
     );
-    inserted.push({ id: notifId, user_id: uid });
+    const validSet = new Set(validUsers.map((u) => u.id));
+
+    for (const uid of recipientIds) {
+      if (!validSet.has(uid)) continue;
+      const notifId = crypto.randomUUID();
+      execute(
+        `INSERT INTO notifications (
+           id, user_id, event_type, message, link, read_status, created_at
+         ) VALUES (?, ?, 'AUTOMATION_NOTIFICATION', ?, ?, 0, datetime('now'));`,
+        [notifId, uid, message, params.link || null]
+      );
+      inserted.push({ id: notifId, user_id: uid });
+    }
   }
 
   return {

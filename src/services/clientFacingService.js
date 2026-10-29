@@ -1,5 +1,6 @@
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { logClientActivity } from './clientAuthService.js';
+import { fireTrigger } from './automationEngine.js';
 
 /**
  * 1. GET /api/client/projects
@@ -302,6 +303,22 @@ export function submitClientOrder(client, data, ip = null, userAgent = null) {
     userAgent
   });
 
+  try {
+    fireTrigger('CLIENT', 'CLIENT_ORDER_SUBMITTED', 'CLIENT_ORDER', newOrder.id, null, {
+      project_id,
+      client_id: client.id,
+      order: {
+        id: newOrder.id,
+        title: newOrder.title,
+        order_type: newOrder.order_type,
+        priority: newOrder.priority,
+        project_id
+      }
+    });
+  } catch (tErr) {
+    console.error('[ClientFacingService] fireTrigger error:', tErr);
+  }
+
   return {
     message: 'Order submitted successfully',
     order: newOrder
@@ -541,6 +558,24 @@ export function decideMilestoneApproval(client, approvalId, data, ip = null, use
     ipAddress: ip,
     userAgent
   });
+
+  if (decision === 'APPROVED') {
+    try {
+      fireTrigger('CLIENT', 'CLIENT_MILESTONE_APPROVED', 'MILESTONE_APPROVAL', approvalId, null, {
+        project_id: approval.project_id || null,
+        client_id: client.id,
+        milestone_id: approval.milestone_id,
+        approval: {
+          id: approvalId,
+          milestone_id: approval.milestone_id,
+          decision: 'APPROVED',
+          decision_note: decision_note ? decision_note.trim() : null
+        }
+      });
+    } catch (tErr) {
+      console.error('[ClientFacingService] fireTrigger error:', tErr);
+    }
+  }
 
   return {
     message: `Milestone approval ${decision.toLowerCase()} successfully`,

@@ -1,4 +1,5 @@
 import { queryOne, queryAll, execute } from '../db/database.js';
+import { fireTrigger } from './automationEngine.js';
 
 /**
  * Helper to verify if user has Admin or Producer/Lead permissions for OKRs
@@ -1585,11 +1586,67 @@ export function submitCheckin({
     WHERE ch.id = ?
   `, [checkinId]);
 
-  return {
+  const result = {
     checkin: checkinRecord,
     key_result: updatedKr,
     parent_objective: updatedParentObjective
   };
+
+  try {
+    const parentObj = updatedParentObjective || {};
+    const objProgress = Number(parentObj.progress_pct) || 0;
+    const objStatus = parentObj.status || 'ON_TRACK';
+
+    fireTrigger('OKR', 'OKR_PROGRESS_UPDATED', 'KEY_RESULT', krId, user.id, {
+      project_id: kr.project_id || null,
+      progress_pct: objProgress,
+      status: objStatus,
+      key_result: {
+        id: krId,
+        title: kr.title,
+        progress_pct: krProgress,
+        status: krStatus
+      },
+      objective: {
+        id: kr.obj_id,
+        title: parentObj.title,
+        progress_pct: objProgress,
+        status: objStatus
+      }
+    });
+
+    if (objProgress >= 100) {
+      fireTrigger('OKR', 'OKR_PROGRESS_REACHED', 'OBJECTIVE', kr.obj_id, user.id, {
+        project_id: kr.project_id || null,
+        progress_pct: objProgress,
+        status: objStatus,
+        objective: {
+          id: kr.obj_id,
+          title: parentObj.title,
+          progress_pct: objProgress,
+          status: objStatus
+        }
+      });
+    }
+
+    if (objStatus === 'AT_RISK' || krStatus === 'AT_RISK') {
+      fireTrigger('OKR', 'OKR_AT_RISK', 'OBJECTIVE', kr.obj_id, user.id, {
+        project_id: kr.project_id || null,
+        status: 'AT_RISK',
+        progress_pct: objProgress,
+        objective: {
+          id: kr.obj_id,
+          title: parentObj.title,
+          progress_pct: objProgress,
+          status: 'AT_RISK'
+        }
+      });
+    }
+  } catch (tErr) {
+    console.error('[OkrService] fireTrigger error:', tErr);
+  }
+
+  return result;
 }
 
 /**

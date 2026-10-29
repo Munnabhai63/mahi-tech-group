@@ -1,6 +1,7 @@
 import { queryOne, queryAll, execute, getDatabase } from '../db/database.js';
 import { isSprintAdmin } from './sprintService.js';
 import { logAccess } from './auditService.js';
+import { fireTrigger } from './automationEngine.js';
 
 const VALID_TYPES = new Set(['STORY', 'BUG', 'TASK', 'EPIC']);
 const VALID_PRIORITIES = new Set(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
@@ -135,7 +136,27 @@ export function createBacklogItem({
   ]);
 
   const itemId = Number(result.lastInsertRowid);
-  return getBacklogItemDetail(itemId, userId);
+  const detail = getBacklogItemDetail(itemId, userId);
+
+  try {
+    fireTrigger('BACKLOG', 'ITEM_CREATED', 'BACKLOG_ITEM', itemId, userId, {
+      project_id,
+      item: {
+        id: itemId,
+        title: cleanTitle,
+        type: cleanType,
+        priority: cleanPriority,
+        story_points: cleanPoints,
+        assigned_to: assigned_to || null,
+        status: 'TODO',
+        project_id
+      }
+    });
+  } catch (tErr) {
+    console.error('[BacklogService] fireTrigger error:', tErr);
+  }
+
+  return detail;
 }
 
 /**
@@ -334,7 +355,26 @@ export function updateBacklogItem(itemId, fields, userId) {
     }
   }
 
-  return getBacklogItemDetail(itemId, userId);
+  const detail = getBacklogItemDetail(itemId, userId);
+
+  if (updates.assigned_to !== undefined) {
+    try {
+      fireTrigger('BACKLOG', 'ITEM_ASSIGNED', 'BACKLOG_ITEM', itemId, userId, {
+        project_id: item.project_id,
+        assigned_to: updates.assigned_to,
+        item: {
+          id: itemId,
+          title: detail.title,
+          assigned_to: updates.assigned_to,
+          project_id: item.project_id
+        }
+      });
+    } catch (tErr) {
+      console.error('[BacklogService] fireTrigger error:', tErr);
+    }
+  }
+
+  return detail;
 }
 
 /**
@@ -473,7 +513,30 @@ export function updateItemStatus(itemId, { status }, userId) {
     recordHistory(itemId, userId, 'status', item.status, upper);
   }
 
-  return getBacklogItemDetail(itemId, userId);
+  const detail = getBacklogItemDetail(itemId, userId);
+
+  if (upper !== item.status) {
+    try {
+      fireTrigger('BACKLOG', 'ITEM_STATUS_CHANGED', 'BACKLOG_ITEM', itemId, userId, {
+        project_id: item.project_id,
+        old_status: item.status,
+        new_status: upper,
+        status: upper,
+        is_overdue: false,
+        item: {
+          id: itemId,
+          title: item.title,
+          status: upper,
+          assigned_to: item.assigned_to,
+          project_id: item.project_id
+        }
+      });
+    } catch (tErr) {
+      console.error('[BacklogService] fireTrigger error:', tErr);
+    }
+  }
+
+  return detail;
 }
 
 /**
