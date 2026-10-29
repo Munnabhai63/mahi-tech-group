@@ -33,7 +33,7 @@ function handleServiceError(res, err) {
  * Body: { title, description, level, project_id, cycle, parent_objective_id, owner_id, status }
  * Role: Admin+ for COMPANY/TEAM level; Member for own INDIVIDUAL
  */
-router.post('/objective/create', authenticate, (req, res) => {
+router.post(['/objective/create', '/objectives', '/objective', '/'], authenticate, (req, res) => {
   try {
     const {
       title,
@@ -276,10 +276,12 @@ router.delete('/objective/:objectiveId', authenticate, (req, res) => {
  * Body: { objective_id, title, description, type, target_value, unit, assigned_to, due_date }
  * Role: Admin+ or objective owner
  */
-router.post('/kr/create', authenticate, (req, res) => {
+router.post(['/kr/create', '/key-results', '/objectives/:objectiveId/key-results'], authenticate, (req, res) => {
   try {
+    const objectiveId = req.params.objectiveId || req.body.objective_id;
     const kr = okrService.createKeyResult({
       ...req.body,
+      objective_id: objectiveId,
       user: req.user
     });
     return res.status(201).json(kr);
@@ -345,9 +347,10 @@ router.delete('/kr/:krId', authenticate, (req, res) => {
  *       recalculates parent Objective progress_pct automatically & propagates up parent chain
  * Role: KR assignee, Objective owner, or Admin+
  */
-router.post('/checkin/submit', authenticate, (req, res) => {
+router.post(['/checkin/submit', '/checkins', '/checkin', '/kr/:krId/check-in', '/kr/:krId/checkin'], authenticate, (req, res) => {
   try {
-    const { key_result_id, new_value, confidence, note } = req.body || {};
+    const key_result_id = req.params.krId || req.body.key_result_id || req.body.kr_id;
+    const { new_value, confidence, note } = req.body || {};
     const result = okrService.submitCheckin({
       key_result_id,
       new_value,

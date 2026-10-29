@@ -192,6 +192,35 @@ router.delete('/entry/:entryId', authenticate, (req, res) => {
   }
 });
 
+// REST Plural aliases for /entries
+router.post('/entries', authenticate, (req, res) => {
+  try {
+    const result = timeTrackingService.createManualEntry(req.body, req.user);
+    return res.status(201).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+router.patch('/entries/:entryId/approve', authenticate, (req, res) => {
+  try {
+    const result = timeTrackingService.approveTimeEntry(req.params.entryId, req.user);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+router.delete('/entries/:entryId', authenticate, (req, res) => {
+  try {
+    const reason = req.body?.reason || req.query?.reason || 'Verified test cleanup';
+    const result = timeTrackingService.deleteTimeEntry(req.params.entryId, reason, req.user);
+    return res.status(200).json(result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
 /**
  * GET /api/time/entries/my
  * Retrieves own time entries with optional filters (project_id, from, to, status)

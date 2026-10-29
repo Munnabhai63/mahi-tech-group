@@ -39,7 +39,7 @@ router.post('/', authenticate, (req, res) => {
  * Updates task status (TODO -> IN_PROGRESS -> DONE), triggers auto-unblock of child tasks,
  * and dynamically recalculates current_stage.
  */
-router.patch('/:id/status', authenticate, (req, res) => {
+router.patch(['/:id/status', '/:id'], authenticate, (req, res) => {
   const { id } = req.params;
   const { status } = req.body || {};
   const ipAddress = req.ip || req.socket.remoteAddress;

@@ -103,6 +103,8 @@ export function createApp() {
 
     if (firstRunActive) {
       if (
+        p === '/' ||
+        p === '/index.html' ||
         p.startsWith('/api/setup') ||
         p.startsWith('/api/health') ||
         p === '/setup' ||
@@ -152,13 +154,16 @@ export function createApp() {
   app.use('/api', dashboardRouter); // Covers /api/notifications/* and /api/activity/*
   app.use('/api/github/settings', githubSettingsRouter);
   app.use('/api/sprint', sprintRouter);
+  app.use('/api/sprints', sprintRouter);
   app.use('/api/backlog', backlogRouter);
   app.use('/api/okr', okrRouter);
+  app.use('/api/okrs', okrRouter);
   app.use('/api/gantt', ganttRouter);
   app.use('/api/workload', workloadRouter);
   app.use('/api/time', timeRouter);
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/client', clientRouter);
+  app.use('/api/clients', clientRouter);
   app.use('/api/finance', financeRouter);
   app.use('/api/automation', automationRouter);
   app.use('/api/wiki', wikiRouter);

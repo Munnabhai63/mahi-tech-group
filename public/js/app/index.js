@@ -205,7 +205,7 @@ function render404(path) {
   };
 }
 
-function isPublic(path) { return ['/', '/login', '/role-selection', '/signup', '/application-status', '/about', '/contact', '/mentorship', '/legal/terms', '/legal/privacy'].includes(path); }
+function isPublic(path) { return ['/', '/login', '/role-selection', '/signup', '/application-status', '/about', '/contact', '/mentorship', '/legal/terms', '/legal/privacy'].includes(path) || path.startsWith('/invite/'); }
 function isSigning(path) { return path.startsWith('/sign/'); }
 async function render() {
   if (rendering) return;

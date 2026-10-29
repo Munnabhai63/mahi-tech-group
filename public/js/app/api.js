@@ -9,7 +9,7 @@ const TOKEN_KEY = 'mtg_auth_token';
 
 export function getAuthToken() {
   try {
-    return localStorage.getItem(TOKEN_KEY) || localStorage.getItem('token') || null;
+    return localStorage.getItem(TOKEN_KEY) || localStorage.getItem('token') || localStorage.getItem('authToken') || null;
   } catch {
     return null;
   }

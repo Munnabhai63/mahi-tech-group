@@ -243,7 +243,7 @@ router.get('/expense/:expenseId/history', authenticate, (req, res) => {
  * Approves an expense, triggers budget recalculation and alert checks.
  * Role: Admin+
  */
-router.patch('/expense/:expenseId/approve', authenticate, (req, res) => {
+router.patch(['/expense/:expenseId/approve', '/expenses/:expenseId/approve'], authenticate, (req, res) => {
   try {
     const ipAddress = req.ip || req.socket.remoteAddress;
     const result = financeService.approveExpense(req.params.expenseId, req.user, ipAddress);

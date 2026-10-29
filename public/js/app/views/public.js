@@ -243,7 +243,10 @@ export function renderInvite(token) {
           if (!res.ok) throw new Error(data.error || data.message || 'Failed to accept invitation');
 
           if (data.token) {
+            localStorage.setItem('mtg_auth_token', data.token);
+            localStorage.setItem('token', data.token);
             localStorage.setItem('authToken', data.token);
+            localStorage.setItem('mtg-frontend-session-v1', JSON.stringify({ token: data.token, user: data.user, userId: data.user?.id }));
             localStorage.setItem('currentUser', JSON.stringify(data.user));
           }
 
