@@ -2297,6 +2297,7 @@ BEGIN SELECT RAISE(ABORT, 'wiki_page_versions is append-only'); END;
 
 CREATE TRIGGER IF NOT EXISTS prevent_page_version_delete
 BEFORE DELETE ON wiki_page_versions
+WHEN (SELECT 1 FROM wiki_pages WHERE id = OLD.page_id) IS NOT NULL
 BEGIN SELECT RAISE(ABORT, 'wiki_page_versions is append-only'); END;
 
 -- SQLite FTS5 Virtual Table for full-text search
