@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wiki Full-Text Search — Mahi Tech Group</title>
+  <meta name="description" content="Instant SQLite FTS5 search across all accessible documentation spaces with highlighted matches.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #24344d;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-primary-hover: #0284c7;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --glass-bg: rgba(15, 23, 42, 0.85);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Nav */
+    .top-nav {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .nav-link-sub.active {
+      color: var(--color-primary);
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    /* Search Container */
+    .search-wrap {
+      max-width: 900px;
+      width: 100%;
+      margin: 2.5rem auto;
+      padding: 0 1.5rem;
+      flex: 1;
+    }
+
+    .search-hero-title {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .search-hero-title h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin: 0 0 0.5rem 0;
+      letter-spacing: -0.03em;
+    }
+    .search-hero-title p {
+      color: var(--text-muted);
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    /* Big Search Input */
+    .search-bar-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      margin-bottom: 1.25rem;
+      transition: all 0.2s;
+    }
+    .search-bar-box:focus-within {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+
+    .search-icon-big {
+      font-size: 1.35rem;
+      color: var(--text-muted);
+    }
+
+    .search-input-field {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 1.1rem;
+      outline: none;
+      padding: 0.5rem 0;
+    }
+    .search-input-field::placeholder { color: rgba(148, 163, 184, 0.45); }
+
+    .clear-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0.25rem;
+      display: none;
+    }
+    .clear-btn:hover { color: var(--text-main); }
+
+    /* Filters Row */
+    .search-filters-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .select-space-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .select-space-box:focus { border-color: var(--color-primary); }
+
+    .status-filter-pills {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .status-pill {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .status-pill:hover, .status-pill.active {
+      color: var(--text-main);
+      border-color: var(--color-primary);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    /* Recent Searches */
+    .recent-searches-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+    .recent-chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-light);
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      cursor: pointer;
+      color: #cbd5e1;
+      transition: all 0.15s;
+    }
+    .recent-chip:hover {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+
+    /* Results List */
+    .results-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .result-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.25rem;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: block;
+      color: inherit;
+    }
+    .result-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.5);
+      background: var(--bg-card-hover);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .result-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .result-space-badge {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      border: 1px solid var(--border-light);
+    }
+
+    .result-excerpt {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.55;
+      margin: 0 0 0.75rem 0;
+    }
+    .result-excerpt mark {
+      background: rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+      padding: 0.1rem 0.25rem;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    .result-footer {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .empty-search-state {
+      text-align: center;
+      padding: 3.5rem 1rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/wiki-spaces.html" class="brand-title">
+        <span>📚</span> Mahi Wiki
+      </a>
+      <nav class="nav-links-sub">
+        <a href="/wiki-spaces.html" class="nav-link-sub">Spaces</a>
+        <a href="/wiki-search.html" class="nav-link-sub active">Search</a>
+        <a href="/wiki-templates.html" class="nav-link-sub">Templates</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Search Content Main -->
+  <main class="search-wrap">
+    
+    <div class="search-hero-title">
+      <h1>Knowledge Base Search</h1>
+      <p>Instant full-text search across all documentation, engineering SOPs, and project notes.</p>
+    </div>
+
+    <!-- Search Input Box -->
+    <div class="search-bar-box">
+      <span class="search-icon-big">🔍</span>
+      <input type="text" id="mainSearchInput" class="search-input-field" placeholder="Search by topic, architecture keyword, error RCA..." autofocus>
+      <button id="clearSearchBtn" class="clear-btn">&times;</button>
+    </div>
+
+    <!-- Filters Row -->
+    <div class="search-filters-row">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <select id="spaceSelectFilter" class="select-space-box">
+          <option value="">All Accessible Spaces</option>
+          <!-- Injected via JavaScript -->
+        </select>
+      </div>
+
+      <div class="status-filter-pills">
+        <button class="status-pill active" data-status="">All Statuses</button>
+        <button class="status-pill" data-status="PUBLISHED">Published</button>
+        <button class="status-pill" data-status="DRAFT">Draft</button>
+        <button class="status-pill" data-status="ARCHIVED">Archived</button>
+      </div>
+    </div>
+
+    <!-- Recent Searches -->
+    <div id="recentSearchesRow" class="recent-searches-wrap" style="display: none;">
+      <span>Recent:</span>
+      <div id="recentChipsList" style="display: flex; gap: 0.4rem; flex-wrap: wrap;"></div>
+    </div>
+
+    <!-- Results List -->
+    <div id="searchResultsList" class="results-container">
+      <!-- Search results injected here -->
+    </div>
+
+    <!-- Initial / Empty State -->
+    <div id="emptySearchNotice" class="empty-search-state">
+      <div style="font-size: 2.5rem; margin-bottom: 0.85rem;">⚡</div>
+      <h3>SQLite FTS5 Ranked Search</h3>
+      <p>Type keywords above to instantly search page titles and full Markdown content.</p>
+    </div>
+
+  </main>
+
+  <script>
+    // -------------------------------------------------------------------------
+    // Full-Text Search Frontend Controller
+    // -------------------------------------------------------------------------
+    let debounceTimer = null;
+    let activeStatusFilter = '';
+    const MAX_RECENT_SEARCHES = 5;
+
+    function getAuthToken() {
+      return localStorage.getItem('token') || localStorage.getItem('client_token');
+    }
+
+    async function init() {
+      const token = getAuthToken();
+      if (!token) {
+        window.location.href = '/index.html';
+        return;
+      }
+
+      await loadSpacesDropdown();
+      renderRecentSearches();
+      setupEventListeners();
+
+      // Check query param 'q' in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialQuery = urlParams.get('q');
+      if (initialQuery) {
+        document.getElementById('mainSearchInput').value = initialQuery;
+        document.getElementById('clearSearchBtn').style.display = 'block';
+        performSearch(initialQuery);
+      }
+    }
+
+    async function loadSpacesDropdown() {
+      const token = getAuthToken();
+      try {
+        const res = await fetch('/api/wiki/spaces', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const spaces = await res.json();
+          const select = document.getElementById('spaceSelectFilter');
+          spaces.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = `${s.icon || '📁'} ${s.name}`;
+            select.appendChild(opt);
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load spaces dropdown:', err);
+      }
+    }
+
+    function setupEventListeners() {
+      const input = document.getElementById('mainSearchInput');
+      const clearBtn = document.getElementById('clearSearchBtn');
+
+      input.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        clearBtn.style.display = val ? 'block' : 'none';
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (val.length >= 2) {
+            saveRecentSearch(val);
+            performSearch(val);
+          } else if (val.length === 0) {
+            clearResults();
+          }
+        }, 300);
+      });
+
+      clearBtn.addEventListener('click', () => {
+        input.value = '';
+        clearBtn.style.display = 'none';
+        clearResults();
+        input.focus();
+      });
+
+      // Space filter change
+      document.getElementById('spaceSelectFilter').addEventListener('change', () => {
+        const q = input.value.trim();
+        if (q.length >= 2) performSearch(q);
+      });
+
+      // Status pill change
+      document.querySelectorAll('.status-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.status-pill').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeStatusFilter = btn.dataset.status;
+          const q = input.value.trim();
+          if (q.length >= 2) performSearch(q);
+        });
+      });
+    }
+
+    async function performSearch(query) {
+      const token = getAuthToken();
+      const spaceId = document.getElementById('spaceSelectFilter').value;
+      const emptyNotice = document.getElementById('emptySearchNotice');
+      const resultsContainer = document.getElementById('searchResultsList');
+
+      let url = `/api/wiki/search?q=${encodeURIComponent(query)}`;
+      if (spaceId) url += `&space_id=${encodeURIComponent(spaceId)}`;
+      if (activeStatusFilter) url += `&status=${encodeURIComponent(activeStatusFilter)}`;
+
+      try {
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error('Search request failed');
+        const results = await res.json();
+
+        if (!results.length) {
+          resultsContainer.innerHTML = '';
+          emptyNotice.style.display = 'block';
+          emptyNotice.innerHTML = `
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
+            <h3>No documentation pages found for "${escapeHtml(query)}"</h3>
+            <p>Try different keywords, wildcards, or check for typos.</p>
+          `;
+          return;
+        }
+
+        emptyNotice.style.display = 'none';
+        resultsContainer.innerHTML = results.map(r => `
+          <a href="/wiki-page-view.html?id=${r.page_id}" class="result-card">
+            <div class="result-header">
+              <h3 class="result-title">
+                <span>${r.emoji_icon || '📄'}</span>
+                <span>${escapeHtml(r.title)}</span>
+              </h3>
+              <span class="result-space-badge">${escapeHtml(r.space_name)}</span>
+            </div>
+            <div class="result-excerpt">${sanitizeSnippet(r.excerpt)}</div>
+            <div class="result-footer">
+              <span>Status: <strong>${r.status}</strong></span>
+              <span>•</span>
+              <span>Updated ${formatRelativeTime(r.updated_at)}</span>
+            </div>
+          </a>
+        `).join('');
+      } catch (err) {
+        console.error('Search error:', err);
+      }
+    }
+
+    function clearResults() {
+      document.getElementById('searchResultsList').innerHTML = '';
+      const emptyNotice = document.getElementById('emptySearchNotice');
+      emptyNotice.style.display = 'block';
+      emptyNotice.innerHTML = `
+        <div style="font-size: 2.5rem; margin-bottom: 0.85rem;">⚡</div>
+        <h3>SQLite FTS5 Ranked Search</h3>
+        <p>Type keywords above to instantly search page titles and full Markdown content.</p>
+      `;
+    }
+
+    function saveRecentSearch(term) {
+      if (!term || term.length < 2) return;
+      let recents = getRecentSearches();
+      recents = recents.filter(item => item.toLowerCase() !== term.toLowerCase());
+      recents.unshift(term);
+      if (recents.length > MAX_RECENT_SEARCHES) recents.pop();
+      localStorage.setItem('wiki_recent_searches', JSON.stringify(recents));
+      renderRecentSearches();
+    }
+
+    function getRecentSearches() {
+      try {
+        const stored = localStorage.getItem('wiki_recent_searches');
+        return stored ? JSON.parse(stored) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function renderRecentSearches() {
+      const recents = getRecentSearches();
+      const container = document.getElementById('recentSearchesRow');
+      const list = document.getElementById('recentChipsList');
+
+      if (!recents.length) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'flex';
+      list.innerHTML = recents.map(item => `
+        <span class="recent-chip" onclick="applyRecentSearch('${escapeHtml(item)}')">${escapeHtml(item)}</span>
+      `).join('');
+    }
+
+    window.applyRecentSearch = function(term) {
+      const input = document.getElementById('mainSearchInput');
+      input.value = term;
+      document.getElementById('clearSearchBtn').style.display = 'block';
+      performSearch(term);
+    };
+
+    function sanitizeSnippet(snippetStr) {
+      if (!snippetStr) return 'No excerpt available.';
+      // Allow only <mark> and </mark> tags generated by SQLite snippet()
+      return snippetStr
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/&lt;mark&gt;/g, '<mark>')
+        .replace(/&lt;\/mark&gt;/g, '</mark>');
+    }
+
+    function formatRelativeTime(dateStr) {
+      if (!dateStr) return 'recently';
+      const d = new Date(dateStr);
+      const diffSecs = Math.floor((Date.now() - d.getTime()) / 1000);
+      if (diffSecs < 60) return 'just now';
+      if (diffSecs < 3600) return `${Math.floor(diffSecs / 60)}m ago`;
+      if (diffSecs < 86400) return `${Math.floor(diffSecs / 3600)}h ago`;
+      return `${Math.floor(diffSecs / 86400)}d ago`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

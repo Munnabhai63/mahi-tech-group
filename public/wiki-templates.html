@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wiki Template Library — Mahi Tech Group</title>
+  <meta name="description" content="Pre-built and custom documentation templates for SOPs, PRDs, Meeting Notes, and Architecture Decision Records.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #24344d;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-primary-hover: #0284c7;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --glass-bg: rgba(15, 23, 42, 0.85);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Nav */
+    .top-nav {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .nav-link-sub.active {
+      color: var(--color-primary);
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    /* Container */
+    .templates-wrap {
+      max-width: 1200px;
+      width: 100%;
+      margin: 2rem auto;
+      padding: 0 1.75rem 4rem 1.75rem;
+      flex: 1;
+    }
+
+    .header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .header-title h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      margin: 0 0 0.5rem 0;
+      letter-spacing: -0.03em;
+    }
+    .header-title p {
+      color: var(--text-muted);
+      margin: 0;
+      font-size: 0.92rem;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--color-primary); color: #04101e; }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+    .btn-secondary { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-card); }
+    .btn-secondary:hover { background: var(--bg-card-hover); border-color: var(--color-primary); }
+
+    /* Category Filter Tabs */
+    .category-tabs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .category-tab {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      padding: 0.4rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .category-tab:hover, .category-tab.active {
+      color: var(--text-main);
+      border-color: var(--color-primary);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    /* Template Cards Grid */
+    .templates-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .template-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.35rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.2s;
+    }
+    .template-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+      border-color: rgba(56, 189, 248, 0.4);
+      background: var(--bg-card-hover);
+    }
+
+    .template-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .category-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--color-primary);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    .system-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--color-accent);
+      background: rgba(129, 140, 248, 0.12);
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid rgba(129, 140, 248, 0.25);
+    }
+
+    .template-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 0 0 0.45rem 0;
+      color: var(--text-main);
+    }
+
+    .template-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin: 0 0 1rem 0;
+      flex: 1;
+    }
+
+    .template-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-card);
+      padding-top: 0.85rem;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      max-width: 650px;
+      width: 100%;
+      padding: 1.75rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+    .modal-header h3 { font-family: 'Outfit', sans-serif; margin: 0; font-size: 1.3rem; }
+    .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-muted); }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.55rem 0.75rem;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.875rem;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/wiki-spaces.html" class="brand-title">
+        <span>📚</span> Mahi Wiki
+      </a>
+      <nav class="nav-links-sub">
+        <a href="/wiki-spaces.html" class="nav-link-sub">Spaces</a>
+        <a href="/wiki-search.html" class="nav-link-sub">Search</a>
+        <a href="/wiki-templates.html" class="nav-link-sub active">Templates</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Templates View -->
+  <main class="templates-wrap">
+    
+    <div class="header-bar">
+      <div class="header-title">
+        <h1>Wiki Template Library</h1>
+        <p>Accelerate documentation with pre-seeded engineering, architecture, and team templates.</p>
+      </div>
+      <div>
+        <button id="createTemplateBtn" class="btn btn-primary" style="display: none;">
+          ➕ Create Template
+        </button>
+      </div>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div class="category-tabs">
+      <button class="category-tab active" data-category="">All Templates</button>
+      <button class="category-tab" data-category="SOP">SOP</button>
+      <button class="category-tab" data-category="MEETING_NOTES">Meeting Notes</button>
+      <button class="category-tab" data-category="PROJECT_DOC">Project Docs</button>
+      <button class="category-tab" data-category="ONBOARDING">Onboarding</button>
+      <button class="category-tab" data-category="TECHNICAL">Technical</button>
+      <button class="category-tab" data-category="RETROSPECTIVE">Retrospective</button>
+      <button class="category-tab" data-category="GENERAL">General</button>
+    </div>
+
+    <!-- Template Cards Grid -->
+    <div id="templatesGrid" class="templates-grid">
+      <!-- Templates injected via JavaScript -->
+    </div>
+
+  </main>
+
+  <!-- Create Template Modal (Admin Only) -->
+  <div id="createTemplateModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Create Documentation Template</h3>
+        <button class="modal-close" id="closeModalBtn">&times;</button>
+      </div>
+      <form id="createTemplateForm">
+        <div class="form-group">
+          <label for="templateNameInput">Template Name *</label>
+          <input type="text" id="templateNameInput" required placeholder="e.g. Incident Post-Mortem Template">
+        </div>
+        <div class="form-group">
+          <label for="templateCategoryInput">Category *</label>
+          <select id="templateCategoryInput">
+            <option value="GENERAL">GENERAL</option>
+            <option value="SOP">SOP</option>
+            <option value="MEETING_NOTES">MEETING_NOTES</option>
+            <option value="PROJECT_DOC">PROJECT_DOC</option>
+            <option value="ONBOARDING">ONBOARDING</option>
+            <option value="TECHNICAL">TECHNICAL</option>
+            <option value="RETROSPECTIVE">RETROSPECTIVE</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="templateDescInput">Description</label>
+          <textarea id="templateDescInput" rows="2" placeholder="Brief summary of when to use this template..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="templateContentInput">Content Blocks (JSON format)</label>
+          <textarea id="templateContentInput" rows="6" placeholder='[{"type":"HEADING_1","content":"Section 1"},{"type":"PARAGRAPH","content":"Details..."}]'></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary" id="cancelModalBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Template</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------------------
+    // Templates Library Logic
+    // -------------------------------------------------------------------------
+    let currentAuthUser = null;
+    let allTemplates = [];
+    let activeCategory = '';
+
+    function getAuthToken() {
+      return localStorage.getItem('token') || localStorage.getItem('client_token');
+    }
+
+    async function init() {
+      const token = getAuthToken();
+      if (!token) {
+        window.location.href = '/index.html';
+        return;
+      }
+
+      await verifyUserSession(token);
+      await fetchTemplates();
+      setupEventListeners();
+    }
+
+    async function verifyUserSession(token) {
+      try {
+        const res = await fetch('/api/users/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          currentAuthUser = await res.json();
+          if (['admin', 'superadmin'].includes(currentAuthUser.role)) {
+            document.getElementById('createTemplateBtn').style.display = 'inline-flex';
+          }
+        }
+      } catch (err) {
+        console.error('Session error:', err);
+      }
+    }
+
+    async function fetchTemplates() {
+      const token = getAuthToken();
+      try {
+        let url = '/api/wiki/templates';
+        if (activeCategory) {
+          url += `?category=${encodeURIComponent(activeCategory)}`;
+        }
+
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error('Failed to load templates');
+        allTemplates = await res.json();
+        renderTemplates();
+      } catch (err) {
+        console.error('Fetch templates error:', err);
+      }
+    }
+
+    function renderTemplates() {
+      const grid = document.getElementById('templatesGrid');
+      if (!allTemplates.length) {
+        grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1; text-align: center;">No templates found in this category.</p>';
+        return;
+      }
+
+      grid.innerHTML = allTemplates.map(t => {
+        const isSystem = t.is_system_template === 1;
+        return `
+          <div class="template-card">
+            <div class="template-card-top">
+              <span class="category-pill">${escapeHtml(t.category)}</span>
+              ${isSystem ? '<span class="system-badge">🛡️ System Template</span>' : ''}
+            </div>
+
+            <h3 class="template-title">${escapeHtml(t.name)}</h3>
+            <p class="template-desc">${escapeHtml(t.description || t.preview_text || 'Standard template structure.')}</p>
+
+            <div class="template-footer">
+              <span style="font-size: 0.75rem; color: var(--text-muted);">
+                Used ${t.usage_count || 0} times
+              </span>
+              <div style="display: flex; gap: 0.4rem;">
+                <a href="/wiki-editor.html?template_id=${t.id}" class="btn btn-primary" style="padding: 0.35rem 0.75rem; font-size: 0.78rem;">
+                  Use Template &rarr;
+                </a>
+                ${!isSystem && ['admin', 'superadmin'].includes(currentAuthUser?.role) ? `
+                  <button class="btn btn-secondary" style="padding: 0.35rem 0.6rem; color: var(--color-danger);" onclick="deleteCustomTemplate(${t.id})">
+                    🗑️
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.deleteCustomTemplate = async function(id) {
+      if (!confirm('Are you sure you want to delete this custom template?')) return;
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`/api/wiki/template/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          await fetchTemplates();
+        } else {
+          const err = await res.json();
+          alert(err.error || 'Failed to delete template');
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    function setupEventListeners() {
+      // Category tabs
+      document.querySelectorAll('.category-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          activeCategory = tab.dataset.category;
+          fetchTemplates();
+        });
+      });
+
+      // Modal open/close
+      const modal = document.getElementById('createTemplateModal');
+      document.getElementById('createTemplateBtn').addEventListener('click', () => {
+        modal.classList.add('active');
+      });
+      document.getElementById('closeModalBtn').addEventListener('click', () => {
+        modal.classList.remove('active');
+      });
+      document.getElementById('cancelModalBtn').addEventListener('click', () => {
+        modal.classList.remove('active');
+      });
+
+      // Form submission
+      document.getElementById('createTemplateForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const token = getAuthToken();
+        const rawContent = document.getElementById('templateContentInput').value.trim();
+        let contentJson = rawContent;
+        if (!contentJson) {
+          contentJson = JSON.stringify([
+            { type: 'HEADING_1', content: document.getElementById('templateNameInput').value.trim() },
+            { type: 'PARAGRAPH', content: 'Document section details...' }
+          ]);
+        }
+
+        const payload = {
+          name: document.getElementById('templateNameInput').value.trim(),
+          category: document.getElementById('templateCategoryInput').value,
+          description: document.getElementById('templateDescInput').value.trim(),
+          content: contentJson,
+          preview_text: document.getElementById('templateDescInput').value.trim()
+        };
+
+        try {
+          const res = await fetch('/api/wiki/template/save', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Failed to save template');
+          }
+
+          modal.classList.remove('active');
+          document.getElementById('createTemplateForm').reset();
+          await fetchTemplates();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
