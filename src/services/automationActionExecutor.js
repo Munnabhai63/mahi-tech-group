@@ -69,7 +69,7 @@ export function resolveActionParams(params, triggerData = {}, recordedVariables 
  */
 function handleSendNotification(params, triggerData, context) {
   const message = params.message || 'Notification';
-  const target = String(params.to || 'ASSIGNEE').toUpperCase();
+  const target = String(params.to || params.recipient_type || 'ASSIGNEE').toUpperCase();
   const projectId = params.project_id || triggerData.project_id || null;
 
   const recipientIds = new Set();
@@ -533,7 +533,7 @@ function handleStopIf(params, triggerData, context) {
  * Dispatches an individual declarative action
  */
 export function executeAction(actionObj, triggerData = {}, context = {}) {
-  const actionType = String(actionObj.action || actionObj.type || '').toUpperCase();
+  const actionType = String(actionObj.action || actionObj.type || actionObj.action_type || '').toUpperCase();
 
   if (!SUPPORTED_ACTIONS.includes(actionType)) {
     throw new Error(`Unsupported action type: "${actionType}". Declarative automation only.`);

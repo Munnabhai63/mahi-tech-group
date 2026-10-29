@@ -92,13 +92,10 @@ async function run() {
   // Test Fixtures
   const admin = queryOne("SELECT * FROM users WHERE role IN ('admin', 'superadmin') LIMIT 1;") || { id: 1, role: 'admin' };
   const member = queryOne("SELECT * FROM users WHERE role = 'developer' LIMIT 1;") || { id: 2, role: 'developer' };
-  let project = queryOne("SELECT * FROM projects LIMIT 1;");
-  if (!project) {
-    const projId = crypto.randomUUID();
-    const ideaId = crypto.randomUUID();
-    execute("INSERT INTO projects (id, idea_id, title, owner_id) VALUES (?, ?, 'Layer 5 Test Project', ?);", [projId, ideaId, admin.id]);
-    project = { id: projId, title: 'Layer 5 Test Project' };
-  }
+  const projId = crypto.randomUUID();
+  const existingIdea = queryOne("SELECT id FROM ideas LIMIT 1;");
+  execute("INSERT INTO projects (id, idea_id, title, owner_id) VALUES (?, ?, 'Layer 5 Test Project', ?);", [projId, existingIdea ? existingIdea.id : null, admin.id]);
+  const project = { id: projId, title: 'Layer 5 Test Project' };
 
   // ---------------------------------------------------------------------------
   // 1. SPRINT TRIGGERS (SPRINT_STARTED, SPRINT_COMPLETED)
@@ -106,6 +103,9 @@ async function run() {
   console.log('\n--- 1. Sprint Triggers ---');
   ensureRule('SPRINT', 'SPRINT_STARTED', 'Test Sprint Started');
   ensureRule('SPRINT', 'SPRINT_COMPLETED', 'Test Sprint Completed');
+
+  // Complete any prior active sprints in project to respect single active sprint invariant
+  execute("UPDATE sprints SET status = 'COMPLETED' WHERE project_id = ? AND status = 'ACTIVE';", [project.id]);
 
   const sprintName = `Sprint-L5-${Date.now()}`;
   const sprint = createSprint({
@@ -293,12 +293,19 @@ async function run() {
   console.log('\n--- 5. Workload Triggers ---');
   ensureRule('WORKLOAD', 'MEMBER_OVERLOADED', 'Test Member Overloaded');
 
+  const workloadUserId = crypto.randomUUID();
+  execute(
+    "INSERT INTO users (id, name, email, password_hash, role, status) VALUES (?, 'Workload User L5', ?, 'dummy_hash', 'developer', 'active');",
+    [workloadUserId, `workload_user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}@test.com`]
+  );
+  execute("INSERT OR IGNORE INTO project_members (id, project_id, user_id, role_in_project) VALUES (?, ?, ?, 'backend_dev');", [crypto.randomUUID(), project.id, workloadUserId]);
+
   const dynamicWeek = new Date(Date.now() + Math.floor(Math.random() * 5000000000) + 1000000000).toISOString().split('T')[0];
-  evaluateAndCreateWorkloadAlert(member.id, dynamicWeek, 60, 40); // 150% utilization
+  evaluateAndCreateWorkloadAlert(workloadUserId, dynamicWeek, 60, 40); // 150% utilization
 
   const memberOverloadedJob = queryOne(
     "SELECT * FROM automation_queue WHERE trigger_event = 'MEMBER_OVERLOADED' AND triggered_by_user_id = ? ORDER BY id DESC LIMIT 1;",
-    [member.id]
+    [workloadUserId]
   );
   assert(memberOverloadedJob && memberOverloadedJob.status === 'QUEUED', 'MEMBER_OVERLOADED enqueued in automation_queue');
   const utilPayload = JSON.parse(memberOverloadedJob.trigger_data);

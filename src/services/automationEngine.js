@@ -175,8 +175,10 @@ export function evaluateConditions(conditionsInput, conditionLogic = 'AND', trig
  * Maps an action to potential event triggers it produces
  */
 export function getEventsFromAction(actionObj) {
-  if (!actionObj || !actionObj.action) return [];
-  const action = String(actionObj.action).toUpperCase();
+  if (!actionObj) return [];
+  const actionType = actionObj.action || actionObj.action_type || '';
+  if (!actionType) return [];
+  const action = String(actionType).toUpperCase();
   const params = actionObj.params || {};
   const events = [];
 
@@ -356,8 +358,25 @@ export function checkRateLimits(projectId, ruleId) {
  */
 export function fireTrigger(module, event, sourceType, sourceId, userId = null, data = {}) {
   try {
-    const cleanModule = String(module || '').toUpperCase();
-    const cleanEvent = String(event || '').toUpperCase();
+    let cleanModule, cleanEvent, sType, sId, uId, d;
+    if (typeof module === 'object' && module !== null && !event) {
+      cleanModule = String(module.module || '').toUpperCase();
+      cleanEvent = String(module.event || '').toUpperCase();
+      sType = module.sourceType || module.source_type;
+      sId = module.sourceId || module.source_id;
+      uId = module.userId || module.user_id;
+      d = module.data || {};
+      if (module.projectId && !d.project_id) {
+        d.project_id = module.projectId;
+      }
+    } else {
+      cleanModule = String(module || '').toUpperCase();
+      cleanEvent = String(event || '').toUpperCase();
+      sType = sourceType;
+      sId = sourceId;
+      uId = userId;
+      d = data || {};
+    }
 
     // Query active rules matching module and event
     const matchingRules = queryAll(
@@ -370,8 +389,8 @@ export function fireTrigger(module, event, sourceType, sourceId, userId = null, 
       return { enqueued: 0, queue_ids: [] };
     }
 
-    const projectId = data.project_id || (sourceType === 'PROJECT' ? sourceId : null);
-    const triggerDataSnapshot = JSON.stringify(data || {});
+    const projectId = d.project_id || (sType === 'PROJECT' ? sId : null);
+    const triggerDataSnapshot = JSON.stringify(d || {});
     const queueIds = [];
 
     for (const rule of matchingRules) {

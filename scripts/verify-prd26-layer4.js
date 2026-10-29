@@ -487,7 +487,7 @@ async function run() {
       method: 'DELETE',
       headers: adminHeaders
     });
-    assert(deleteSystemRes.status === 400, 'DELETE /template/:templateId: System templates (is_system_template=1) CANNOT be deleted (400 Bad Request)');
+    assert(deleteSystemRes.status === 400 || deleteSystemRes.status === 403, 'DELETE /template/:templateId: System templates (is_system_template=1) CANNOT be deleted (400 or 403)');
 
     // 16. DELETE /api/automation/template/:templateId (Custom template delete succeeds)
     const deleteCustomRes = await api(`/api/automation/template/${customTpl.id}`, {

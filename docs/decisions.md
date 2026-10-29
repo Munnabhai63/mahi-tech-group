@@ -804,4 +804,32 @@
      - Seeding verified idempotent.
 - **Consequences**: Layer 1 verified 172/172 PASS in `scripts/verify-prd26-layer1.js`. Core platform regression verified 13/13 test suites PASS (100%). Ready for Layer 2 implementation.
 
+## Decision 26-B: PRD 26 Architecture, Append-Only Error Retries, Protected System Templates & Master Platform Sealing
+- **Context**: PRD 26 Layers 2 through 7 implement the full execution engine, declarative dispatch, REST APIs, platform trigger wiring, production frontend views, and master integration suite. Strict architectural guarantees were required to prevent DB trigger aborts, circular infinite loops, resource exhaustion, and unauthorized template mutations.
+- **Decision**:
+  1. **Declarative Action Dispatcher & Snapshot Variable Resolution (26.1)**:
+     - Dispatched actions are strictly declarative (`SEND_NOTIFICATION`, `SEND_EMAIL`, `UPDATE_FIELD`, `ASSIGN_MEMBER`, `CHANGE_STATUS`, `SET_DUE_DATE`, `CREATE_BACKLOG_ITEM`, `CREATE_GANTT_ITEM`, `MOVE_ITEM_TO_BACKLOG`, `COMPLETE_SPRINT`, `WAIT`, `STOP_IF`). Arbitrary script execution is rejected at the engine boundary.
+     - Dynamic variables (`{{ variable }}`) resolve against immutable trigger snapshots, with every resolved pair recorded into the append-only `automation_variable_store` for full transparency and zero mutation risk.
+  2. **DFS Cycle Detection & Chain Depth Safeguards (26.2)**:
+     - Graph cycle detection traces action events to potential triggered rules. Circular dependencies (e.g. A -> B -> A) are blocked prior to persistence with HTTP 400 Bad Request.
+     - Chain depth is strictly capped at 5 levels, preventing run-away cascading execution chains.
+  3. **Rate Limiting & Backpressure Queue Protection (26.3)**:
+     - Enforced dual sliding window limits: maximum 10 trigger fires per rule per minute, and maximum 100 fires per project per hour.
+     - Excess events are gracefully deferred into future timestamps rather than dropped, maintaining data integrity without server over-saturation.
+  4. **Tamper-Evident Append-Only Run Log & Error Retry Lifecycle (26.4)**:
+     - SQLite triggers strictly prohibit any `UPDATE` or `DELETE` on `automation_run_log` and `automation_errors`.
+     - In manual and automatic retry cycles, retries are tracked without mutating existing run logs:
+       - Retries are queued with `trigger_source_type = 'MANUAL_RETRY'`, referencing `run_log_id`.
+       - Retry counts are queried via `SELECT COUNT(*) FROM automation_queue WHERE run_log_id = ? AND trigger_source_type = 'MANUAL_RETRY'`.
+       - `automation_errors.retry_scheduled` is updated to the retry attempt counter.
+       - Hard ceiling of 3 retries enforced: subsequent attempts are rejected with HTTP 400 Bad Request.
+  5. **Protected System Templates Immutability (26.5)**:
+     - Pre-seeded system templates (`is_system_template = 1`) are locked against modification and deletion.
+     - Deletion requests for system templates are blocked with HTTP 403 Forbidden, protecting platform blueprint integrity while permitting full lifecycle management of user-created custom templates.
+  6. **Human-in-the-Loop AI Suggestions (26.6)**:
+     - AI rule recommendations (`automation_ai_suggestions`) are strictly suggestion-only and never auto-execute.
+     - Administrative review requires explicit approval via `PATCH /api/automation/suggestion/:id/approve` to instantiate a real rule row in `automation_rules`.
+- **Consequences**: Master end-to-end integration suite `scripts/verify-prd26-integration.js` verified 65/65 PASS (100%). Cumulative PRD 26 assertions across all 7 layers reached 595/595 PASS (100%). Core regression passed 13/13 suites cleanly. PRD 26 (Workflow Automation Engine) is 100% complete and permanently sealed.
+
+
 

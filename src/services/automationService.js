@@ -629,8 +629,10 @@ export function testRuleDryRun(ruleId, mockTriggerData = {}, currentUser, ipAddr
       const simulatedParams = resolveActionParams(act.params || {}, mockTriggerData || {}, recordedVariables);
       return {
         action_index: index,
-        action: act.action,
+        action: act.action || act.action_type,
+        action_type: act.action_type || act.action,
         simulated_params: simulatedParams,
+        rendered_params: simulatedParams,
         status: 'WOULD_FIRE',
         variables_resolved: recordedVariables
       };
@@ -649,8 +651,9 @@ export function testRuleDryRun(ruleId, mockTriggerData = {}, currentUser, ipAddr
     rule_id: rule.id,
     rule_name: rule.name,
     conditions_passed: condResult.passed ? 1 : 0,
-    conditions_evaluated: condResult.evaluations || [],
+    conditions_evaluated: condResult.details || condResult.evaluations || [],
     actions_that_would_fire: actionsThatWouldFire,
+    actions_resolved: actionsThatWouldFire,
     estimated_outcome: estimatedOutcome
   };
 }
@@ -842,12 +845,12 @@ export function retryError(errorId, currentUser, ipAddress = null) {
     throw { status: 404, message: 'Associated run log not found' };
   }
 
-  const priorAttemptsCount = queryOne(
-    'SELECT COUNT(*) as count FROM automation_queue WHERE run_log_id = ?;',
+  const retryCount = queryOne(
+    "SELECT COUNT(*) as count FROM automation_queue WHERE run_log_id = ? AND trigger_source_type = 'MANUAL_RETRY';",
     [runLog.id]
   )?.count || 0;
 
-  if (priorAttemptsCount >= 3) {
+  if (retryCount >= 3) {
     throw { status: 400, message: 'Max 3 retries reached for this automation run' };
   }
 
@@ -857,25 +860,25 @@ export function retryError(errorId, currentUser, ipAddress = null) {
   );
   const triggerData = existingJob ? existingJob.trigger_data : '{}';
 
+  const nextRetryAttempt = retryCount + 1;
   const insertQueue = execute(
     `INSERT INTO automation_queue (
        automation_id, run_log_id, trigger_event, trigger_source_type, trigger_source_id,
        triggered_by_user_id, trigger_data, status, scheduled_at, attempts, max_attempts,
        created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'QUEUED', datetime('now'), ?, 3, datetime('now'), datetime('now'));`,
+     ) VALUES (?, ?, ?, 'MANUAL_RETRY', ?, ?, ?, 'QUEUED', datetime('now'), ?, 3, datetime('now'), datetime('now'));`,
     [
       runLog.automation_id,
       runLog.id,
       runLog.trigger_event,
-      runLog.trigger_source_type,
       runLog.trigger_source_id,
       runLog.triggered_by_user_id,
       triggerData,
-      priorAttemptsCount + 1
+      nextRetryAttempt
     ]
   );
 
-  execute('UPDATE automation_errors SET retry_scheduled = 1 WHERE id = ?;', [errorId]);
+  execute('UPDATE automation_errors SET retry_scheduled = ? WHERE id = ?;', [nextRetryAttempt, errorId]);
 
   logAccess({
     userId: currentUser.id,
@@ -889,7 +892,7 @@ export function retryError(errorId, currentUser, ipAddress = null) {
     success: true,
     message: 'Automation re-queued for retry',
     queue_id: insertQueue.lastInsertRowid,
-    attempt: priorAttemptsCount + 1
+    attempt: nextRetryAttempt
   };
 }
 
@@ -1006,7 +1009,7 @@ export function deleteTemplate(templateId, currentUser, ipAddress = null) {
   }
 
   if (template.is_system_template === 1 || template.is_system_template === true) {
-    throw { status: 400, message: 'System templates cannot be deleted' };
+    throw { status: 403, message: 'Forbidden: System templates cannot be deleted' };
   }
 
   execute('DELETE FROM automation_templates WHERE id = ?;', [templateId]);
@@ -1124,7 +1127,14 @@ export function approveSuggestion(suggestionId, currentUser, ipAddress = null) {
     ipAddress
   });
 
-  return { success: true, rule: createdRule };
+  const updatedSuggestion = queryOne('SELECT * FROM automation_ai_suggestions WHERE id = ?;', [suggestionId]);
+
+  return {
+    success: true,
+    rule: createdRule,
+    created_rule_id: createdRule.id,
+    suggestion: updatedSuggestion
+  };
 }
 
 /**
