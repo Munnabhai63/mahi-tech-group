@@ -58,6 +58,28 @@ export const DashboardSkeleton = () => {
   );
 };
 
+export const NotificationSkeleton = () => {
+  return React.createElement(
+    View,
+    { style: styles.containerSkeleton },
+    React.createElement(SkeletonLoader, { width: '40%', height: 20, borderRadius: 4, style: { marginBottom: 16 } }),
+    React.createElement(
+      View,
+      { style: styles.cardSkeleton },
+      React.createElement(SkeletonLoader, { width: '25%', height: 12, borderRadius: 4, style: { marginBottom: 8 } }),
+      React.createElement(SkeletonLoader, { width: '70%', height: 16, borderRadius: 4, style: { marginBottom: 6 } }),
+      React.createElement(SkeletonLoader, { width: '90%', height: 12, borderRadius: 4 })
+    ),
+    React.createElement(
+      View,
+      { style: styles.cardSkeleton },
+      React.createElement(SkeletonLoader, { width: '30%', height: 12, borderRadius: 4, style: { marginBottom: 8 } }),
+      React.createElement(SkeletonLoader, { width: '60%', height: 16, borderRadius: 4, style: { marginBottom: 6 } }),
+      React.createElement(SkeletonLoader, { width: '85%', height: 12, borderRadius: 4 })
+    )
+  );
+};
+
 const styles = StyleSheet.create({
   skeleton: {
     backgroundColor: '#334155',

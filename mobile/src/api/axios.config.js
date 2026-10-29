@@ -16,8 +16,10 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (requestConfig) => {
     const token = secureStorage.getString('auth_token');
-    if (token && !requestConfig.headers.Authorization) {
+    if (token) {
       requestConfig.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete requestConfig.headers.Authorization;
     }
     return requestConfig;
   },
