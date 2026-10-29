@@ -63,7 +63,7 @@ router.post('/clients/:clientId/invite/resend', authenticate, requireAdmin, asyn
  * GET /api/admin/clients
  * Returns all clients with status and active project access count
  */
-router.get('/clients', authenticate, requireAdmin, (req, res, next) => {
+router.get(['/clients', '/', ''], authenticate, requireAdmin, (req, res, next) => {
   try {
     const ip = req.ip || req.socket?.remoteAddress;
     const result = clientService.listClients(req.user, ip);

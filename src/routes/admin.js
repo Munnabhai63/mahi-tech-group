@@ -32,6 +32,7 @@ import * as clientAuthService from '../services/clientAuthService.js';
 import adminClientsRouter from './adminClients.routes.js';
 
 const router = express.Router();
+router.use(adminClientsRouter);
 
 // 4. POST /api/admin/members/add (Admin only - RBAC: member.add)
 router.post('/members/add', authenticate, requirePermission('member.add'), async (req, res) => {

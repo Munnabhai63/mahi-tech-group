@@ -55,6 +55,21 @@ router.post(['/create', '/'], authenticate, (req, res) => {
  * Returns: all sprints for project (with item count, point totals)
  * Role: All authenticated users
  */
+router.get(['/', ''], authenticate, (req, res) => {
+  try {
+    const { projectId, project_id } = req.query || {};
+    const pid = projectId || project_id;
+    if (pid) {
+      const sprints = sprintService.getProjectSprints(pid, req.user?.id);
+      return res.json(sprints);
+    }
+    const sprints = sprintService.getAllSprints(req.user?.id);
+    return res.json(sprints);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
 router.get('/project/:projectId', authenticate, (req, res) => {
   try {
     const { projectId } = req.params;
