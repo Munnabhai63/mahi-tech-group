@@ -2145,5 +2145,186 @@ CREATE TRIGGER IF NOT EXISTS prevent_ai_suggestion_delete
 BEFORE DELETE ON automation_ai_suggestions
 BEGIN SELECT RAISE(ABORT, 'automation_ai_suggestions is append-only'); END;
 
+-- PRD 27: Knowledge Base & Wiki
+
+CREATE TABLE IF NOT EXISTS wiki_spaces (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT,
+  icon TEXT DEFAULT '📁',
+  color TEXT DEFAULT '#4A90E2',
+  visibility TEXT NOT NULL DEFAULT 'INTERNAL',
+  project_id INTEGER REFERENCES projects(id),
+  is_archived INTEGER NOT NULL DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS wiki_space_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  space_id INTEGER NOT NULL REFERENCES wiki_spaces(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  role TEXT NOT NULL DEFAULT 'VIEWER',
+  added_by INTEGER NOT NULL REFERENCES users(id),
+  added_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(space_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_pages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  space_id INTEGER NOT NULL REFERENCES wiki_spaces(id) ON DELETE CASCADE,
+  parent_page_id INTEGER REFERENCES wiki_pages(id),
+  title TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  content TEXT,
+  content_text TEXT,
+  status TEXT NOT NULL DEFAULT 'PUBLISHED',
+  is_client_shared INTEGER NOT NULL DEFAULT 0,
+  position INTEGER DEFAULT 0,
+  emoji_icon TEXT DEFAULT '📄',
+  cover_image TEXT,
+  word_count INTEGER DEFAULT 0,
+  reading_time_minutes INTEGER DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  last_edited_by INTEGER REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(space_id, slug)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_versions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  version_number INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  content_text TEXT NOT NULL,
+  change_summary TEXT,
+  saved_by INTEGER NOT NULL REFERENCES users(id),
+  saved_at TEXT DEFAULT (datetime('now')),
+  word_count INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  parent_comment_id INTEGER REFERENCES wiki_page_comments(id) ON DELETE CASCADE,
+  commented_by INTEGER NOT NULL REFERENCES users(id),
+  content TEXT NOT NULL,
+  selection_text TEXT,
+  is_resolved INTEGER NOT NULL DEFAULT 0,
+  resolved_by INTEGER REFERENCES users(id),
+  resolved_at TEXT,
+  is_edited INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_reactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  reaction TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(page_id, user_id, reaction)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_links (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  target_page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(source_page_id, target_page_id)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL DEFAULT 'GENERAL',
+  content TEXT NOT NULL,
+  preview_text TEXT,
+  is_system_template INTEGER NOT NULL DEFAULT 1,
+  usage_count INTEGER DEFAULT 0,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS wiki_search_index (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE UNIQUE,
+  space_id INTEGER NOT NULL REFERENCES wiki_spaces(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  content_text TEXT NOT NULL,
+  tags TEXT,
+  last_indexed_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_slug ON wiki_spaces(slug);
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_project ON wiki_spaces(project_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_visibility ON wiki_spaces(visibility);
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_archived ON wiki_spaces(is_archived);
+CREATE INDEX IF NOT EXISTS idx_wiki_space_members_user ON wiki_space_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_space_members_space ON wiki_space_members(space_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_space ON wiki_pages(space_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_parent ON wiki_pages(parent_page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_slug ON wiki_pages(slug);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_status ON wiki_pages(status);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_client_shared ON wiki_pages(is_client_shared);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_position ON wiki_pages(space_id, parent_page_id, position);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_versions_page ON wiki_page_versions(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_versions_version ON wiki_page_versions(page_id, version_number);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_comments_page ON wiki_page_comments(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_comments_parent ON wiki_page_comments(parent_comment_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_comments_resolved ON wiki_page_comments(is_resolved);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_reactions_page ON wiki_page_reactions(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_reactions_user ON wiki_page_reactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_links_source ON wiki_page_links(source_page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_links_target ON wiki_page_links(target_page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_templates_category ON wiki_templates(category);
+CREATE INDEX IF NOT EXISTS idx_wiki_templates_system ON wiki_templates(is_system_template);
+CREATE INDEX IF NOT EXISTS idx_wiki_search_index_page ON wiki_search_index(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_search_index_space ON wiki_search_index(space_id);
+
+-- Append-Only DB Triggers on wiki_page_versions
+CREATE TRIGGER IF NOT EXISTS prevent_page_version_update
+BEFORE UPDATE ON wiki_page_versions
+BEGIN SELECT RAISE(ABORT, 'wiki_page_versions is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_page_version_delete
+BEFORE DELETE ON wiki_page_versions
+BEGIN SELECT RAISE(ABORT, 'wiki_page_versions is append-only'); END;
+
+-- SQLite FTS5 Virtual Table for full-text search
+CREATE VIRTUAL TABLE IF NOT EXISTS wiki_search_fts USING fts5(
+  page_id UNINDEXED,
+  space_id UNINDEXED,
+  title,
+  content_text,
+  tags UNINDEXED,
+  tokenize = 'porter unicode61'
+);
+
+-- Triggers keeping FTS5 table in sync with wiki_search_index
+CREATE TRIGGER IF NOT EXISTS wiki_search_index_ai AFTER INSERT ON wiki_search_index BEGIN
+  INSERT INTO wiki_search_fts(rowid, page_id, space_id, title, content_text, tags)
+  VALUES (new.id, new.page_id, new.space_id, new.title, new.content_text, new.tags);
+END;
+
+CREATE TRIGGER IF NOT EXISTS wiki_search_index_ad AFTER DELETE ON wiki_search_index BEGIN
+  DELETE FROM wiki_search_fts WHERE rowid = old.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS wiki_search_index_au AFTER UPDATE ON wiki_search_index BEGIN
+  DELETE FROM wiki_search_fts WHERE rowid = old.id;
+  INSERT INTO wiki_search_fts(rowid, page_id, space_id, title, content_text, tags)
+  VALUES (new.id, new.page_id, new.space_id, new.title, new.content_text, new.tags);
+END;
+
+
 
 

@@ -1400,7 +1400,187 @@ BEFORE DELETE ON automation_ai_suggestions
 BEGIN SELECT RAISE(ABORT, 'automation_ai_suggestions is append-only'); END;
 `;
 
+export const WIKI_SCHEMA_SQL = `
+-- PRD 27: Knowledge Base & Wiki
 
+CREATE TABLE IF NOT EXISTS wiki_spaces (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT,
+  icon TEXT DEFAULT '📁',
+  color TEXT DEFAULT '#4A90E2',
+  visibility TEXT NOT NULL DEFAULT 'INTERNAL',
+  project_id INTEGER REFERENCES projects(id),
+  is_archived INTEGER NOT NULL DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS wiki_space_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  space_id INTEGER NOT NULL REFERENCES wiki_spaces(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  role TEXT NOT NULL DEFAULT 'VIEWER',
+  added_by INTEGER NOT NULL REFERENCES users(id),
+  added_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(space_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_pages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  space_id INTEGER NOT NULL REFERENCES wiki_spaces(id) ON DELETE CASCADE,
+  parent_page_id INTEGER REFERENCES wiki_pages(id),
+  title TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  content TEXT,
+  content_text TEXT,
+  status TEXT NOT NULL DEFAULT 'PUBLISHED',
+  is_client_shared INTEGER NOT NULL DEFAULT 0,
+  position INTEGER DEFAULT 0,
+  emoji_icon TEXT DEFAULT '📄',
+  cover_image TEXT,
+  word_count INTEGER DEFAULT 0,
+  reading_time_minutes INTEGER DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  last_edited_by INTEGER REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(space_id, slug)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_versions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  version_number INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  content_text TEXT NOT NULL,
+  change_summary TEXT,
+  saved_by INTEGER NOT NULL REFERENCES users(id),
+  saved_at TEXT DEFAULT (datetime('now')),
+  word_count INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  parent_comment_id INTEGER REFERENCES wiki_page_comments(id) ON DELETE CASCADE,
+  commented_by INTEGER NOT NULL REFERENCES users(id),
+  content TEXT NOT NULL,
+  selection_text TEXT,
+  is_resolved INTEGER NOT NULL DEFAULT 0,
+  resolved_by INTEGER REFERENCES users(id),
+  resolved_at TEXT,
+  is_edited INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_reactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  reaction TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(page_id, user_id, reaction)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_links (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  target_page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(source_page_id, target_page_id)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL DEFAULT 'GENERAL',
+  content TEXT NOT NULL,
+  preview_text TEXT,
+  is_system_template INTEGER NOT NULL DEFAULT 1,
+  usage_count INTEGER DEFAULT 0,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS wiki_search_index (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE UNIQUE,
+  space_id INTEGER NOT NULL REFERENCES wiki_spaces(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  content_text TEXT NOT NULL,
+  tags TEXT,
+  last_indexed_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_slug ON wiki_spaces(slug);
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_project ON wiki_spaces(project_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_visibility ON wiki_spaces(visibility);
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_archived ON wiki_spaces(is_archived);
+CREATE INDEX IF NOT EXISTS idx_wiki_space_members_user ON wiki_space_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_space_members_space ON wiki_space_members(space_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_space ON wiki_pages(space_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_parent ON wiki_pages(parent_page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_slug ON wiki_pages(slug);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_status ON wiki_pages(status);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_client_shared ON wiki_pages(is_client_shared);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_position ON wiki_pages(space_id, parent_page_id, position);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_versions_page ON wiki_page_versions(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_versions_version ON wiki_page_versions(page_id, version_number);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_comments_page ON wiki_page_comments(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_comments_parent ON wiki_page_comments(parent_comment_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_comments_resolved ON wiki_page_comments(is_resolved);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_reactions_page ON wiki_page_reactions(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_reactions_user ON wiki_page_reactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_links_source ON wiki_page_links(source_page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_links_target ON wiki_page_links(target_page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_templates_category ON wiki_templates(category);
+CREATE INDEX IF NOT EXISTS idx_wiki_templates_system ON wiki_templates(is_system_template);
+CREATE INDEX IF NOT EXISTS idx_wiki_search_index_page ON wiki_search_index(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_search_index_space ON wiki_search_index(space_id);
+
+-- Append-Only DB Triggers on wiki_page_versions
+CREATE TRIGGER IF NOT EXISTS prevent_page_version_update
+BEFORE UPDATE ON wiki_page_versions
+BEGIN SELECT RAISE(ABORT, 'wiki_page_versions is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_page_version_delete
+BEFORE DELETE ON wiki_page_versions
+BEGIN SELECT RAISE(ABORT, 'wiki_page_versions is append-only'); END;
+
+-- SQLite FTS5 Virtual Table for full-text search
+CREATE VIRTUAL TABLE IF NOT EXISTS wiki_search_fts USING fts5(
+  page_id UNINDEXED,
+  space_id UNINDEXED,
+  title,
+  content_text,
+  tags UNINDEXED,
+  tokenize = 'porter unicode61'
+);
+
+-- Triggers keeping FTS5 table in sync with wiki_search_index
+CREATE TRIGGER IF NOT EXISTS wiki_search_index_ai AFTER INSERT ON wiki_search_index BEGIN
+  INSERT INTO wiki_search_fts(rowid, page_id, space_id, title, content_text, tags)
+  VALUES (new.id, new.page_id, new.space_id, new.title, new.content_text, new.tags);
+END;
+
+CREATE TRIGGER IF NOT EXISTS wiki_search_index_ad AFTER DELETE ON wiki_search_index BEGIN
+  DELETE FROM wiki_search_fts WHERE rowid = old.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS wiki_search_index_au AFTER UPDATE ON wiki_search_index BEGIN
+  DELETE FROM wiki_search_fts WHERE rowid = old.id;
+  INSERT INTO wiki_search_fts(rowid, page_id, space_id, title, content_text, tags)
+  VALUES (new.id, new.page_id, new.space_id, new.title, new.content_text, new.tags);
+END;
+`;
 
 export function seedBuiltInKpis(db) {
   try {
@@ -1824,6 +2004,228 @@ export function seedBuiltInAutomationTemplates(db) {
   }
 }
 
+export function seedBuiltInWikiTemplates(db) {
+  try {
+    const adminRow = db.prepare("SELECT id FROM users WHERE role IN ('admin', 'superadmin') LIMIT 1").get();
+    const adminId = adminRow ? adminRow.id : 1;
+
+    const templates = [
+      {
+        name: 'Standard Operating Procedure (SOP)',
+        description: 'Standard operational guideline for routine business and engineering processes.',
+        category: 'SOP',
+        preview_text: 'Purpose, Scope, Responsibilities, Procedures & Notes',
+        content: JSON.stringify([
+          { id: 'sop-h1', type: 'HEADING_1', content: 'Standard Operating Procedure (SOP)', attrs: { level: 1 } },
+          { id: 'sop-purpose-h2', type: 'HEADING_2', content: '1. Purpose', attrs: { level: 2 } },
+          { id: 'sop-purpose-p', type: 'PARAGRAPH', content: 'Define the primary objective and business necessity for this operating procedure.' },
+          { id: 'sop-scope-h2', type: 'HEADING_2', content: '2. Scope', attrs: { level: 2 } },
+          { id: 'sop-scope-p', type: 'PARAGRAPH', content: 'Specify the departments, projects, roles, and systems governed by this SOP.' },
+          { id: 'sop-resp-h2', type: 'HEADING_2', content: '3. Responsibilities', attrs: { level: 2 } },
+          { id: 'sop-resp-list', type: 'BULLET_LIST', content: 'Process Owner: Oversees procedure compliance and maintenance.\nOperator: Executes step-by-step instructions as documented.\nReviewer: Audits execution and verifies output quality.' },
+          { id: 'sop-steps-h2', type: 'HEADING_2', content: '4. Step-by-Step Procedure', attrs: { level: 2 } },
+          { id: 'sop-steps-list', type: 'NUMBERED_LIST', content: 'Step 1: Pre-flight environment and dependency verification.\nStep 2: Execution of standard operational tasks.\nStep 3: Quality validation and peer review checkpoint.\nStep 4: Audit logging and status communication.' },
+          { id: 'sop-notes-h2', type: 'HEADING_2', content: '5. Notes & Exceptions', attrs: { level: 2 } },
+          { id: 'sop-notes-callout', type: 'CALLOUT', content: 'Important: Any divergence from this standard procedure must be authorized by an Admin.', attrs: { color: '#38bdf8' } }
+        ])
+      },
+      {
+        name: 'Meeting Notes',
+        description: 'Structured meeting record capturing agenda, discussion, decisions, and action items.',
+        category: 'MEETING_NOTES',
+        preview_text: 'Date, Attendees, Agenda, Discussion, Decisions, Action Items',
+        content: JSON.stringify([
+          { id: 'meet-h1', type: 'HEADING_1', content: 'Team Meeting Notes', attrs: { level: 1 } },
+          { id: 'meet-info-h2', type: 'HEADING_2', content: 'Meeting Details', attrs: { level: 2 } },
+          { id: 'meet-info-p', type: 'PARAGRAPH', content: 'Date: YYYY-MM-DD | Time: HH:MM UTC | Lead: @Organizer' },
+          { id: 'meet-attendees-h2', type: 'HEADING_2', content: 'Attendees', attrs: { level: 2 } },
+          { id: 'meet-attendees-list', type: 'BULLET_LIST', content: 'Required Attendees: @Alice, @Bob\nOptional Attendees: @Charlie' },
+          { id: 'meet-agenda-h2', type: 'HEADING_2', content: 'Agenda', attrs: { level: 2 } },
+          { id: 'meet-agenda-list', type: 'NUMBERED_LIST', content: '1. Review prior sprint milestones\n2. Architecture alignment\n3. Roadblocks and dependency unblocking' },
+          { id: 'meet-discussion-h2', type: 'HEADING_2', content: 'Discussion Points', attrs: { level: 2 } },
+          { id: 'meet-discussion-p', type: 'PARAGRAPH', content: 'Key debate points, technical tradeoffs, and options evaluated during the call.' },
+          { id: 'meet-decisions-h2', type: 'HEADING_2', content: 'Decisions', attrs: { level: 2 } },
+          { id: 'meet-decisions-callout', type: 'CALLOUT', content: 'Consensus Decision: Approved architecture proposal variant B.', attrs: { color: '#10b981' } },
+          { id: 'meet-actions-h2', type: 'HEADING_2', content: 'Action Items', attrs: { level: 2 } },
+          { id: 'meet-actions-todo', type: 'TODO', content: 'Submit draft schema migration by Friday (@Developer)\nUpdate API endpoint contract (@Lead)', attrs: { checked: false } }
+        ])
+      },
+      {
+        name: 'Project Documentation',
+        description: 'Comprehensive project charter with objectives, timeline, risks, and technical architecture.',
+        category: 'PROJECT_DOC',
+        preview_text: 'Overview, Goals, Timeline, Team, Tech Details, Risks',
+        content: JSON.stringify([
+          { id: 'proj-h1', type: 'HEADING_1', content: 'Project Charter & Technical Architecture', attrs: { level: 1 } },
+          { id: 'proj-overview-h2', type: 'HEADING_2', content: '1. Overview', attrs: { level: 2 } },
+          { id: 'proj-overview-p', type: 'PARAGRAPH', content: 'Executive summary detailing the project mission, target audience, and business impact.' },
+          { id: 'proj-goals-h2', type: 'HEADING_2', content: '2. Goals & Success Metrics', attrs: { level: 2 } },
+          { id: 'proj-goals-list', type: 'BULLET_LIST', content: 'Deliver sub-100ms API response times across all primary endpoints.\nAttain 100% test pass rate with zero regression on existing platform services.\nSeamless client portal integration with zero data leakage.' },
+          { id: 'proj-timeline-h2', type: 'HEADING_2', content: '3. Timeline & Key Milestones', attrs: { level: 2 } },
+          { id: 'proj-timeline-num', type: 'NUMBERED_LIST', content: 'Phase 1: Architecture, database schema, and test harness setup.\nPhase 2: Service layer and REST API implementation.\nPhase 3: Frontend dashboard and client-facing interfaces.\nPhase 4: Full integration verification and platform sealing.' },
+          { id: 'proj-team-h2', type: 'HEADING_2', content: '4. Team & Ownership', attrs: { level: 2 } },
+          { id: 'proj-team-p', type: 'PARAGRAPH', content: 'Project Lead: @Admin | Backend: @Developer | Design: @Designer | QA: @Tester' },
+          { id: 'proj-tech-h2', type: 'HEADING_2', content: '5. Technical Details & Data Flow', attrs: { level: 2 } },
+          { id: 'proj-tech-code', type: 'CODE', content: '// Data Flow Pipeline Architecture\nRequest -> Auth Gate -> Service Validator -> Database WAL -> Trigger Dispatcher', attrs: { language: 'js' } },
+          { id: 'proj-risks-h2', type: 'HEADING_2', content: '6. Risks & Mitigation Strategies', attrs: { level: 2 } },
+          { id: 'proj-risks-callout', type: 'CALLOUT', content: 'Identified Risk: Database lock contention during burst operations. Mitigation: WAL mode with 5000ms busy_timeout.', attrs: { color: '#f59e0b' } },
+          { id: 'proj-links-h2', type: 'HEADING_2', content: '7. Relevant Links & Resources', attrs: { level: 2 } },
+          { id: 'proj-links-p', type: 'PARAGRAPH', content: 'Design Specs: [Figma Workspace] | Repository: [GitHub Repo] | Live API: [Environment URL]' }
+        ])
+      },
+      {
+        name: 'Team Member Onboarding Guide',
+        description: 'Step-by-step checklist and orientation handbook for new team members.',
+        category: 'ONBOARDING',
+        preview_text: 'Welcome, Checklist, Tools, Team Intro, Resources',
+        content: JSON.stringify([
+          { id: 'onboard-h1', type: 'HEADING_1', content: 'Welcome to Mahi Tech Group', attrs: { level: 1 } },
+          { id: 'onboard-welcome-p', type: 'PARAGRAPH', content: 'Welcome aboard! This handbook provides everything you need to set up your environment, understand our workflows, and ship your first feature.' },
+          { id: 'onboard-day1-h2', type: 'HEADING_2', content: 'First Day Checklist', attrs: { level: 2 } },
+          { id: 'onboard-day1-todo', type: 'TODO', content: 'Accept your platform invitation and set a secure password\nLink your GitHub account in profile settings\nReview team communication norms and meeting schedules\nClone the main repository and verify local test suites', attrs: { checked: false } },
+          { id: 'onboard-tools-h2', type: 'HEADING_2', content: 'Tools Setup & Access', attrs: { level: 2 } },
+          { id: 'onboard-tools-list', type: 'BULLET_LIST', content: 'GitHub Organization: mahi-tech-group\nDatabase: SQLite WAL local instance\nDevelopment Shell: Node.js v22+ with npm\nCommunication: Internal Coworking Canvas & Meeting WebSockets' },
+          { id: 'onboard-team-h2', type: 'HEADING_2', content: 'Team Introduction & Roles', attrs: { level: 2 } },
+          { id: 'onboard-team-p', type: 'PARAGRAPH', content: 'Our team operates across 4 core pipeline roles: Researcher, UI/UX Designer, Developer, and Producer / Tester, coordinated by Administrators.' },
+          { id: 'onboard-res-h2', type: 'HEADING_2', content: 'Core Resources & Knowledge Base', attrs: { level: 2 } },
+          { id: 'onboard-res-callout', type: 'CALLOUT', content: 'Tip: Explore the Engineering SOPs and Architecture Decision Records (ADRs) in this Wiki before submitting pull requests.', attrs: { color: '#38bdf8' } }
+        ])
+      },
+      {
+        name: 'Technical Reference Architecture',
+        description: 'Engineering guide covering installation, configuration, APIs, and troubleshooting.',
+        category: 'TECHNICAL',
+        preview_text: 'Installation, Architecture, API Reference, Examples, Troubleshooting',
+        content: JSON.stringify([
+          { id: 'tech-h1', type: 'HEADING_1', content: 'Technical Reference Architecture', attrs: { level: 1 } },
+          { id: 'tech-overview-h2', type: 'HEADING_2', content: 'Overview & Stack', attrs: { level: 2 } },
+          { id: 'tech-overview-p', type: 'PARAGRAPH', content: 'The Mahi Tech Group platform is built on an Express.js backend, SQLite WAL persistent engine, and vanilla modular frontend.' },
+          { id: 'tech-install-h2', type: 'HEADING_2', content: 'Installation & Bootstrapping', attrs: { level: 2 } },
+          { id: 'tech-install-code', type: 'CODE', content: 'git clone https://github.com/Munnabhai63/mahi-tech-group.git\ncd "MAHI TECH GROUP"\nnpm install\nnpm run migrate\nnpm test', attrs: { language: 'bash' } },
+          { id: 'tech-api-h2', type: 'HEADING_2', content: 'API Reference & Routing Standards', attrs: { level: 2 } },
+          { id: 'tech-api-p', type: 'PARAGRAPH', content: 'All API routes require Bearer JWT authentication, validate input with strict schemas, and return consistent JSON structures.' },
+          { id: 'tech-trouble-h2', type: 'HEADING_2', content: 'Troubleshooting & Diagnostics', attrs: { level: 2 } },
+          { id: 'tech-trouble-callout', type: 'CALLOUT', content: 'Database Locked: Verify that PRAGMA journal_mode = WAL; is active and connections set PRAGMA busy_timeout = 5000;.', attrs: { color: '#ef4444' } }
+        ])
+      },
+      {
+        name: 'Sprint Retrospective',
+        description: 'Agile retrospective template analyzing what went well, improvements, and action items.',
+        category: 'RETROSPECTIVE',
+        preview_text: 'What Went Well, Needs Improvement, Action Items, Metrics',
+        content: JSON.stringify([
+          { id: 'retro-h1', type: 'HEADING_1', content: 'Sprint Retrospective', attrs: { level: 1 } },
+          { id: 'retro-meta-p', type: 'PARAGRAPH', content: 'Sprint: #SprintNumber | Date: YYYY-MM-DD | Facilitator: @ScrumMaster' },
+          { id: 'retro-good-h2', type: 'HEADING_2', content: '1. What Went Well (Praise & Successes)', attrs: { level: 2 } },
+          { id: 'retro-good-list', type: 'BULLET_LIST', content: 'Completed 100% of committed high-priority user stories.\nZero regressions detected across all 13 core test suites.\nSmooth deployment and instant client sign-offs.' },
+          { id: 'retro-improve-h2', type: 'HEADING_2', content: '2. What Could Improve (Challenges & Friction)', attrs: { level: 2 } },
+          { id: 'retro-improve-list', type: 'BULLET_LIST', content: 'PR reviews took longer than 24 hours on complex backend changes.\nUnderestimated edge case testing on circular workflow automation rules.' },
+          { id: 'retro-actions-h2', type: 'HEADING_2', content: '3. Action Items & Commitments', attrs: { level: 2 } },
+          { id: 'retro-actions-todo', type: 'TODO', content: 'Implement automated PR review alert in PRD 26 Automation Engine\nExpand pre-flight integration test checklists for upcoming PRDs', attrs: { checked: false } },
+          { id: 'retro-metrics-h2', type: 'HEADING_2', content: '4. Velocity & Quality Metrics', attrs: { level: 2 } },
+          { id: 'retro-metrics-callout', type: 'CALLOUT', content: 'Velocity: 42 Story Points Completed | Defect Escape Rate: 0% | Quorum: 100%', attrs: { color: '#10b981' } }
+        ])
+      },
+      {
+        name: 'Product Requirements Document (PRD)',
+        description: 'Detailed product specification defining user problems, stories, and acceptance criteria.',
+        category: 'PROJECT_DOC',
+        preview_text: 'Problem Statement, Goals, User Stories, Acceptance Criteria',
+        content: JSON.stringify([
+          { id: 'prd-h1', type: 'HEADING_1', content: 'Product Requirements Document (PRD)', attrs: { level: 1 } },
+          { id: 'prd-prob-h2', type: 'HEADING_2', content: '1. Problem Statement', attrs: { level: 2 } },
+          { id: 'prd-prob-p', type: 'PARAGRAPH', content: 'Clear, concise description of the user pain point, market opportunity, and why existing workarounds are insufficient.' },
+          { id: 'prd-goals-h2', type: 'HEADING_2', content: '2. Goals & Non-Goals', attrs: { level: 2 } },
+          { id: 'prd-goals-list', type: 'BULLET_LIST', content: 'Goal: Provide instant, tamper-evident document collaboration.\nGoal: Zero-trust segregation between internal discussions and client-facing views.\nNon-Goal: Implementing a general-purpose spreadsheet calculation engine.' },
+          { id: 'prd-stories-h2', type: 'HEADING_2', content: '3. User Stories', attrs: { level: 2 } },
+          { id: 'prd-stories-num', type: 'NUMBERED_LIST', content: 'As an Engineer, I want block-based editing with slash commands so that I can draft documentation rapidly.\nAs a Project Lead, I want append-only version history so that changes can be audited and restored without data loss.\nAs a Client, I want clean read-only access to shared specs without seeing internal team deliberations.' },
+          { id: 'prd-criteria-h2', type: 'HEADING_2', content: '4. Acceptance Criteria & Definition of Done', attrs: { level: 2 } },
+          { id: 'prd-criteria-todo', type: 'TODO', content: 'All database tables and append-only triggers verified\nAll REST API endpoints covered by real HTTP integration tests\nFull regression pass on existing platform suites', attrs: { checked: false } }
+        ])
+      },
+      {
+        name: 'Bug Report & Defect RCA',
+        description: 'Defect investigation template recording reproduction steps, actual vs expected, and RCA.',
+        category: 'TECHNICAL',
+        preview_text: 'Summary, Steps to Reproduce, Expected vs Actual, Environment',
+        content: JSON.stringify([
+          { id: 'bug-h1', type: 'HEADING_1', content: 'Defect Investigation & RCA Report', attrs: { level: 1 } },
+          { id: 'bug-summary-h2', type: 'HEADING_2', content: '1. Summary & Severity', attrs: { level: 2 } },
+          { id: 'bug-summary-p', type: 'PARAGRAPH', content: 'Severity: High | Affected Component: Workflow Automation Worker | Reporter: @QAEngineer' },
+          { id: 'bug-repro-h2', type: 'HEADING_2', content: '2. Steps to Reproduce', attrs: { level: 2 } },
+          { id: 'bug-repro-num', type: 'NUMBERED_LIST', content: '1. Navigate to Automation Rules Builder.\n2. Create a rule triggering on SPRINT_STARTED with circular action.\n3. Attempt to save without valid condition logic.' },
+          { id: 'bug-behavior-h2', type: 'HEADING_2', content: '3. Expected vs Actual Behavior', attrs: { level: 2 } },
+          { id: 'bug-expected-p', type: 'PARAGRAPH', content: 'Expected: The API returns HTTP 400 with a descriptive circular dependency error.' },
+          { id: 'bug-actual-p', type: 'PARAGRAPH', content: 'Actual: Uncaught exception in background queue worker leading to 500 error.' },
+          { id: 'bug-rca-h2', type: 'HEADING_2', content: '4. Root Cause Analysis (RCA) & Permanent Fix', attrs: { level: 2 } },
+          { id: 'bug-rca-callout', type: 'CALLOUT', content: 'RCA: Missing null check on action parameters during cycle validation. Fix: Add defensive parameter resolver and DFS guard.', attrs: { color: '#ef4444' } }
+        ])
+      },
+      {
+        name: 'Architecture Decision Record (ADR)',
+        description: 'Architectural and strategic decision ledger recording context, choices, and rationale.',
+        category: 'GENERAL',
+        preview_text: 'Context, Options Considered, Final Decision, Rationale',
+        content: JSON.stringify([
+          { id: 'adr-h1', type: 'HEADING_1', content: 'Architecture Decision Record (ADR)', attrs: { level: 1 } },
+          { id: 'adr-meta-p', type: 'PARAGRAPH', content: 'Status: PROPOSED / ACCEPTED | Date: YYYY-MM-DD | Decision Maker: @StaffArchitect' },
+          { id: 'adr-context-h2', type: 'HEADING_2', content: '1. Context & Problem Statement', attrs: { level: 2 } },
+          { id: 'adr-context-p', type: 'PARAGRAPH', content: 'Describe the technical problem, business drivers, and operational constraints that necessitate a structural decision.' },
+          { id: 'adr-options-h2', type: 'HEADING_2', content: '2. Options Considered', attrs: { level: 2 } },
+          { id: 'adr-options-list', type: 'BULLET_LIST', content: 'Option A: Third-party cloud service integration (High recurring cost, vendor lock-in).\nOption B: In-memory document caching (Risk of data loss on server restart).\nOption C: SQLite WAL database with FTS5 and append-only versioning (Zero external cost, full audit compliance).' },
+          { id: 'adr-decision-h2', type: 'HEADING_2', content: '3. Final Decision', attrs: { level: 2 } },
+          { id: 'adr-decision-callout', type: 'CALLOUT', content: 'Decision: Adopt Option C. Implement native SQLite WAL tables with FTS5 virtual tables and append-only version triggers.', attrs: { color: '#10b981' } },
+          { id: 'adr-consequences-h2', type: 'HEADING_2', content: '4. Consequences & Tradeoffs', attrs: { level: 2 } },
+          { id: 'adr-consequences-p', type: 'PARAGRAPH', content: 'Positive: Sub-millisecond queries, complete data ownership, tamper-evident audit history. Negative: Requires disciplined migration scripts.' }
+        ])
+      },
+      {
+        name: 'Weekly Team Status Update',
+        description: 'Weekly progress synchronization covering accomplishments, in-progress work, and blockers.',
+        category: 'GENERAL',
+        preview_text: 'Accomplishments, In Progress, Blockers, Next Week Plan',
+        content: JSON.stringify([
+          { id: 'weekly-h1', type: 'HEADING_1', content: 'Weekly Team Status Update', attrs: { level: 1 } },
+          { id: 'weekly-meta-p', type: 'PARAGRAPH', content: 'Week: WW-YYYY | Team: Platform Engineering | Author: @TeamLead' },
+          { id: 'weekly-done-h2', type: 'HEADING_2', content: '1. Major Accomplishments (Shipped This Week)', attrs: { level: 2 } },
+          { id: 'weekly-done-list', type: 'BULLET_LIST', content: 'Completed and permanently sealed PRD 26 (Workflow Automation Engine).\nAll 65 master integration test assertions passing with zero defects.\nZero regressions on core platform test suites.' },
+          { id: 'weekly-wip-h2', type: 'HEADING_2', content: '2. In Progress (Active Sprints & Initiatives)', attrs: { level: 2 } },
+          { id: 'weekly-wip-list', type: 'BULLET_LIST', content: 'Commencing PRD 27 (Knowledge Base & Wiki) Layer 1 schema and FTS5 search setup.\nFinalizing UI layout components for block-based editor.' },
+          { id: 'weekly-blockers-h2', type: 'HEADING_2', content: '3. Blockers & Risks', attrs: { level: 2 } },
+          { id: 'weekly-blockers-callout', type: 'CALLOUT', content: 'Status: No active blockers. All dependencies for PRD 27 are online and verified.', attrs: { color: '#10b981' } },
+          { id: 'weekly-next-h2', type: 'HEADING_2', content: '4. Priorities for Next Week', attrs: { level: 2 } },
+          { id: 'weekly-next-todo', type: 'TODO', content: 'Implement Layer 2 Space & Member REST APIs\nComplete Layer 3 Page CRUD and Versioning Engine', attrs: { checked: false } }
+        ])
+      }
+    ];
+
+    const checkStmt = db.prepare('SELECT id FROM wiki_templates WHERE name = ?');
+    const insertStmt = db.prepare(`
+      INSERT INTO wiki_templates (
+        name, description, category, content, preview_text, is_system_template, created_by
+      ) VALUES (?, ?, ?, ?, ?, 1, ?)
+    `);
+
+    for (const t of templates) {
+      const existing = checkStmt.get(t.name);
+      if (!existing) {
+        insertStmt.run(
+          t.name,
+          t.description,
+          t.category,
+          t.content,
+          t.preview_text,
+          adminId
+        );
+      }
+    }
+  } catch (err) {
+    if (!err.message.includes('no such table')) {
+      console.error('[DB] Warning seeding built-in wiki templates:', err.message);
+    }
+  }
+}
+
 export function getDatabase() {
   if (!dbInstance) {
     fs.mkdirSync(path.dirname(config.DB_PATH), { recursive: true });
@@ -1856,10 +2258,12 @@ export function getDatabase() {
     dbInstance.exec(CLIENT_PORTAL_SCHEMA_SQL);
     dbInstance.exec(BUDGET_FINANCIAL_SCHEMA_SQL);
     dbInstance.exec(AUTOMATION_SCHEMA_SQL);
+    dbInstance.exec(WIKI_SCHEMA_SQL);
 
     seedBuiltInKpis(dbInstance);
     seedDefaultExpenseCategories(dbInstance);
     seedBuiltInAutomationTemplates(dbInstance);
+    seedBuiltInWikiTemplates(dbInstance);
   }
   return dbInstance;
 }

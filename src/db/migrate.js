@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getDatabase, execRaw, queryAll, queryOne, execute, ANALYTICS_SCHEMA_SQL, seedBuiltInKpis, CLIENT_PORTAL_SCHEMA_SQL, BUDGET_FINANCIAL_SCHEMA_SQL, seedDefaultExpenseCategories, AUTOMATION_SCHEMA_SQL, seedBuiltInAutomationTemplates } from './database.js';
+import { getDatabase, execRaw, queryAll, queryOne, execute, ANALYTICS_SCHEMA_SQL, seedBuiltInKpis, CLIENT_PORTAL_SCHEMA_SQL, BUDGET_FINANCIAL_SCHEMA_SQL, seedDefaultExpenseCategories, AUTOMATION_SCHEMA_SQL, seedBuiltInAutomationTemplates, WIKI_SCHEMA_SQL, seedBuiltInWikiTemplates } from './database.js';
 import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1282,6 +1282,10 @@ export function runMigration() {
   // PRD 26: Workflow Automation Engine
   execRaw(AUTOMATION_SCHEMA_SQL);
   seedBuiltInAutomationTemplates(getDatabase());
+
+  // PRD 27: Knowledge Base & Wiki
+  execRaw(WIKI_SCHEMA_SQL);
+  seedBuiltInWikiTemplates(getDatabase());
 
   // Verification of tables
   const tables = queryAll("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;");
