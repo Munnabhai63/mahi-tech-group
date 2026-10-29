@@ -68,6 +68,11 @@ let previousPath = null;
 let rendering = false;
 
 async function route(path, params) {
+  if (path === '/' || path === '') {
+    const user = currentUser();
+    if (!user) return renderLogin();
+    return user.role === 'admin' ? (await loadAdminView()).renderAdminDashboard() : renderDashboard();
+  }
   if (path === '/login') return renderLogin();
   if (path === '/role-selection') return renderRoleSelection();
   if (path === '/signup') return renderSignup();
@@ -200,7 +205,7 @@ function render404(path) {
   };
 }
 
-function isPublic(path) { return ['/login', '/role-selection', '/signup', '/application-status', '/about', '/contact', '/mentorship', '/legal/terms', '/legal/privacy'].includes(path); }
+function isPublic(path) { return ['/', '/login', '/role-selection', '/signup', '/application-status', '/about', '/contact', '/mentorship', '/legal/terms', '/legal/privacy'].includes(path); }
 function isSigning(path) { return path.startsWith('/sign/'); }
 async function render() {
   if (rendering) return;
