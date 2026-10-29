@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Mahi Tech Group",
+    "slug": "mahi-tech-group-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mahitechgroup.mobile",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Mahi Tech Group requires Face ID to securely authenticate and access sensitive workspaces."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f172a"
+      },
+      "package": "com.mahitechgroup.mobile",
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Mahi Tech Group to use Face ID for biometric authentication."
+        }
+      ]
+    ],
+    "scheme": "mahitech"
+  }
+}

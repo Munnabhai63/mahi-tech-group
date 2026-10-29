@@ -2326,6 +2326,26 @@ CREATE TRIGGER IF NOT EXISTS wiki_search_index_au AFTER UPDATE ON wiki_search_in
   VALUES (new.id, new.page_id, new.space_id, new.title, new.content_text, new.tags);
 END;
 
+-- ===================================================================
+-- PRD 28: Mobile App (React Native) — Device Tokens & Push Notifications
+-- ===================================================================
 
+CREATE TABLE IF NOT EXISTS device_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL DEFAULT 'ANDROID',
+  token TEXT NOT NULL,
+  device_type TEXT NOT NULL DEFAULT 'ANDROID',
+  fcm_token TEXT,
+  device_id TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  last_seen_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(user_id, device_id)
+);
 
-
+CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_device_tokens_active ON device_tokens(is_active);
+CREATE INDEX IF NOT EXISTS idx_device_tokens_platform ON device_tokens(platform);
+CREATE INDEX IF NOT EXISTS idx_device_tokens_token ON device_tokens(token);
