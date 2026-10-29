@@ -1096,7 +1096,57 @@
     - Verified with `scripts/verify-prd26-layer1.js` -> **172 / 172 PASS (100%)**.
     - Core Platform Regression: `npm test` -> **13 / 13 test suites PASS (100%)**.
     - PRD 25 Integration Regression: `scripts/verify-prd25-integration.js` -> **107 / 107 PASS (100%)**.
-    - **PRD 26 Layer 1 Status**: 100% COMPLETE & VERIFIED.
-    - Next Layer: **PRD 26 Layer 2 (Automation Engine Core: `automationEngine.js` & `automationService.js`)**.
+    - **PRD 26 Layer 1 Status**: 100% COMPLETE & VERIFIED (Commit `ba1df7c`).
+  - **Layer 2 (Automation Engine Core: `automationEngine.js` & `automationService.js` — 100% COMPLETE & VERIFIED)**:
+    - Built core async queue worker in `src/services/automationEngine.js`:
+      - Condition Evaluator: `evaluateConditions` supporting `EQUALS`, `NOT_EQUALS`, `GREATER_THAN`, `LESS_THAN`, `GREATER_THAN_OR_EQUAL`, `LESS_THAN_OR_EQUAL`, `CONTAINS`, `IS_EMPTY` with `AND`/`OR` compound logic.
+      - Circular Loop Detection: `detectCircularDependency` with DFS cycle detection and max chain depth limit (5 levels), blocking circular chains with descriptive errors.
+      - Rate Limiting: `checkRateLimits` enforcing max 10 fires/rule/minute and max 100 fires/project/hour. Excess fires delayed into future timestamps without dropped events.
+      - Non-Blocking Trigger Dispatcher: `fireTrigger` querying active rules, validating project scope, applying rate limit offsets, and enqueueing jobs into `automation_queue`.
+      - Queue Batch Worker: `processQueueBatch` executing queued jobs, running conditions against trigger snapshots, executing actions, and writing append-only `automation_run_log` entries.
+    - Built rule governance service in `src/services/automationService.js`:
+      - `createRule`: Validates JSON schema, enforces max 50 active rules per project, enforces circular detection, audits admin action in `access_log`.
+      - `getRules`: Filter by `project_id`, `scope`, `is_active`, `trigger_module`. Members restricted strictly to rules that affected them.
+      - `getRuleDetail`: Returns rule metadata, last 10 execution logs, and unacknowledged error count.
+      - `updateRule`: Validates JSON schema, blocks mutation while rule has jobs currently processing in queue, manually updates SQLite `updated_at`.
+      - `toggleRule`: Enables/disables rules. Disabling a rule immediately cancels any pending `QUEUED` jobs.
+      - `deleteRule`: Removes rule definition from database with audit logging.
+      - `getStats` & `getProjectStats`: Returns total rules, active rules, success rates, and top triggered automation rules.
+    - Verified with `scripts/verify-prd26-layer2.js` -> **60 / 60 PASS (100%)** (Commit `46050d3`).
+  - **Layer 3 (Declarative Action Executor & Template Variable Resolver — 100% COMPLETE & VERIFIED)**:
+    - Built Action Executor in `src/services/automationActionExecutor.js` & `src/services/automationEngine.js`:
+      - Declarative Guard: Strictly white-lists 12 supported declarative action types (`SEND_NOTIFICATION`, `SEND_EMAIL`, `UPDATE_FIELD`, `ASSIGN_MEMBER`, `CHANGE_STATUS`, `SET_DUE_DATE`, `CREATE_BACKLOG_ITEM`, `CREATE_GANTT_ITEM`, `MOVE_ITEM_TO_BACKLOG`, `COMPLETE_SPRINT`, `WAIT`, `STOP_IF`). Arbitrary code execution (`RUN_BASH_SCRIPT`) strictly rejected.
+      - Variable Resolver: `resolveTemplateVariables` resolving `{{ variable }}` syntax against trigger snapshots; safely resolves unknown variables to empty strings; logs all resolved variables to append-only `automation_variable_store`.
+      - Action Executors:
+        - `SEND_NOTIFICATION`: Resolves template message, inserts into `notifications` table (`AUTOMATION_NOTIFICATION`).
+        - `SEND_EMAIL`: Dispatches structured email notifications to intended recipients.
+        - `UPDATE_FIELD`: Updates entity field with manual `updated_at` advancement.
+        - `ASSIGN_MEMBER`: Updates assignee on backlog/pipeline items with manual `updated_at`.
+        - `CHANGE_STATUS`: Transitions item status with manual `updated_at`.
+        - `SET_DUE_DATE`: Sets entity due date with manual `updated_at`.
+        - `CREATE_BACKLOG_ITEM`: Inserts new backlog item with templated title and priority.
+        - `CREATE_GANTT_ITEM`: Inserts new timeline/milestone item with templated title.
+        - `MOVE_ITEM_TO_BACKLOG`: Resets item status to `TODO` and clears `sprint_id`.
+        - `COMPLETE_SPRINT`: Transitions sprint status to `COMPLETED`.
+        - `WAIT`: Inserts non-blocking pause step with `delay_seconds`.
+        - `STOP_IF`: Halts downstream action pipeline if condition evaluates to true.
+      - Retry Worker: Exponential backoff on action failure (attempt 1: 1 min, attempt 2: 5 min, attempt 3: 15 min). Re-schedules `QUEUED` jobs and records `automation_errors` entries. Transitions permanently to `FAILED` after 3 attempts.
+    - Verified with `scripts/verify-prd26-layer3.js` -> **66 / 66 PASS (100%)** (Commit `c3dce15`).
+  - **Layer 4 (REST API: All 22 Automation Endpoints — 100% COMPLETE & VERIFIED)**:
+    - Mounted router at `/api/automation` via `src/routes/automation.routes.js` registered in `src/app.js`:
+      - Rule Endpoints (7): `POST /rule/create`, `GET /rules`, `POST /rule/:ruleId/test` (dry-run simulation), `PATCH /rule/:ruleId/toggle`, `GET /rule/:ruleId`, `PATCH /rule/:ruleId`, `DELETE /rule/:ruleId`.
+      - Run Log Endpoints (2): `GET /logs`, `GET /log/:runLogId`.
+      - Error Endpoints (3): `GET /errors`, `PATCH /error/:errorId/acknowledge`, `PATCH /error/:errorId/retry`.
+      - Template Endpoints (4): `GET /templates`, `POST /template/save`, `POST /template/:templateId/use`, `DELETE /template/:templateId` (system templates protected).
+      - AI Suggestion Endpoints (3): `GET /suggestions`, `PATCH /suggestion/:suggestionId/approve` (creates real rule), `PATCH /suggestion/:suggestionId/reject` (suggestion-only, never auto-executes).
+      - Queue Endpoint (1): `GET /queue`.
+      - Stats Endpoints (2): `GET /stats/project/:projectId`, `GET /stats`.
+    - Static subpaths strictly ordered before parameterized `/:id` routes.
+    - Verified with `scripts/verify-prd26-layer4.js` -> **98 / 98 PASS (100%)**.
+    - Core Platform Regression: `npm test` -> **13 / 13 test suites PASS (100%)**.
+    - PRD 25 Integration Regression: `scripts/verify-prd25-integration.js` -> **107 / 107 PASS (100%)**.
+    - **PRD 26 Layer 4 Status**: 100% COMPLETE & VERIFIED.
+    - Next Layer: **PRD 26 Layer 5 (Platform-Wide Trigger Integration: `fireTrigger()` across all services)**.
+
 
 

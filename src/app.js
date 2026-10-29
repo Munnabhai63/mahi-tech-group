@@ -25,6 +25,7 @@ import timeRouter from './routes/time.routes.js';
 import analyticsRouter from './routes/analytics.routes.js';
 import clientRouter from './routes/client.routes.js';
 import financeRouter from './routes/finance.routes.js';
+import automationRouter from './routes/automation.routes.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { queryAll } from './db/database.js';
@@ -111,6 +112,7 @@ export function createApp() {
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/client', clientRouter);
   app.use('/api/finance', financeRouter);
+  app.use('/api/automation', automationRouter);
 
   // Direct shortcut redirects for common workspace and auth routes (Express 5 compatible)
   app.use((req, res, next) => {
