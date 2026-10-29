@@ -11,6 +11,27 @@ import { createNotification } from '../services/notificationService.js';
 
 const router = express.Router();
 
+// 0. GET /api/ideas (Authenticated - List all accessible ideas)
+router.get('/', authenticate, (req, res) => {
+  const { status, limit = 50, offset = 0 } = req.query;
+  let sql = `
+    SELECT i.*, u.name as owner_name, u.email as owner_email, u.role as owner_role
+    FROM ideas i
+    JOIN users u ON i.owner_id = u.id
+    WHERE 1=1
+  `;
+  const params = [];
+  if (status && status !== 'all') {
+    sql += ' AND i.status = ?';
+    params.push(status);
+  }
+  sql += ' ORDER BY i.created_at DESC LIMIT ? OFFSET ?';
+  params.push(Number(limit) || 50, Number(offset) || 0);
+
+  const ideas = queryAll(sql, params);
+  return res.status(200).json({ count: ideas.length, ideas });
+});
+
 // Direct Idea Submission: POST /api/ideas
 router.post('/', authenticate, requirePermission('idea.submit'), (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;

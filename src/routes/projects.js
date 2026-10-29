@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import express from 'express';
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { authenticate } from '../middleware/auth.js';
@@ -7,6 +8,39 @@ import { createAsset, getProjectAssets } from '../services/assetService.js';
 import { getRoomDetails, getOrCreateRoomForProject, isUserProjectContributor } from '../services/coworkingService.js';
 
 const router = express.Router();
+
+/**
+ * 0. POST /api/projects (Authenticated)
+ * Direct project creation (Admin or Project Owner)
+ */
+router.post('/', authenticate, (req, res) => {
+  const { title, description, category, priority, idea_id } = req.body || {};
+  if (!title) {
+    return res.status(400).json({ error: 'Project title is required' });
+  }
+
+  const projectId = crypto.randomUUID();
+  let backingIdeaId = idea_id;
+
+  if (!backingIdeaId) {
+    backingIdeaId = crypto.randomUUID();
+    execute(`
+      INSERT INTO ideas (id, owner_id, title, description, status, submitted_at)
+      VALUES (?, ?, ?, ?, 'APPROVED', CURRENT_TIMESTAMP)
+    `, [backingIdeaId, req.user.id, title, description || title]);
+  }
+
+  execute(`
+    INSERT INTO projects (id, idea_id, org_id, title, owner_id, current_stage, status)
+    VALUES (?, ?, 'DEFAULT_ORG', ?, ?, 'RESEARCH_DEV_PARALLEL', 'ACTIVE')
+  `, [projectId, backingIdeaId, title, req.user.id]);
+
+  const project = queryOne('SELECT * FROM projects WHERE id = ?', [projectId]);
+  return res.status(201).json({
+    message: 'Project created successfully',
+    project
+  });
+});
 
 /**
  * 1. POST /api/projects/auto-create (Internal / Admin trigger)

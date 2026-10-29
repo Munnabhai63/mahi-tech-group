@@ -6,8 +6,7 @@ import {
   formatINR, formatDate, formatDateTime, relativeTime, escapeHTML, titleCase,
   statusTone, initials, uid,
   fetchAdminApplications, fetchAdminMembers, fetchAdminRevenue,
-  fetchAdminOffboarding, fetchAdminConfig, fetchAdminAudit,
-  isDemoMode
+  fetchAdminOffboarding, fetchAdminConfig, fetchAdminAudit
 } from '../store.js';
 import {
   icon, badge, plainBadge, avatar, person, statCard, progress, pageHead,
@@ -84,8 +83,125 @@ function openAdminBroadcastNotification() {
   });
 }
 
+function renderOnboardingChecklistHtml() {
+  return `<div id="admin-onboarding-card" class="card card--pad mb-3" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; display: none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:1.25rem;">🚀</span>
+        <h3 style="margin:0; font-size:1.05rem; color:#fff;">Workspace Onboarding Checklist</h3>
+      </div>
+      <span id="onboarding-progress-badge" class="badge badge--info" style="font-size:0.75rem;">0 of 4 Completed</span>
+    </div>
+    <div style="background:rgba(255,255,255,0.1); border-radius:9999px; height:6px; overflow:hidden; margin-bottom:1rem;">
+      <div id="onboarding-progress-bar" style="background:#38bdf8; height:100%; width:0%; transition:width 0.3s ease;"></div>
+    </div>
+    <div class="stack" style="gap:0.5rem;">
+      <div class="onboarding-item" id="item-admin-created" style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.75rem; border-radius:6px; background:rgba(255,255,255,0.03);">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="color:#10b981; font-weight:bold;">✔</span>
+          <span style="font-size:0.875rem; color:#e2e8f0;">Admin account created</span>
+        </div>
+        <span class="badge badge--success" style="font-size:0.7rem;">Completed</span>
+      </div>
+      <div class="onboarding-item" id="item-member-invited" style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.75rem; border-radius:6px; background:rgba(255,255,255,0.03);">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span id="chk-member" style="font-weight:bold; color:#94a3b8;">○</span>
+          <span style="font-size:0.875rem; color:#e2e8f0;">At least 1 team member invited</span>
+        </div>
+        <button type="button" class="btn btn--outline btn--sm" id="btn-quick-invite" style="font-size:0.75rem; padding:2px 8px;">+ Invite Member</button>
+      </div>
+      <div class="onboarding-item" id="item-project-created" style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.75rem; border-radius:6px; background:rgba(255,255,255,0.03);">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span id="chk-project" style="font-weight:bold; color:#94a3b8;">○</span>
+          <span style="font-size:0.875rem; color:#e2e8f0;">First project created</span>
+        </div>
+        <a class="btn btn--outline btn--sm" href="#/app/projects" style="font-size:0.75rem; padding:2px 8px; text-decoration:none;">View Projects</a>
+      </div>
+      <div class="onboarding-item" id="item-task-created" style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.75rem; border-radius:6px; background:rgba(255,255,255,0.03);">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span id="chk-task" style="font-weight:bold; color:#94a3b8;">○</span>
+          <span style="font-size:0.875rem; color:#e2e8f0;">First task created</span>
+        </div>
+        <a class="btn btn--outline btn--sm" href="#/app/tasks" style="font-size:0.75rem; padding:2px 8px; text-decoration:none;">View Tasks</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openQuickInviteDialog(onComplete) {
+  openDialog({
+    title: 'Invite Team Member',
+    subtitle: 'Generate secure member invitation link',
+    content: `
+      <form id="quick-invite-form" class="stack" novalidate>
+        <div class="field">
+          <label for="quick-invite-email">Member Email Address</label>
+          <input class="input" id="quick-invite-email" name="email" type="email" required placeholder="colleague@mahitechgroup.com" autofocus>
+        </div>
+        <div class="field">
+          <label for="quick-invite-role">Assigned Role</label>
+          <select class="select" id="quick-invite-role" name="role" required>
+            <option value="developer">Developer</option>
+            <option value="researcher">Researcher</option>
+            <option value="designer">UI/UX Designer</option>
+            <option value="producer">Producer / QA</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="field" id="quick-invite-subrole-field">
+          <label for="quick-invite-subrole">Specialization (Optional)</label>
+          <select class="select" id="quick-invite-subrole" name="sub_role">
+            <option value="">None</option>
+            <option value="frontend">Frontend</option>
+            <option value="backend">Backend</option>
+          </select>
+        </div>
+      </form>
+    `,
+    footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="send-quick-invite-btn">Send Invite →</button>',
+    onMount(dialog) {
+      const form = dialog.querySelector('#quick-invite-form');
+      const roleSelect = dialog.querySelector('#quick-invite-role');
+      const subroleField = dialog.querySelector('#quick-invite-subrole-field');
+      const sendBtn = dialog.querySelector('#send-quick-invite-btn');
+
+      roleSelect?.addEventListener('change', () => {
+        if (subroleField) subroleField.style.display = roleSelect.value === 'developer' ? 'block' : 'none';
+      });
+
+      sendBtn?.addEventListener('click', async () => {
+        const values = formValues(form);
+        const email = (values.email || '').trim();
+        const role = values.role || 'developer';
+        const sub_role = values.sub_role || null;
+
+        if (!email || !email.includes('@')) {
+          return setFormError(form, 'Please enter a valid email address.', 'email');
+        }
+
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Generating invite...';
+
+        try {
+          const res = await api.post('/admin/invites', { email, role, sub_role });
+          closeDialog();
+          toast(`Invitation link generated for ${email}!`, 'success');
+          if (res.invite?.invite_url && navigator.clipboard) {
+            navigator.clipboard.writeText(res.invite.invite_url).catch(() => {});
+          }
+          if (onComplete) onComplete();
+        } catch (err) {
+          sendBtn.disabled = false;
+          sendBtn.textContent = 'Send Invite →';
+          setFormError(form, err.message || 'Failed to send invite.');
+        }
+      });
+    }
+  });
+}
+
 export function renderAdminDashboard() {
-  if (state.live.backendError && !isDemoMode()) {
+  if (state.live.backendError) {
     return {
       html: `${adminHead('Operational control, with a record.', 'Member, project, financial, and governance queues across MAHI TECH GROUP.')}${renderBackendError('Admin Operations Offline', 'The backend server is unreachable. Live administrative queues, application reviews, and financial oversight are suspended until connection is restored.')}`,
       mount() {
@@ -97,13 +213,63 @@ export function renderAdminDashboard() {
   }
   const recent = state.data.auditLogs.slice(0, 6);
   const offboarding = state.data.offboarding.slice(0, 3);
-  const content = `${adminStats()}<div class="admin-section-label"><h2>Queues that need a decision</h2><span></span></div><div class="grid-3"><a class="metric-alert" href="#/admin/applications"><span class="metric-alert__icon">${icon('user-plus')}</span><div><strong>${state.data.applications.filter(app => app.status === 'pending').length}</strong><span>Applications to review</span></div>${icon('chevron-right', 'icon--sm')}</a><a class="metric-alert" href="#/admin/projects"><span class="metric-alert__icon">${icon('eye')}</span><div><strong>${state.data.projects.filter(project => project.stage === 'ADMIN_REVIEW').length}</strong><span>Final review gates</span></div>${icon('chevron-right', 'icon--sm')}</a><a class="metric-alert" href="#/admin/revenue"><span class="metric-alert__icon">${icon('wallet')}</span><div><strong>${state.data.withdrawals.filter(item => item.status === 'PENDING').length}</strong><span>Manual payout reviews</span></div>${icon('chevron-right', 'icon--sm')}</a></div><div class="grid-main-side mt-3"><section class="card card--flush"><div class="card-head"><div><h2>Recent operational activity</h2><p>Latest audit events across the organization.</p></div><a class="btn btn--ghost btn--sm" href="#/admin/audit">Full access log ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body">${recent.map(log => `<div class="activity-item"><span class="activity-item__dot">${icon(log.severity === 'critical' ? 'alert' : log.module === 'meetings' ? 'video' : log.module === 'wallet' ? 'wallet' : 'activity')}</span><div><p><strong>${titleCase(log.action)}</strong> · ${escapeHTML(log.resource)}</p><time>${formatDateTime(log.at)} · ${escapeHTML(getUser(log.userId)?.name || 'System')}</time></div></div>`).join('')}</div></section><aside class="stack"><section class="card card--flush"><div class="card-head"><div><h2>Recent offboarding</h2><p>Permanent exit records.</p></div></div><div class="card-body">${offboarding.length ? offboarding.map(record => { const user = getUser(record.userId); return `<a class="list-row list-row--button" href="#/admin/offboarding"><div class="list-row__main">${person(user, `Exited ${formatDate(record.completedAt)}`)}</div>${badge(record.status)}</a>`; }).join('') : emptyState('No offboarding records', 'Member exits will appear here.', '', 'users')}</div></section><section class="card card--pad"><div class="eyebrow">Elevated operations</div><h3 class="mt-1" style="font:600 18px var(--font-display)">Performance, disputes & governance</h3><p class="small muted mt-1">Enter the Admin-only elevated zone for directory exports, internal support notes, gateway controls, and unified audit.</p><a class="btn btn--primary btn--full mt-2" href="#/superadmin">Open elevated zone ${icon('arrow-up-right')}</a></section></aside></div>`;
+  const content = `${renderOnboardingChecklistHtml()}${adminStats()}<div class="admin-section-label"><h2>Queues that need a decision</h2><span></span></div><div class="grid-3"><a class="metric-alert" href="#/admin/applications"><span class="metric-alert__icon">${icon('user-plus')}</span><div><strong>${state.data.applications.filter(app => app.status === 'pending').length}</strong><span>Applications to review</span></div>${icon('chevron-right', 'icon--sm')}</a><a class="metric-alert" href="#/admin/projects"><span class="metric-alert__icon">${icon('eye')}</span><div><strong>${state.data.projects.filter(project => project.stage === 'ADMIN_REVIEW').length}</strong><span>Final review gates</span></div>${icon('chevron-right', 'icon--sm')}</a><a class="metric-alert" href="#/admin/revenue"><span class="metric-alert__icon">${icon('wallet')}</span><div><strong>${state.data.withdrawals.filter(item => item.status === 'PENDING').length}</strong><span>Manual payout reviews</span></div>${icon('chevron-right', 'icon--sm')}</a></div><div class="grid-main-side mt-3"><section class="card card--flush"><div class="card-head"><div><h2>Recent operational activity</h2><p>Latest audit events across the organization.</p></div><a class="btn btn--ghost btn--sm" href="#/admin/audit">Full access log ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body">${recent.map(log => `<div class="activity-item"><span class="activity-item__dot">${icon(log.severity === 'critical' ? 'alert' : log.module === 'meetings' ? 'video' : log.module === 'wallet' ? 'wallet' : 'activity')}</span><div><p><strong>${titleCase(log.action)}</strong> · ${escapeHTML(log.resource)}</p><time>${formatDateTime(log.at)} · ${escapeHTML(getUser(log.userId)?.name || 'System')}</time></div></div>`).join('')}</div></section><aside class="stack"><section class="card card--flush"><div class="card-head"><div><h2>Recent offboarding</h2><p>Permanent exit records.</p></div></div><div class="card-body">${offboarding.length ? offboarding.map(record => { const user = getUser(record.userId); return `<a class="list-row list-row--button" href="#/admin/offboarding"><div class="list-row__main">${person(user, `Exited ${formatDate(record.completedAt)}`)}</div>${badge(record.status)}</a>`; }).join('') : emptyState('No offboarding records', 'Member exits will appear here.', '', 'users')}</div></section><section class="card card--pad"><div class="eyebrow">Elevated operations</div><h3 class="mt-1" style="font:600 18px var(--font-display)">Performance, disputes & governance</h3><p class="small muted mt-1">Enter the Admin-only elevated zone for directory exports, internal support notes, gateway controls, and unified audit.</p><a class="btn btn--primary btn--full mt-2" href="#/superadmin">Open elevated zone ${icon('arrow-up-right')}</a></section></aside></div>`;
   return {
-    html: `${adminHead('Operational control, with a record.', 'Member, project, financial, and governance queues across MAHI TECH GROUP.')}<div class="dashboard-actions mb-2"><button class="btn btn--primary" id="admin-broadcast-notification">${icon('bell')} Broadcast Notification</button></div>${withPreview(content, { title: 'No Admin operations in this preview', description: 'The empty-state preview hides queues, projects, payouts, and logs.', icon: 'shield' })}`,
+    html: `${adminHead('Operational control, with a record.', 'Member, project, financial, and governance queues across MAHI TECH GROUP.')}<div class="dashboard-actions mb-2" style="display:flex; gap:10px;"><button class="btn btn--primary" id="admin-broadcast-notification">${icon('bell')} Broadcast Notification</button><button class="btn btn--outline" id="admin-invite-member-btn">${icon('user-plus')} Invite Team Member</button></div>${withPreview(content, { title: 'No Admin operations in this preview', description: 'The empty-state preview hides queues, projects, payouts, and logs.', icon: 'shield' })}`,
     mount() {
       fetchAdminApplications();
       fetchAdminMembers();
       fetchAdminRevenue();
+
+      async function refreshOnboardingChecklist() {
+        try {
+          const res = await api.get('/admin/onboarding-status');
+          const container = document.getElementById('admin-onboarding-card');
+          if (!container) return;
+
+          if (res.allComplete) {
+            container.style.display = 'none'; // Disappears automatically when all 4 complete!
+            return;
+          }
+
+          container.style.display = 'block';
+          const pct = Math.round((res.completedCount / res.totalCount) * 100);
+          const pBar = document.getElementById('onboarding-progress-bar');
+          const pBadge = document.getElementById('onboarding-progress-badge');
+          if (pBar) pBar.style.width = `${pct}%`;
+          if (pBadge) pBadge.textContent = `${res.completedCount} of ${res.totalCount} Completed`;
+
+          const chkMember = document.getElementById('chk-member');
+          if (chkMember) {
+            chkMember.textContent = res.checklist.memberInvited ? '✔' : '○';
+            if (res.checklist.memberInvited) chkMember.style.color = '#10b981';
+          }
+
+          const chkProject = document.getElementById('chk-project');
+          if (chkProject) {
+            chkProject.textContent = res.checklist.firstProjectCreated ? '✔' : '○';
+            if (res.checklist.firstProjectCreated) chkProject.style.color = '#10b981';
+          }
+
+          const chkTask = document.getElementById('chk-task');
+          if (chkTask) {
+            chkTask.textContent = res.checklist.firstTaskCreated ? '✔' : '○';
+            if (res.checklist.firstTaskCreated) chkTask.style.color = '#10b981';
+          }
+        } catch (e) {
+          // Ignore if offline
+        }
+      }
+
+      refreshOnboardingChecklist();
+
+      document.getElementById('btn-quick-invite')?.addEventListener('click', () => {
+        openQuickInviteDialog(refreshOnboardingChecklist);
+      });
+
+      document.getElementById('admin-invite-member-btn')?.addEventListener('click', () => {
+        openQuickInviteDialog(refreshOnboardingChecklist);
+      });
     }
   };
 }
@@ -111,7 +277,9 @@ export function renderAdminDashboard() {
 export function renderAdminApplications() {
   const applications = state.data.applications;
   const rows = applications.map(app => `<tr data-status="${app.status}" data-search="${escapeHTML(`${app.name} ${app.email} ${app.desiredRole}`.toLowerCase())}"><td>${person({ name: app.name, initials: initials(app.name), role: app.desiredRole, color: '#e3e5dc' }, app.email)}</td><td>${titleCase(app.desiredRole)}${app.desiredSubRole ? `<div class="cell-sub">${titleCase(app.desiredSubRole)}</div>` : ''}</td><td>${formatDateTime(app.submittedAt)}</td><td>${badge(app.status)}${app.localOnly ? '<div class="cell-sub">Browser-only application</div>' : ''}</td><td><div class="row-actions"><button class="btn btn--outline btn--sm" data-review-application="${app.id}">${app.status === 'pending' ? 'Review' : 'View'}</button></div></td></tr>`).join('');
-  const content = `<div class="filter-bar"><div class="field field--search"><label for="application-search">Search applications</label><div class="input-wrap">${icon('search')}<input class="input" id="application-search" placeholder="Name, email, or role"></div></div><div class="field"><label for="application-status-filter">Status</label><select class="select" id="application-status-filter"><option value="all">All applications</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div><span class="filter-count">${applications.filter(app => app.status === 'pending').length} pending</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Applicant</th><th>Desired role</th><th>Submitted</th><th>Status</th><th></th></tr></thead><tbody id="application-rows">${rows}</tbody></table></div>`;
+  const content = applications.length === 0
+    ? emptyState('No membership applications', 'New registration applications from public signups will appear here for review and role assignment.', '<a class="btn btn--outline btn--sm mt-2" href="#/app/admin/members">Manage existing members →</a>', 'user-plus')
+    : `<div class="filter-bar"><div class="field field--search"><label for="application-search">Search applications</label><div class="input-wrap">${icon('search')}<input class="input" id="application-search" placeholder="Name, email, or role"></div></div><div class="field"><label for="application-status-filter">Status</label><select class="select" id="application-status-filter"><option value="all">All applications</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div><span class="filter-count" id="application-count">${applications.filter(app => app.status === 'pending').length} pending</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Applicant</th><th>Desired role</th><th>Submitted</th><th>Status</th><th></th></tr></thead><tbody id="application-rows">${rows}</tbody></table></div><div id="application-empty" hidden>${emptyState('No applications match filter', 'Clear search or change status filter.', '', 'user-plus')}</div>`;
   return {
     html: `${adminHead('Membership applications', 'Review desired roles, assign final roles, and retain application decisions.')}<div class="page-head page-head--compact"><div class="page-head__copy"><div class="eyebrow">Access queue</div><h1>Applications</h1></div></div>${withPreview(content, { title: 'No applications to review', description: 'New signup applications will appear in this queue.', icon: 'user-plus' })}`,
     mount() {
@@ -120,10 +288,15 @@ export function renderAdminApplications() {
       const search = document.querySelector('#application-search');
       const status = document.querySelector('#application-status-filter');
       const filter = () => {
-        const query = search.value.trim().toLowerCase();
+        let visible = 0;
+        const query = search?.value.trim().toLowerCase() || '';
         document.querySelectorAll('#application-rows tr').forEach(row => {
-          row.hidden = !((!query || row.dataset.search.includes(query)) && (status.value === 'all' || row.dataset.status === status.value));
+          const show = (!query || row.dataset.search.includes(query)) && (status.value === 'all' || row.dataset.status === status.value);
+          row.hidden = !show;
+          if (show) visible++;
         });
+        const emptyEl = document.querySelector('#application-empty');
+        if (emptyEl) emptyEl.hidden = visible > 0;
       };
       search?.addEventListener('input', filter);
       status?.addEventListener('change', filter);
@@ -201,12 +374,15 @@ function openApplicationReview(id) {
 
 export function renderAdminMembers() {
   const users = state.data.users;
-  const content = `<div class="filter-bar"><div class="field field--search"><label for="admin-member-search">Search members</label><div class="input-wrap">${icon('search')}<input class="input" id="admin-member-search" placeholder="Name, email, or role"></div></div><div class="field"><label for="admin-member-role">Role</label><select class="select" id="admin-member-role"><option value="all">All roles</option><option value="researcher">Researcher</option><option value="designer">Designer</option><option value="developer">Developer</option><option value="producer">Producer</option><option value="admin">Admin</option></select></div><div class="field"><label for="admin-member-status">Status</label><select class="select" id="admin-member-status"><option value="all">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select></div><span class="filter-count" id="admin-member-count">${users.length} records</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Projects</th><th>Wallet</th><th>Last active</th><th></th></tr></thead><tbody id="admin-member-rows">${users.map(user => `<tr data-role="${user.role}" data-status="${user.status}" data-search="${escapeHTML(`${user.name} ${user.email} ${user.role}`.toLowerCase())}"><td>${person(user, user.email)}</td><td>${titleCase(user.role)}${user.subRole ? `<div class="cell-sub">${titleCase(user.subRole)}</div>` : ''}</td><td>${badge(user.status)}${user.frozen ? '<div class="cell-sub text-danger">Wallet frozen</div>' : ''}</td><td>${user.projects}</td><td>${formatINR(user.wallet)}</td><td>${formatDate(user.lastActive)}</td><td><div class="row-actions"><a class="btn btn--ghost btn--sm" href="#/app/members/${user.id}">Profile</a><button class="btn btn--outline btn--sm" data-edit-member="${user.id}">Edit role</button><button class="btn btn--ghost btn--sm" data-offboard-member="${user.id}" ${user.id === currentUser().id || user.status !== 'active' ? 'disabled' : ''}>Offboard</button></div></td></tr>`).join('')}</tbody></table></div>`;
+  const content = users.length === 0
+    ? emptyState('No member records', 'The team workspace directory is empty. Add the first team member to begin onboarding.', '<button class="btn btn--primary btn--sm mt-2" id="empty-add-member">Add first member →</button>', 'users')
+    : `<div class="filter-bar"><div class="field field--search"><label for="admin-member-search">Search members</label><div class="input-wrap">${icon('search')}<input class="input" id="admin-member-search" placeholder="Name, email, or role"></div></div><div class="field"><label for="admin-member-role">Role</label><select class="select" id="admin-member-role"><option value="all">All roles</option><option value="researcher">Researcher</option><option value="designer">Designer</option><option value="developer">Developer</option><option value="producer">Producer</option><option value="admin">Admin</option></select></div><div class="field"><label for="admin-member-status">Status</label><select class="select" id="admin-member-status"><option value="all">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select></div><span class="filter-count" id="admin-member-count">${users.length} records</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Projects</th><th>Wallet</th><th>Last active</th><th></th></tr></thead><tbody id="admin-member-rows">${users.map(user => `<tr data-role="${user.role}" data-status="${user.status}" data-search="${escapeHTML(`${user.name} ${user.email} ${user.role}`.toLowerCase())}"><td>${person(user, user.email)}</td><td>${titleCase(user.role)}${user.subRole ? `<div class="cell-sub">${titleCase(user.subRole)}</div>` : ''}</td><td>${badge(user.status)}${user.frozen ? '<div class="cell-sub text-danger">Wallet frozen</div>' : ''}</td><td>${user.projects}</td><td>${formatINR(user.wallet)}</td><td>${formatDate(user.lastActive)}</td><td><div class="row-actions"><a class="btn btn--ghost btn--sm" href="#/app/members/${user.id}">Profile</a><button class="btn btn--outline btn--sm" data-edit-member="${user.id}">Edit role</button><button class="btn btn--ghost btn--sm" data-offboard-member="${user.id}" ${user.id === currentUser().id || user.status !== 'active' ? 'disabled' : ''}>Offboard</button></div></td></tr>`).join('')}</tbody></table></div><div id="admin-member-empty" hidden>${emptyState('No members match filter', 'Clear search or adjust role and status filters.', '', 'users')}</div>`;
   return {
     html: `${adminHead('Member administration', 'Active roles, historical profiles, direct member creation, and the offboarding kill-switch.')}<div class="page-head page-head--compact"><div class="page-head__copy"><div class="eyebrow">Directory</div><h1>Members</h1></div><div class="page-head__actions"><button class="btn btn--primary" id="add-member">${icon('plus')} Add member</button></div></div>${withPreview(content, { title: 'No member records', description: 'Member and former-member records will appear here.', icon: 'users' })}`,
     mount() {
       fetchAdminMembers().catch(() => {});
       document.querySelector('#add-member')?.addEventListener('click', openAddMember);
+      document.querySelector('#empty-add-member')?.addEventListener('click', openAddMember);
       document.querySelectorAll('[data-edit-member]').forEach(button => button.addEventListener('click', () => openEditMember(button.dataset.editMember)));
       document.querySelectorAll('[data-offboard-member]').forEach(button => button.addEventListener('click', () => openOffboarding(button.dataset.offboardMember)));
       const search = document.querySelector('#admin-member-search');
@@ -214,13 +390,16 @@ export function renderAdminMembers() {
       const status = document.querySelector('#admin-member-status');
       const filter = () => {
         let count = 0;
-        const query = search.value.trim().toLowerCase();
+        const query = search?.value.trim().toLowerCase() || '';
         document.querySelectorAll('#admin-member-rows tr').forEach(row => {
           const show = (!query || row.dataset.search.includes(query)) && (role.value === 'all' || row.dataset.role === role.value) && (status.value === 'all' || row.dataset.status === status.value);
           row.hidden = !show;
           if (show) count++;
         });
-        document.querySelector('#admin-member-count').textContent = `${count} records`;
+        const countEl = document.querySelector('#admin-member-count');
+        if (countEl) countEl.textContent = `${count} records`;
+        const emptyEl = document.querySelector('#admin-member-empty');
+        if (emptyEl) emptyEl.hidden = count > 0;
       };
       search?.addEventListener('input', filter);
       role?.addEventListener('change', filter);
@@ -362,7 +541,10 @@ export function renderAdminIdeas() {
 
 export function renderAdminProjects() {
   const projects = state.data.projects;
-  const content = `<div data-tab-scope><div class="tabs mb-3" data-tabs role="tablist"><button class="tab" data-tab="projects-list" aria-selected="true">Projects Directory</button><button class="tab" data-tab="pipeline-approvals" aria-selected="false">Pipeline Go-Live Approvals</button></div><section data-tab-panel="projects-list"><div class="filter-bar"><div class="field field--search"><label for="admin-project-search">Search projects</label><div class="input-wrap">${icon('search')}<input class="input" id="admin-project-search" placeholder="Project title or code"></div></div><div class="field"><label for="admin-project-stage">Stage</label><select class="select" id="admin-project-stage"><option value="all">All stages</option>${Object.entries(stageMeta).map(([value, meta]) => `<option value="${value}">${meta.label}</option>`).join('')}<option value="REJECTED_AT_REVIEW">Rejected at review</option></select></div><span class="filter-count">${projects.length} projects</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Project</th><th>Stage</th><th>Progress</th><th>Open tasks</th><th>Contributors</th><th>Final gate</th><th></th></tr></thead><tbody id="admin-project-rows">${projects.map(project => { const open = project.tasks.filter(task => task.status !== 'DONE').length; const contributors = new Set(project.tasks.map(task => task.assignedTo).filter(Boolean)).size; return `<tr data-stage="${project.stage}" data-search="${escapeHTML(`${project.title} ${project.code}`.toLowerCase())}"><td><a class="table-link" href="#/app/projects/${project.id}">${escapeHTML(project.title)}</a><div class="cell-sub">${project.code}</div></td><td>${badge(project.stage)}</td><td style="min-width:130px">${progress(projectProgress(project))}<div class="cell-sub">${projectProgress(project)}%</div></td><td>${open}</td><td>${contributors}</td><td>${['ADMIN_REVIEW', 'REJECTED_AT_REVIEW'].includes(project.stage) ? `<button class="btn btn--primary btn--sm" data-final-review="${project.id}">${project.stage === 'REJECTED_AT_REVIEW' ? 'Re-review' : 'Review'}</button>` : project.stage === 'LIVE' ? badge('approved', 'success') : '<span class="small muted">Not ready</span>'}</td><td><a class="btn btn--outline btn--sm" href="#/app/projects/${project.id}">Manage</a></td></tr>`; }).join('')}</tbody></table></div>${notice('Open a project to reassign tasks, inspect dependencies, manage contribution weights, or add organization asset references.', 'info')}</section><section data-tab-panel="pipeline-approvals" hidden><div id="admin-pipeline-approvals-mount"></div></section></div>`;
+  const projectListSection = projects.length === 0
+    ? emptyState('No projects yet', 'Projects are created when idea proposals are approved by consensus and Admin.', '<a class="btn btn--outline btn--sm mt-2" href="#/app/ideas">Browse idea proposals →</a>', 'folder')
+    : `<div class="filter-bar"><div class="field field--search"><label for="admin-project-search">Search projects</label><div class="input-wrap">${icon('search')}<input class="input" id="admin-project-search" placeholder="Project title or code"></div></div><div class="field"><label for="admin-project-stage">Stage</label><select class="select" id="admin-project-stage"><option value="all">All stages</option>${Object.entries(stageMeta).map(([value, meta]) => `<option value="${value}">${meta.label}</option>`).join('')}<option value="REJECTED_AT_REVIEW">Rejected at review</option></select></div><span class="filter-count" id="admin-project-count">${projects.length} projects</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Project</th><th>Stage</th><th>Progress</th><th>Open tasks</th><th>Contributors</th><th>Final gate</th><th></th></tr></thead><tbody id="admin-project-rows">${projects.map(project => { const open = project.tasks.filter(task => task.status !== 'DONE').length; const contributors = new Set(project.tasks.map(task => task.assignedTo).filter(Boolean)).size; return `<tr data-stage="${project.stage}" data-search="${escapeHTML(`${project.title} ${project.code}`.toLowerCase())}"><td><a class="table-link" href="#/app/projects/${project.id}">${escapeHTML(project.title)}</a><div class="cell-sub">${project.code}</div></td><td>${badge(project.stage)}</td><td style="min-width:130px">${progress(projectProgress(project))}<div class="cell-sub">${projectProgress(project)}%</div></td><td>${open}</td><td>${contributors}</td><td>${['ADMIN_REVIEW', 'REJECTED_AT_REVIEW'].includes(project.stage) ? `<button class="btn btn--primary btn--sm" data-final-review="${project.id}">${project.stage === 'REJECTED_AT_REVIEW' ? 'Re-review' : 'Review'}</button>` : project.stage === 'LIVE' ? badge('approved', 'success') : '<span class="small muted">Not ready</span>'}</td><td><a class="btn btn--outline btn--sm" href="#/app/projects/${project.id}">Manage</a></td></tr>`; }).join('')}</tbody></table></div><div id="admin-project-empty" hidden>${emptyState('No projects match filter', 'Clear search or select another stage filter.', '', 'folder')}</div>${notice('Open a project to reassign tasks, inspect dependencies, manage contribution weights, or add organization asset references.', 'info')}`;
+  const content = `<div data-tab-scope><div class="tabs mb-3" data-tabs role="tablist"><button class="tab" data-tab="projects-list" aria-selected="true">Projects Directory</button><button class="tab" data-tab="pipeline-approvals" aria-selected="false">Pipeline Go-Live Approvals</button></div><section data-tab-panel="projects-list">${projectListSection}</section><section data-tab-panel="pipeline-approvals" hidden><div id="admin-pipeline-approvals-mount"></div></section></div>`;
   return {
     html: `${adminHead('Project pipeline & final gates', 'All projects, assignments, prerequisites, contribution records, and launch decisions.')}<div class="page-head page-head--compact"><div class="page-head__copy"><div class="eyebrow">Delivery control</div><h1>Projects</h1></div></div>${withPreview(content, { title: 'No projects', description: 'Approved ideas will create projects for Admin management.', icon: 'folder' })}`,
     mount() {
@@ -371,10 +553,15 @@ export function renderAdminProjects() {
       const search = document.querySelector('#admin-project-search');
       const stage = document.querySelector('#admin-project-stage');
       const filter = () => {
-        const query = search.value.trim().toLowerCase();
+        let visible = 0;
+        const query = search?.value.trim().toLowerCase() || '';
         document.querySelectorAll('#admin-project-rows tr').forEach(row => {
-          row.hidden = !((!query || row.dataset.search.includes(query)) && (stage.value === 'all' || row.dataset.stage === stage.value));
+          const show = (!query || row.dataset.search.includes(query)) && (stage.value === 'all' || row.dataset.stage === stage.value);
+          row.hidden = !show;
+          if (show) visible++;
         });
+        const emptyEl = document.querySelector('#admin-project-empty');
+        if (emptyEl) emptyEl.hidden = visible > 0;
       };
       search?.addEventListener('input', filter);
       stage?.addEventListener('change', filter);

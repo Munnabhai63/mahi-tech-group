@@ -1606,6 +1606,41 @@ CREATE INDEX IF NOT EXISTS idx_device_tokens_platform ON device_tokens(platform)
 CREATE INDEX IF NOT EXISTS idx_device_tokens_token ON device_tokens(token);
 `;
 
+export const TEAM_INVITES_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS team_invites (
+  id TEXT PRIMARY KEY,
+  email VARCHAR(150) NOT NULL,
+  token VARCHAR(100) UNIQUE NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'developer' CHECK (role IN ('researcher','developer','producer','admin','designer')),
+  sub_role VARCHAR(20) CHECK (sub_role IN ('frontend','backend',NULL)),
+  invited_by TEXT REFERENCES users(id),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','expired','cancelled')),
+  expires_at TIMESTAMP NOT NULL,
+  accepted_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_team_invites_token ON team_invites(token);
+CREATE INDEX IF NOT EXISTS idx_team_invites_email ON team_invites(email);
+CREATE INDEX IF NOT EXISTS idx_team_invites_status ON team_invites(status);
+`;
+
+export const OKR_CYCLES_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS okr_cycles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  quarter INTEGER,
+  year INTEGER,
+  start_date TEXT,
+  end_date TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_okr_cycles_name ON okr_cycles(name);
+CREATE INDEX IF NOT EXISTS idx_okr_cycles_active ON okr_cycles(is_active);
+`;
+
 export function seedBuiltInKpis(db) {
   try {
     const adminRow = db.prepare("SELECT id FROM users WHERE role IN ('admin', 'superadmin') LIMIT 1").get();
@@ -1772,7 +1807,8 @@ export function seedBuiltInKpis(db) {
 export function seedDefaultExpenseCategories(db) {
   try {
     const adminRow = db.prepare("SELECT id FROM users WHERE role IN ('admin', 'superadmin') LIMIT 1").get();
-    const adminId = adminRow ? adminRow.id : 1;
+    if (!adminRow) return; // Defer seeding until an admin user exists
+    const adminId = adminRow.id;
 
     const defaultCategories = [
       { name: 'SOFTWARE', description: 'Software licenses, subscriptions, and developer tools' },
@@ -2250,6 +2286,93 @@ export function seedBuiltInWikiTemplates(db) {
   }
 }
 
+export function seedDefaultWikiSpace(db) {
+  try {
+    const adminRow = db.prepare("SELECT id FROM users WHERE role IN ('admin', 'superadmin') LIMIT 1").get();
+    if (!adminRow) return;
+    const adminId = adminRow.id;
+
+    const existing = db.prepare("SELECT id FROM wiki_spaces WHERE slug = 'general'").get();
+    if (!existing) {
+      db.prepare(`
+        INSERT INTO wiki_spaces (name, slug, description, icon, color, visibility, is_archived, created_by)
+        VALUES ('General', 'general', 'Default team knowledge base and company wiki', '📚', '#4A90E2', 'INTERNAL', 0, ?)
+      `).run(adminId);
+      console.log('[DB] Seeded default wiki space: General (slug: general)');
+    }
+  } catch (err) {
+    if (!err.message.includes('no such table')) {
+      console.error('[DB] Warning seeding default wiki space:', err.message);
+    }
+  }
+}
+
+export function getCurrentQuarterCycle() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const quarter = Math.floor(now.getMonth() / 3) + 1;
+  return `Q${quarter}-${year}`;
+}
+
+export function seedDefaultOkrCycle(db) {
+  try {
+    const currentQuarter = getCurrentQuarterCycle();
+    const now = new Date();
+    const year = now.getFullYear();
+    const quarter = Math.floor(now.getMonth() / 3) + 1;
+
+    const qStartMonth = (quarter - 1) * 3;
+    const startDate = new Date(year, qStartMonth, 1).toISOString().split('T')[0];
+    const endDate = new Date(year, qStartMonth + 3, 0).toISOString().split('T')[0];
+
+    // Ensure okr_cycles table exists
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS okr_cycles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        quarter INTEGER,
+        year INTEGER,
+        start_date TEXT,
+        end_date TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    const existing = db.prepare('SELECT id FROM okr_cycles WHERE name = ?').get(currentQuarter);
+    if (!existing) {
+      db.prepare(`
+        INSERT INTO okr_cycles (name, quarter, year, start_date, end_date, is_active)
+        VALUES (?, ?, ?, ?, ?, 1)
+      `).run(currentQuarter, quarter, year, startDate, endDate);
+      console.log(`[DB] Seeded default OKR cycle: ${currentQuarter}`);
+    }
+
+    try {
+      db.prepare(`
+        INSERT OR REPLACE INTO system_config (key, value, updated_at)
+        VALUES ('current_okr_cycle', ?, CURRENT_TIMESTAMP)
+      `).run(currentQuarter);
+    } catch (e) {}
+
+    const adminRow = db.prepare("SELECT id FROM users WHERE role IN ('admin', 'superadmin') LIMIT 1").get();
+    if (adminRow) {
+      const existingObj = db.prepare('SELECT id FROM okr_objectives WHERE cycle = ? AND level = ?').get(currentQuarter, 'COMPANY');
+      if (!existingObj) {
+        db.prepare(`
+          INSERT INTO okr_objectives (title, description, level, owner_id, cycle, status, progress_pct, created_by)
+          VALUES ('Company Strategic Growth', 'Drive cross-functional product execution and customer value', 'COMPANY', ?, ?, 'ACTIVE', 0.0, ?)
+        `).run(adminRow.id, currentQuarter, adminRow.id);
+        console.log(`[DB] Seeded default Company OKR objective for cycle: ${currentQuarter}`);
+      }
+    }
+  } catch (err) {
+    if (!err.message.includes('no such table')) {
+      console.error('[DB] Warning seeding default OKR cycle:', err.message);
+    }
+  }
+}
+
 export function getDatabase() {
   if (!dbInstance) {
     fs.mkdirSync(path.dirname(config.DB_PATH), { recursive: true });
@@ -2284,11 +2407,15 @@ export function getDatabase() {
     dbInstance.exec(AUTOMATION_SCHEMA_SQL);
     dbInstance.exec(WIKI_SCHEMA_SQL);
     dbInstance.exec(MOBILE_APP_SCHEMA_SQL);
+    dbInstance.exec(TEAM_INVITES_SCHEMA_SQL);
+    dbInstance.exec(OKR_CYCLES_SCHEMA_SQL);
 
     seedBuiltInKpis(dbInstance);
     seedDefaultExpenseCategories(dbInstance);
     seedBuiltInAutomationTemplates(dbInstance);
     seedBuiltInWikiTemplates(dbInstance);
+    seedDefaultWikiSpace(dbInstance);
+    seedDefaultOkrCycle(dbInstance);
   }
   return dbInstance;
 }

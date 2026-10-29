@@ -60,6 +60,41 @@ function projectCard(project) {
 export function renderProjects() {
   const user = currentUser();
   const projects = user?.role === 'admin' ? state.data.projects : state.data.projects.filter(project => project.ownerId === user?.id || (project.tasks || []).some(task => (task.assignedTo || task.assigned_to) === user?.id));
+
+  if (!projects.length) {
+    const empty = emptyState('No projects yet', 'Approved proposals and task assignments will bring active initiatives into this pipeline.', '<a class="btn btn--primary btn--sm" href="#/app/ideas/new">Create first project proposal →</a>', 'folder');
+    return {
+      html: `${pageHead('Organization projects', 'Pipeline, not a black box.', 'Follow every project through parallel tracks, integration, testing, final review, and live operations.', `<a class="btn btn--outline" href="#/app/tasks">${icon('check-square')} My task queue</a>`)}<div class="card card--pad mt-3">${empty}</div>`,
+      mount() {
+        if (getAuthToken()) {
+          api.get('/api/dashboard/kanban').then(res => {
+            if (res) {
+              const list = [];
+              Object.entries(res).forEach(([stg, prjs]) => {
+                if (Array.isArray(prjs)) {
+                  prjs.forEach(p => list.push({
+                    id: p.id,
+                    code: p.title ? p.title.slice(0, 3).toUpperCase() : 'PRJ',
+                    title: p.title,
+                    summary: p.description || '',
+                    stage: p.current_stage || stg,
+                    tasks: p.tasks || []
+                  }));
+                }
+              });
+              if (list.length) {
+                state.data.projects = list;
+                window.dispatchEvent(new CustomEvent('app:refresh'));
+              }
+            }
+          }).catch(err => {
+            console.warn('Could not load kanban projects:', err);
+          });
+        }
+      }
+    };
+  }
+
   const stages = Object.keys(stageMeta).filter(stage => stage !== 'REJECTED_AT_REVIEW' || projects.some(project => (project.stage || project.current_stage) === stage));
   
   const board = `<div class="filter-bar"><div class="field field--search"><label for="project-search">Search projects</label><div class="input-wrap">${icon('search')}<input class="input" id="project-search" placeholder="Search by title or project code"></div></div><div class="field"><label for="project-stage-filter">Pipeline stage</label><select class="select" id="project-stage-filter"><option value="all">All stages</option>${stages.map(stage => `<option value="${stage}">${stageMeta[stage]?.label || titleCase(stage)}</option>`).join('')}</select></div><span class="filter-count" id="project-filter-count">${projects.length} projects</span></div><div class="kanban-board" id="project-board">${stages.map(stage => { const items = projects.filter(project => (project.stage || project.current_stage) === stage); return `<section class="kanban-column" data-stage="${stage}"><div class="kanban-column__head"><h2>${stageMeta[stage]?.label || titleCase(stage)}</h2><span class="kanban-column__count">${items.length}</span></div><div class="kanban-column__body">${items.length ? items.map(projectCard).join('') : '<div class="empty-state" style="padding:25px 8px"><p>No projects at this gate.</p></div>'}</div></section>`; }).join('')}</div>`;
@@ -138,10 +173,7 @@ function assetsFor(project) {
       createdAt: a.created_at
     }));
   }
-  const defaults = [
-    ['Research handoff', 'research', 'u-research'], ['Service flow and screen map', 'design', 'u-design'], ['API contract notes', 'document', 'u-dev-back'], ['Acceptance report', 'testing', 'u-producer'], ['Release checklist', 'review', 'u-admin']
-  ];
-  return defaults.slice(0, Math.min(defaults.length, project.assetCount || 0)).map((asset, index) => ({ id: `${project.id}-asset-${index}`, title: asset[0], type: asset[1], contributorName: 'Project team', organizationOwned: true, createdAt: project.createdAt }));
+  return [];
 }
 
 function projectOverview(project) {

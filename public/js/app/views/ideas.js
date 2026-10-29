@@ -68,9 +68,9 @@ function voteMeter(idea) {
 function ideaCard(idea) {
   const owner = getUser(idea.owner_id || idea.ownerId);
   const user = currentUser();
-  const hasVoted = ideaVotes(idea.id).some(vote => vote.voterId === user.id);
+  const hasVoted = ideaVotes(idea.id).some(vote => vote.voterId === user?.id);
   const submitted = idea.submitted_at || idea.submittedAt;
-  return `<article class="idea-card" data-idea-status="${idea.status}" data-idea-owner="${idea.owner_id || idea.ownerId}" data-search="${escapeHTML(`${idea.title} ${idea.description}`.toLowerCase())}"><div class="idea-card__top">${badge(idea.status)}<span class="tiny muted">${submitted ? relativeTime(submitted) : 'Unsubmitted draft'}</span></div><h2>${escapeHTML(idea.title)}</h2><p class="idea-card__description">${escapeHTML(idea.description)}</p><div class="idea-card__meta"><span>By ${escapeHTML(owner?.name || 'Member')}</span><span>${ideaVotes(idea.id).length} votes</span>${idea.projectId || idea.project_id ? '<span>Project created</span>' : ''}</div>${idea.status === 'PENDING_REVIEW' ? voteMeter(idea) : ''}<div class="idea-card__foot"><span class="person">${avatar(owner, 'sm')}<span class="person__meta"><strong>${escapeHTML(owner?.name || 'Member')}</strong><span>${titleCase(owner?.role || '')}</span></span></span><a class="btn btn--outline btn--sm" href="#/app/ideas/${idea.id}">${idea.status === 'PENDING_REVIEW' && (idea.owner_id || idea.ownerId) !== user.id && !hasVoted ? 'Review & vote' : 'Open idea'} ${icon('arrow-up-right', 'icon--sm')}</a></div></article>`;
+  return `<article class="idea-card" data-idea-status="${idea.status}" data-idea-owner="${idea.owner_id || idea.ownerId}" data-search="${escapeHTML(`${idea.title} ${idea.description}`.toLowerCase())}"><div class="idea-card__top">${badge(idea.status)}<span class="tiny muted">${submitted ? relativeTime(submitted) : 'Unsubmitted draft'}</span></div><h2>${escapeHTML(idea.title)}</h2><p class="idea-card__description">${escapeHTML(idea.description)}</p><div class="idea-card__meta"><span>By ${escapeHTML(owner?.name || 'Member')}</span><span>${ideaVotes(idea.id).length} votes</span>${idea.projectId || idea.project_id ? '<span>Project created</span>' : ''}</div>${idea.status === 'PENDING_REVIEW' ? voteMeter(idea) : ''}<div class="idea-card__foot"><span class="person">${avatar(owner, 'sm')}<span class="person__meta"><strong>${escapeHTML(owner?.name || 'Member')}</strong><span>${titleCase(owner?.role || '')}</span></span></span><a class="btn btn--outline btn--sm" href="#/app/ideas/${idea.id}">${idea.status === 'PENDING_REVIEW' && (idea.owner_id || idea.ownerId) !== user?.id && !hasVoted ? 'Review & vote' : 'Open idea'} ${icon('arrow-up-right', 'icon--sm')}</a></div></article>`;
 }
 
 export function evaluateVotingDecision(ideaId, simulatedDate = null) {
@@ -92,8 +92,26 @@ export function evaluateVotingDecision(ideaId, simulatedDate = null) {
 
 export function renderIdeas() {
   const user = currentUser();
-  const quota = quotaFor(user.id);
+  const quota = quotaFor(user?.id);
   const actions = `<a class="btn btn--outline" href="#/app/voting">${icon('vote')} Voting queue <span class="badge badge--info badge--no-dot">${pendingVotesFor().length}</span></a><a class="btn btn--primary" href="#/app/ideas/new">${icon('plus')} New idea</a>`;
+
+  if (!state.data.ideas.length) {
+    const empty = emptyState('No ideas submitted yet', 'The idea pipeline is waiting for its first initiative. Submit an idea to begin democratic team review.', '<a class="btn btn--primary btn--sm mt-2" href="#/app/ideas/new">Submit First Idea →</a>', 'bulb');
+    return {
+      html: `${pageHead('Ideation & governance', 'Ideas with a decision trail.', 'Draft, submit, score, vote, and inspect the outcome with an immutable audit record.', actions)}<div class="card card--pad mt-3">${empty}</div>`,
+      mount() {
+        if (getAuthToken()) {
+          api.get('/api/ideas').then(res => {
+            if (res?.ideas?.length) {
+              state.data.ideas = res.ideas;
+              window.dispatchEvent(new CustomEvent('app:refresh'));
+            }
+          }).catch(() => {});
+        }
+      }
+    };
+  }
+
   const content = `<div class="role-banner"><span class="role-banner__icon">${icon('bulb')}</span><div><h2>${quota.remaining} of ${quota.limit} submissions remain in this ${quota.days}-day window</h2><p>Drafts do not consume quota. Submitting or promoting a saved draft consumes 1 allocation.</p></div><a class="btn btn--soft btn--sm" href="#/app/ideas/new">Open editor</a></div><div class="filter-bar"><div class="field field--search"><label for="idea-search">Search ideas</label><div class="input-wrap">${icon('search')}<input class="input" id="idea-search" placeholder="Search title or description"></div></div><div class="field"><label for="idea-status">Decision state</label><select class="select" id="idea-status"><option value="all">All states</option><option value="DRAFT">Drafts</option><option value="PENDING_REVIEW">Pending review</option><option value="APPROVED">Approved</option><option value="REVISE">Revise</option><option value="REJECTED">Rejected</option><option value="KILLED">Removed by Admin</option></select></div><div class="field"><label for="idea-owner">Ownership</label><select class="select" id="idea-owner"><option value="all">All members</option><option value="mine">My ideas</option></select></div><span class="filter-count" id="idea-count">${state.data.ideas.length} ideas</span></div><div class="idea-grid" id="idea-grid">${state.data.ideas.map(ideaCard).join('')}</div><div id="idea-filter-empty" hidden>${emptyState('No ideas match these filters', 'Clear a filter or search for a different phrase.', '', 'search')}</div>`;
   
   return {
@@ -106,7 +124,7 @@ export function renderIdeas() {
         let visible = 0;
         const query = search.value.trim().toLowerCase();
         document.querySelectorAll('#idea-grid [data-idea-status]').forEach(card => {
-          const show = (!query || card.dataset.search.includes(query)) && (status.value === 'all' || card.dataset.ideaStatus === status.value) && (owner.value === 'all' || card.dataset.ideaOwner === user.id);
+          const show = (!query || card.dataset.search.includes(query)) && (status.value === 'all' || card.dataset.ideaStatus === status.value) && (owner.value === 'all' || card.dataset.ideaOwner === user?.id);
           card.hidden = !show;
           if (show) visible++;
         });
@@ -236,7 +254,7 @@ export function renderVoting() {
   const pending = state.live.pendingVotes?.length ? state.live.pendingVotes : pendingVotesFor();
   const user = currentUser();
   const voted = state.data.ideas.filter(idea => ideaVotes(idea.id).some(vote => vote.voterId === user.id));
-  const content = `<div class="tabs" data-tabs role="tablist"><button class="tab" data-tab="pending" aria-selected="true">Awaiting my vote <span class="tab-count">${pending.length}</span></button><button class="tab" data-tab="history" aria-selected="false">My voting history <span class="tab-count">${voted.length}</span></button></div><div data-tab-scope><section data-tab-panel="pending">${pending.length ? `<div class="idea-grid">${pending.map(ideaCard).join('')}</div>` : emptyState('Your voting queue is clear', 'Ideas awaiting your green or red vote will appear here. You cannot vote on your own ideas.', '<a class="btn btn--outline" href="#/app/ideas">Browse all ideas</a>', 'vote')}</section><section data-tab-panel="history" hidden>${voted.length ? `<div class="idea-grid">${voted.map(ideaCard).join('')}</div>` : emptyState('No votes recorded', 'Your voting history will appear after you cast a vote.', '', 'vote')}</section></div>`;
+  const content = `<div class="tabs" data-tabs role="tablist"><button class="tab" data-tab="pending" aria-selected="true">Awaiting my vote <span class="tab-count">${pending.length}</span></button><button class="tab" data-tab="history" aria-selected="false">My voting history <span class="tab-count">${voted.length}</span></button></div><div data-tab-scope><section data-tab-panel="pending">${pending.length ? `<div class="idea-grid">${pending.map(ideaCard).join('')}</div>` : emptyState('Your voting queue is clear', 'Ideas awaiting your green or red vote will appear here. You cannot vote on your own ideas.', '<a class="btn btn--outline" href="#/app/ideas">Browse all ideas</a>', 'vote')}</section><section data-tab-panel="history" hidden>${voted.length ? `<div class="idea-grid">${voted.map(ideaCard).join('')}</div>` : emptyState('No votes recorded', 'Your voting history will appear after you cast a vote.', '<a class="btn btn--outline btn--sm mt-2" href="#/app/ideas">Browse idea proposals →</a>', 'vote')}</section></div>`;
   
   return {
     html: `${pageHead('Team consensus', 'Your vote, with your reasoning.', 'Cast one green or red vote per idea and add optional feasibility, market, capacity, and comment context.', '<a class="btn btn--outline" href="#/app/ideas">All ideas</a>')}${withPreview(content, { title: 'No voting work here', description: 'Your queue is empty in this preview.', icon: 'vote' })}`,

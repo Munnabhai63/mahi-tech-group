@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getDatabase, execRaw, queryAll, queryOne, execute, ANALYTICS_SCHEMA_SQL, seedBuiltInKpis, CLIENT_PORTAL_SCHEMA_SQL, BUDGET_FINANCIAL_SCHEMA_SQL, seedDefaultExpenseCategories, AUTOMATION_SCHEMA_SQL, seedBuiltInAutomationTemplates, WIKI_SCHEMA_SQL, seedBuiltInWikiTemplates, MOBILE_APP_SCHEMA_SQL } from './database.js';
+import { getDatabase, execRaw, queryAll, queryOne, execute, ANALYTICS_SCHEMA_SQL, seedBuiltInKpis, CLIENT_PORTAL_SCHEMA_SQL, BUDGET_FINANCIAL_SCHEMA_SQL, seedDefaultExpenseCategories, AUTOMATION_SCHEMA_SQL, seedBuiltInAutomationTemplates, WIKI_SCHEMA_SQL, seedBuiltInWikiTemplates, MOBILE_APP_SCHEMA_SQL, TEAM_INVITES_SCHEMA_SQL, OKR_CYCLES_SCHEMA_SQL, seedDefaultWikiSpace, seedDefaultOkrCycle } from './database.js';
 import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1289,6 +1289,12 @@ export function runMigration() {
 
   // PRD 28: Mobile App (React Native)
   execRaw(MOBILE_APP_SCHEMA_SQL);
+
+  // PRD 29: Team Onboarding, Invites & Default Seed Data
+  execRaw(TEAM_INVITES_SCHEMA_SQL);
+  execRaw(OKR_CYCLES_SCHEMA_SQL);
+  seedDefaultWikiSpace(getDatabase());
+  seedDefaultOkrCycle(getDatabase());
 
   // Verification of tables
   const tables = queryAll("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;");

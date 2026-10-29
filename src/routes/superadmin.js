@@ -48,6 +48,7 @@ import {
   unblockMember
 } from '../services/governanceService.js';
 import { logAccess } from '../services/auditService.js';
+import { queryAll, queryOne } from '../db/database.js';
 
 const router = express.Router();
 
@@ -763,6 +764,38 @@ router.get('/governance/:userId', (req, res) => {
     return res.status(200).json(history);
   } catch (err) {
     return res.status(err.status || 400).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/superadmin/audit — Unified forensic audit stream
+ */
+router.get('/audit', (req, res) => {
+  try {
+    const { action, userId, limit = 100, offset = 0 } = req.query;
+    let sql = `
+      SELECT al.id, al.user_id, al.action, al.resource, al.ip_address, al.timestamp,
+             u.name as user_name, u.email as user_email, u.role as user_role
+      FROM access_log al
+      LEFT JOIN users u ON al.user_id = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+    if (action) {
+      sql += ' AND al.action LIKE ?';
+      params.push(`%${action}%`);
+    }
+    if (userId) {
+      sql += ' AND al.user_id = ?';
+      params.push(userId);
+    }
+    sql += ' ORDER BY al.timestamp DESC LIMIT ? OFFSET ?';
+    params.push(Number(limit) || 100, Number(offset) || 0);
+
+    const logs = queryAll(sql, params);
+    return res.status(200).json({ logs, count: logs.length });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 });
 

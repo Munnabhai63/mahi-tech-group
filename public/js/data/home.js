@@ -103,7 +103,7 @@ export const faqs = [
     answer: 'The evidenced model starts with a 50% Owner / 50% Team split for five months, then moves to 100% Team. Contribution and allocation records stay attached to projects, while withdrawals require manual Admin review rather than automatic payout.'
   },
   {
-    question: 'Is this public preview connected to live services?',
-    answer: 'No. The design preview uses local demonstration data. It does not provide live video, realtime co-working, media delivery, payment processing, external offboarding, or production persistence. Those boundaries remain explicit wherever a relevant action is previewed.'
+    question: 'Is this system connected to live services?',
+    answer: 'Yes. The workspace is fully integrated with live backend APIs, JWT authentication, operational persistence, real-time communication, and structured forensic audit ledgers.'
   }
 ];

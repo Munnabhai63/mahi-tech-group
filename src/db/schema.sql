@@ -2349,3 +2349,39 @@ CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_device_tokens_active ON device_tokens(is_active);
 CREATE INDEX IF NOT EXISTS idx_device_tokens_platform ON device_tokens(platform);
 CREATE INDEX IF NOT EXISTS idx_device_tokens_token ON device_tokens(token);
+
+-- ===================================================================
+-- PRD 29: Layer 2 — First-Run Setup, Team Invites & OKR Cycles
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS team_invites (
+  id TEXT PRIMARY KEY,
+  email VARCHAR(150) NOT NULL,
+  token VARCHAR(100) UNIQUE NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'developer' CHECK (role IN ('researcher','developer','producer','admin','designer')),
+  sub_role VARCHAR(20) CHECK (sub_role IN ('frontend','backend',NULL)),
+  invited_by TEXT REFERENCES users(id),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','expired','cancelled')),
+  expires_at TIMESTAMP NOT NULL,
+  accepted_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_team_invites_token ON team_invites(token);
+CREATE INDEX IF NOT EXISTS idx_team_invites_email ON team_invites(email);
+CREATE INDEX IF NOT EXISTS idx_team_invites_status ON team_invites(status);
+
+CREATE TABLE IF NOT EXISTS okr_cycles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  quarter INTEGER,
+  year INTEGER,
+  start_date TEXT,
+  end_date TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_okr_cycles_name ON okr_cycles(name);
+CREATE INDEX IF NOT EXISTS idx_okr_cycles_active ON okr_cycles(is_active);
+

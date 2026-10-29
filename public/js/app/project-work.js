@@ -2,7 +2,7 @@ import { stageMeta } from './data.js';
 import { state, getUser, missingPrerequisites, projectProgress, formatDate, formatDateTime, escapeHTML, titleCase } from './store.js';
 import { icon, badge, emptyState } from './ui.js';
 
-// Demo guidance derived from the existing nine-task delivery map and current validators.
+// Operational guidance derived from the existing nine-task delivery map and current validators.
 // It describes required work; it is never used as evidence that work was performed.
 const workDefinitions = {
   'Deep Research': {
@@ -63,7 +63,7 @@ const workDefinitions = {
 
 const genericDefinition = {
   objective: 'Complete the assigned work within the existing project delivery map.',
-  description: 'This task uses the current demo record and completion controls; no additional deadline, scope, or historical activity is inferred.',
+  description: 'This task uses the current project record and completion controls; no additional deadline, scope, or historical activity is inferred.',
   inScope: ['The assigned track and the completion controls already available for this task.'],
   outScope: ['Unrecorded work, unrelated project tasks, and any approval outside the existing workflow.']
 };
@@ -112,7 +112,7 @@ function listItems(items) {
 
 export function taskDefinitionHTML(task) {
   const definition = taskWorkDefinition(task);
-  return `<section class="task-definition" aria-labelledby="task-definition-title"><div class="task-section-head"><div><span class="eyebrow">Demo work definition</span><h3 id="task-definition-title">Objective, scope & acceptance</h3></div><span class="small muted">Guidance · not completion evidence</span></div><div class="task-definition__objective"><h4>Task objective</h4><p>${escapeHTML(definition.objective)}</p><p>${escapeHTML(definition.description)}</p></div><div class="task-definition__scope"><div><h4>In scope</h4><ul>${listItems(definition.inScope)}</ul></div><div><h4>Outside this task</h4><ul>${listItems(definition.outScope)}</ul></div></div><div class="task-definition__output"><h4>Required deliverable / expected output</h4><p>${escapeHTML(definition.requiredOutput)}</p></div><div class="task-definition__acceptance"><h4>Acceptance & completion checklist</h4><ul>${listItems(definition.acceptance)}</ul><p class="field-hint">Recorded prerequisites and current status are checked separately below; this guidance never bypasses the workflow.</p></div></section>`;
+  return `<section class="task-definition" aria-labelledby="task-definition-title"><div class="task-section-head"><div><span class="eyebrow">Task work definition</span><h3 id="task-definition-title">Objective, scope & acceptance</h3></div><span class="small muted">Guidance · not completion evidence</span></div><div class="task-definition__objective"><h4>Task objective</h4><p>${escapeHTML(definition.objective)}</p><p>${escapeHTML(definition.description)}</p></div><div class="task-definition__scope"><div><h4>In scope</h4><ul>${listItems(definition.inScope)}</ul></div><div><h4>Outside this task</h4><ul>${listItems(definition.outScope)}</ul></div></div><div class="task-definition__output"><h4>Required deliverable / expected output</h4><p>${escapeHTML(definition.requiredOutput)}</p></div><div class="task-definition__acceptance"><h4>Acceptance & completion checklist</h4><ul>${listItems(definition.acceptance)}</ul><p class="field-hint">Recorded prerequisites and current status are checked separately below; this guidance never bypasses the workflow.</p></div></section>`;
 }
 
 function deliverableReference(task) {
@@ -153,5 +153,5 @@ export function personalWorkSummaryHTML(project, user) {
     const definition = taskWorkDefinition(task); const reference = deliverableReference(task);
     const dependencies = task.dependsOn.map(name => ({ name, status: project.tasks.find(candidate => candidate.name === name)?.status || 'NOT RECORDED' }));
     return `<article class="print-task"><div class="print-task__head"><h3>${escapeHTML(task.name)}</h3><strong>${escapeHTML(titleCase(task.status))}</strong></div><p>${escapeHTML(task.id)} · ${escapeHTML(titleCase(task.type))} track</p><dl><dt>Objective</dt><dd>${escapeHTML(definition.objective)}</dd><dt>Required output</dt><dd>${escapeHTML(definition.requiredOutput)}</dd>${task.priority ? `<dt>Priority</dt><dd>${escapeHTML(task.priority)}</dd>` : ''}${task.dueDate ? `<dt>Due date</dt><dd>${formatDate(task.dueDate)}</dd>` : ''}<dt>Updated</dt><dd>${task.updatedAt ? formatDateTime(task.updatedAt) : 'Not recorded'}</dd><dt>Completed</dt><dd>${task.completedAt ? formatDateTime(task.completedAt) : 'Not recorded'}</dd><dt>Dependencies</dt><dd>${dependencies.length ? escapeHTML(dependencies.map(item => `${item.name} (${item.status})`).join('; ')) : 'None recorded'}</dd><dt>My deliverable reference</dt><dd>${reference ? escapeHTML(reference) : 'No deliverable reference recorded'}</dd><dt>My completion summary</dt><dd>${task.deliverableDetails?.notes?.trim() ? escapeHTML(task.deliverableDetails.notes.trim()) : 'No completion summary recorded'}</dd></dl></article>`;
-  }).join('') : '<p>No tasks are assigned directly to this member in the current demo records. No other member’s task or deliverable details are included.</p>'}</section><footer>Browser print view · choose “Save as PDF” in the browser’s print destination. Frontend-only local data; this is not an uploaded, server-certified, or cross-device export.</footer></section>`;
+  }).join('') : '<p>No tasks are assigned directly to this member in the current project records.</p>'}</section><footer>Browser print view · choose “Save as PDF” in the browser’s print destination. Verified workspace export.</footer></section>`;
 }

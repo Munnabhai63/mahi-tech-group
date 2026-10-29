@@ -234,4 +234,135 @@ router.post('/refresh', authenticate, (req, res) => {
   return res.status(200).json({ token: newToken });
 });
 
+// 4. GET /api/auth/invites/:token (Public - Validate invite token)
+router.get('/invites/:token', (req, res) => {
+  const { token } = req.params;
+  if (!token) {
+    return res.status(400).json({ error: 'Invite token is required' });
+  }
+
+  const invite = queryOne('SELECT * FROM team_invites WHERE token = ?', [token]);
+  if (!invite) {
+    return res.status(404).json({ error: 'Invite not found or invalid' });
+  }
+
+  if (invite.status !== 'pending') {
+    return res.status(400).json({ error: `Invite is no longer active (Status: ${invite.status})` });
+  }
+
+  if (new Date(invite.expires_at) < new Date()) {
+    execute("UPDATE team_invites SET status = 'expired' WHERE id = ?", [invite.id]);
+    return res.status(410).json({ error: 'Invite link has expired. Please request a new invite from your Admin.' });
+  }
+
+  return res.status(200).json({
+    valid: true,
+    invite: {
+      id: invite.id,
+      email: invite.email,
+      role: invite.role,
+      sub_role: invite.sub_role,
+      expires_at: invite.expires_at
+    }
+  });
+});
+
+// 5. POST /api/auth/invites/:token/accept (Public - Member sets password & registers)
+router.post('/invites/:token/accept', async (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { token } = req.params;
+  const { name, password } = req.body || {};
+
+  if (!token) {
+    return res.status(400).json({ error: 'Invite token is required' });
+  }
+
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'Full name is required' });
+  }
+
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+  }
+
+  const invite = queryOne('SELECT * FROM team_invites WHERE token = ?', [token]);
+  if (!invite) {
+    return res.status(404).json({ error: 'Invite not found or invalid' });
+  }
+
+  if (invite.status !== 'pending') {
+    return res.status(400).json({ error: `Invite is no longer active (Status: ${invite.status})` });
+  }
+
+  if (new Date(invite.expires_at) < new Date()) {
+    execute("UPDATE team_invites SET status = 'expired' WHERE id = ?", [invite.id]);
+    return res.status(410).json({ error: 'Invite link has expired' });
+  }
+
+  // Check if an account already exists with this email
+  const existingUser = queryOne('SELECT id FROM users WHERE email = ?', [invite.email]);
+  if (existingUser) {
+    execute("UPDATE team_invites SET status = 'accepted', accepted_at = CURRENT_TIMESTAMP WHERE id = ?", [invite.id]);
+    return res.status(409).json({ error: 'An account with this email already exists' });
+  }
+
+  const newUserId = crypto.randomUUID();
+  const passwordHash = await bcrypt.hash(password, config.BCRYPT_SALT_ROUNDS);
+
+  execute(`
+    INSERT INTO users (
+      id, name, email, password_hash, role, sub_role, status,
+      rating_avg, idea_quota_used, quota_reset_date, wallet_balance,
+      wallet_frozen, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, 'active', 5.0, 0, null, 0.0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  `, [
+    newUserId,
+    name.trim(),
+    invite.email,
+    passwordHash,
+    invite.role || 'developer',
+    invite.sub_role || null
+  ]);
+
+  // Mark invite as accepted
+  execute("UPDATE team_invites SET status = 'accepted', accepted_at = CURRENT_TIMESTAMP WHERE id = ?", [invite.id]);
+
+  // Create active session and issue JWT token
+  const sessionId = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const authToken = jwt.sign(
+    { userId: newUserId, sessionId, role: invite.role || 'developer', email: invite.email },
+    config.JWT_SECRET,
+    { expiresIn: config.JWT_EXPIRES_IN }
+  );
+
+  const deviceInfo = req.headers['user-agent'] || 'Invite Acceptance Flow';
+  execute(
+    `INSERT INTO sessions (id, user_id, token, device_info, ip_address, created_at, expires_at, is_revoked)
+     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 0)`,
+    [sessionId, newUserId, authToken, deviceInfo, ipAddress, expiresAt]
+  );
+
+  logAccess({
+    userId: newUserId,
+    action: 'invite_accepted',
+    resource: `/api/auth/invites/${token}/accept`,
+    ipAddress
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: 'Welcome to the team! Your account is active.',
+    user: {
+      id: newUserId,
+      name: name.trim(),
+      email: invite.email,
+      role: invite.role || 'developer',
+      sub_role: invite.sub_role || null,
+      status: 'active'
+    },
+    token: authToken
+  });
+});
+
 export default router;

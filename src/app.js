@@ -28,9 +28,10 @@ import financeRouter from './routes/finance.routes.js';
 import automationRouter from './routes/automation.routes.js';
 import wikiRouter from './routes/wiki.routes.js';
 import mobileRouter from './routes/mobile.routes.js';
+import setupRouter from './routes/setup.routes.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { queryAll } from './db/database.js';
+import { queryAll, queryOne } from './db/database.js';
 import { config } from './config.js';
 import { securityHeaders } from './middleware/securityHeaders.js';
 
@@ -75,6 +76,50 @@ export function createApp() {
     next(new Error('Simulated internal database crash'));
   });
 
+  // Helper to determine if system has 0 registered users (fresh install)
+  function isFirstRun() {
+    try {
+      const row = queryOne('SELECT COUNT(*) as count FROM users');
+      return Boolean(row && Number(row.count) === 0);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Explicit /setup route serving setup.html
+  app.get('/setup', (req, res) => {
+    if (!isFirstRun()) {
+      return res.redirect('/');
+    }
+    return res.sendFile(path.join(publicPath, 'setup.html'));
+  });
+
+  // First-run detection redirect: On zero users in DB, redirect all browser GET requests to /setup
+  app.use((req, res, next) => {
+    if (req.method !== 'GET') return next();
+
+    const firstRunActive = isFirstRun();
+    const p = req.path;
+
+    if (firstRunActive) {
+      if (
+        p.startsWith('/api/setup') ||
+        p.startsWith('/api/health') ||
+        p === '/setup' ||
+        p === '/setup.html' ||
+        p.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|map)$/i)
+      ) {
+        return next();
+      }
+      return res.redirect('/setup');
+    } else {
+      if (p === '/setup' || p === '/setup.html') {
+        return res.redirect('/');
+      }
+    }
+    next();
+  });
+
   // Serve static frontend assets
   app.use(express.static(publicPath, {
     setHeaders: (res, filePath) => {
@@ -89,6 +134,7 @@ export function createApp() {
   }));
 
   // Mount API routers
+  app.use('/api/setup', setupRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/sign', signRouter); // Member digital signing ceremony (authenticate only)
   app.use('/api/admin', adminRouter);

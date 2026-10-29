@@ -97,6 +97,179 @@ router.post('/members/add', authenticate, requirePermission('member.add'), async
   });
 });
 
+// PRD 29: POST /api/admin/invites (Admin only - RBAC: member.add)
+router.post('/invites', authenticate, requirePermission('member.add'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { email, role = 'developer', sub_role = null } = req.body || {};
+
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ error: 'A valid email address is required for invitation' });
+  }
+
+  const validRoles = ['researcher', 'developer', 'producer', 'admin', 'designer'];
+  if (!validRoles.includes(role)) {
+    return res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+  }
+
+  if (sub_role && !['frontend', 'backend'].includes(sub_role)) {
+    return res.status(400).json({ error: "Invalid sub_role. Must be 'frontend', 'backend', or null" });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Check if user already exists
+  const existingUser = queryOne('SELECT id FROM users WHERE email = ?', [normalizedEmail]);
+  if (existingUser) {
+    return res.status(409).json({ error: 'User with this email already exists in the system' });
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const inviteId = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  execute(`
+    INSERT INTO team_invites (
+      id, email, token, role, sub_role, invited_by, status, expires_at, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, CURRENT_TIMESTAMP)
+  `, [
+    inviteId,
+    normalizedEmail,
+    token,
+    role,
+    sub_role || null,
+    req.user.id,
+    expiresAt
+  ]);
+
+  // Determine platform URL
+  const platformCfg = queryOne("SELECT value FROM system_config WHERE key = 'platform_url'");
+  const baseUrl = platformCfg ? platformCfg.value : (req.protocol + '://' + (req.get('host') || 'localhost:3000'));
+  const inviteUrl = `${baseUrl}/#/invite/${token}`;
+
+  logAccess({
+    userId: req.user.id,
+    action: 'team_invite_created',
+    resource: `/api/admin/invites (email: ${normalizedEmail}, role: ${role})`,
+    ipAddress
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: 'Team invitation created successfully',
+    invite: {
+      id: inviteId,
+      email: normalizedEmail,
+      token,
+      role,
+      sub_role: sub_role || null,
+      invite_url: inviteUrl,
+      expires_at: expiresAt
+    }
+  });
+});
+
+// PRD 29: GET /api/admin/invites (Admin only - RBAC: member.add)
+router.get('/invites', authenticate, requirePermission('member.add'), (req, res) => {
+  const invites = queryAll(`
+    SELECT ti.id, ti.email, ti.token, ti.role, ti.sub_role, ti.status, ti.expires_at, ti.created_at,
+           u.name as invited_by_name
+    FROM team_invites ti
+    LEFT JOIN users u ON ti.invited_by = u.id
+    ORDER BY ti.created_at DESC
+  `);
+  return res.status(200).json({ invites });
+});
+
+// PRD 29: PATCH /api/admin/members/:id/role (Admin only - RBAC: member.add)
+router.patch('/members/:id/role', authenticate, requirePermission('member.add'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+  const { role, sub_role } = req.body || {};
+
+  const validRoles = ['researcher', 'developer', 'producer', 'admin', 'designer'];
+  if (!role || !validRoles.includes(role)) {
+    return res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+  }
+
+  if (sub_role && !['frontend', 'backend'].includes(sub_role)) {
+    return res.status(400).json({ error: "Invalid sub_role. Must be 'frontend', 'backend', or null" });
+  }
+
+  const member = queryOne('SELECT * FROM users WHERE id = ?', [id]);
+  if (!member) {
+    return res.status(404).json({ error: 'Member not found' });
+  }
+
+  execute(
+    'UPDATE users SET role = ?, sub_role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [role, sub_role || null, id]
+  );
+
+  logAccess({
+    userId: req.user.id,
+    action: `member_role_updated_to_${role}`,
+    resource: `/api/admin/members/${id}/role`,
+    ipAddress
+  });
+
+  const updated = queryOne('SELECT id, name, email, role, sub_role, status, updated_at FROM users WHERE id = ?', [id]);
+  return res.status(200).json({
+    success: true,
+    message: `Role updated to ${role} successfully`,
+    user: updated
+  });
+});
+
+// PRD 29: GET /api/admin/onboarding-status (Admin only)
+router.get('/onboarding-status', authenticate, (req, res) => {
+  try {
+    // 1. Admin account created
+    const adminRow = queryOne("SELECT COUNT(*) as count FROM users WHERE role IN ('admin', 'superadmin')");
+    const adminCreated = adminRow ? Number(adminRow.count) > 0 : false;
+
+    // 2. At least 1 team member invited
+    const invitesRow = queryOne("SELECT COUNT(*) as count FROM team_invites");
+    const membersRow = queryOne("SELECT COUNT(*) as count FROM users WHERE role NOT IN ('admin', 'superadmin')");
+    const memberInvited = (invitesRow && Number(invitesRow.count) > 0) || (membersRow && Number(membersRow.count) > 0);
+
+    // 3. First project created
+    const projectRow = queryOne("SELECT COUNT(*) as count FROM projects");
+    const firstProjectCreated = projectRow ? Number(projectRow.count) > 0 : false;
+
+    // 4. First task created
+    let taskCount = 0;
+    try {
+      const tasksRow = queryOne("SELECT COUNT(*) as count FROM tasks");
+      if (tasksRow) taskCount += Number(tasksRow.count);
+    } catch (e) {}
+    try {
+      const projTasksRow = queryOne("SELECT COUNT(*) as count FROM project_tasks");
+      if (projTasksRow) taskCount += Number(projTasksRow.count);
+    } catch (e) {}
+    const firstTaskCreated = taskCount > 0;
+
+    const checklist = {
+      adminCreated,
+      memberInvited,
+      firstProjectCreated,
+      firstTaskCreated
+    };
+
+    const completedCount = Object.values(checklist).filter(Boolean).length;
+    const totalCount = 4;
+    const allComplete = completedCount === totalCount;
+
+    return res.status(200).json({
+      checklist,
+      completedCount,
+      totalCount,
+      allComplete
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to evaluate onboarding status', message: err.message });
+  }
+});
+
 // 5. PATCH /api/admin/members/:id/status (Admin only - RBAC: member.remove)
 // NON-NEGOTIABLE RULE: NEVER USE DELETE QUERY. ONLY SOFT STATUS TRANSITION.
 router.patch('/members/:id/status', authenticate, requirePermission('member.remove'), (req, res) => {

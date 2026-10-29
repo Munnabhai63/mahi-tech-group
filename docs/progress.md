@@ -1196,3 +1196,48 @@
     - Core Platform Regression: `npm test` -> **13 / 13 test suites PASS (100%)**.
     - **PRD 26 Status**: 100% COMPLETE & PERMANENTLY SEALED across all 7 layers.
 
+- **PRD 29: UI Polish & Full Frontend-Backend Wiring (100% COMPLETE & VERIFIED)**:
+  - **Layer 1 (Wiring Audit & Dummy Data Removal — 9/9 PASS)**:
+    - Eradicated all mock/dummy data across `public/js/app/` modules (`data.js`, `store.js`, `views/public.js`, `views/projects.js`, `views/admin.js`, `views/member.js`, `views/meetings.js`, `views/disputes.js`, `views/ideas.js`, `views/signing.js`).
+    - Removed public registration role dropdown containing administrative roles.
+    - Verified all 39 frontend JavaScript files contain zero mock data patterns.
+    - Verified `isDemoMode()` locked strictly false in `store.js`.
+    - Verified with `scripts/verify-prd29-layer1.js` -> **9 / 9 PASS (100%)**.
+  - **Layer 2 (First-Run Setup & Team Onboarding — 6/6 PASS)**:
+    - Implemented first-run detection redirecting root (`/`) to `/setup` when 0 users exist in the system.
+    - Created `public/setup.html` and `public/js/setup.js` setup wizard: initializes Super Admin credentials and pre-seeds expense categories, automation templates, wiki spaces, and OKR cycles.
+    - Permanent setup lockout enforced via `setup_completed` flag in `system_config`.
+    - Built team invite flow (`POST /api/admin/invites`, `POST /api/auth/invites/:token/accept`) with 32-byte cryptographically secure tokens.
+    - Created real-time 4-milestone onboarding checklist on Admin Dashboard with automatic dismissal when complete.
+    - Verified with `scripts/verify-prd29-layer2.js` -> **6 / 6 PASS (100%)**.
+  - **Layer 3 (Empty, Error, Loading, Offline & Form Validation — 30/30 PASS)**:
+    - Implemented uniform state handlers (`renderEmptyState`, `renderLoadingState`, `renderErrorState`, `renderOfflineState`) across all views.
+    - Built `public/js/offline-handler.js` and wired across all 4 HTML entrypoints (`index.html`, `app.html`, `setup.html`, `superadmin.html`) with top-pinned status banner and auto-reconnect.
+    - Implemented accessible client-side form validation (`validateForm`, `:user-valid`, `aria-invalid`, clear inline feedback).
+    - Built unified `Toast` notification system (`public/js/toast.js`).
+    - Verified with `scripts/verify-prd29-layer3.js` -> **30 / 30 PASS (100%)**.
+  - **Layer 4 (Design Consistency & Component Cleanup — 24/24 PASS)**:
+    - Standardized 4px/8px grid spacing tokens (`--space-1` through `--space-8`), semantic status tokens, and mobile dark theme tokens (`--bg-dark`, `--surface-dark`, `--accent-sky`) in `public/css/application.css`.
+    - Standardized button state machine: `.btn:hover`, `.btn:active`, `.btn:focus-visible`, `.btn:disabled`, and `.btn.is-loading` with CSS spinner.
+    - Standardized data table presentations with responsive touch-scroll wrapper (`.table-wrap`), uniform row heights, and row hover highlight.
+    - Standardized modal dialogs with smooth backdrop blur (`-webkit-backdrop-filter: blur(4px);`) and standard slot layouts.
+    - Eradicated all browser `alert()` popups across the entire frontend (including Superadmin role gate redirecting cleanly to `/app.html#/app/403`).
+    - Verified with `scripts/verify-prd29-layer4.js` -> **24 / 24 PASS (100%)**.
+  - **Layer 5 (Integration Seal & Production Readiness — 46/46 PASS)**:
+    - Executed 9 end-to-end user journeys via real HTTP requests against live SQLite WAL database (zero mocks):
+      1. Admin Account Creation & Authentication
+      2. Project Creation & Initialization
+      3. Team Member Invitation & Onboarding
+      4. Task Creation, Assignment & Completion Lifecycle
+      5. Revenue Distribution, Member Wallet & Withdrawal Approval
+      6. Project Budget & Expense Management
+      7. Time Tracking & Manual Time Entry Logging
+      8. Analytics, KPIs & Live Telemetry
+      9. Client Portal Lifecycle & Shared Project Access
+    - Executed performance benchmarks: all tested API endpoints responded within budget (<500ms, actual <40ms) and static SPA HTML within budget (<2000ms, actual <10ms).
+    - Executed security & RBAC audits: 401 unauthenticated blocked, 403 member access to admin blocked, zero leaked keys/secrets, and full administrative audit logging.
+    - Verified with `scripts/verify-prd29-layer5.js` -> **46 / 46 PASS (100%)**.
+  - **Total PRD 29 Assertions across all 5 layers: 115 / 115 PASS (100.0%)**.
+  - **Core Platform Regression (`npm test`): 13 / 13 test suites PASS (100.0%)**.
+  - **PRD 29 Status: 100% COMPLETE & PERMANENTLY SEALED**.
+

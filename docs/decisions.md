@@ -831,5 +831,28 @@
      - Administrative review requires explicit approval via `PATCH /api/automation/suggestion/:id/approve` to instantiate a real rule row in `automation_rules`.
 - **Consequences**: Master end-to-end integration suite `scripts/verify-prd26-integration.js` verified 65/65 PASS (100%). Cumulative PRD 26 assertions across all 7 layers reached 595/595 PASS (100%). Core regression passed 13/13 suites cleanly. PRD 26 (Workflow Automation Engine) is 100% complete and permanently sealed.
 
+## Decision 29-A: PRD 29 UI Polish & Full Frontend-Backend Wiring
+- **Context**: Transitioning the platform from development prototype to a production-ready system for real team onboarding required eliminating mock/dummy data, securing onboarding gates, standardizing the CSS design tokens, ensuring accessible error handling, and confirming end-to-end integration sealing.
+- **Decision**:
+  1. **Zero Mock / Dummy Data Guarantee**:
+     - Stripped all hardcoded mock arrays and fallback mock data paths across all 10 view modules, `data.js`, and `store.js`.
+     - Locked `store.isDemoMode()` permanently to `false`.
+     - Strictly excluded administrative roles from public registration dropdowns.
+  2. **First-Run Setup Gate & Permanent Lockout**:
+     - Express root middleware evaluates user count: if 0 users exist, root requests redirect cleanly (HTTP 302) to `/setup`.
+     - Initial setup creates the Super Admin account and seeds foundational entities (expense categories, automation templates, wiki space, OKR cycle).
+     - Upon completion, `setup_completed` is committed to `system_config`, permanently locking out the `/setup` wizard from future access.
+  3. **Universal Graceful State & Offline Resilience**:
+     - Implemented standardized UI state presenters (`renderEmptyState`, `renderLoadingState`, `renderErrorState`, `renderOfflineState`) to prevent blank layouts.
+     - Registered global `offline-handler.js` across all entrypoints (`index.html`, `app.html`, `setup.html`, `superadmin.html`) with top-pinned status banners and automatic network reconnect retry loops.
+     - Added client-side accessible form validation (`validateForm`, `:user-valid`, `aria-invalid`).
+  4. **CSS Token Harmonization & Browser Alert Eradication**:
+     - Extended `application.css` with standard 4px/8px spacing grid tokens (`--space-1` to `--space-8`), semantic status tokens, and mobile dark theme variables (`--bg-dark`, `--surface-dark`, `--accent-sky`).
+     - Replaced disruptive browser `alert()` dialogs with in-app `Toast` messages and graceful router redirection (e.g. `/app.html#/app/403` for forbidden Superadmin access).
+  5. **Real-Engine Master Integration & Immutable Ledger Isolation**:
+     - Integration tests in `verify-prd29-layer5.js` interact purely over real HTTP against the live Express server and SQLite WAL database.
+     - Addressed SQLite immutable financial ledger triggers (`withdrawals`, `revenue_events`) by using unique timestamped run identifiers (`RUN_ID = Date.now()`) rather than illegal `DELETE` mutations.
+- **Consequences**: PRD 29 is 100% complete and verified across all 5 layers with 115/115 passing assertions. All 13 core regression test suites pass cleanly. The system is completely sealed and production-ready for real team onboarding.
+
 
 

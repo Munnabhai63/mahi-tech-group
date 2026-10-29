@@ -1,5 +1,5 @@
 import { roleMeta } from '../data.js';
-import { state, loginAs, loginFormer, loginWithCredentials, signupApplicant, persistData, addAudit, uid, escapeHTML } from '../store.js';
+import { state, loginWithCredentials, signupApplicant, persistData, addAudit, uid, escapeHTML } from '../store.js';
 import { icon, badge, notice, formValues, setFormError, openDialog, closeDialog, toast } from '../ui.js';
 
 function accessLayout(content, { wide = false, intro = null } = {}) {
@@ -7,23 +7,18 @@ function accessLayout(content, { wide = false, intro = null } = {}) {
 }
 
 export function renderLogin() {
-  const content = `<div class="eyebrow">Member access</div><h2>Welcome back to the workspace.</h2><p class="access-form-wrap__intro">This preview uses local demo identities. It does not verify credentials or create a real authenticated session.</p>${state.session ? notice('A demo workspace session is already active. You can continue or choose another role.', 'info', 'Demo session active') : ''}<form id="login-form" class="stack mt-2" novalidate><div class="field"><label for="login-email">Email address</label><input class="input" id="login-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required></div><div class="field"><label for="login-password">Password</label><div class="input-wrap input-wrap--action"><input class="input" id="login-password" name="password" type="password" autocomplete="current-password" placeholder="At least 8 characters" required minlength="8"><button class="btn btn--ghost btn--icon btn--sm" type="button" id="toggle-password" aria-label="Show password">${icon('eye', 'icon--sm')}</button></div></div><div class="spread"><label class="check"><input type="checkbox" name="remember"> Remember this demo</label><button type="button" class="link-btn small" id="recovery-placeholder">Recovery options</button></div><button class="btn btn--primary btn--lg btn--full" id="login-submit" type="submit">Continue to role selection ${icon('arrow-up-right')}</button></form><div class="demo-box"><div class="demo-box__head"><strong>Enter with a demo identity</strong><span>No password needed</span></div><div class="demo-roles">${Object.entries(roleMeta).map(([role, meta]) => `<button class="demo-role" data-demo-role="${role}">${meta.label}</button>`).join('')}<button class="demo-role" data-demo-role="former">Former member</button></div></div><p class="access-form-wrap__foot">New to the group? <a class="link-btn" href="#/signup">Submit a membership application</a></p>`;
+  const content = `<div class="eyebrow">Member access</div><h2>Welcome back to the workspace.</h2><p class="access-form-wrap__intro">Sign in with your verified credentials to enter your collaborative workspace.</p><form id="login-form" class="stack mt-2" novalidate><div class="field"><label for="login-email">Email address</label><input class="input" id="login-email" name="email" type="email" autocomplete="email" placeholder="name@mahitechgroup.com" required></div><div class="field"><label for="login-password">Password</label><div class="input-wrap input-wrap--action"><input class="input" id="login-password" name="password" type="password" autocomplete="current-password" placeholder="At least 8 characters" required minlength="8"><button class="btn btn--ghost btn--icon btn--sm" type="button" id="toggle-password" aria-label="Show password">${icon('eye', 'icon--sm')}</button></div></div><div class="spread"><label class="check"><input type="checkbox" name="remember"> Remember me</label><a class="link-btn small" href="#/contact">Need help?</a></div><button class="btn btn--primary btn--lg btn--full" id="login-submit" type="submit">Sign in to workspace ${icon('arrow-up-right')}</button></form><p class="access-form-wrap__foot mt-3">New to the group? <a class="link-btn" href="#/signup">Submit a membership application</a></p>`;
   return { html: accessLayout(content), mount() {
     document.querySelector('#toggle-password')?.addEventListener('click', event => {
       const input = document.querySelector('#login-password'); const showing = input.type === 'text';
       input.type = showing ? 'password' : 'text'; event.currentTarget.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
     });
-    document.querySelector('#recovery-placeholder')?.addEventListener('click', () => openDialog({ title: 'Account recovery', subtitle: 'Frontend-only placeholder', content: notice('Password recovery requires an identity and email service. No recovery email was sent from this prototype.', 'info'), footer: '<button class="btn btn--primary" data-close-dialog>Close</button>' }));
     document.querySelector('#login-form')?.addEventListener('submit', async event => {
       event.preventDefault(); const form = event.currentTarget; const values = formValues(form);
       const email = (values.email || '').trim();
       const password = values.password || '';
-      if (!/^\S+@\S+\.\S+$/.test(email)) return setFormError(form, 'Enter a valid email format for this demo.', 'email');
-      if (password.length < 8) return setFormError(form, 'Use at least 8 characters to preview this form.', 'password');
-      if (email.startsWith('inactive@')) return setFormError(form, 'Preview state: Access Revoked. This inactive account cannot enter the workspace.');
-      if (email.startsWith('suspended@')) return setFormError(form, 'Preview state: Account Suspended. Access is blocked pending administrative review.');
-      if (email.startsWith('pending@')) { location.hash = '#/application-status?status=pending'; return; }
-      if (email.startsWith('rejected@')) { location.hash = '#/application-status?status=rejected'; return; }
+      if (!/^\S+@\S+\.\S+$/.test(email)) return setFormError(form, 'Please enter a valid email address.', 'email');
+      if (password.length < 8) return setFormError(form, 'Password must be at least 8 characters.', 'password');
 
       const submitBtn = document.querySelector('#login-submit');
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Authenticating...'; }
@@ -38,33 +33,20 @@ export function renderLogin() {
           location.hash = '#/app/dashboard';
         }
       } catch (err) {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `Continue to role selection ${icon('arrow-up-right')}`; }
-        location.hash = '#/role-selection';
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `Sign in to workspace ${icon('arrow-up-right')}`; }
+        setFormError(form, err.message || 'Invalid email or password.');
       }
     });
-    document.querySelectorAll('[data-demo-role]').forEach(button => button.addEventListener('click', () => {
-      const role = button.dataset.demoRole;
-      if (role === 'former') { loginFormer(); location.hash = '#/app/former-member'; }
-      else { loginAs(role); location.hash = role === 'admin' ? '#/admin' : '#/app/dashboard'; }
-    }));
   } };
 }
 
 export function renderRoleSelection() {
-  const roles = Object.entries(roleMeta).map(([role, meta]) => `<button class="role-card" data-select-role="${role}"><span class="role-card__icon">${icon(meta.icon)}</span><span><h3>${meta.label}</h3><p>${meta.description}</p></span>${icon('chevron-right')}</button>`).join('');
-  const content = `<div class="eyebrow">Demo role selection</div><h2>Choose your working view.</h2><p class="access-form-wrap__intro">Each identity uses the same mock organization data with role-appropriate tasks, actions, and financial privacy.</p><div class="role-grid">${roles}<button class="role-card" data-select-role="elevated"><span class="role-card__icon">${icon('key')}</span><span><h3>Elevated admin zone</h3><p>Open the admin-only performance, dispute, gateway, governance, and audit views.</p></span>${icon('chevron-right')}</button></div><div class="mt-3">${notice('Elevated administration is an access area for the Admin role, not an additional member role.', 'info')}</div><p class="access-form-wrap__foot"><button class="link-btn" data-select-role="former">Preview a read-only former-member account</button> · <a class="link-btn" href="#/login">Back to login</a></p>`;
-  return { html: accessLayout(content, { wide: true }), mount() {
-    document.querySelectorAll('[data-select-role]').forEach(button => button.addEventListener('click', () => {
-      const role = button.dataset.selectRole;
-      if (role === 'former') { loginFormer(); location.hash = '#/app/former-member'; return; }
-      if (role === 'elevated') { loginAs('admin', { elevated: true }); location.hash = '#/superadmin'; return; }
-      loginAs(role); location.hash = role === 'admin' ? '#/admin' : '#/app/dashboard';
-    }));
-  } };
+  location.hash = '#/login';
+  return { html: '<div class="access-form-wrap"><p>Redirecting to login...</p></div>' };
 }
 
 export function renderSignup() {
-  const content = `<div class="eyebrow">Membership application</div><h2>Start with how you want to contribute.</h2><p class="access-form-wrap__intro">Applications enter the Administrator review queue. Upon approval, your login is activated.</p><form id="signup-form" class="form-grid" novalidate><div class="field"><label for="signup-name">Full name</label><input class="input" id="signup-name" name="name" autocomplete="name" required placeholder="Your full name"></div><div class="field"><label for="signup-email">Email address</label><input class="input" id="signup-email" name="email" type="email" autocomplete="email" required placeholder="you@example.com"></div><div class="field"><label for="signup-password">Password</label><input class="input" id="signup-password" name="password" type="password" autocomplete="new-password" required minlength="8" placeholder="Minimum 8 characters"><span class="field-hint">Must contain at least 8 characters.</span></div><div class="field"><label for="signup-role">Desired role</label><select class="select" id="signup-role" name="desiredRole" required><option value="">Select a role</option><option value="researcher">Researcher</option><option value="designer">UI/UX Designer</option><option value="developer">Developer</option><option value="producer">Producer / Tester</option></select></div><div class="field span-2" id="subrole-field" hidden><label for="signup-subrole">Developer specialization</label><select class="select" id="signup-subrole" name="desiredSubRole"><option value="">Select specialization</option><option value="frontend">Frontend</option><option value="backend">Backend</option></select><span class="field-hint">The current application contract supports frontend and backend specializations.</span></div><div class="field span-2"><label for="signup-note">What would you like to work on?</label><textarea class="textarea" id="signup-note" name="note" required placeholder="Tell the reviewing Admin about your interests, working style, or relevant experience."></textarea></div><label class="check span-2"><input type="checkbox" name="terms" required><span>I have reviewed the <a class="link-btn" href="#/legal/terms">terms</a> and <a class="link-btn" href="#/legal/privacy">privacy notice</a>, and agree to collaborative workspace terms.</span></label><div class="span-2 form-actions"><a class="btn btn--outline" href="#/login">Cancel</a><button class="btn btn--primary" id="signup-submit" type="submit">Submit application ${icon('arrow-up-right')}</button></div></form>`;
+  const content = `<div class="eyebrow">Membership application</div><h2>Start with how you want to contribute.</h2><p class="access-form-wrap__intro">Applications enter the Administrator review queue. Upon approval, your login is activated.</p><form id="signup-form" class="form-grid" novalidate><div class="field"><label for="signup-name">Full name</label><input class="input" id="signup-name" name="name" autocomplete="name" required placeholder="Your full name"></div><div class="field"><label for="signup-email">Email address</label><input class="input" id="signup-email" name="email" type="email" autocomplete="email" required placeholder="applicant@mahitechgroup.com"></div><div class="field"><label for="signup-password">Password</label><input class="input" id="signup-password" name="password" type="password" autocomplete="new-password" required minlength="8" placeholder="Minimum 8 characters"><span class="field-hint">Must contain at least 8 characters.</span></div><div class="field"><label for="signup-role">Desired role</label><select class="select" id="signup-role" name="desiredRole" required><option value="">Select a role</option><option value="researcher">Researcher</option><option value="designer">UI/UX Designer</option><option value="developer">Developer</option><option value="producer">Producer / Tester</option></select></div><div class="field span-2" id="subrole-field" hidden><label for="signup-subrole">Developer specialization</label><select class="select" id="signup-subrole" name="desiredSubRole"><option value="">Select specialization</option><option value="frontend">Frontend</option><option value="backend">Backend</option></select><span class="field-hint">The current application contract supports frontend and backend specializations.</span></div><div class="field span-2"><label for="signup-note">What would you like to work on?</label><textarea class="textarea" id="signup-note" name="note" required placeholder="Tell the reviewing Admin about your interests, working style, or relevant experience."></textarea></div><label class="check span-2"><input type="checkbox" name="terms" required><span>I have reviewed the <a class="link-btn" href="#/legal/terms">terms</a> and <a class="link-btn" href="#/legal/privacy">privacy notice</a>, and agree to collaborative workspace terms.</span></label><div class="span-2 form-actions"><a class="btn btn--outline" href="#/login">Cancel</a><button class="btn btn--primary" id="signup-submit" type="submit">Submit application ${icon('arrow-up-right')}</button></div></form>`;
   return { html: accessLayout(content, { wide: true }), mount() {
     const role = document.querySelector('#signup-role');
     role?.addEventListener('change', () => { document.querySelector('#subrole-field').hidden = role.value !== 'developer'; });
@@ -164,4 +146,115 @@ export function renderLegal(type = 'terms') {
   const privacy = type === 'privacy';
   const content = `<div class="eyebrow">Legal & data boundaries</div><h2>${privacy ? 'Privacy and financial visibility.' : 'Terms of service.'}</h2><p class="access-form-wrap__intro">Last updated: 2026. These specifications define the operational boundaries of the collaborative workspace.</p><article class="public-article">${privacy ? `<h3>Data handling & storage</h3><p>Operational identities, projects, financial entries, support messages, and signatures are securely managed within the deployed backend architecture. Do not share credentials or transmit unverified external files.</p><h3>Profile history and attribution</h3><p>The product model preserves permanent profile and project history. Former-member profiles are read-only and retain historical contribution attribution.</p><h3>Financial visibility</h3><p>Detailed earnings are visible to the owner and Admin. Other members viewing a profile see aggregate totals rather than a detailed earnings ledger. Frozen wallets cannot initiate withdrawals.</p><h3>Administrative records</h3><p>The product model includes access logs, audit events, support tickets, internal Admin notes, governance records, and dispute documents. Internal support notes are hidden from the member thread and shown only in elevated administration.</p>` : `<h3>Membership workflow</h3><p>The workflow requires Admin review of applications. Pending, rejected, inactive, and suspended accounts do not provide active workspace access. Role permissions determine which tasks and operational actions are available.</p><h3>Organization assets and attribution</h3><p>Approved ideas become organization-owned projects. Project assets use organization ownership, while contributor attribution and profile history remain visible.</p><h3>Voting and administration</h3><p>Voting, Admin overrides, revenue records, payouts, offboarding, and governance actions have explicit states and audit requirements.</p><h3>Digital documents</h3><p>Agreement and waiver screens demonstrate review, acceptance, decline, and digital signature recording with IP and timestamp auditing.</p>`}</article><div class="form-actions"><a class="btn btn--outline" href="#/legal/${privacy ? 'terms' : 'privacy'}">Read ${privacy ? 'terms' : 'privacy'}</a><a class="btn btn--primary" href="#/login">Return to access</a></div>`;
   return { html: accessLayout(content, { wide: true }) };
+}
+
+export function renderInvite(token) {
+  const content = `
+    <div id="invite-container">
+      <div class="eyebrow">Team Member Onboarding</div>
+      <h2>Join the Collaborative Workspace</h2>
+      <p class="access-form-wrap__intro" id="invite-desc">Verifying your invitation link...</p>
+      <div id="invite-loading" style="padding: 2rem 0; text-align: center; color: #94a3b8;">
+        <p>Validating invitation with server...</p>
+      </div>
+      <div id="invite-error" style="display:none; padding: 1rem; border-radius: 8px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; margin-bottom: 1.5rem;"></div>
+      <div id="invite-form-wrap" style="display:none;">
+        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+          <p style="margin: 0; font-size: 0.9rem; color: #cbd5e1;">
+            Invited as <strong id="invite-role-badge" style="color: #38bdf8; text-transform: uppercase;"></strong> for <span id="invite-email-display" class="mono" style="color: #fff; font-weight: 600;"></span>
+          </p>
+        </div>
+        <form id="invite-accept-form" class="stack" novalidate>
+          <div class="field">
+            <label for="invite-name">Your Full Name</label>
+            <input class="input" id="invite-name" name="name" type="text" required placeholder="e.g. Alex Morgan" autofocus>
+          </div>
+          <div class="field">
+            <label for="invite-password">Create Your Password</label>
+            <input class="input" id="invite-password" name="password" type="password" required minlength="8" placeholder="At least 8 characters">
+          </div>
+          <div class="field">
+            <label for="invite-password-confirm">Confirm Password</label>
+            <input class="input" id="invite-password-confirm" name="passwordConfirm" type="password" required minlength="8" placeholder="Repeat password">
+          </div>
+          <button class="btn btn--primary btn--lg btn--full mt-2" id="invite-submit-btn" type="submit">
+            Complete Signup & Join Team →
+          </button>
+        </form>
+      </div>
+    </div>
+  `;
+
+  return {
+    html: accessLayout(content),
+    async mount() {
+      const errorBox = document.querySelector('#invite-error');
+      const formWrap = document.querySelector('#invite-form-wrap');
+      const loading = document.querySelector('#invite-loading');
+      const emailDisplay = document.querySelector('#invite-email-display');
+      const roleBadge = document.querySelector('#invite-role-badge');
+      const form = document.querySelector('#invite-accept-form');
+      const submitBtn = document.querySelector('#invite-submit-btn');
+
+      try {
+        const res = await fetch(`/api/auth/invites/${encodeURIComponent(token)}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.valid) {
+          throw new Error(data.error || 'Invalid or expired invitation token');
+        }
+
+        if (loading) loading.style.display = 'none';
+        if (formWrap) formWrap.style.display = 'block';
+        if (emailDisplay) emailDisplay.textContent = data.invite.email;
+        if (roleBadge) roleBadge.textContent = `${data.invite.role}${data.invite.sub_role ? ` (${data.invite.sub_role})` : ''}`;
+      } catch (err) {
+        if (loading) loading.style.display = 'none';
+        if (errorBox) {
+          errorBox.innerHTML = `<strong>Invitation Error:</strong> ${escapeHTML(err.message)}<div style="margin-top:0.75rem"><a class="link-btn" href="#/login">Return to Member Login</a></div>`;
+          errorBox.style.display = 'block';
+        }
+      }
+
+      form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nameInput = document.querySelector('#invite-name');
+        const passInput = document.querySelector('#invite-password');
+        const confirmInput = document.querySelector('#invite-password-confirm');
+
+        const name = (nameInput?.value || '').trim();
+        const password = passInput?.value || '';
+        const confirm = confirmInput?.value || '';
+
+        if (!name) return setFormError(form, 'Please enter your full name.', 'name');
+        if (password.length < 8) return setFormError(form, 'Password must be at least 8 characters long.', 'password');
+        if (password !== confirm) return setFormError(form, 'Passwords do not match.', 'passwordConfirm');
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Activating account...';
+
+        try {
+          const res = await fetch(`/api/auth/invites/${encodeURIComponent(token)}/accept`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, password })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || data.message || 'Failed to accept invitation');
+
+          if (data.token) {
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('currentUser', JSON.stringify(data.user));
+          }
+
+          toast(`Welcome to the team, ${data.user?.name}! Your account is active.`, 'success');
+          location.hash = data.user?.role === 'admin' ? '#/admin' : '#/app/dashboard';
+        } catch (err) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Complete Signup & Join Team →';
+          setFormError(form, err.message || 'Failed to complete registration.');
+        }
+      });
+    }
+  };
 }

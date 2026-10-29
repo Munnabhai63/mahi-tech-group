@@ -24,18 +24,21 @@ export function card({ title = '', subtitle = '', actions = '', body = '', foote
 }
 export const notice = (text, tone = 'info', title = '', iconName = 'info') => `<div class="notice notice--${tone}">${icon(iconName)}<div>${title ? `<strong>${title}</strong>` : ''}<p>${text}</p></div></div>`;
 export function emptyState(title = 'Nothing here yet', description = 'There is no information to display in this view.', action = '', iconName = 'archive') {
-  return `<div class="empty-state"><span class="empty-state__icon">${icon(iconName, 'icon--lg')}</span><h3>${escapeHTML(title)}</h3><p>${escapeHTML(description)}</p>${action}</div>`;
+  return `<div class="empty-state" role="status"><span class="empty-state__icon">${icon(iconName, 'icon--lg')}</span><h3>${escapeHTML(title)}</h3><p>${escapeHTML(description)}</p>${action ? `<div class="empty-state__action mt-2">${action}</div>` : ''}</div>`;
 }
-export function errorState(title = 'This view could not be loaded', description = 'This is a simulated service error for frontend verification. No request was sent.') {
-  return `<div class="error-state">${icon('alert', 'icon--lg')}<div><h3>${escapeHTML(title)}</h3><p>${escapeHTML(description)}</p></div><button class="btn btn--outline btn--sm" data-action="clear-preview">${icon('refresh', 'icon--sm')} Retry</button></div>`;
+export function errorState(title = 'Unable to load content', description = 'A server or network error occurred while retrieving this view. Please try again.') {
+  return `<div class="error-state" role="alert">${icon('alert', 'icon--lg')}<div><h3>${escapeHTML(title)}</h3><p>${escapeHTML(description)}</p></div><button class="btn btn--outline btn--sm" data-action="retry-route">${icon('refresh', 'icon--sm')} Retry</button></div>`;
 }
-export function loadingState(label = 'Loading workspace') {
-  return `<div aria-busy="true" aria-label="${escapeHTML(label)}"><span class="sr-only">${escapeHTML(label)}</span><div class="stat-grid mb-2">${Array(4).fill('<div class="skeleton skeleton-block"></div>').join('')}</div><div class="loading-grid"><div class="card card--pad"><div class="loading-lines"><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div><div class="skeleton skeleton-block mt-2"></div></div><div class="card card--pad"><div class="loading-lines"><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div><div class="skeleton skeleton-block mt-2"></div></div><div class="card card--pad"><div class="loading-lines"><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div><div class="skeleton skeleton-block mt-2"></div></div></div></div>`;
+export function loadingState(label = 'Loading workspace', type = 'cards') {
+  if (type === 'table') {
+    return `<div class="loading-state" aria-busy="true" aria-label="${escapeHTML(label)}"><span class="sr-only">${escapeHTML(label)}</span><div class="table-wrap"><div class="skeleton-table" style="display:flex;flex-direction:column;gap:8px">${Array(5).fill('<div class="skeleton" style="height:44px;border-radius:6px"></div>').join('')}</div></div></div>`;
+  }
+  return `<div class="loading-state" aria-busy="true" aria-label="${escapeHTML(label)}"><span class="sr-only">${escapeHTML(label)}</span><div class="stat-grid mb-2">${Array(4).fill('<div class="skeleton skeleton-block"></div>').join('')}</div><div class="loading-grid"><div class="card card--pad"><div class="loading-lines"><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div><div class="skeleton skeleton-block mt-2"></div></div><div class="card card--pad"><div class="loading-lines"><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div><div class="skeleton skeleton-block mt-2"></div></div><div class="card card--pad"><div class="loading-lines"><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div><div class="skeleton skeleton-block mt-2"></div></div></div></div>`;
 }
 export function withPreview(content, empty = {}) {
   if (state.ui.preview === 'loading') return loadingState();
   if (state.ui.preview === 'error') return errorState();
-  if (state.ui.preview === 'empty') return emptyState(empty.title || 'No records in this preview', empty.description || 'The empty-state preview hides mock records without changing any data.', empty.action || '', empty.icon || 'archive');
+  if (state.ui.preview === 'empty') return emptyState(empty.title || 'No records in this preview', empty.description || 'No records are currently available in this view.', empty.action || '', empty.icon || 'archive');
   return content;
 }
 
@@ -126,17 +129,30 @@ export function toast(message, type = 'success', duration = 4500) {
 export function formValues(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
-export function setFormError(form, message, fieldName = null) {
+export function clearFormErrors(form) {
+  if (!form) return;
   form.querySelectorAll('.field-error').forEach(error => error.remove());
   form.querySelectorAll('[aria-invalid]').forEach(field => field.removeAttribute('aria-invalid'));
+}
+export function setFormError(form, message, fieldName = null) {
+  if (!form) return;
+  clearFormErrors(form);
   const error = document.createElement('div');
-  error.className = 'field-error'; error.setAttribute('role', 'alert'); error.textContent = message;
+  error.className = 'field-error';
+  error.setAttribute('role', 'alert');
+  error.textContent = message;
   if (fieldName && form.elements[fieldName]) {
-    const field = form.elements[fieldName]; field.setAttribute('aria-invalid', 'true'); field.closest('.field')?.append(error); field.focus();
-  } else form.prepend(error);
+    const field = form.elements[fieldName];
+    field.setAttribute('aria-invalid', 'true');
+    field.closest('.field')?.append(error);
+    field.focus();
+  } else {
+    error.style.marginBottom = '12px';
+    form.prepend(error);
+  }
 }
 export function showPlaceholder(title, description) {
-  openDialog({ title: escapeHTML(title), subtitle: 'Frontend-only service boundary', content: notice(escapeHTML(description), 'info', 'No service request was sent', 'info'), footer: '<button class="btn btn--primary" data-close-dialog>Understood</button>' });
+  openDialog({ title: escapeHTML(title), subtitle: 'Feature Notification', content: notice(escapeHTML(description), 'info', title, 'info'), footer: '<button class="btn btn--primary" data-close-dialog>Understood</button>' });
 }
 
 export function bindTabs(root = document) {

@@ -3,7 +3,7 @@ import { getAuthToken } from './api.js';
 import { notificationPriority, markNotificationRead } from './notifications.js';
 import { icon, notice, pageHead, emptyState, closeDialog, closeDrawer, toast } from './ui.js';
 import { shellHTML, mountShell, openNotificationsDrawer, openQuickSearch } from './shell.js';
-import { renderLogin, renderRoleSelection, renderSignup, renderApplicationStatus, renderAbout, renderContact, renderLegal } from './views/public.js';
+import { renderLogin, renderRoleSelection, renderSignup, renderApplicationStatus, renderAbout, renderContact, renderLegal, renderInvite } from './views/public.js';
 import { renderDashboard, renderWorkspace, renderTasks, renderNotifications, renderProfile, renderWallet, renderSettings, renderSupport, renderTicket, renderFormerMember } from './views/member.js';
 import { renderProjects, renderProjectDetail } from './views/projects.js';
 import { renderIdeas, renderNewIdea, renderVoting, renderIdeaDetail } from './views/ideas.js';
@@ -76,7 +76,10 @@ async function route(path, params) {
   if (path === '/contact') return renderContact();
   if (path === '/mentorship') return renderContact(); // Legacy URL: no mentorship product or booking flow.
   if (path === '/legal/terms' || path === '/legal/privacy') return renderLegal(path.endsWith('privacy') ? 'privacy' : 'terms');
+  let inviteMatch = path.match(/^\/invite\/([^/]+)$/);
+  if (inviteMatch) return renderInvite(inviteMatch[1]);
 
+  if (path === '/app/403') return render403(path);
   if (path === '/app' || path === '/app/dashboard') return renderDashboard();
   if (path === '/app/workspace') return renderWorkspace();
   if (path === '/app/tasks') return renderTasks();
@@ -155,8 +158,48 @@ async function route(path, params) {
     const signing = await loadSigningView();
     return signing.renderSigning(match[1], match[2], params);
   }
-  return { html: `${pageHead('404 · Route not found', 'This screen is not in the application map.', 'Use the navigation or quick search to return to an implemented workspace screen.')}${emptyState('Unknown application route', 'The route may be incomplete or no longer available.', '<a class="btn btn--primary" href="#/app/dashboard">Return to dashboard</a>', 'search')}` };
+  return render404(path);
 }
+
+function render403(path) {
+  return {
+    html: `
+      <section class="access-denied-view" role="alert">
+        <div style="font-size:3.5rem;margin-bottom:1rem;" aria-hidden="true">🔒</div>
+        <div class="eyebrow eyebrow--rose">403 · Access Restricted</div>
+        <h1>You don't have access to this screen</h1>
+        <p class="muted">
+          Administrative credentials are required to enter <code>${escapeHTML(path)}</code>.
+          Your current authenticated role does not possess the permissions necessary for this operational gate.
+        </p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:1.5rem;">
+          <a class="btn btn--primary" href="#/app/dashboard">Return to Member Dashboard</a>
+          <a class="btn btn--outline" href="#/app/profile">View My Profile</a>
+        </div>
+      </section>
+    `
+  };
+}
+
+function render404(path) {
+  return {
+    html: `
+      <section class="not-found-view" role="alert">
+        <div style="font-size:3.5rem;margin-bottom:1rem;" aria-hidden="true">🧭</div>
+        <div class="eyebrow">404 · Page Not Found</div>
+        <h1>This page doesn't exist</h1>
+        <p class="muted">
+          We couldn't find the route <code>${escapeHTML(path)}</code>. It may have been moved, deleted, or mistyped.
+        </p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:1.5rem;">
+          <a class="btn btn--primary" href="#/app/dashboard">Back to Dashboard</a>
+          <button class="btn btn--outline" data-action="quick-search">Search Workspace (⌘K)</button>
+        </div>
+      </section>
+    `
+  };
+}
+
 function isPublic(path) { return ['/login', '/role-selection', '/signup', '/application-status', '/about', '/contact', '/mentorship', '/legal/terms', '/legal/privacy'].includes(path); }
 function isSigning(path) { return path.startsWith('/sign/'); }
 async function render() {
@@ -167,8 +210,16 @@ async function render() {
     const raw = location.hash.slice(1); const [rawPath, query = ''] = raw.split('?'); const path = (`/${rawPath.replace(/^\/+/, '')}`).replace(/\/$/, '') || '/'; const params = new URLSearchParams(query);
     const user = currentUser();
     const token = getAuthToken();
-    if (!isPublic(path) && !isSigning(path) && (!user || (!token && !state.session?.demo))) { state.ui.returnTo = location.hash; location.hash = '#/login'; return; }
-    if (user && (path.startsWith('/admin') || path.startsWith('/superadmin')) && user.role !== 'admin') { toast('Admin operations require the Admin role.', 'error'); location.hash = user.status === 'inactive' ? '#/app/former-member' : '#/app/dashboard'; return; }
+    if (!isPublic(path) && !isSigning(path) && (!user || !token)) { state.ui.returnTo = location.hash; location.hash = '#/login'; return; }
+    if (user && (path.startsWith('/admin') || path.startsWith('/superadmin')) && user.role !== 'admin') {
+      const view = render403(path);
+      const protectedShell = !isPublic(path) && !isSigning(path);
+      app.innerHTML = protectedShell ? shellHTML(view, path) : `<main id="main-content" tabindex="-1">${view.html}</main>`;
+      document.title = 'Access Restricted — MAHI TECH GROUP';
+      const shellCleanup = protectedShell ? mountShell(path) : null;
+      cleanup = () => { if (typeof shellCleanup === 'function') shellCleanup(); };
+      return;
+    }
     if (user?.status === 'inactive' && path.startsWith('/app') && !['/app/former-member', `/app/members/${user.id}`, '/app/wallet', '/app/notifications'].includes(path)) { location.hash = '#/app/former-member'; return; }
     if (typeof cleanup === 'function') { try { cleanup(); } catch (error) { console.warn('View cleanup failed', error); } }
     cleanup = null; closeDialog(); closeDrawer(false); state.ui.sidebarOpen = false;
@@ -176,7 +227,7 @@ async function render() {
     try { view = await route(path, params); }
     catch (error) {
       console.error('Route render failed:', path, error);
-      view = { html: `${pageHead('Application error', 'This screen could not be rendered.', 'A local frontend error was caught. No backend request was made.')}${notice('Open the browser console for the route error, or retry this route after returning to normal preview mode.', 'danger', 'Render error', 'alert')}<button class="btn btn--outline mt-2" data-action="retry-route">${icon('refresh')} Retry route</button>` };
+      view = { html: `${pageHead('Application error', 'This screen could not be rendered.', 'A frontend error was caught.')}${notice('Open the browser console for error details, or retry this route.', 'danger', 'Render error', 'alert')}<button class="btn btn--outline mt-2" data-action="retry-route">${icon('refresh')} Retry route</button>` };
     }
     const protectedShell = !isPublic(path) && !isSigning(path);
     app.innerHTML = protectedShell ? shellHTML(view, path) : isSigning(path) ? view.html : `<main id="main-content" tabindex="-1">${view.html}</main>`;
@@ -220,6 +271,7 @@ document.addEventListener('click', event => {
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'clear-preview') { setPreview('normal'); window.dispatchEvent(new CustomEvent('app:refresh')); }
   if (action === 'retry-route') { state.live.backendError = false; window.dispatchEvent(new CustomEvent('app:refresh')); }
+  if (action === 'quick-search') { openQuickSearch(); }
   if (event.target.closest('[data-open-notifications]')) openNotificationsDrawer();
   const notificationLink = event.target.closest('[data-notification-link]');
   if (notificationLink) {

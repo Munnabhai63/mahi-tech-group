@@ -1,10 +1,38 @@
+import crypto from 'node:crypto';
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { updateTaskStatus } from '../services/fanoutService.js';
-import { queryOne } from '../db/database.js';
+import { queryOne, execute } from '../db/database.js';
 import { createAsset } from '../services/assetService.js';
 
 const router = express.Router();
+
+/**
+ * POST /api/tasks (Authenticated)
+ * Creates a new task in project_tasks
+ */
+router.post('/', authenticate, (req, res) => {
+  const { project_id, title, task_name, task_type = 'backend', assigned_to, depends_on_task_id, status = 'TODO' } = req.body || {};
+  const name = title || task_name;
+  if (!project_id || !name) {
+    return res.status(400).json({ error: 'project_id and title (or task_name) are required' });
+  }
+
+  const validTaskTypes = ['research', 'backend', 'frontend', 'testing', 'review', 'design'];
+  const effectiveTaskType = validTaskTypes.includes(task_type) ? task_type : 'backend';
+
+  const taskId = crypto.randomUUID();
+  execute(`
+    INSERT INTO project_tasks (id, project_id, assigned_to, task_name, task_type, depends_on_task_id, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `, [taskId, project_id, assigned_to || null, name, effectiveTaskType, depends_on_task_id || null, status]);
+
+  const task = queryOne('SELECT * FROM project_tasks WHERE id = ?', [taskId]);
+  return res.status(201).json({
+    message: 'Task created successfully',
+    task
+  });
+});
 
 /**
  * PATCH /api/tasks/:id/status (Assigned user or Admin)
