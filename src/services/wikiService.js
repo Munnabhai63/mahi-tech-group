@@ -169,11 +169,12 @@ export function extractTextAndLinks(blocks) {
       if (!block) continue;
 
       // Extract text content
-      if (typeof block.content === 'string') {
-        textParts.push(block.content);
+      const blockText = typeof block.content === 'string' ? block.content : (typeof block.text === 'string' ? block.text : null);
+      if (blockText) {
+        textParts.push(blockText);
 
         // Check for inline wikilinks e.g. [[123]] or [[page:123]]
-        const inlineMatches = block.content.matchAll(/\[\[(?:page:)?(\d+)\]\]/g);
+        const inlineMatches = blockText.matchAll(/\[\[(?:page:)?(\d+)\]\]/g);
         for (const m of inlineMatches) {
           const parsedId = parseInt(m[1], 10);
           if (!isNaN(parsedId)) targetPageIds.add(parsedId);
@@ -185,6 +186,8 @@ export function extractTextAndLinks(blocks) {
         const targetId =
           block.attrs?.target_page_id ||
           block.attrs?.page_id ||
+          block.target_page_id ||
+          block.page_id ||
           (typeof block.content === 'number' ? block.content : parseInt(block.content, 10));
         if (targetId && !isNaN(Number(targetId))) {
           targetPageIds.add(Number(targetId));
@@ -220,7 +223,7 @@ export function convertBlocksToMarkdown(title, blocks) {
   for (const block of blocks) {
     if (!block) continue;
     const type = block.type || 'PARAGRAPH';
-    const text = block.content || '';
+    const text = block.content || block.text || '';
     const attrs = block.attrs || {};
 
     switch (type) {
@@ -607,7 +610,7 @@ export function removeSpaceMember(spaceId, targetUserId, currentUser, ipAddress 
 // ---------------------------------------------------------------------------
 
 export function createPage(
-  { space_id, parent_page_id = null, title, content = '[]', emoji_icon = '📄', cover_image = null, status = 'PUBLISHED' },
+  { space_id, parent_page_id = null, title, content = '[]', blocks = null, emoji_icon = '📄', cover_image = null, status = 'PUBLISHED' },
   currentUser,
   ipAddress = null
 ) {
@@ -633,7 +636,8 @@ export function createPage(
   }
 
   const finalSlug = ensureUniquePageSlug(space_id, title);
-  const normalized = validateAndNormalizeBlocks(content);
+  const inputContent = (blocks !== null && blocks !== undefined) ? blocks : content;
+  const normalized = validateAndNormalizeBlocks(inputContent);
 
   // Position calculation (append to end of sibling list)
   const posRow = queryOne(
@@ -767,7 +771,7 @@ export function getPageById(pageId, currentUser, { isClient = false } = {}) {
 
   // Backlinks (pages linking to this page)
   const backlinks = queryAll(
-    `SELECT p.id, p.title, p.slug, p.emoji_icon, s.name as space_name, s.slug as space_slug
+    `SELECT p.id, p.id as source_page_id, p.title, p.title as source_title, p.slug, p.emoji_icon, s.name as space_name, s.slug as space_slug
      FROM wiki_page_links l
      JOIN wiki_pages p ON l.source_page_id = p.id
      JOIN wiki_spaces s ON p.space_id = s.id
@@ -787,6 +791,7 @@ export function getPageById(pageId, currentUser, { isClient = false } = {}) {
   return {
     ...page,
     current_version: latestVersion ? latestVersion.max_v : 1,
+    version_number: latestVersion ? latestVersion.max_v : 1,
     comments,
     backlinks,
     reactions,
@@ -796,7 +801,7 @@ export function getPageById(pageId, currentUser, { isClient = false } = {}) {
 
 export function updatePage(
   pageId,
-  { title, content, emoji_icon, cover_image, change_summary = null },
+  { title, content, blocks, emoji_icon, cover_image, change_summary = null },
   currentUser,
   ipAddress = null
 ) {
@@ -813,9 +818,10 @@ export function updatePage(
   const newTitle = title !== undefined ? title.trim() : page.title;
   if (!newTitle) throw createError(400, 'Page title cannot be empty');
 
+  const inputContent = (blocks !== undefined) ? blocks : content;
   let normalized;
-  if (content !== undefined) {
-    normalized = validateAndNormalizeBlocks(content);
+  if (inputContent !== undefined) {
+    normalized = validateAndNormalizeBlocks(inputContent);
   } else {
     normalized = validateAndNormalizeBlocks(page.content);
   }
