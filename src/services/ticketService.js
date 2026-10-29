@@ -75,7 +75,7 @@ export function createTicket({ reporter_id, category = 'other', priority = 'norm
 /**
  * List tickets with filters and search
  */
-export function listTickets({ status, priority, category, search, reporter_id = null }) {
+export function listTickets({ status, priority, category, search, reporter_id = null, limit = 50, offset = 0 } = {}) {
   let sql = `
     SELECT st.*, 
            reporter.name as reporter_name, 
@@ -117,7 +117,8 @@ export function listTickets({ status, priority, category, search, reporter_id = 
     params.push(term, term, term, term);
   }
 
-  sql += ` ORDER BY st.updated_at DESC`;
+  sql += ` ORDER BY st.updated_at DESC LIMIT ? OFFSET ?`;
+  params.push(Number(limit) || 50, Number(offset) || 0);
 
   const rows = queryAll(sql, params);
 

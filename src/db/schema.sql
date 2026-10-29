@@ -281,6 +281,10 @@ CREATE TABLE IF NOT EXISTS revenue_splits (
     amount              DECIMAL(12,2) NOT NULL,
     rule_applied        VARCHAR(30) NOT NULL CHECK (rule_applied IN ('OWNER_50_TEAM_50','TEAM_100')),
     split_type          VARCHAR(30) DEFAULT 'TEAM_CONTRIBUTOR' CHECK (split_type IN ('OWNER_ROYALTY','TEAM_CONTRIBUTOR')),
+    is_blocked          INTEGER NOT NULL DEFAULT 0,
+    block_reason        TEXT,
+    unblocked_by        TEXT REFERENCES users(id),
+    unblocked_at        TIMESTAMP,
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -340,6 +344,15 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS prevent_revenue_splits_update
 BEFORE UPDATE ON revenue_splits
+WHEN (
+    OLD.id != NEW.id OR
+    OLD.revenue_event_id != NEW.revenue_event_id OR
+    OLD.user_id != NEW.user_id OR
+    OLD.amount != NEW.amount OR
+    OLD.rule_applied != NEW.rule_applied OR
+    OLD.split_type != NEW.split_type OR
+    OLD.created_at != NEW.created_at
+)
 BEGIN
     SELECT RAISE(FAIL, 'Immutable ledger: UPDATE not allowed on revenue_splits');
 END;
@@ -707,4 +720,1668 @@ END;
 CREATE INDEX IF NOT EXISTS idx_governance_user_id ON user_data_governance(user_id);
 CREATE INDEX IF NOT EXISTS idx_governance_created_at ON user_data_governance(created_at);
 
+-- ===================================================================
+-- STEP 15: 4-Role Project Pipeline Workflow Tables & Triggers
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS pipeline_deliverables (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  current_stage VARCHAR(20) NOT NULL DEFAULT 'RESEARCH',
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS pipeline_checklist_points (
+  id TEXT PRIMARY KEY,
+  deliverable_id TEXT NOT NULL,
+  stage VARCHAR(20) NOT NULL,
+  point_title VARCHAR(300) NOT NULL,
+  point_description TEXT,
+  weight INTEGER NOT NULL DEFAULT 5 CHECK(weight >= 1 AND weight <= 10),
+  status VARCHAR(20) NOT NULL DEFAULT 'UNCLAIMED',
+  assigned_to TEXT,
+  claim_locked_by TEXT REFERENCES users(id),
+  claim_locked_at TIMESTAMP,
+  submitted_at TIMESTAMP,
+  approved_at TIMESTAMP,
+  approved_by TEXT,
+  tool_link TEXT,
+  asset_url TEXT,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (deliverable_id) REFERENCES pipeline_deliverables(id),
+  FOREIGN KEY (assigned_to) REFERENCES users(id),
+  FOREIGN KEY (claim_locked_by) REFERENCES users(id),
+  FOREIGN KEY (approved_by) REFERENCES users(id),
+  FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS pipeline_stage_handoffs (
+  id TEXT PRIMARY KEY,
+  deliverable_id TEXT NOT NULL,
+  from_stage VARCHAR(20) NOT NULL,
+  to_stage VARCHAR(20) NOT NULL,
+  stage_completion_pct DECIMAL(5,2) NOT NULL,
+  handoff_notes TEXT,
+  approved_by TEXT NOT NULL,
+  snapshot_json TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (deliverable_id) REFERENCES pipeline_deliverables(id),
+  FOREIGN KEY (approved_by) REFERENCES users(id)
+);
+
+CREATE TRIGGER IF NOT EXISTS prevent_handoff_update
+BEFORE UPDATE ON pipeline_stage_handoffs
+BEGIN
+  SELECT RAISE(ABORT, 'pipeline_stage_handoffs is append-only. Updates forbidden.');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_handoff_delete
+BEFORE DELETE ON pipeline_stage_handoffs
+BEGIN
+  SELECT RAISE(ABORT, 'pipeline_stage_handoffs is append-only. Deletes forbidden.');
+END;
+
+CREATE TABLE IF NOT EXISTS pipeline_addendum_requests (
+  id TEXT PRIMARY KEY,
+  deliverable_id TEXT NOT NULL,
+  requesting_stage VARCHAR(20) NOT NULL,
+  target_stage VARCHAR(20) NOT NULL,
+  point_title VARCHAR(300) NOT NULL,
+  reason TEXT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+  raised_by TEXT NOT NULL,
+  resolved_by TEXT,
+  resolved_at TIMESTAMP,
+  type VARCHAR(20) NOT NULL DEFAULT 'ADDENDUM',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (deliverable_id) REFERENCES pipeline_deliverables(id),
+  FOREIGN KEY (raised_by) REFERENCES users(id),
+  FOREIGN KEY (resolved_by) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pipeline_deliverables_project_id ON pipeline_deliverables(project_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_deliverables_stage ON pipeline_deliverables(current_stage);
+CREATE INDEX IF NOT EXISTS idx_pipeline_deliverables_status ON pipeline_deliverables(status);
+CREATE INDEX IF NOT EXISTS idx_pipeline_checklist_points_deliv ON pipeline_checklist_points(deliverable_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_checklist_points_stage ON pipeline_checklist_points(stage);
+CREATE INDEX IF NOT EXISTS idx_pipeline_checklist_points_status ON pipeline_checklist_points(status);
+CREATE INDEX IF NOT EXISTS idx_pipeline_checklist_points_assigned ON pipeline_checklist_points(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_pipeline_handoffs_deliv ON pipeline_stage_handoffs(deliverable_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_addendum_deliv ON pipeline_addendum_requests(deliverable_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_addendum_status ON pipeline_addendum_requests(status);
+CREATE INDEX IF NOT EXISTS idx_pipeline_addendum_type ON pipeline_addendum_requests(type);
+
+-- Performance Optimization Composite Indexes
+CREATE INDEX IF NOT EXISTS idx_ideas_status_owner
+  ON ideas(status, owner_id);
+
+CREATE INDEX IF NOT EXISTS idx_projects_status_owner
+  ON projects(status, owner_id);
+
+CREATE INDEX IF NOT EXISTS idx_project_tasks_composite
+  ON project_tasks(project_id, assigned_to, status);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read
+  ON notifications(user_id, read_status);
+
+CREATE INDEX IF NOT EXISTS idx_access_log_user_action
+  ON access_log(user_id, action);
+
+CREATE INDEX IF NOT EXISTS idx_pipeline_points_composite
+  ON pipeline_checklist_points(deliverable_id, stage, status);
+
+CREATE INDEX IF NOT EXISTS idx_pipeline_deliverables_proj
+  ON pipeline_deliverables(project_id, status);
+
+-- ===================================================================
+-- STEP 16: Dynamic Point-Pool, Multi-Member & Participation % Tables
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS point_pool_claims (
+  id TEXT PRIMARY KEY,
+  point_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  deliverable_id TEXT NOT NULL,
+  stage VARCHAR(20) NOT NULL,
+  claimed_by TEXT NOT NULL,
+  claimed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  released_at TIMESTAMP,
+  release_reason VARCHAR(50),
+  released_by TEXT,
+  FOREIGN KEY (point_id) REFERENCES pipeline_checklist_points(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (claimed_by) REFERENCES users(id)
+);
+
+CREATE TRIGGER IF NOT EXISTS prevent_claim_delete
+BEFORE DELETE ON point_pool_claims
+BEGIN
+  SELECT RAISE(ABORT, 'point_pool_claims is append-only. Deletes forbidden.');
+END;
+
+CREATE TABLE IF NOT EXISTS participation_thresholds (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL UNIQUE,
+  threshold_pct DECIMAL(5,2) NOT NULL DEFAULT 20.00,
+  abandonment_days INTEGER NOT NULL DEFAULT 7,
+  set_by TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (set_by) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS point_tool_links (
+  id TEXT PRIMARY KEY,
+  point_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  added_by TEXT NOT NULL,
+  tool_name VARCHAR(100) NOT NULL,
+  tool_url TEXT NOT NULL,
+  deleted_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (point_id) REFERENCES pipeline_checklist_points(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (added_by) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_point_id ON point_pool_claims(point_id);
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_project_id ON point_pool_claims(project_id);
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_claimed_by ON point_pool_claims(claimed_by);
+CREATE INDEX IF NOT EXISTS idx_point_pool_claims_stage ON point_pool_claims(stage);
+
+CREATE INDEX IF NOT EXISTS idx_participation_thresholds_project_id ON participation_thresholds(project_id);
+
+CREATE INDEX IF NOT EXISTS idx_point_tool_links_point_id ON point_tool_links(point_id);
+CREATE INDEX IF NOT EXISTS idx_point_tool_links_project_id ON point_tool_links(project_id);
+
+-- ===================================================================
+-- PRD 17: GitHub Automation Architecture (Batch 1)
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS user_github_links (
+  id              TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  user_id         TEXT NOT NULL UNIQUE,
+  github_username TEXT NOT NULL,
+  github_node_id  TEXT NOT NULL,
+  linked_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  linked_by       TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_github_links_user_id
+  ON user_github_links(user_id);
+
+CREATE TABLE IF NOT EXISTS project_github_repos (
+  id              TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  project_id      TEXT NOT NULL UNIQUE,
+  github_repo_id  INTEGER,
+  repo_name       TEXT NOT NULL,
+  repo_full_name  TEXT NOT NULL,
+  repo_url        TEXT NOT NULL,
+  default_branch  TEXT NOT NULL DEFAULT 'main',
+  status          TEXT NOT NULL DEFAULT 'PENDING'
+                    CHECK(status IN ('PENDING','ACTIVE','ARCHIVED','FAILED')),
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  archived_at     TEXT,
+  FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_github_repos_project_id
+  ON project_github_repos(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_github_repos_status
+  ON project_github_repos(status);
+
+CREATE TABLE IF NOT EXISTS project_github_memberships (
+  id              TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  project_id      TEXT NOT NULL,
+  user_id         TEXT NOT NULL,
+  github_username TEXT NOT NULL,
+  role            TEXT NOT NULL
+                    CHECK(role IN ('researcher','designer',
+                                   'developer','tester','lead','admin')),
+  team_slug       TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'ACTIVE'
+                    CHECK(status IN ('ACTIVE','REMOVED')),
+  added_at        TEXT NOT NULL DEFAULT (datetime('now')),
+  removed_at      TEXT,
+  removed_reason  TEXT,
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (user_id)    REFERENCES users(id),
+  UNIQUE(project_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_proj_gh_memberships_project_id
+  ON project_github_memberships(project_id);
+CREATE INDEX IF NOT EXISTS idx_proj_gh_memberships_user_id
+  ON project_github_memberships(user_id);
+CREATE INDEX IF NOT EXISTS idx_proj_gh_memberships_status
+  ON project_github_memberships(status, project_id);
+
+CREATE TABLE IF NOT EXISTS github_webhook_log (
+  id              TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  delivery_id     TEXT NOT NULL UNIQUE,
+  event_type      TEXT NOT NULL,
+  action          TEXT,
+  repo_full_name  TEXT,
+  sender_login    TEXT,
+  payload         TEXT NOT NULL,
+  signature_valid INTEGER NOT NULL DEFAULT 0
+                    CHECK(signature_valid IN (0,1)),
+  processed       INTEGER NOT NULL DEFAULT 0
+                    CHECK(processed IN (0,1)),
+  error_message   TEXT,
+  received_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_gh_webhook_log_event_type
+  ON github_webhook_log(event_type);
+CREATE INDEX IF NOT EXISTS idx_gh_webhook_log_received_at
+  ON github_webhook_log(received_at);
+CREATE INDEX IF NOT EXISTS idx_gh_webhook_log_processed
+  ON github_webhook_log(processed);
+
+CREATE TRIGGER IF NOT EXISTS prevent_webhook_log_update
+BEFORE UPDATE ON github_webhook_log
+WHEN OLD.delivery_id != NEW.delivery_id
+  OR OLD.event_type != NEW.event_type
+  OR OLD.payload != NEW.payload
+  OR OLD.signature_valid != NEW.signature_valid
+  OR OLD.received_at != NEW.received_at
+BEGIN
+  SELECT RAISE(ABORT, 'github_webhook_log is append-only: only processed and error_message fields are mutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_webhook_log_delete
+BEFORE DELETE ON github_webhook_log
+BEGIN
+  SELECT RAISE(ABORT, 'github_webhook_log rows cannot be deleted');
+END;
+
+-- ============================================================
+-- PRD 18: Sprint Planning, Backlog Management & Velocity Tracking
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS sprints (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  name TEXT NOT NULL,
+  goal TEXT,
+  status TEXT NOT NULL DEFAULT 'DRAFT',
+  start_date TEXT,
+  end_date TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS backlog_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  sprint_id INTEGER REFERENCES sprints(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  type TEXT DEFAULT 'STORY',
+  priority TEXT DEFAULT 'MEDIUM',
+  story_points INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'TODO',
+  assigned_to INTEGER REFERENCES users(id),
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  position INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sprint_velocity_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sprint_id INTEGER NOT NULL REFERENCES sprints(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  total_points_committed INTEGER DEFAULT 0,
+  total_points_completed INTEGER DEFAULT 0,
+  completion_rate REAL DEFAULT 0.0,
+  logged_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS backlog_item_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  item_id INTEGER NOT NULL REFERENCES backlog_items(id),
+  changed_by INTEGER NOT NULL REFERENCES users(id),
+  field_changed TEXT NOT NULL,
+  old_value TEXT,
+  new_value TEXT,
+  changed_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sprint_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sprint_id INTEGER NOT NULL REFERENCES sprints(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  added_by INTEGER NOT NULL REFERENCES users(id),
+  added_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(sprint_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sprints_project_id ON sprints(project_id);
+CREATE INDEX IF NOT EXISTS idx_sprints_status ON sprints(status);
+CREATE INDEX IF NOT EXISTS idx_backlog_items_project_id ON backlog_items(project_id);
+CREATE INDEX IF NOT EXISTS idx_backlog_items_sprint_id ON backlog_items(sprint_id);
+CREATE INDEX IF NOT EXISTS idx_sprint_velocity_sprint ON sprint_velocity_log(sprint_id);
+CREATE INDEX IF NOT EXISTS idx_backlog_history_item ON backlog_item_history(item_id);
+CREATE INDEX IF NOT EXISTS idx_sprint_members_sprint ON sprint_members(sprint_id);
+
+CREATE TRIGGER IF NOT EXISTS prevent_velocity_log_update
+BEFORE UPDATE ON sprint_velocity_log
+BEGIN SELECT RAISE(ABORT, 'sprint_velocity_log is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_velocity_log_delete
+BEFORE DELETE ON sprint_velocity_log
+BEGIN SELECT RAISE(ABORT, 'sprint_velocity_log is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_item_history_update
+BEFORE UPDATE ON backlog_item_history
+BEGIN SELECT RAISE(ABORT, 'backlog_item_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_item_history_delete
+BEFORE DELETE ON backlog_item_history
+BEGIN SELECT RAISE(ABORT, 'backlog_item_history is append-only'); END;
+
+-- ============================================================
+-- PRD 19: OKR System (Objectives & Key Results)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS okr_objectives (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT,
+  level TEXT NOT NULL DEFAULT 'TEAM',
+  -- COMPANY | TEAM | INDIVIDUAL
+  owner_id INTEGER NOT NULL REFERENCES users(id),
+  parent_objective_id INTEGER REFERENCES okr_objectives(id),
+  -- NULL = top-level objective, non-NULL = aligned to parent
+  project_id INTEGER REFERENCES projects(id),
+  -- NULL = company-level, non-NULL = project/team level
+  cycle TEXT NOT NULL,
+  -- e.g. 'Q1-2025', 'Q2-2025', 'H1-2025', 'FY-2025'
+  status TEXT NOT NULL DEFAULT 'ACTIVE',
+  -- DRAFT | ACTIVE | COMPLETED | CANCELLED | ARCHIVED
+  progress_pct REAL DEFAULT 0.0,
+  -- auto-calculated from Key Results (0.00 to 100.00)
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS okr_key_results (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  objective_id INTEGER NOT NULL REFERENCES okr_objectives(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  type TEXT NOT NULL DEFAULT 'PERCENTAGE',
+  -- PERCENTAGE | NUMBER | BOOLEAN | MILESTONE
+  target_value REAL NOT NULL DEFAULT 100,
+  -- for PERCENTAGE: 100, for NUMBER: custom, for BOOLEAN: 1, for MILESTONE: milestone count
+  current_value REAL NOT NULL DEFAULT 0,
+  unit TEXT,
+  -- e.g. '%', 'users', 'revenue', 'tasks'
+  progress_pct REAL DEFAULT 0.0,
+  -- auto-calculated: current_value ÷ target_value × 100, capped at 100
+  status TEXT NOT NULL DEFAULT 'ON_TRACK',
+  -- ON_TRACK | AT_RISK | OFF_TRACK | COMPLETED
+  assigned_to INTEGER REFERENCES users(id),
+  due_date TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS okr_checkins (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key_result_id INTEGER NOT NULL REFERENCES okr_key_results(id),
+  submitted_by INTEGER NOT NULL REFERENCES users(id),
+  previous_value REAL NOT NULL DEFAULT 0,
+  new_value REAL NOT NULL,
+  confidence TEXT NOT NULL DEFAULT 'MEDIUM',
+  -- HIGH | MEDIUM | LOW
+  note TEXT,
+  -- optional comment from member about this check-in
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS okr_alignment_links (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  child_objective_id INTEGER NOT NULL REFERENCES okr_objectives(id),
+  parent_objective_id INTEGER NOT NULL REFERENCES okr_objectives(id),
+  linked_by INTEGER NOT NULL REFERENCES users(id),
+  linked_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(child_objective_id, parent_objective_id)
+);
+
+CREATE TABLE IF NOT EXISTS okr_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entity_type TEXT NOT NULL,
+  -- 'OBJECTIVE' | 'KEY_RESULT'
+  entity_id INTEGER NOT NULL,
+  changed_by INTEGER NOT NULL REFERENCES users(id),
+  field_changed TEXT NOT NULL,
+  old_value TEXT,
+  new_value TEXT,
+  changed_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_okr_objectives_level ON okr_objectives(level);
+CREATE INDEX IF NOT EXISTS idx_okr_objectives_cycle ON okr_objectives(cycle);
+CREATE INDEX IF NOT EXISTS idx_okr_objectives_project ON okr_objectives(project_id);
+CREATE INDEX IF NOT EXISTS idx_okr_objectives_owner ON okr_objectives(owner_id);
+CREATE INDEX IF NOT EXISTS idx_okr_objectives_parent ON okr_objectives(parent_objective_id);
+CREATE INDEX IF NOT EXISTS idx_okr_key_results_obj ON okr_key_results(objective_id);
+CREATE INDEX IF NOT EXISTS idx_okr_key_results_assigned ON okr_key_results(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_okr_checkins_kr ON okr_checkins(key_result_id);
+CREATE INDEX IF NOT EXISTS idx_okr_alignment_child ON okr_alignment_links(child_objective_id);
+CREATE INDEX IF NOT EXISTS idx_okr_alignment_parent ON okr_alignment_links(parent_objective_id);
+CREATE INDEX IF NOT EXISTS idx_okr_history_entity ON okr_history(entity_type, entity_id);
+
+CREATE TRIGGER IF NOT EXISTS prevent_okr_checkin_update
+BEFORE UPDATE ON okr_checkins
+BEGIN SELECT RAISE(ABORT, 'okr_checkins is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_okr_checkin_delete
+BEFORE DELETE ON okr_checkins
+BEGIN SELECT RAISE(ABORT, 'okr_checkins is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_okr_alignment_update
+BEFORE UPDATE ON okr_alignment_links
+BEGIN SELECT RAISE(ABORT, 'okr_alignment_links is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_okr_alignment_delete
+BEFORE DELETE ON okr_alignment_links
+BEGIN SELECT RAISE(ABORT, 'okr_alignment_links is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_okr_history_update
+BEFORE UPDATE ON okr_history
+BEGIN SELECT RAISE(ABORT, 'okr_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_okr_history_delete
+BEFORE DELETE ON okr_history
+BEGIN SELECT RAISE(ABORT, 'okr_history is append-only'); END;
+
+-- ===================================================================
+-- PRD 20: Gantt Chart & Timeline View
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS gantt_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  sprint_id INTEGER REFERENCES sprints(id),
+  backlog_item_id INTEGER REFERENCES backlog_items(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  type TEXT NOT NULL DEFAULT 'TASK',
+  assigned_to INTEGER REFERENCES users(id),
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  progress_pct REAL DEFAULT 0.0,
+  color TEXT DEFAULT '#4A90E2',
+  parent_item_id INTEGER REFERENCES gantt_items(id),
+  position INTEGER DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'NOT_STARTED',
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS gantt_dependencies (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  predecessor_item_id INTEGER NOT NULL REFERENCES gantt_items(id),
+  successor_item_id INTEGER NOT NULL REFERENCES gantt_items(id),
+  dependency_type TEXT NOT NULL DEFAULT 'FINISH_TO_START',
+  lag_days INTEGER DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(predecessor_item_id, successor_item_id)
+);
+
+CREATE TABLE IF NOT EXISTS gantt_milestones (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  gantt_item_id INTEGER REFERENCES gantt_items(id),
+  title TEXT NOT NULL,
+  milestone_date TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  achieved_at TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS gantt_baselines (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  gantt_item_id INTEGER NOT NULL REFERENCES gantt_items(id),
+  baseline_start_date TEXT NOT NULL,
+  baseline_end_date TEXT NOT NULL,
+  snapshot_taken_by INTEGER NOT NULL REFERENCES users(id),
+  snapshot_taken_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS gantt_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  gantt_item_id INTEGER NOT NULL REFERENCES gantt_items(id),
+  changed_by INTEGER NOT NULL REFERENCES users(id),
+  field_changed TEXT NOT NULL,
+  old_value TEXT,
+  new_value TEXT,
+  changed_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_gantt_items_project ON gantt_items(project_id);
+CREATE INDEX IF NOT EXISTS idx_gantt_items_sprint ON gantt_items(sprint_id);
+CREATE INDEX IF NOT EXISTS idx_gantt_items_backlog ON gantt_items(backlog_item_id);
+CREATE INDEX IF NOT EXISTS idx_gantt_items_assigned ON gantt_items(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_gantt_items_parent ON gantt_items(parent_item_id);
+CREATE INDEX IF NOT EXISTS idx_gantt_dependencies_project ON gantt_dependencies(project_id);
+CREATE INDEX IF NOT EXISTS idx_gantt_dependencies_pred ON gantt_dependencies(predecessor_item_id);
+CREATE INDEX IF NOT EXISTS idx_gantt_dependencies_succ ON gantt_dependencies(successor_item_id);
+CREATE INDEX IF NOT EXISTS idx_gantt_milestones_project ON gantt_milestones(project_id);
+CREATE INDEX IF NOT EXISTS idx_gantt_milestones_item ON gantt_milestones(gantt_item_id);
+CREATE INDEX IF NOT EXISTS idx_gantt_baselines_project ON gantt_baselines(project_id);
+CREATE INDEX IF NOT EXISTS idx_gantt_baselines_item ON gantt_baselines(gantt_item_id);
+CREATE INDEX IF NOT EXISTS idx_gantt_history_item ON gantt_history(gantt_item_id);
+
+CREATE TRIGGER IF NOT EXISTS prevent_gantt_dependency_update
+BEFORE UPDATE ON gantt_dependencies
+BEGIN SELECT RAISE(ABORT, 'gantt_dependencies is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_gantt_dependency_delete
+BEFORE DELETE ON gantt_dependencies
+BEGIN SELECT RAISE(ABORT, 'gantt_dependencies is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_gantt_baseline_update
+BEFORE UPDATE ON gantt_baselines
+BEGIN SELECT RAISE(ABORT, 'gantt_baselines is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_gantt_baseline_delete
+BEFORE DELETE ON gantt_baselines
+BEGIN SELECT RAISE(ABORT, 'gantt_baselines is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_gantt_history_update
+BEFORE UPDATE ON gantt_history
+BEGIN SELECT RAISE(ABORT, 'gantt_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_gantt_history_delete
+BEFORE DELETE ON gantt_history
+BEGIN SELECT RAISE(ABORT, 'gantt_history is append-only'); END;
+
+-- ===================================================================
+-- PRD 21: Resource Workload Dashboard Tables & Triggers
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS member_capacity (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  weekly_capacity_hrs REAL NOT NULL DEFAULT 40.0,
+  effective_from TEXT NOT NULL,
+  effective_to TEXT,
+  set_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS member_availability (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  date TEXT NOT NULL,
+  availability_type TEXT NOT NULL DEFAULT 'LEAVE',
+  available_hrs REAL DEFAULT 0.0,
+  reason TEXT,
+  approved_by INTEGER REFERENCES users(id),
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(user_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS workload_assignments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  source_type TEXT NOT NULL DEFAULT 'BACKLOG_ITEM',
+  source_id INTEGER,
+  title TEXT NOT NULL,
+  estimated_hrs REAL NOT NULL DEFAULT 0.0,
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ACTIVE',
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS workload_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  snapshot_date TEXT NOT NULL,
+  snapshot_data TEXT NOT NULL,
+  taken_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS workload_alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  alert_type TEXT NOT NULL,
+  week_start_date TEXT NOT NULL,
+  assigned_hrs REAL NOT NULL,
+  capacity_hrs REAL NOT NULL,
+  utilization_pct REAL NOT NULL,
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_member_capacity_user ON member_capacity(user_id);
+CREATE INDEX IF NOT EXISTS idx_member_capacity_effective ON member_capacity(effective_from);
+CREATE INDEX IF NOT EXISTS idx_member_availability_user ON member_availability(user_id);
+CREATE INDEX IF NOT EXISTS idx_member_availability_date ON member_availability(date);
+CREATE INDEX IF NOT EXISTS idx_workload_assignments_user ON workload_assignments(user_id);
+CREATE INDEX IF NOT EXISTS idx_workload_assignments_project ON workload_assignments(project_id);
+CREATE INDEX IF NOT EXISTS idx_workload_assignments_status ON workload_assignments(status);
+CREATE INDEX IF NOT EXISTS idx_workload_assignments_dates ON workload_assignments(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_workload_snapshots_project ON workload_snapshots(project_id);
+CREATE INDEX IF NOT EXISTS idx_workload_alerts_user ON workload_alerts(user_id);
+CREATE INDEX IF NOT EXISTS idx_workload_alerts_week ON workload_alerts(week_start_date);
+
+CREATE TRIGGER IF NOT EXISTS prevent_capacity_update
+BEFORE UPDATE ON member_capacity
+BEGIN SELECT RAISE(ABORT, 'member_capacity is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_capacity_delete
+BEFORE DELETE ON member_capacity
+BEGIN SELECT RAISE(ABORT, 'member_capacity is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_workload_snapshot_update
+BEFORE UPDATE ON workload_snapshots
+BEGIN SELECT RAISE(ABORT, 'workload_snapshots is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_workload_snapshot_delete
+BEFORE DELETE ON workload_snapshots
+BEGIN SELECT RAISE(ABORT, 'workload_snapshots is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_workload_alert_delete
+BEFORE DELETE ON workload_alerts
+BEGIN SELECT RAISE(ABORT, 'workload_alerts is append-only'); END;
+
+-- PRD 22: Time Tracking Tables & Triggers
+CREATE TABLE IF NOT EXISTS time_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  source_type TEXT DEFAULT 'MANUAL',
+  source_ref_type TEXT,
+  source_ref_id INTEGER,
+  description TEXT,
+  start_time TEXT NOT NULL,
+  end_time TEXT,
+  duration_minutes INTEGER,
+  is_billable INTEGER NOT NULL DEFAULT 0,
+  billable_rate REAL DEFAULT 0.0,
+  billable_amount REAL DEFAULT 0.0,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  approved_by INTEGER REFERENCES users(id),
+  approved_at TEXT,
+  rejection_reason TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS time_entry_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES time_entries(id),
+  changed_by INTEGER NOT NULL REFERENCES users(id),
+  field_changed TEXT NOT NULL,
+  old_value TEXT,
+  new_value TEXT,
+  changed_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS billable_rates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  rate_type TEXT NOT NULL,
+  user_id INTEGER REFERENCES users(id),
+  project_id INTEGER REFERENCES projects(id),
+  rate_per_hour REAL NOT NULL DEFAULT 0.0,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  effective_from TEXT NOT NULL,
+  effective_to TEXT,
+  set_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS active_timers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL UNIQUE,
+  time_entry_id INTEGER NOT NULL REFERENCES time_entries(id),
+  started_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS time_approval_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES time_entries(id),
+  requested_by INTEGER NOT NULL REFERENCES users(id),
+  requested_at TEXT DEFAULT (datetime('now')),
+  reviewed_by INTEGER REFERENCES users(id),
+  reviewed_at TEXT,
+  decision TEXT,
+  decision_note TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS time_report_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER REFERENCES projects(id),
+  report_type TEXT NOT NULL,
+  period_start TEXT NOT NULL,
+  period_end TEXT NOT NULL,
+  snapshot_data TEXT NOT NULL,
+  taken_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_project ON time_entries(project_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_status ON time_entries(status);
+CREATE INDEX IF NOT EXISTS idx_time_entries_start_time ON time_entries(start_time);
+CREATE INDEX IF NOT EXISTS idx_time_entries_source_ref ON time_entries(source_ref_type, source_ref_id);
+CREATE INDEX IF NOT EXISTS idx_time_entry_history_entry ON time_entry_history(entry_id);
+CREATE INDEX IF NOT EXISTS idx_billable_rates_user ON billable_rates(user_id);
+CREATE INDEX IF NOT EXISTS idx_billable_rates_project ON billable_rates(project_id);
+CREATE INDEX IF NOT EXISTS idx_billable_rates_effective ON billable_rates(effective_from);
+CREATE INDEX IF NOT EXISTS idx_active_timers_user ON active_timers(user_id);
+CREATE INDEX IF NOT EXISTS idx_time_approval_requests_entry ON time_approval_requests(entry_id);
+CREATE INDEX IF NOT EXISTS idx_time_approval_requests_status ON time_approval_requests(decision);
+CREATE INDEX IF NOT EXISTS idx_time_report_snapshots_project ON time_report_snapshots(project_id);
+
+CREATE TRIGGER IF NOT EXISTS prevent_time_history_update
+BEFORE UPDATE ON time_entry_history
+BEGIN SELECT RAISE(ABORT, 'time_entry_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_time_history_delete
+BEFORE DELETE ON time_entry_history
+BEGIN SELECT RAISE(ABORT, 'time_entry_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_billable_rate_update
+BEFORE UPDATE ON billable_rates
+BEGIN SELECT RAISE(ABORT, 'billable_rates is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_billable_rate_delete
+BEFORE DELETE ON billable_rates
+BEGIN SELECT RAISE(ABORT, 'billable_rates is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_approval_request_update
+BEFORE UPDATE ON time_approval_requests
+BEGIN SELECT RAISE(ABORT, 'time_approval_requests is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_approval_request_delete
+BEFORE DELETE ON time_approval_requests
+BEGIN SELECT RAISE(ABORT, 'time_approval_requests is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_time_report_snapshot_update
+BEFORE UPDATE ON time_report_snapshots
+BEGIN SELECT RAISE(ABORT, 'time_report_snapshots is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_time_report_snapshot_delete
+BEFORE DELETE ON time_report_snapshots
+BEGIN SELECT RAISE(ABORT, 'time_report_snapshots is append-only'); END;
+
+-- PRD 23: Analytics & KPI Dashboard
+CREATE TABLE IF NOT EXISTS kpi_definitions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  data_source TEXT NOT NULL,
+  metric_type TEXT NOT NULL,
+  calculation_query TEXT NOT NULL,
+  unit TEXT,
+  target_value REAL,
+  alert_threshold_low REAL,
+  alert_threshold_high REAL,
+  refresh_interval_minutes INTEGER DEFAULT 60,
+  is_active INTEGER DEFAULT 1,
+  is_built_in INTEGER DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS kpi_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kpi_id INTEGER NOT NULL REFERENCES kpi_definitions(id),
+  value REAL NOT NULL,
+  period_label TEXT,
+  snapshotted_at TEXT DEFAULT (datetime('now')),
+  calculation_metadata TEXT
+);
+
+CREATE TABLE IF NOT EXISTS analytics_dashboards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  owner_id INTEGER NOT NULL REFERENCES users(id),
+  scope TEXT NOT NULL DEFAULT 'PERSONAL',
+  is_default INTEGER DEFAULT 0,
+  layout TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS dashboard_widgets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  dashboard_id INTEGER NOT NULL REFERENCES analytics_dashboards(id),
+  kpi_id INTEGER REFERENCES kpi_definitions(id),
+  widget_type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  config TEXT,
+  position_x INTEGER DEFAULT 0,
+  position_y INTEGER DEFAULT 0,
+  width INTEGER DEFAULT 2,
+  height INTEGER DEFAULT 2,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS kpi_alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kpi_id INTEGER NOT NULL REFERENCES kpi_definitions(id),
+  alert_type TEXT NOT NULL,
+  triggered_value REAL NOT NULL,
+  threshold_value REAL NOT NULL,
+  message TEXT NOT NULL,
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS analytics_report_exports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  exported_by INTEGER NOT NULL REFERENCES users(id),
+  report_type TEXT NOT NULL,
+  filters TEXT,
+  export_format TEXT NOT NULL DEFAULT 'JSON',
+  row_count INTEGER,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_kpi_definitions_data_source ON kpi_definitions(data_source);
+CREATE INDEX IF NOT EXISTS idx_kpi_definitions_is_active ON kpi_definitions(is_active);
+CREATE INDEX IF NOT EXISTS idx_kpi_snapshots_kpi_id ON kpi_snapshots(kpi_id);
+CREATE INDEX IF NOT EXISTS idx_kpi_snapshots_snapshotted_at ON kpi_snapshots(snapshotted_at);
+CREATE INDEX IF NOT EXISTS idx_analytics_dashboards_owner ON analytics_dashboards(owner_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_dashboards_scope ON analytics_dashboards(scope);
+CREATE INDEX IF NOT EXISTS idx_dashboard_widgets_dashboard ON dashboard_widgets(dashboard_id);
+CREATE INDEX IF NOT EXISTS idx_dashboard_widgets_kpi ON dashboard_widgets(kpi_id);
+CREATE INDEX IF NOT EXISTS idx_kpi_alerts_kpi_id ON kpi_alerts(kpi_id);
+CREATE INDEX IF NOT EXISTS idx_kpi_alerts_acknowledged ON kpi_alerts(acknowledged_by);
+CREATE INDEX IF NOT EXISTS idx_analytics_report_exports_user ON analytics_report_exports(exported_by);
+
+CREATE TRIGGER IF NOT EXISTS prevent_kpi_snapshot_update
+BEFORE UPDATE ON kpi_snapshots
+BEGIN SELECT RAISE(ABORT, 'kpi_snapshots is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_kpi_snapshot_delete
+BEFORE DELETE ON kpi_snapshots
+BEGIN SELECT RAISE(ABORT, 'kpi_snapshots is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_kpi_alert_delete
+BEFORE DELETE ON kpi_alerts
+BEGIN SELECT RAISE(ABORT, 'kpi_alerts is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_analytics_export_update
+BEFORE UPDATE ON analytics_report_exports
+BEGIN SELECT RAISE(ABORT, 'analytics_report_exports is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_analytics_export_delete
+BEFORE DELETE ON analytics_report_exports
+BEGIN SELECT RAISE(ABORT, 'analytics_report_exports is append-only'); END;
+
+-- ===================================================================
+-- PRD 24: Client Portal
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS clients (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  company_name TEXT,
+  phone TEXT,
+  password_hash TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ACTIVE',
+  invite_token TEXT,
+  invite_token_expires_at TEXT,
+  invite_accepted_at TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS client_project_access (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  access_level TEXT NOT NULL DEFAULT 'VIEW',
+  granted_by INTEGER NOT NULL REFERENCES users(id),
+  granted_at TEXT DEFAULT (datetime('now')),
+  revoked_by INTEGER REFERENCES users(id),
+  revoked_at TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  UNIQUE(client_id, project_id)
+);
+
+CREATE TABLE IF NOT EXISTS client_shared_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  item_type TEXT NOT NULL,
+  item_id INTEGER NOT NULL,
+  shared_by INTEGER NOT NULL REFERENCES users(id),
+  shared_at TEXT DEFAULT (datetime('now')),
+  unshared_by INTEGER REFERENCES users(id),
+  unshared_at TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS client_orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  project_id INTEGER REFERENCES projects(id),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  order_type TEXT NOT NULL DEFAULT 'NEW_REQUEST',
+  priority TEXT NOT NULL DEFAULT 'MEDIUM',
+  status TEXT NOT NULL DEFAULT 'SUBMITTED',
+  attachments TEXT,
+  assigned_to INTEGER REFERENCES users(id),
+  due_date TEXT,
+  internal_notes TEXT,
+  rejection_reason TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS client_order_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER NOT NULL REFERENCES client_orders(id),
+  sender_type TEXT NOT NULL,
+  sender_client_id INTEGER REFERENCES clients(id),
+  sender_user_id INTEGER REFERENCES users(id),
+  message TEXT NOT NULL,
+  is_internal INTEGER NOT NULL DEFAULT 0,
+  attachments TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS client_milestone_approvals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  milestone_id INTEGER NOT NULL REFERENCES gantt_milestones(id),
+  requested_by INTEGER NOT NULL REFERENCES users(id),
+  requested_at TEXT DEFAULT (datetime('now')),
+  decision TEXT,
+  decision_note TEXT,
+  decided_at TEXT,
+  UNIQUE(client_id, milestone_id)
+);
+
+CREATE TABLE IF NOT EXISTS client_deliverable_feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  item_type TEXT NOT NULL,
+  item_id INTEGER NOT NULL,
+  rating INTEGER,
+  feedback_text TEXT,
+  status TEXT NOT NULL DEFAULT 'SUBMITTED',
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS client_activity_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id),
+  action TEXT NOT NULL,
+  item_type TEXT,
+  item_id INTEGER,
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
+CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status);
+CREATE INDEX IF NOT EXISTS idx_clients_invite_token ON clients(invite_token);
+CREATE INDEX IF NOT EXISTS idx_client_project_access_client ON client_project_access(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_project_access_project ON client_project_access(project_id);
+CREATE INDEX IF NOT EXISTS idx_client_shared_items_client ON client_shared_items(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_shared_items_project ON client_shared_items(project_id);
+CREATE INDEX IF NOT EXISTS idx_client_shared_items_item ON client_shared_items(item_type, item_id);
+CREATE INDEX IF NOT EXISTS idx_client_orders_client ON client_orders(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_orders_project ON client_orders(project_id);
+CREATE INDEX IF NOT EXISTS idx_client_orders_status ON client_orders(status);
+CREATE INDEX IF NOT EXISTS idx_client_order_messages_order ON client_order_messages(order_id);
+CREATE INDEX IF NOT EXISTS idx_client_milestone_approvals_client ON client_milestone_approvals(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_milestone_approvals_milestone ON client_milestone_approvals(milestone_id);
+CREATE INDEX IF NOT EXISTS idx_client_feedback_client ON client_deliverable_feedback(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_feedback_project ON client_deliverable_feedback(project_id);
+CREATE INDEX IF NOT EXISTS idx_client_activity_log_client ON client_activity_log(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_activity_log_action ON client_activity_log(action);
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_order_message_update
+BEFORE UPDATE ON client_order_messages
+BEGIN SELECT RAISE(ABORT, 'client_order_messages is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_order_message_delete
+BEFORE DELETE ON client_order_messages
+BEGIN SELECT RAISE(ABORT, 'client_order_messages is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_milestone_approval_update
+BEFORE UPDATE ON client_milestone_approvals
+WHEN (OLD.decision IS NOT NULL)
+BEGIN SELECT RAISE(ABORT, 'client_milestone_approvals is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_milestone_approval_delete
+BEFORE DELETE ON client_milestone_approvals
+BEGIN SELECT RAISE(ABORT, 'client_milestone_approvals is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_feedback_update
+BEFORE UPDATE ON client_deliverable_feedback
+BEGIN SELECT RAISE(ABORT, 'client_deliverable_feedback is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_feedback_delete
+BEFORE DELETE ON client_deliverable_feedback
+BEGIN SELECT RAISE(ABORT, 'client_deliverable_feedback is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_activity_log_update
+BEFORE UPDATE ON client_activity_log
+BEGIN SELECT RAISE(ABORT, 'client_activity_log is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_client_activity_log_delete
+BEFORE DELETE ON client_activity_log
+BEGIN SELECT RAISE(ABORT, 'client_activity_log is append-only'); END;
+
+-- ===================================================================
+-- PRD 25: Budget & Financial Management
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS project_budgets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id) UNIQUE,
+  total_budget REAL NOT NULL DEFAULT 0.0,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  budget_type TEXT NOT NULL DEFAULT 'FIXED',
+  alert_threshold_pct REAL NOT NULL DEFAULT 80.0,
+  start_date TEXT NOT NULL,
+  end_date TEXT,
+  notes TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS budget_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  changed_by INTEGER NOT NULL REFERENCES users(id),
+  field_changed TEXT NOT NULL,
+  old_value TEXT,
+  new_value TEXT,
+  reason TEXT NOT NULL,
+  changed_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS expense_categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS project_expenses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  category_id INTEGER NOT NULL REFERENCES expense_categories(id),
+  submitted_by INTEGER NOT NULL REFERENCES users(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  amount REAL NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  expense_date TEXT NOT NULL,
+  receipt_path TEXT,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  approved_by INTEGER REFERENCES users(id),
+  approved_at TEXT,
+  rejected_by INTEGER REFERENCES users(id),
+  rejected_at TEXT,
+  rejection_reason TEXT,
+  is_billable INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS expense_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  expense_id INTEGER NOT NULL REFERENCES project_expenses(id),
+  changed_by INTEGER NOT NULL REFERENCES users(id),
+  field_changed TEXT NOT NULL,
+  old_value TEXT,
+  new_value TEXT,
+  changed_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  client_id INTEGER REFERENCES clients(id),
+  invoice_number TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'DRAFT',
+  issue_date TEXT NOT NULL,
+  due_date TEXT NOT NULL,
+  subtotal REAL NOT NULL DEFAULT 0.0,
+  tax_pct REAL NOT NULL DEFAULT 0.0,
+  tax_amount REAL NOT NULL DEFAULT 0.0,
+  total_amount REAL NOT NULL DEFAULT 0.0,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  notes TEXT,
+  internal_notes TEXT,
+  paid_amount REAL DEFAULT 0.0,
+  paid_at TEXT,
+  payment_reference TEXT,
+  sent_at TEXT,
+  viewed_at TEXT,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS invoice_line_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  invoice_id INTEGER NOT NULL REFERENCES invoices(id),
+  description TEXT NOT NULL,
+  line_type TEXT NOT NULL DEFAULT 'SERVICE',
+  quantity REAL NOT NULL DEFAULT 1.0,
+  unit_price REAL NOT NULL DEFAULT 0.0,
+  amount REAL NOT NULL DEFAULT 0.0,
+  source_type TEXT,
+  source_id INTEGER,
+  position INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS budget_alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  alert_type TEXT NOT NULL,
+  triggered_at_pct REAL,
+  triggered_amount REAL,
+  message TEXT NOT NULL,
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_budgets_project ON project_budgets(project_id);
+CREATE INDEX IF NOT EXISTS idx_budget_history_project ON budget_history(project_id);
+CREATE INDEX IF NOT EXISTS idx_expense_categories_name ON expense_categories(name);
+CREATE INDEX IF NOT EXISTS idx_expense_categories_active ON expense_categories(is_active);
+CREATE INDEX IF NOT EXISTS idx_project_expenses_project ON project_expenses(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_expenses_category ON project_expenses(category_id);
+CREATE INDEX IF NOT EXISTS idx_project_expenses_submitter ON project_expenses(submitted_by);
+CREATE INDEX IF NOT EXISTS idx_project_expenses_status ON project_expenses(status);
+CREATE INDEX IF NOT EXISTS idx_expense_history_expense ON expense_history(expense_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_project ON invoices(project_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_client ON invoices(client_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_number ON invoices(invoice_number);
+CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+CREATE INDEX IF NOT EXISTS idx_invoice_line_items_invoice ON invoice_line_items(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_budget_alerts_project ON budget_alerts(project_id);
+CREATE INDEX IF NOT EXISTS idx_budget_alerts_type ON budget_alerts(alert_type);
+
+CREATE TRIGGER IF NOT EXISTS prevent_budget_history_update
+BEFORE UPDATE ON budget_history
+BEGIN SELECT RAISE(ABORT, 'budget_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_budget_history_delete
+BEFORE DELETE ON budget_history
+BEGIN SELECT RAISE(ABORT, 'budget_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_expense_history_update
+BEFORE UPDATE ON expense_history
+BEGIN SELECT RAISE(ABORT, 'expense_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_expense_history_delete
+BEFORE DELETE ON expense_history
+BEGIN SELECT RAISE(ABORT, 'expense_history is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_invoice_line_item_update
+BEFORE UPDATE ON invoice_line_items
+BEGIN SELECT RAISE(ABORT, 'invoice_line_items is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_invoice_line_item_delete
+BEFORE DELETE ON invoice_line_items
+BEGIN SELECT RAISE(ABORT, 'invoice_line_items is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_budget_alert_delete
+BEFORE DELETE ON budget_alerts
+BEGIN SELECT RAISE(ABORT, 'budget_alerts is append-only'); END;
+
+-- ===================================================================
+-- PRD 26: WORKFLOW AUTOMATION ENGINE TABLES
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS automation_rules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  project_id INTEGER REFERENCES projects(id),
+  scope TEXT NOT NULL DEFAULT 'PROJECT',
+  is_active INTEGER NOT NULL DEFAULT 1,
+  trigger_module TEXT NOT NULL,
+  trigger_event TEXT NOT NULL,
+  trigger_conditions TEXT,
+  condition_logic TEXT NOT NULL DEFAULT 'AND',
+  actions TEXT NOT NULL,
+  run_count INTEGER DEFAULT 0,
+  last_run_at TEXT,
+  is_ai_suggested INTEGER DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_run_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  trigger_event TEXT NOT NULL,
+  trigger_source_type TEXT,
+  trigger_source_id INTEGER,
+  triggered_by_user_id INTEGER REFERENCES users(id),
+  conditions_evaluated TEXT,
+  conditions_passed INTEGER NOT NULL DEFAULT 0,
+  actions_executed TEXT,
+  overall_status TEXT NOT NULL DEFAULT 'PENDING',
+  error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
+  started_at TEXT DEFAULT (datetime('now')),
+  completed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS automation_errors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  run_log_id INTEGER NOT NULL REFERENCES automation_run_log(id),
+  error_type TEXT NOT NULL,
+  error_message TEXT NOT NULL,
+  action_index INTEGER,
+  retry_scheduled INTEGER DEFAULT 0,
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  category TEXT NOT NULL,
+  trigger_module TEXT NOT NULL,
+  trigger_event TEXT NOT NULL,
+  trigger_conditions TEXT,
+  actions TEXT NOT NULL,
+  is_system_template INTEGER NOT NULL DEFAULT 1,
+  created_by INTEGER REFERENCES users(id),
+  usage_count INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_queue (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  run_log_id INTEGER REFERENCES automation_run_log(id),
+  trigger_event TEXT NOT NULL,
+  trigger_source_type TEXT,
+  trigger_source_id INTEGER,
+  triggered_by_user_id INTEGER REFERENCES users(id),
+  trigger_data TEXT,
+  status TEXT NOT NULL DEFAULT 'QUEUED',
+  scheduled_at TEXT DEFAULT (datetime('now')),
+  attempts INTEGER DEFAULT 0,
+  max_attempts INTEGER DEFAULT 3,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_variable_store (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  run_log_id INTEGER NOT NULL REFERENCES automation_run_log(id),
+  variable_name TEXT NOT NULL,
+  variable_value TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_ai_suggestions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  suggested_by_system TEXT NOT NULL DEFAULT 'INTERNAL_AI',
+  suggestion_context TEXT,
+  suggested_name TEXT NOT NULL,
+  suggested_description TEXT,
+  suggested_trigger_module TEXT NOT NULL,
+  suggested_trigger_event TEXT NOT NULL,
+  suggested_conditions TEXT,
+  suggested_actions TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  reviewed_by INTEGER REFERENCES users(id),
+  reviewed_at TEXT,
+  rejection_reason TEXT,
+  approved_automation_id INTEGER REFERENCES automation_rules(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_automation_rules_project ON automation_rules(project_id);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_module ON automation_rules(trigger_module);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_event ON automation_rules(trigger_event);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_active ON automation_rules(is_active);
+CREATE INDEX IF NOT EXISTS idx_automation_run_log_rule ON automation_run_log(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_run_log_status ON automation_run_log(overall_status);
+CREATE INDEX IF NOT EXISTS idx_automation_errors_rule ON automation_errors(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_errors_run ON automation_errors(run_log_id);
+CREATE INDEX IF NOT EXISTS idx_automation_templates_category ON automation_templates(category);
+CREATE INDEX IF NOT EXISTS idx_automation_templates_system ON automation_templates(is_system_template);
+CREATE INDEX IF NOT EXISTS idx_automation_queue_status ON automation_queue(status);
+CREATE INDEX IF NOT EXISTS idx_automation_queue_rule ON automation_queue(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_variable_store_run ON automation_variable_store(run_log_id);
+CREATE INDEX IF NOT EXISTS idx_automation_ai_suggestions_status ON automation_ai_suggestions(status);
+
+-- Append-Only DB Triggers
+CREATE TRIGGER IF NOT EXISTS prevent_run_log_update
+BEFORE UPDATE ON automation_run_log
+BEGIN SELECT RAISE(ABORT, 'automation_run_log is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_run_log_delete
+BEFORE DELETE ON automation_run_log
+BEGIN SELECT RAISE(ABORT, 'automation_run_log is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_automation_error_delete
+BEFORE DELETE ON automation_errors
+BEGIN SELECT RAISE(ABORT, 'automation_errors is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_variable_store_update
+BEFORE UPDATE ON automation_variable_store
+BEGIN SELECT RAISE(ABORT, 'automation_variable_store is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_variable_store_delete
+BEFORE DELETE ON automation_variable_store
+BEGIN SELECT RAISE(ABORT, 'automation_variable_store is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_ai_suggestion_update
+BEFORE UPDATE ON automation_ai_suggestions
+BEGIN SELECT RAISE(ABORT, 'automation_ai_suggestions is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_ai_suggestion_delete
+BEFORE DELETE ON automation_ai_suggestions
+BEGIN SELECT RAISE(ABORT, 'automation_ai_suggestions is append-only'); END;
+
+-- PRD 27: Knowledge Base & Wiki
+
+CREATE TABLE IF NOT EXISTS wiki_spaces (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT,
+  icon TEXT DEFAULT '📁',
+  color TEXT DEFAULT '#4A90E2',
+  visibility TEXT NOT NULL DEFAULT 'INTERNAL',
+  project_id INTEGER REFERENCES projects(id),
+  is_archived INTEGER NOT NULL DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS wiki_space_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  space_id INTEGER NOT NULL REFERENCES wiki_spaces(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  role TEXT NOT NULL DEFAULT 'VIEWER',
+  added_by INTEGER NOT NULL REFERENCES users(id),
+  added_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(space_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_pages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  space_id INTEGER NOT NULL REFERENCES wiki_spaces(id) ON DELETE CASCADE,
+  parent_page_id INTEGER REFERENCES wiki_pages(id),
+  title TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  content TEXT,
+  content_text TEXT,
+  status TEXT NOT NULL DEFAULT 'PUBLISHED',
+  is_client_shared INTEGER NOT NULL DEFAULT 0,
+  position INTEGER DEFAULT 0,
+  emoji_icon TEXT DEFAULT '📄',
+  cover_image TEXT,
+  word_count INTEGER DEFAULT 0,
+  reading_time_minutes INTEGER DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  last_edited_by INTEGER REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(space_id, slug)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_versions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  version_number INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  content_text TEXT NOT NULL,
+  change_summary TEXT,
+  saved_by INTEGER NOT NULL REFERENCES users(id),
+  saved_at TEXT DEFAULT (datetime('now')),
+  word_count INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  parent_comment_id INTEGER REFERENCES wiki_page_comments(id) ON DELETE CASCADE,
+  commented_by INTEGER NOT NULL REFERENCES users(id),
+  content TEXT NOT NULL,
+  selection_text TEXT,
+  is_resolved INTEGER NOT NULL DEFAULT 0,
+  resolved_by INTEGER REFERENCES users(id),
+  resolved_at TEXT,
+  is_edited INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_reactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  reaction TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(page_id, user_id, reaction)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_page_links (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  target_page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(source_page_id, target_page_id)
+);
+
+CREATE TABLE IF NOT EXISTS wiki_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL DEFAULT 'GENERAL',
+  content TEXT NOT NULL,
+  preview_text TEXT,
+  is_system_template INTEGER NOT NULL DEFAULT 1,
+  usage_count INTEGER DEFAULT 0,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS wiki_search_index (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE UNIQUE,
+  space_id INTEGER NOT NULL REFERENCES wiki_spaces(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  content_text TEXT NOT NULL,
+  tags TEXT,
+  last_indexed_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_slug ON wiki_spaces(slug);
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_project ON wiki_spaces(project_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_visibility ON wiki_spaces(visibility);
+CREATE INDEX IF NOT EXISTS idx_wiki_spaces_archived ON wiki_spaces(is_archived);
+CREATE INDEX IF NOT EXISTS idx_wiki_space_members_user ON wiki_space_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_space_members_space ON wiki_space_members(space_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_space ON wiki_pages(space_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_parent ON wiki_pages(parent_page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_slug ON wiki_pages(slug);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_status ON wiki_pages(status);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_client_shared ON wiki_pages(is_client_shared);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_position ON wiki_pages(space_id, parent_page_id, position);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_versions_page ON wiki_page_versions(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_versions_version ON wiki_page_versions(page_id, version_number);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_comments_page ON wiki_page_comments(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_comments_parent ON wiki_page_comments(parent_comment_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_comments_resolved ON wiki_page_comments(is_resolved);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_reactions_page ON wiki_page_reactions(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_reactions_user ON wiki_page_reactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_links_source ON wiki_page_links(source_page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_page_links_target ON wiki_page_links(target_page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_templates_category ON wiki_templates(category);
+CREATE INDEX IF NOT EXISTS idx_wiki_templates_system ON wiki_templates(is_system_template);
+CREATE INDEX IF NOT EXISTS idx_wiki_search_index_page ON wiki_search_index(page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_search_index_space ON wiki_search_index(space_id);
+
+-- Append-Only DB Triggers on wiki_page_versions
+CREATE TRIGGER IF NOT EXISTS prevent_page_version_update
+BEFORE UPDATE ON wiki_page_versions
+BEGIN SELECT RAISE(ABORT, 'wiki_page_versions is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_page_version_delete
+BEFORE DELETE ON wiki_page_versions
+WHEN (SELECT 1 FROM wiki_pages WHERE id = OLD.page_id) IS NOT NULL
+BEGIN SELECT RAISE(ABORT, 'wiki_page_versions is append-only'); END;
+
+-- SQLite FTS5 Virtual Table for full-text search
+CREATE VIRTUAL TABLE IF NOT EXISTS wiki_search_fts USING fts5(
+  page_id UNINDEXED,
+  space_id UNINDEXED,
+  title,
+  content_text,
+  tags UNINDEXED,
+  tokenize = 'porter unicode61'
+);
+
+-- Triggers keeping FTS5 table in sync with wiki_search_index
+CREATE TRIGGER IF NOT EXISTS wiki_search_index_ai AFTER INSERT ON wiki_search_index BEGIN
+  INSERT INTO wiki_search_fts(rowid, page_id, space_id, title, content_text, tags)
+  VALUES (new.id, new.page_id, new.space_id, new.title, new.content_text, new.tags);
+END;
+
+CREATE TRIGGER IF NOT EXISTS wiki_search_index_ad AFTER DELETE ON wiki_search_index BEGIN
+  DELETE FROM wiki_search_fts WHERE rowid = old.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS wiki_search_index_au AFTER UPDATE ON wiki_search_index BEGIN
+  DELETE FROM wiki_search_fts WHERE rowid = old.id;
+  INSERT INTO wiki_search_fts(rowid, page_id, space_id, title, content_text, tags)
+  VALUES (new.id, new.page_id, new.space_id, new.title, new.content_text, new.tags);
+END;
+
+-- ===================================================================
+-- PRD 28: Mobile App (React Native) — Device Tokens & Push Notifications
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS device_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL DEFAULT 'ANDROID',
+  token TEXT NOT NULL,
+  device_type TEXT NOT NULL DEFAULT 'ANDROID',
+  fcm_token TEXT,
+  device_id TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  last_seen_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(user_id, device_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_device_tokens_active ON device_tokens(is_active);
+CREATE INDEX IF NOT EXISTS idx_device_tokens_platform ON device_tokens(platform);
+CREATE INDEX IF NOT EXISTS idx_device_tokens_token ON device_tokens(token);
+
+-- ===================================================================
+-- PRD 29: Layer 2 — First-Run Setup, Team Invites & OKR Cycles
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS team_invites (
+  id TEXT PRIMARY KEY,
+  email VARCHAR(150) NOT NULL,
+  token VARCHAR(100) UNIQUE NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'developer' CHECK (role IN ('researcher','developer','producer','admin','designer')),
+  sub_role VARCHAR(20) CHECK (sub_role IN ('frontend','backend',NULL)),
+  invited_by TEXT REFERENCES users(id),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','expired','cancelled')),
+  expires_at TIMESTAMP NOT NULL,
+  accepted_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_team_invites_token ON team_invites(token);
+CREATE INDEX IF NOT EXISTS idx_team_invites_email ON team_invites(email);
+CREATE INDEX IF NOT EXISTS idx_team_invites_status ON team_invites(status);
+
+CREATE TABLE IF NOT EXISTS okr_cycles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  quarter INTEGER,
+  year INTEGER,
+  start_date TEXT,
+  end_date TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_okr_cycles_name ON okr_cycles(name);
+CREATE INDEX IF NOT EXISTS idx_okr_cycles_active ON okr_cycles(is_active);
 

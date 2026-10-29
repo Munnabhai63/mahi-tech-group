@@ -7,15 +7,7 @@ const DATA_KEY = 'mtg-frontend-data-v1';
 const listeners = new Set();
 
 export function isDemoMode() {
-  if (typeof window === 'undefined') return false;
-  const hostname = window.location.hostname;
-  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
-  // Strictly prevent demo mode on production domain
-  if (!isLocal) return false;
-  // Demo mode is ONLY allowed if explicitly passed ?demo=true AND no authenticated token exists
-  const hasDemoParam = new URLSearchParams(window.location.search).get('demo') === 'true' ||
-                        window.location.hash.includes('demo=true');
-  return Boolean(hasDemoParam && !getAuthToken());
+  return false;
 }
 
 export function createEmptyData() {
@@ -35,6 +27,7 @@ export function createEmptyData() {
     auditLogs: [],
     governance: [],
     ledger: [],
+    revenueEvents: [],
     performance: [],
     performanceConfig: {},
     config: {},
@@ -50,9 +43,8 @@ function safeWrite(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Storage can be unavailable in private contexts. */ }
 }
 
-const savedData = safeRead(DATA_KEY);
 export const state = {
-  data: savedData?.version === 1 ? savedData : createInitialData(),
+  data: createEmptyData(),
   session: safeRead(SESSION_KEY),
   ui: { preview: 'normal', sidebarOpen: false, drawer: null, accountOpen: false, canvasTool: 'select' },
   live: {
@@ -178,62 +170,76 @@ export async function signupApplicant(payload) {
 }
 
 export function loginAs(role, options = {}) {
-  const meta = roleMeta[role];
-  if (!meta) return false;
-  if (!state.data.users || state.data.users.length === 0) {
-    state.data = createInitialData();
-  }
-  const userId = options.former ? 'u-former' : meta.userId;
-  const foundUser = state.data.users.find(u => u.id === userId);
-  const fallbackUser = {
-    id: userId,
-    name: meta.label,
-    email: `${role}@mahitechgroup.local`,
-    role: options.former ? 'designer' : role,
-    subRole: role === 'developer' ? 'frontend' : null,
-    status: options.former ? 'inactive' : 'active',
-    wallet: 0,
-    rating: 5.0
-  };
-  state.session = {
-    userId,
-    role: options.former ? 'designer' : role,
-    subRole: foundUser?.subRole || (role === 'developer' ? 'frontend' : null),
-    elevated: Boolean(options.elevated && role === 'admin'),
-    demo: true,
-    user: normalizeUser(foundUser || fallbackUser),
-    loginAt: new Date().toISOString()
-  };
-  persistSession();
-  notify('session');
-  return true;
+  console.warn('loginAs demo method is disabled. Sign in with authenticated credentials.');
+  return false;
 }
 
 export function loginFormer() {
-  if (!state.data.users || state.data.users.length === 0) {
-    state.data = createInitialData();
+  console.warn('loginFormer demo method is disabled. Sign in with authenticated credentials.');
+  return false;
+}
+
+export async function fetchLiveIdeas(status = null) {
+  if (!getAuthToken()) return [];
+  try {
+    const url = status ? `/api/ideas?status=${encodeURIComponent(status)}` : '/api/ideas';
+    const res = await api.get(url);
+    if (res?.ideas) {
+      state.data.ideas = res.ideas;
+      notify('ideas-fetched');
+      return res.ideas;
+    }
+  } catch (err) {
+    console.warn('Failed to fetch live ideas:', err);
   }
-  const found = state.data.users.find(u => u.id === 'u-former');
-  const fallbackUser = {
-    id: 'u-former',
-    name: 'Devika Rao',
-    email: 'devika@demo.mahi',
-    role: 'designer',
-    status: 'inactive',
-    wallet: 0,
-    rating: 5.0
-  };
-  state.session = {
-    userId: 'u-former',
-    role: 'designer',
-    elevated: false,
-    demo: true,
-    former: true,
-    user: normalizeUser(found || fallbackUser),
-    loginAt: new Date().toISOString()
-  };
-  persistSession();
-  notify('session');
+  return [];
+}
+
+export async function fetchLiveProjects() {
+  if (!getAuthToken()) return [];
+  try {
+    const res = await api.get('/api/projects');
+    if (res?.projects) {
+      state.data.projects = res.projects;
+      notify('projects-fetched');
+      return res.projects;
+    }
+  } catch (err) {
+    console.warn('Failed to fetch live projects:', err);
+  }
+  return [];
+}
+
+export async function fetchLiveMeetings() {
+  if (!getAuthToken()) return [];
+  try {
+    const res = await api.get('/api/meetings');
+    if (res?.meetings) {
+      state.data.meetings = res.meetings;
+      notify('meetings-fetched');
+      return res.meetings;
+    }
+  } catch (err) {
+    console.warn('Failed to fetch live meetings:', err);
+  }
+  return [];
+}
+
+export async function fetchLiveSuperadminAudit(params = {}) {
+  if (!getAuthToken()) return [];
+  try {
+    const query = new URLSearchParams(params).toString();
+    const url = query ? `/api/superadmin/audit?${query}` : '/api/superadmin/audit';
+    const res = await api.get(url);
+    if (res?.logs) {
+      state.data.auditLogs = res.logs;
+      notify('audit-fetched');
+      return res.logs;
+    }
+  } catch (err) {
+    console.warn('Failed to fetch live audit logs:', err);
+  }
+  return [];
 }
 
 export async function logout() {
@@ -291,15 +297,19 @@ export function projectProgress(project) {
 export function userProjects(userId = currentUser()?.id) {
   if (!userId) return [];
   const user = getUser(userId);
-  if (user?.role === 'admin') return state.data.projects;
-  return state.data.projects.filter(project => project.ownerId === userId || project.tasks.some(task => task.assignedTo === userId));
+  if (user?.role === 'admin') return state.data.projects || [];
+  return (state.data.projects || []).filter(project => 
+    project.ownerId === userId || 
+    (Array.isArray(project.tasks) && project.tasks.some(task => (task.assignedTo || task.assigned_to) === userId))
+  );
 }
 
 export function userTasks(userId = currentUser()?.id) {
   if (!userId) return [];
   const user = getUser(userId);
-  if (user?.role === 'admin') return state.data.projects.flatMap(project => project.tasks);
-  return state.data.projects.flatMap(project => project.tasks).filter(task => task.assignedTo === userId);
+  const allTasks = (state.data.projects || []).flatMap(project => Array.isArray(project.tasks) ? project.tasks : []);
+  if (user?.role === 'admin') return allTasks;
+  return allTasks.filter(task => (task.assignedTo || task.assigned_to) === userId);
 }
 
 export function pendingVotesFor(userId = currentUser()?.id) {
@@ -330,9 +340,10 @@ export async function syncUserData() {
     if (err.status === 401) {
       logout();
     } else {
+      const wasError = state.live.backendError;
       state.live.backendError = true;
       state.live.backendErrorMessage = err.message || 'Backend connection failed';
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+      if (!wasError && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
       notify('backend-error');
     }
   }
@@ -352,9 +363,10 @@ export async function fetchLiveDashboard() {
 
     const allRejected = [summary, kanban, myTasksRes, pendingVotesRes, meetingsRes, bannersRes].every(r => r.status === 'rejected');
     if (allRejected) {
+      const wasError = state.live.backendError;
       state.live.backendError = true;
       state.live.backendErrorMessage = 'Backend server is unreachable. All operational metrics and pipelines are offline.';
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+      if (!wasError && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
       notify('backend-error');
       return null;
     }
@@ -395,14 +407,15 @@ export async function fetchLiveDashboard() {
           });
         }
       });
-      if (liveProjects.length) state.data.projects = liveProjects;
+      state.data.projects = liveProjects;
     }
 
     notify('dashboard-fetched');
   } catch (err) {
+    const wasError = state.live.backendError;
     state.live.backendError = true;
     state.live.backendErrorMessage = err.message || 'Dashboard fetch error';
-    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
+    if (!wasError && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('backend-error'));
     notify('backend-error');
   }
 }

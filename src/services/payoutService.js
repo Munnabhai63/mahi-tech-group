@@ -49,6 +49,31 @@ export function requestWithdrawal({ userId, amount, ipAddress = null }) {
     };
   }
 
+  // Check participation-blocked revenue splits (PRD 16 Layer 2)
+  const blockedSplits = queryOne(`
+    SELECT COUNT(*) as count 
+    FROM revenue_splits rs
+    JOIN revenue_events re ON rs.revenue_event_id = re.id
+    WHERE rs.user_id = ? AND re.project_id IN (
+      SELECT project_id FROM project_members WHERE user_id = ?
+    )
+    AND rs.is_blocked = 1
+  `, [userId, userId]);
+
+  if (blockedSplits && Number(blockedSplits.count) > 0) {
+    logAccess({
+      userId,
+      action: 'withdrawal_blocked_participation_gate',
+      resource: `/api/withdrawals/request (blocked splits: ${blockedSplits.count})`,
+      ipAddress
+    });
+    return {
+      success: false,
+      status: 400,
+      error: 'One or more of your revenue splits are blocked due to insufficient project participation. Contact Admin.'
+    };
+  }
+
   const currentBalance = Number(user.wallet_balance || 0);
   if (numAmount > currentBalance) {
     return {
@@ -233,3 +258,38 @@ export function rejectWithdrawal({ withdrawalId, rejectionReason, adminUserId, i
     withdrawal: updatedWithdrawal
   };
 }
+
+/**
+ * Payout calculation functions (PRD 16 Layer 2):
+ * Fetches and calculates eligible revenue splits for processing payouts.
+ * Enforces rule: WHERE is_blocked = 0 (skips all blocked splits silently).
+ */
+export function getEligiblePayoutSplits(userId, projectId = null) {
+  if (!userId) return [];
+  if (projectId) {
+    return queryAll(`
+      SELECT rs.*
+      FROM revenue_splits rs
+      JOIN revenue_events re ON rs.revenue_event_id = re.id
+      WHERE rs.user_id = ? AND re.project_id = ? AND rs.is_blocked = 0
+      ORDER BY rs.created_at ASC
+    `, [userId, projectId]);
+  }
+  return queryAll(`
+    SELECT * FROM revenue_splits
+    WHERE user_id = ? AND is_blocked = 0
+    ORDER BY created_at ASC
+  `, [userId]);
+}
+
+export function calculateEligiblePayout(userId, projectId = null) {
+  const splits = getEligiblePayoutSplits(userId, projectId);
+  const total = splits.reduce((sum, s) => sum + Number(s.amount || 0), 0);
+  return {
+    userId,
+    eligibleCount: splits.length,
+    eligibleTotal: Number(total.toFixed(2)),
+    splits
+  };
+}
+

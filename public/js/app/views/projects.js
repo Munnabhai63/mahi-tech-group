@@ -37,6 +37,7 @@ import {
   formValues,
   setFormError
 } from '../ui.js';
+import { renderPipelineDashboard } from './pipeline.js';
 
 function evaluateStage(project) {
   const map = Object.fromEntries((project.tasks || []).map(task => [task.name || task.task_name, task.status]));
@@ -59,6 +60,41 @@ function projectCard(project) {
 export function renderProjects() {
   const user = currentUser();
   const projects = user?.role === 'admin' ? state.data.projects : state.data.projects.filter(project => project.ownerId === user?.id || (project.tasks || []).some(task => (task.assignedTo || task.assigned_to) === user?.id));
+
+  if (!projects.length) {
+    const empty = emptyState('No projects yet', 'Approved proposals and task assignments will bring active initiatives into this pipeline.', '<a class="btn btn--primary btn--sm" href="#/app/ideas/new">Create first project proposal →</a>', 'folder');
+    return {
+      html: `${pageHead('Organization projects', 'Pipeline, not a black box.', 'Follow every project through parallel tracks, integration, testing, final review, and live operations.', `<a class="btn btn--outline" href="#/app/tasks">${icon('check-square')} My task queue</a>`)}<div class="card card--pad mt-3">${empty}</div>`,
+      mount() {
+        if (getAuthToken()) {
+          api.get('/api/dashboard/kanban').then(res => {
+            if (res) {
+              const list = [];
+              Object.entries(res).forEach(([stg, prjs]) => {
+                if (Array.isArray(prjs)) {
+                  prjs.forEach(p => list.push({
+                    id: p.id,
+                    code: p.title ? p.title.slice(0, 3).toUpperCase() : 'PRJ',
+                    title: p.title,
+                    summary: p.description || '',
+                    stage: p.current_stage || stg,
+                    tasks: p.tasks || []
+                  }));
+                }
+              });
+              if (list.length) {
+                state.data.projects = list;
+                window.dispatchEvent(new CustomEvent('app:refresh'));
+              }
+            }
+          }).catch(err => {
+            console.warn('Could not load kanban projects:', err);
+          });
+        }
+      }
+    };
+  }
+
   const stages = Object.keys(stageMeta).filter(stage => stage !== 'REJECTED_AT_REVIEW' || projects.some(project => (project.stage || project.current_stage) === stage));
   
   const board = `<div class="filter-bar"><div class="field field--search"><label for="project-search">Search projects</label><div class="input-wrap">${icon('search')}<input class="input" id="project-search" placeholder="Search by title or project code"></div></div><div class="field"><label for="project-stage-filter">Pipeline stage</label><select class="select" id="project-stage-filter"><option value="all">All stages</option>${stages.map(stage => `<option value="${stage}">${stageMeta[stage]?.label || titleCase(stage)}</option>`).join('')}</select></div><span class="filter-count" id="project-filter-count">${projects.length} projects</span></div><div class="kanban-board" id="project-board">${stages.map(stage => { const items = projects.filter(project => (project.stage || project.current_stage) === stage); return `<section class="kanban-column" data-stage="${stage}"><div class="kanban-column__head"><h2>${stageMeta[stage]?.label || titleCase(stage)}</h2><span class="kanban-column__count">${items.length}</span></div><div class="kanban-column__body">${items.length ? items.map(projectCard).join('') : '<div class="empty-state" style="padding:25px 8px"><p>No projects at this gate.</p></div>'}</div></section>`; }).join('')}</div>`;
@@ -105,10 +141,8 @@ export function renderProjects() {
                 }));
               }
             });
-            if (list.length) {
-              state.data.projects = list;
-              filter();
-            }
+            state.data.projects = list;
+            filter();
           }
         }).catch(() => {});
       }
@@ -139,10 +173,7 @@ function assetsFor(project) {
       createdAt: a.created_at
     }));
   }
-  const defaults = [
-    ['Research handoff', 'research', 'u-research'], ['Service flow and screen map', 'design', 'u-design'], ['API contract notes', 'document', 'u-dev-back'], ['Acceptance report', 'testing', 'u-producer'], ['Release checklist', 'review', 'u-admin']
-  ];
-  return defaults.slice(0, Math.min(defaults.length, project.assetCount || 0)).map((asset, index) => ({ id: `${project.id}-asset-${index}`, title: asset[0], type: asset[1], contributorName: 'Project team', organizationOwned: true, createdAt: project.createdAt }));
+  return [];
 }
 
 function projectOverview(project) {
@@ -187,9 +218,9 @@ export function renderProjectDetail(id) {
   const stage = project.stage || project.current_stage || 'RESEARCH_DEV_PARALLEL';
   const canReview = user?.role === 'admin' && ['ADMIN_REVIEW', 'REJECTED_AT_REVIEW'].includes(stage);
   
-  const content = `<div data-tab-scope><section data-tab-panel="overview">${projectOverview(project)}</section><section data-tab-panel="tasks" hidden><div class="filter-bar"><div class="field"><label for="detail-task-filter">Task status</label><select class="select" id="detail-task-filter"><option value="all">All statuses</option><option>TODO</option><option>BLOCKED</option><option>IN_PROGRESS</option><option>DONE</option></select></div></div><div class="task-list" id="project-task-list">${tasks.map(task => taskRow(task, project)).join('')}</div></section><section data-tab-panel="assets" hidden>${assetsPanel(project)}</section><section data-tab-panel="contributors" hidden>${contributorsPanel(project)}</section><section data-tab-panel="revenue" hidden>${revenuePanel(project)}</section></div>`;
+  const content = `<div data-tab-scope><section data-tab-panel="overview">${projectOverview(project)}</section><section data-tab-panel="pipeline" hidden><div id="pipeline-view-container"></div></section><section data-tab-panel="point-pool" hidden><div class="card card--pad"><div class="spread mb-2"><div><div class="eyebrow">PRD 16 Feature</div><h2 class="mt-1" style="font:600 20px var(--font-display)">Point Pool & Checklist Board</h2><p class="small muted mt-1">Multi-member point pool board. Claim points by stage, manage tool links, and inspect abandoned tasks.</p></div><a class="btn btn--primary btn--sm" href="/point-pool-board.html?projectId=${project.id}" target="_blank">Open Full Board ↗</a></div><iframe src="/point-pool-board.html?projectId=${project.id}&embedded=true&v=179313" style="width:100%;height:850px;border:none;border-radius:8px;background:#090d16;"></iframe></div></section><section data-tab-panel="participation" hidden><div class="card card--pad"><div class="spread mb-2"><div><div class="eyebrow">PRD 16 Feature</div><h2 class="mt-1" style="font:600 20px var(--font-display)">Participation % & Thresholds</h2><p class="small muted mt-1">Multi-member contribution tracking, personal threshold standing, and revenue gates.</p></div><a class="btn btn--primary btn--sm" href="/participation-dashboard.html?projectId=${project.id}" target="_blank">Open Participation Dashboard ↗</a></div><iframe src="/participation-dashboard.html?projectId=${project.id}&embedded=true&v=179313" style="width:100%;height:850px;border:none;border-radius:8px;background:#090d16;"></iframe></div></section><section data-tab-panel="github" hidden><div class="card card--pad"><div class="spread mb-2"><div><div class="eyebrow">PRD 17 Feature</div><h2 class="mt-1" style="font:600 20px var(--font-display)">GitHub Repository & GitFlow</h2><p class="small muted mt-1">Dedicated repository status, branch architecture, and team permissions.</p></div><a class="btn btn--primary btn--sm" href="/github-repo-panel.html?projectId=${project.id}" target="_blank">Open Full Panel ↗</a></div><iframe src="/github-repo-panel.html?projectId=${project.id}&embedded=true&v=179313" style="width:100%;height:850px;border:none;border-radius:8px;background:#090d16;"></iframe></div></section><section data-tab-panel="tasks" hidden><div class="filter-bar"><div class="field"><label for="detail-task-filter">Task status</label><select class="select" id="detail-task-filter"><option value="all">All statuses</option><option>TODO</option><option>BLOCKED</option><option>IN_PROGRESS</option><option>DONE</option></select></div></div><div class="task-list" id="project-task-list">${tasks.map(task => taskRow(task, project)).join('')}</div></section><section data-tab-panel="assets" hidden>${assetsPanel(project)}</section><section data-tab-panel="contributors" hidden>${contributorsPanel(project)}</section><section data-tab-panel="revenue" hidden>${revenuePanel(project)}</section></div>`;
   
-  const html = `${pageHead(`${project.code || 'PRJ'} · ${stageMeta[stage]?.label || titleCase(stage)}`, escapeHTML(project.title), 'Project context, dependencies, contributors, organization assets, and financial history.', `<a class="btn btn--outline" href="#/app/projects">${icon('arrow-left')} Pipeline</a><a class="btn btn--outline" href="#/app/coworking/${project.id}">${icon('pen')} Canvas</a>${canReview ? `<button class="btn btn--primary" id="final-review">${icon('shield')} Final review</button>` : ''}`)}<div class="tabs" data-tabs role="tablist" aria-label="Project sections">${[['overview', 'Overview'], ['tasks', `Tasks ${tasks.length}`], ['assets', `Assets ${assetsFor(project).length}`], ['contributors', 'Contributors'], ['revenue', 'Revenue']].map(([tab, label], index) => `<button class="tab" role="tab" data-tab="${tab}" aria-selected="${index === 0}">${label}</button>`).join('')}</div>${withPreview(content, { title: 'No project detail in this preview', description: 'The empty-state preview hides tasks, assets, and financial entries.', icon: 'folder' })}`;
+  const html = `${pageHead(`${project.code || 'PRJ'} · ${stageMeta[stage]?.label || titleCase(stage)}`, escapeHTML(project.title), 'Project context, dependencies, contributors, organization assets, and financial history.', `<a class="btn btn--outline" href="#/app/projects">${icon('arrow-left')} Pipeline</a><a class="btn btn--outline" href="#/app/coworking/${project.id}">${icon('pen')} Canvas</a>${canReview ? `<button class="btn btn--primary" id="final-review">${icon('shield')} Final review</button>` : ''}`)}<div class="tabs" data-tabs role="tablist" aria-label="Project sections">${[['overview', 'Overview'], ['pipeline', 'Pipeline'], ['point-pool', 'Point Pool'], ['participation', 'Participation %'], ['github', 'GitHub'], ['tasks', `Tasks ${tasks.length}`], ['assets', `Assets ${assetsFor(project).length}`], ['contributors', 'Contributors'], ['revenue', 'Revenue']].map(([tab, label], index) => `<button class="tab" role="tab" data-tab="${tab}" aria-selected="${index === 0}">${label}</button>`).join('')}</div>${withPreview(content, { title: 'No project detail in this preview', description: 'The empty-state preview hides tasks, assets, and financial entries.', icon: 'folder' })}`;
   
   return {
     html,
@@ -199,6 +230,17 @@ export function renderProjectDetail(id) {
       document.querySelectorAll('[data-open-task]').forEach(button => button.addEventListener('click', () => openTaskDialog(button.dataset.openTask)));
       document.querySelector('#add-asset')?.addEventListener('click', () => openAssetDialog(project.id));
       document.querySelector('#final-review')?.addEventListener('click', () => openFinalReview(project.id));
+      
+      const pipelineMount = document.querySelector('#pipeline-view-container');
+      if (pipelineMount) {
+        renderPipelineDashboard(project.id, pipelineMount);
+      }
+      document.querySelector('[data-tab="pipeline"]')?.addEventListener('click', () => {
+        if (pipelineMount) {
+          renderPipelineDashboard(project.id, pipelineMount);
+        }
+      });
+
       if (getAuthToken()) {
         fetchProjectAssets(project.id);
       }
@@ -370,15 +412,35 @@ export function openFinalReview(projectId) {
     footer: '<button class="btn btn--outline" data-close-dialog>Cancel</button><button class="btn btn--primary" id="submit-review">Record decision</button>',
     onMount(dialog) {
       dialog.querySelector('#submit-review').addEventListener('click', async () => {
+        const submitBtn = dialog.querySelector('#submit-review');
         const values = formValues(dialog.querySelector('#review-form'));
         const approved = values.decision === 'approved';
         if (approved && incomplete.length) return toast('All eight preceding tasks must be DONE before approval.', 'error');
-        project.stage = approved ? 'LIVE' : 'REJECTED_AT_REVIEW';
-        project.status = approved ? 'LIVE' : 'ACTIVE';
-        persistData();
-        closeDialog();
-        toast(`Final-review decision recorded: ${approved ? 'LIVE' : 'Rejected at review'}.`, 'success');
-        window.dispatchEvent(new CustomEvent('app:refresh'));
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Recording decision...';
+
+        try {
+          if (getAuthToken()) {
+            const res = await api.patch(`/api/admin/projects/${projectId}/final-review`, {
+              approved,
+              notes: values.notes?.trim() || null
+            });
+            project.stage = res.stage || (approved ? 'LIVE' : 'REJECTED_AT_REVIEW');
+            project.status = approved ? 'LIVE' : 'ACTIVE';
+          } else {
+            project.stage = approved ? 'LIVE' : 'REJECTED_AT_REVIEW';
+            project.status = approved ? 'LIVE' : 'ACTIVE';
+          }
+          persistData();
+          closeDialog();
+          toast(`Final-review decision recorded: ${approved ? 'LIVE' : 'Rejected at review'}.`, 'success');
+          window.dispatchEvent(new CustomEvent('app:refresh'));
+        } catch (err) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Record decision';
+          toast(api.extractError(err, 'Failed to record final review decision.'), 'error');
+        }
       });
     }
   });

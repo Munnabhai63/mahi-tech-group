@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accept Invitation — Mahi Tech Group Client Portal</title>
+  <meta name="description" content="Set your secure client portal password to access project deliverables and milestones.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-primary-hover: #0284c7;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-image: radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.07) 0%, transparent 60%);
+    }
+
+    .auth-container {
+      width: 100%;
+      max-width: 480px;
+      padding: 1.5rem;
+    }
+
+    .auth-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 2.25rem 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand-header {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+
+    .brand-badge {
+      display: inline-block;
+      padding: 0.35rem 0.75rem;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 9999px;
+      color: var(--color-primary);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+      color: var(--text-main);
+    }
+
+    .brand-subtitle {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .client-greeting-box {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 10px;
+      padding: 0.875rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      color: #bae6fd;
+      display: none;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      color: var(--text-main);
+      font-size: 0.9375rem;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+
+    .help-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      background: var(--color-primary);
+      color: #04101e;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 0.75rem;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: var(--color-primary-hover);
+      color: #ffffff;
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      margin-bottom: 1.25rem;
+      display: none;
+    }
+
+    .alert-danger {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    .auth-footer a {
+      color: var(--color-primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .auth-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="brand-header">
+        <div class="brand-badge">Client Portal</div>
+        <h1 class="brand-title">Mahi Tech Group</h1>
+        <p class="brand-subtitle">Set your password to activate your client portal account</p>
+      </div>
+
+      <div id="alertBox" class="alert alert-danger" role="alert"></div>
+      <div id="successBox" class="alert alert-success" role="alert"></div>
+      <div id="greetingBox" class="client-greeting-box"></div>
+
+      <form id="inviteForm" autocomplete="off">
+        <div class="form-group" id="tokenGroup">
+          <label class="form-label" for="inviteToken">Invitation Token</label>
+          <input type="text" id="inviteToken" class="form-control" placeholder="Paste 64-character invite token" required>
+          <div class="help-hint">Provided in your invitation email from Mahi Tech Group</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="newPassword">New Password</label>
+          <input type="password" id="newPassword" class="form-control" placeholder="Minimum 8 characters" minlength="8" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirmPassword">Confirm Password</label>
+          <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter password" minlength="8" required>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn-submit">Activate Portal Account</button>
+      </form>
+
+      <div class="auth-footer">
+        Already activated? <a href="/client-login.html">Sign in here</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Escape HTML to prevent XSS injection
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    const form = document.getElementById('inviteForm');
+    const tokenInput = document.getElementById('inviteToken');
+    const tokenGroup = document.getElementById('tokenGroup');
+    const newPasswordInput = document.getElementById('newPassword');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+    const submitBtn = document.getElementById('submitBtn');
+    const alertBox = document.getElementById('alertBox');
+    const successBox = document.getElementById('successBox');
+    const greetingBox = document.getElementById('greetingBox');
+
+    // Extract token from URL query params
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
+
+    if (tokenFromUrl) {
+      tokenInput.value = tokenFromUrl;
+      tokenGroup.style.display = 'none'; // Clean UI when token is present in URL
+      validateTokenOnLoad(tokenFromUrl);
+    }
+
+    async function validateTokenOnLoad(token) {
+      try {
+        const res = await fetch('/api/client/auth/validate-invite?token=' + encodeURIComponent(token));
+        const data = await res.json();
+
+        if (res.ok && data.valid && data.client) {
+          greetingBox.innerHTML = 'Welcome, <strong>' + escapeHTML(data.client.name) + '</strong>' +
+            (data.client.company_name ? ' (' + escapeHTML(data.client.company_name) + ')' : '') +
+            '! Please create a password to activate your access.';
+          greetingBox.style.display = 'block';
+        } else {
+          alertBox.textContent = data.error || 'Invitation token is invalid or has expired. Please contact Mahi Tech Group.';
+          alertBox.style.display = 'block';
+          submitBtn.disabled = true;
+          tokenGroup.style.display = 'block';
+        }
+      } catch (err) {
+        // Validation check failed, allow manual attempt
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertBox.style.display = 'none';
+      successBox.style.display = 'none';
+
+      const invite_token = tokenInput.value.trim();
+      const new_password = newPasswordInput.value;
+      const confirm_password = confirmPasswordInput.value;
+
+      // Client-side UX validation
+      if (!invite_token) {
+        alertBox.textContent = 'Invitation token is required.';
+        alertBox.style.display = 'block';
+        return;
+      }
+
+      if (new_password.length < 8) {
+        alertBox.textContent = 'Password must be at least 8 characters long.';
+        alertBox.style.display = 'block';
+        return;
+      }
+
+      if (new_password !== confirm_password) {
+        alertBox.textContent = 'Passwords do not match.';
+        alertBox.style.display = 'block';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Activating account...';
+
+      try {
+        const response = await fetch('/api/client/auth/accept-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invite_token, new_password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          successBox.textContent = 'Account activated successfully! Redirecting to sign in...';
+          successBox.style.display = 'block';
+          form.style.display = 'none';
+          greetingBox.style.display = 'none';
+
+          setTimeout(() => {
+            window.location.replace('/client-login.html');
+          }, 1500);
+          return;
+        }
+
+        alertBox.textContent = data.error || 'Failed to activate account. The invitation may be invalid or expired.';
+        alertBox.style.display = 'block';
+      } catch (err) {
+        alertBox.textContent = 'Network or connection error. Please try again.';
+        alertBox.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Activate Portal Account';
+      }
+    });
+  </script>
+</body>
+</html>

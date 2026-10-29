@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Account Linking — Mahi Tech Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-sidebar: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --color-success: #10b981;
+      --color-danger: #ef4444;
+      --color-warning: #f59e0b;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-nav {
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border-card);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .brand-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .nav-btn-link {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .nav-btn-link:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .page-container {
+      max-width: 800px;
+      width: 100%;
+      margin: 2.5rem auto;
+      padding: 0 1.5rem;
+      flex: 1;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-header {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+      padding-bottom: 1rem;
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin: 0 0 0.4rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .card-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      box-sizing: border-box;
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      color: #ffffff;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: var(--primary);
+    }
+
+    .btn-submit {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-submit:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-unlink {
+      background: #334155;
+      color: #94a3b8;
+      border: 1px solid var(--border-card);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: not-allowed;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .connected-box {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 8px;
+      padding: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .connected-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .connected-badge {
+      background: var(--color-success);
+      color: #ffffff;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .connected-handle {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .connected-date {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    .banner {
+      padding: 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .banner-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+
+    .banner-error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+
+    .help-tooltip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      background: #334155;
+      color: #94a3b8;
+      border-radius: 50%;
+      font-size: 11px;
+      cursor: help;
+      position: relative;
+    }
+
+    .help-tooltip:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 125%;
+      right: 0;
+      width: 260px;
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      color: #e2e8f0;
+      font-size: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      z-index: 50;
+      pointer-events: none;
+      line-height: 1.4;
+      font-weight: 400;
+    }
+
+    .admin-only-badge {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      margin-left: 0.5rem;
+    }
+
+    /* Embedded Mode for New UI */
+    body.is-embedded {
+      background: transparent !important;
+      min-height: auto !important;
+    }
+    body.is-embedded .top-nav {
+      display: none !important;
+    }
+    body.is-embedded .page-container {
+      padding: 0.25rem 0 1rem 0 !important;
+      max-width: 100% !important;
+    }
+  </style>
+</head>
+<body>
+  <header class="top-nav">
+    <a href="/app.html#/app/dashboard" class="brand-logo">
+      <span>🐙</span> Mahi Tech Group
+    </a>
+    <nav class="nav-links">
+      <a href="/app.html#/app/profile" class="nav-btn-link">← Member Profile</a>
+      <a href="/app.html#/app/dashboard" class="nav-btn-link">Dashboard</a>
+      <a href="/app.html#/admin" class="nav-btn-link" id="navAdminLink" style="display: none;">Admin Console</a>
+    </nav>
+  </header>
+
+  <main class="page-container">
+    <div id="bannerSuccess" class="banner banner-success"></div>
+    <div id="bannerError" class="banner banner-error"></div>
+
+    <!-- Section 1: Self-Linking Card (All Authenticated Members) -->
+    <section class="card" id="selfLinkCard">
+      <div class="card-header">
+        <h1 class="card-title">
+          <span>🔗</span> Link GitHub Account
+        </h1>
+        <p class="card-subtitle">
+          Connect your personal GitHub account to receive automated repository permissions and GitFlow branch access.
+        </p>
+      </div>
+
+      <!-- State A: Already Connected -->
+      <div id="linkedState" style="display: none;">
+        <div class="connected-box">
+          <div class="connected-info">
+            <div>
+              <span class="connected-badge">Connected</span>
+              <div class="connected-handle" id="linkedUsername">@loading</div>
+              <div class="connected-date" id="linkedDate">Linked on --</div>
+            </div>
+          </div>
+          <button class="btn-unlink" id="btnUnlink" disabled title="Contact Admin to unlink">
+            <span>🔒</span> Unlink (Admin Required)
+          </button>
+        </div>
+      </div>
+
+      <!-- State B: Connection Form -->
+      <form id="linkForm" style="display: none;">
+        <div class="form-group">
+          <label class="form-label" for="inputGithubUsername">
+            <span>GitHub Username</span>
+          </label>
+          <input
+            type="text"
+            id="inputGithubUsername"
+            class="form-input"
+            placeholder="e.g. octocat"
+            required
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="inputGithubNodeId">
+            <span>GitHub Node ID</span>
+            <span
+              class="help-tooltip"
+              data-tooltip="Find this in the GitHub API: GET https://api.github.com/users/{username} — copy the 'node_id' field value"
+            >?</span>
+          </label>
+          <input
+            type="text"
+            id="inputGithubNodeId"
+            class="form-input"
+            placeholder="e.g. MDQ6VXNlcjU4MzIzMQ=="
+            required
+            autocomplete="off"
+          />
+        </div>
+
+        <button type="submit" class="btn-submit" id="btnSubmitLink">
+          <span>🔗</span> Link GitHub Account
+        </button>
+      </form>
+    </section>
+
+    <!-- Section 2: Admin Panel (Admin Only) -->
+    <section class="card" id="adminLinkCard" style="display: none;">
+      <div class="card-header">
+        <h2 class="card-title">
+          <span>🛡️</span> Link GitHub Account for Member
+          <span class="admin-only-badge">Admin Only</span>
+        </h2>
+        <p class="card-subtitle">
+          Link a team member's verified GitHub account on their behalf to authorize project team inclusion.
+        </p>
+      </div>
+
+      <form id="adminLinkForm">
+        <div class="form-group">
+          <label class="form-label" for="selectMember">
+            <span>Select Team Member</span>
+          </label>
+          <select id="selectMember" class="form-select" required>
+            <option value="">-- Choose Member --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="inputAdminGithubUsername">
+            <span>Member's GitHub Username</span>
+          </label>
+          <input
+            type="text"
+            id="inputAdminGithubUsername"
+            class="form-input"
+            placeholder="e.g. dev_contributor"
+            required
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="inputAdminGithubNodeId">
+            <span>Member's GitHub Node ID</span>
+            <span
+              class="help-tooltip"
+              data-tooltip="Find this in the GitHub API: GET https://api.github.com/users/{username} — copy the 'node_id' field value"
+            >?</span>
+          </label>
+          <input
+            type="text"
+            id="inputAdminGithubNodeId"
+            class="form-input"
+            placeholder="e.g. MDQ6VXNlcjEyMzQ1Njc="
+            required
+            autocomplete="off"
+          />
+        </div>
+
+        <button type="submit" class="btn-submit" id="btnSubmitAdminLink">
+          <span>🛡️</span> Link Member Account
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/js/github-link.js?v=179313"></script>
+  <script>
+    if (window.self !== window.top || new URLSearchParams(window.location.search).get('embedded') === 'true') {
+      document.body.classList.add('is-embedded');
+    }
+  </script>
+</body>
+</html>

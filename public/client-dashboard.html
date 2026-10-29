@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Portal Dashboard — Mahi Tech Group</title>
+  <meta name="description" content="Client project overview, order status, and milestone approvals.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-primary-hover: #0284c7;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-purple: #a855f7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    .portal-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.875rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+
+    .nav-logo-badge {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--color-primary);
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--color-primary);
+    }
+
+    .nav-user {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .client-badge-pill {
+      font-size: 0.8125rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      color: var(--text-main);
+    }
+
+    .btn-signout {
+      background: transparent;
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      padding: 0.4rem 0.875rem;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-signout:hover {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    /* Main Container */
+    .main-content {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Welcome Header */
+    .welcome-header {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .welcome-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.875rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+      color: var(--text-main);
+    }
+
+    .welcome-subtitle {
+      color: var(--text-muted);
+      font-size: 0.9375rem;
+      margin: 0;
+    }
+
+    /* Quick Links Bar */
+    .quick-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    .action-btn.primary {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #04101e;
+    }
+
+    .action-btn.primary:hover {
+      background: var(--color-primary-hover);
+      color: #ffffff;
+    }
+
+    /* Stat Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .stat-label {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+
+    .stat-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-subtext {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    /* Section Grids */
+    .dashboard-sections {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .dashboard-sections {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 1.5rem;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.125rem;
+      font-weight: 700;
+      margin: 0;
+      color: var(--text-main);
+    }
+
+    .panel-link {
+      font-size: 0.8125rem;
+      color: var(--color-primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .panel-link:hover {
+      text-decoration: underline;
+    }
+
+    /* List items */
+    .activity-list, .project-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .activity-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 0.875rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .activity-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .activity-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .activity-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-submitted { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge-in_progress { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-completed { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-active { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    .project-card-mini {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1rem;
+      text-decoration: none;
+      display: block;
+      transition: all 0.2s ease;
+    }
+
+    .project-card-mini:hover {
+      border-color: var(--color-primary);
+    }
+
+    .project-mini-name {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+    }
+
+    .project-mini-stage {
+      font-size: 0.75rem;
+      color: var(--color-primary);
+    }
+
+    .empty-state {
+      padding: 2.5rem 1rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="portal-nav">
+    <a href="/client-dashboard.html" class="nav-brand">
+      <span class="nav-logo-badge">PORTAL</span>
+      <span class="nav-brand-title">Mahi Tech Group</span>
+    </a>
+
+    <div class="nav-links">
+      <a href="/client-dashboard.html" class="nav-link active">Dashboard</a>
+      <a href="/client-project.html" class="nav-link">Projects</a>
+      <a href="/client-orders.html" class="nav-link">My Orders</a>
+    </div>
+
+    <div class="nav-user">
+      <span id="clientNameBadge" class="client-badge-pill">Loading...</span>
+      <button id="signOutBtn" class="btn-signout">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Welcome Header -->
+    <header class="welcome-header">
+      <h1 id="welcomeTitle" class="welcome-title">Hello, here's your project overview</h1>
+      <p class="welcome-subtitle">Track project progress, milestone approvals, and active work orders in real-time.</p>
+
+      <div class="quick-actions">
+        <a href="/client-orders.html" class="action-btn primary">+ Submit New Request</a>
+        <a href="/client-orders.html" class="action-btn">My Orders</a>
+        <a href="/client-project.html" class="action-btn">Project Timeline</a>
+        <a href="/client-project.html?tab=milestones" class="action-btn">Pending Approvals</a>
+      </div>
+    </header>
+
+    <!-- Stats Cards -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Active Projects</div>
+        <div id="statProjectsCount" class="stat-value">0</div>
+        <div class="stat-subtext">Shared client workspaces</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">Pending Orders</div>
+        <div id="statOrdersCount" class="stat-value">0</div>
+        <div class="stat-subtext">Orders currently in review or progress</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">Pending Approvals</div>
+        <div id="statApprovalsCount" class="stat-value">0</div>
+        <div class="stat-subtext">Milestones requiring your review</div>
+      </div>
+    </section>
+
+    <!-- Dashboard Sections -->
+    <div class="dashboard-sections">
+      <!-- Recent Activity Feed -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Recent Activity Feed</h2>
+          <a href="/client-orders.html" class="panel-link">View all orders</a>
+        </div>
+        <div id="activityList" class="activity-list">
+          <div class="empty-state">Loading activity feed...</div>
+        </div>
+      </section>
+
+      <!-- Active Projects -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Your Projects</h2>
+          <a href="/client-project.html" class="panel-link">Browse all</a>
+        </div>
+        <div id="projectList" class="project-list">
+          <div class="empty-state">Loading projects...</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    // Escape HTML to prevent XSS injection
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Auth Guard: Require CLIENT JWT
+    const clientToken = localStorage.getItem('clientToken');
+    if (!clientToken) {
+      window.location.replace('/client-login.html');
+    }
+
+    // Helper for authorized client fetch
+    async function clientFetch(url, options = {}) {
+      const headers = Object.assign({}, options.headers, {
+        'Authorization': 'Bearer ' + clientToken
+      });
+      const response = await fetch(url, Object.assign({}, options, { headers }));
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('clientToken');
+        localStorage.removeItem('clientUser');
+        window.location.replace('/client-login.html');
+        return null;
+      }
+      return response;
+    }
+
+    // Sign out handler
+    document.getElementById('signOutBtn').addEventListener('click', async () => {
+      try {
+        await clientFetch('/api/client/auth/logout', { method: 'POST' });
+      } catch (e) {
+        // Continue clearing storage even if network fails
+      }
+      localStorage.removeItem('clientToken');
+      localStorage.removeItem('clientUser');
+      window.location.replace('/client-login.html');
+    });
+
+    // Initialize Dashboard
+    async function loadDashboard() {
+      // 1. Verify Profile and Role via GET /api/client/auth/me
+      const profileRes = await clientFetch('/api/client/auth/me');
+      if (!profileRes || !profileRes.ok) return;
+
+      const profileData = await profileRes.json();
+      const client = profileData.client;
+
+      if (!client || client.role !== 'CLIENT') {
+        localStorage.removeItem('clientToken');
+        localStorage.removeItem('clientUser');
+        window.location.replace('/client-login.html');
+        return;
+      }
+
+      // Render Client Header
+      document.getElementById('clientNameBadge').textContent = client.name + (client.company_name ? ' (' + client.company_name + ')' : '');
+      document.getElementById('welcomeTitle').textContent = 'Hello ' + client.name + ", here's your project overview";
+
+      // 2. Fetch Projects
+      const projectsRes = await clientFetch('/api/client/projects');
+      let projects = [];
+      if (projectsRes && projectsRes.ok) {
+        const pData = await projectsRes.json();
+        projects = Array.isArray(pData) ? pData : (pData.projects || []);
+      }
+      document.getElementById('statProjectsCount').textContent = projects.length;
+
+      // Render Projects Mini-List
+      const projectListEl = document.getElementById('projectList');
+      if (projects.length === 0) {
+        projectListEl.innerHTML = '<div class="empty-state">No shared projects yet.</div>';
+      } else {
+        projectListEl.innerHTML = projects.map(p => `
+          <a href="/client-project.html?projectId=${p.id}" class="project-card-mini">
+            <div class="project-mini-name">${escapeHTML(p.name || p.title)}</div>
+            <div class="project-mini-stage">Stage: ${escapeHTML(p.current_stage || 'Active')} &bull; Access: ${escapeHTML(p.access_level || 'READ')}</div>
+          </a>
+        `).join('');
+      }
+
+      // 3. Fetch Orders
+      const ordersRes = await clientFetch('/api/client/orders');
+      let orders = [];
+      if (ordersRes && ordersRes.ok) {
+        const oData = await ordersRes.json();
+        orders = Array.isArray(oData) ? oData : (oData.orders || []);
+      }
+
+      // Filter Pending Orders
+      const pendingOrders = orders.filter(o => ['SUBMITTED', 'UNDER_REVIEW', 'IN_PROGRESS'].includes(o.status));
+      document.getElementById('statOrdersCount').textContent = pendingOrders.length;
+
+      // 4. Count Pending Milestone Approvals across shared projects
+      let pendingApprovalsCount = 0;
+      for (const p of projects) {
+        try {
+          const mRes = await clientFetch('/api/client/project/' + p.id + '/milestones');
+          if (mRes && mRes.ok) {
+            const mData = await mRes.json();
+            const milestones = Array.isArray(mData) ? mData : (mData.milestones || []);
+            pendingApprovalsCount += milestones.filter(m => m.client_approval_status === 'PENDING').length;
+          }
+        } catch (e) {
+          // Ignore project milestone fetch failure
+        }
+      }
+      document.getElementById('statApprovalsCount').textContent = pendingApprovalsCount;
+
+      // 5. Render Recent Activity Feed
+      const activityListEl = document.getElementById('activityList');
+      if (orders.length === 0) {
+        activityListEl.innerHTML = '<div class="empty-state">No recent activity yet. Submit an order to get started!</div>';
+      } else {
+        // Take latest 10 orders/activities
+        const recent = orders.slice(0, 10);
+        activityListEl.innerHTML = recent.map(o => {
+          let badgeClass = 'badge-submitted';
+          if (o.status === 'IN_PROGRESS' || o.status === 'UNDER_REVIEW') badgeClass = 'badge-in_progress';
+          if (o.status === 'COMPLETED') badgeClass = 'badge-completed';
+
+          const dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString() : 'Recent';
+          return `
+            <div class="activity-item">
+              <div class="activity-info">
+                <div class="activity-title">${escapeHTML(o.title)}</div>
+                <div class="activity-meta">Type: ${escapeHTML(o.order_type)} &bull; Submitted: ${escapeHTML(dateStr)}${o.assigned_name ? ' &bull; Assigned: ' + escapeHTML(o.assigned_name) : ''}</div>
+              </div>
+              <span class="badge ${badgeClass}">${escapeHTML(o.status)}</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

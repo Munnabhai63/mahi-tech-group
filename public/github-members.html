@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Team Members — Admin Panel — Mahi Tech Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-sidebar: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --color-success: #10b981;
+      --color-danger: #ef4444;
+      --color-warning: #f59e0b;
+      --color-archived: #64748b;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-nav {
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border-card);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .brand-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .nav-btn-link {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .nav-btn-link:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .page-container {
+      max-width: 1180px;
+      width: 100%;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      flex: 1;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .header-section {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-title-box h1 {
+      margin: 0 0 0.25rem 0;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 700;
+    }
+
+    .header-title-box p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .project-picker-box {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .project-picker-box select {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.5rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .btn-danger:hover {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    .btn-secondary {
+      background: #334155;
+      color: #f8fafc;
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    .banner {
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .banner-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--color-success);
+    }
+
+    .banner-error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--color-danger);
+    }
+
+    /* Add Member Inline Box */
+    .add-member-panel {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .add-member-panel h3 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+      color: var(--text-main);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 2fr 1.5fr auto;
+      gap: 1rem;
+      align-items: flex-end;
+    }
+
+    @media (max-width: 768px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .form-control {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      color: var(--text-main);
+      padding: 0.6rem 0.85rem;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary);
+    }
+
+    /* Table Styles */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background: #0f172a;
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-card);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+      color: var(--text-main);
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .status-active {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--color-success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-removed {
+      background: rgba(100, 116, 139, 0.15);
+      color: var(--color-archived);
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      cursor: help;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: #334155;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .team-badge {
+      font-family: monospace;
+      color: #93c5fd;
+      font-size: 0.85rem;
+    }
+
+    .user-github-link {
+      color: #60a5fa;
+      text-decoration: none;
+      font-family: monospace;
+    }
+
+    .user-github-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-box h3 {
+      margin-top: 0;
+      font-size: 1.25rem;
+      color: var(--color-danger);
+    }
+
+    .modal-warning {
+      background: rgba(239, 68, 68, 0.1);
+      border-left: 4px solid var(--color-danger);
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      color: #fca5a5;
+      margin-bottom: 1.25rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+
+    /* Embedded Mode for New UI */
+    body.is-embedded {
+      background: transparent !important;
+      min-height: auto !important;
+    }
+    body.is-embedded .top-nav {
+      display: none !important;
+    }
+    body.is-embedded .page-container {
+      padding: 0.25rem 0 1rem 0 !important;
+      max-width: 100% !important;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <a href="/app.html#/app/dashboard" class="brand-logo">
+      <span>🐙</span> Mahi Tech Group
+    </a>
+    <div class="nav-links">
+      <a href="/app.html#/app/dashboard" class="nav-btn-link">Dashboard</a>
+      <a href="/github-link.html" class="nav-btn-link">GitHub Account</a>
+      <a href="/app.html#/admin" class="nav-btn-link">Admin Panel</a>
+      <a href="/github-webhook-log.html" class="nav-btn-link">Webhook Log</a>
+    </div>
+  </nav>
+
+  <div class="page-container">
+    <div id="bannerSuccess" class="banner banner-success"></div>
+    <div id="bannerError" class="banner banner-error"></div>
+
+    <div class="card">
+      <div class="header-section">
+        <div class="header-title-box">
+          <h1>GitHub Team Members</h1>
+          <p>Manage per-project team memberships and role-based permissions in GitHub.</p>
+        </div>
+        <div class="project-picker-box">
+          <label for="projectSelector" style="font-size:0.85rem; color:var(--text-muted);">Project:</label>
+          <select id="projectSelector">
+            <option value="">-- Select Project --</option>
+          </select>
+          <button id="btnToggleAdd" class="btn btn-primary" style="display:none;">+ Add Member</button>
+        </div>
+      </div>
+
+      <!-- Add Member Inline Panel -->
+      <div id="addMemberPanel" class="add-member-panel">
+        <h3>Add Member to GitHub Team</h3>
+        <form id="addMemberForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="selectAddMember">Select Platform Member</label>
+              <select id="selectAddMember" class="form-control" required>
+                <option value="">-- Choose Member --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="selectAddRole">GitHub Team Role</label>
+              <select id="selectAddRole" class="form-control" required>
+                <option value="researcher">Researcher</option>
+                <option value="designer">Designer</option>
+                <option value="developer">Developer</option>
+                <option value="tester">Tester</option>
+                <option value="lead">Lead</option>
+              </select>
+            </div>
+            <div>
+              <button type="submit" id="btnSubmitAdd" class="btn btn-primary">Add Member</button>
+            </div>
+          </div>
+          <div id="addInlineError" style="color:var(--color-danger); font-size:0.85rem; margin-top:0.75rem; display:none;"></div>
+        </form>
+      </div>
+
+      <!-- Members Table -->
+      <div class="table-container">
+        <table id="membersTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>GitHub Username</th>
+              <th>Role</th>
+              <th>Team</th>
+              <th>Status</th>
+              <th>Added</th>
+              <th>Removed</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="membersTableBody">
+            <tr>
+              <td colspan="8" class="empty-state">Select a project to inspect GitHub team memberships.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remove Member Modal -->
+  <div id="removeModal" class="modal-backdrop">
+    <div class="modal-box">
+      <h3>Remove from GitHub Team</h3>
+      <div id="removeModalWarning" class="modal-warning">
+        This will remove @username from the team. Their attribution history is preserved.
+      </div>
+      <form id="removeMemberForm">
+        <div class="form-group">
+          <label for="removeReason">Reason for removal (min. 10 characters required)</label>
+          <textarea id="removeReason" class="form-control" rows="3" placeholder="Explain reason for team member removal..." required></textarea>
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">
+            <span id="charCountNotice">0 / 10 characters minimum</span>
+          </div>
+        </div>
+        <div id="removeInlineError" style="color:var(--color-danger); font-size:0.85rem; margin-top:0.5rem; display:none;"></div>
+        <div class="modal-actions">
+          <button type="button" id="btnCancelRemove" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="btnConfirmRemove" class="btn btn-danger" disabled>Confirm Removal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/github-members.js?v=179313"></script>
+  <script>
+    if (window.self !== window.top || new URLSearchParams(window.location.search).get('embedded') === 'true') {
+      document.body.classList.add('is-embedded');
+    }
+  </script>
+</body>
+</html>

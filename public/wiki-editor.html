@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wiki Page Editor — Mahi Tech Group</title>
+  <meta name="description" content="Block-based wiki editor with slash command builder, version history, and backlink detection.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #24344d;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-primary-hover: #0284c7;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --glass-bg: rgba(15, 23, 42, 0.85);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Editor Top Navigation */
+    .editor-nav {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.75rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    .nav-breadcrumbs a {
+      color: var(--color-primary);
+      text-decoration: none;
+    }
+    .nav-breadcrumbs a:hover { text-decoration: underline; }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .save-indicator {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .save-indicator.saving { color: var(--color-warning); }
+    .save-indicator.saved { color: var(--color-success); }
+
+    .btn {
+      padding: 0.45rem 0.95rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--color-primary); color: #04101e; }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+    .btn-secondary { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-card); }
+    .btn-secondary:hover { background: var(--bg-card-hover); border-color: var(--color-primary); }
+
+    /* Layout Split */
+    .editor-container {
+      display: flex;
+      flex: 1;
+      width: 100%;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    .editor-main {
+      flex: 1;
+      padding: 2.5rem 2rem 5rem 2rem;
+      max-width: 860px;
+      margin: 0 auto;
+      width: 100%;
+      position: relative;
+    }
+
+    /* Page Header Section */
+    .page-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .emoji-picker-btn {
+      width: 48px;
+      height: 48px;
+      font-size: 1.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .emoji-picker-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--color-primary);
+      transform: scale(1.05);
+    }
+
+    .page-title-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      outline: none;
+      letter-spacing: -0.03em;
+    }
+    .page-title-input::placeholder { color: rgba(148, 163, 184, 0.4); }
+
+    .meta-pills-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .meta-pill {
+      background: var(--bg-card);
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-card);
+    }
+
+    /* Block Canvas */
+    .blocks-canvas {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .block-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      position: relative;
+      border-radius: 8px;
+      padding: 0.35rem 0.5rem;
+      transition: background 0.15s;
+    }
+    .block-row:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .block-gutter {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding-top: 0.35rem;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .block-row:hover .block-gutter { opacity: 1; }
+
+    .gutter-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 0.15rem 0.3rem;
+      border-radius: 4px;
+    }
+    .gutter-btn:hover {
+      color: var(--text-main);
+      background: var(--bg-card);
+    }
+
+    .block-content-area {
+      flex: 1;
+    }
+
+    .block-input {
+      width: 100%;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      transition: border-color 0.15s;
+    }
+    .block-input:focus {
+      background: var(--bg-surface);
+      border-color: var(--border-card);
+    }
+
+    /* Heading inputs */
+    .input-HEADING_1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .input-HEADING_2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+    .input-HEADING_3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+    .input-CODE {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      background: #020617 !important;
+      border: 1px solid var(--border-card) !important;
+      padding: 0.75rem !important;
+      color: #38bdf8;
+    }
+    .input-QUOTE {
+      border-left: 3px solid var(--color-primary) !important;
+      font-style: italic;
+      color: var(--text-muted);
+    }
+    .input-CALLOUT {
+      background: rgba(56, 189, 248, 0.08) !important;
+      border: 1px solid rgba(56, 189, 248, 0.25) !important;
+      border-radius: 8px !important;
+      padding: 0.75rem !important;
+    }
+
+    /* Slash Command Dropdown Menu */
+    .slash-menu {
+      position: absolute;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
+      width: 250px;
+      max-height: 320px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+    }
+    .slash-menu.active { display: block; }
+
+    .slash-item {
+      padding: 0.6rem 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.15s;
+    }
+    .slash-item:hover, .slash-item.selected {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--text-main);
+    }
+    .slash-item-icon {
+      font-size: 1rem;
+      width: 20px;
+      text-align: center;
+    }
+
+    /* Right Sidebar (History & Info) */
+    .editor-sidebar {
+      width: 320px;
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border-card);
+      padding: 1.5rem;
+      display: none;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .editor-sidebar.active { display: flex; }
+
+    .sidebar-section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 0 0 0.85rem 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .version-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-bottom: 0.65rem;
+      font-size: 0.8rem;
+    }
+    .version-card-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.35rem;
+    }
+    .version-num {
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+
+    .backlink-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.4rem 0.5rem;
+      border-radius: 6px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+    .backlink-item:hover {
+      background: var(--bg-card);
+      color: var(--color-primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="editor-nav">
+    <div class="nav-breadcrumbs">
+      <a href="/wiki-spaces.html">Wiki Spaces</a>
+      <span>/</span>
+      <span id="breadcrumbSpace">Space</span>
+      <span>/</span>
+      <span id="breadcrumbTitle" style="color: var(--text-main); font-weight: 600;">Untitled Page</span>
+    </div>
+
+    <div class="nav-actions">
+      <div id="saveIndicator" class="save-indicator">
+        <span>●</span> <span id="saveStatusText">Ready</span>
+      </div>
+      <a id="previewBtn" href="#" class="btn btn-secondary">
+        👁️ Preview
+      </a>
+      <button id="historyToggleBtn" class="btn btn-secondary">
+        🕒 History
+      </button>
+      <button id="savePageBtn" class="btn btn-primary">
+        💾 Save Page
+      </button>
+    </div>
+  </header>
+
+  <!-- Layout Container -->
+  <div class="editor-container">
+    <main class="editor-main">
+      <!-- Title & Emoji -->
+      <div class="page-title-wrap">
+        <button id="emojiBtn" class="emoji-picker-btn" title="Click to cycle emoji">📄</button>
+        <input type="text" id="pageTitleInput" class="page-title-input" placeholder="Page Title...">
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="meta-pills-bar">
+        <span class="meta-pill" id="statusPill">PUBLISHED</span>
+        <span id="wordCountText">0 words</span>
+        <span>•</span>
+        <span id="readTimeText">1 min read</span>
+        <span style="flex: 1;"></span>
+        <span id="authorText">Author: You</span>
+      </div>
+
+      <!-- Block Canvas -->
+      <div id="blocksCanvas" class="blocks-canvas">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div style="margin-top: 1.5rem; text-align: center;">
+        <button id="addBlockBtn" class="btn btn-secondary" style="border-style: dashed;">
+          ➕ Add Block (or press "/" inside any block)
+        </button>
+      </div>
+    </main>
+
+    <!-- Right Sidebar (History & Metadata) -->
+    <aside id="editorSidebar" class="editor-sidebar">
+      <div>
+        <div class="sidebar-section-title">
+          <span>Version History</span>
+          <button id="closeSidebarBtn" class="gutter-btn">✕</button>
+        </div>
+        <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+          Every save creates an append-only snapshot.
+        </p>
+        <div id="versionsList">
+          <!-- Versions injected here -->
+        </div>
+      </div>
+
+      <div>
+        <div class="sidebar-section-title">
+          <span>Incoming Backlinks</span>
+        </div>
+        <div id="backlinksList">
+          <p style="font-size: 0.8rem; color: var(--text-muted);">No backlinks to this page yet.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Slash Command Menu Dropdown -->
+  <div id="slashMenu" class="slash-menu">
+    <div class="slash-item selected" data-type="PARAGRAPH">
+      <span class="slash-item-icon">¶</span> Text Paragraph
+    </div>
+    <div class="slash-item" data-type="HEADING_1">
+      <span class="slash-item-icon">H1</span> Heading 1
+    </div>
+    <div class="slash-item" data-type="HEADING_2">
+      <span class="slash-item-icon">H2</span> Heading 2
+    </div>
+    <div class="slash-item" data-type="HEADING_3">
+      <span class="slash-item-icon">H3</span> Heading 3
+    </div>
+    <div class="slash-item" data-type="BULLET_LIST">
+      <span class="slash-item-icon">•</span> Bulleted List
+    </div>
+    <div class="slash-item" data-type="NUMBERED_LIST">
+      <span class="slash-item-icon">1.</span> Numbered List
+    </div>
+    <div class="slash-item" data-type="TODO">
+      <span class="slash-item-icon">☑</span> Todo Checklist
+    </div>
+    <div class="slash-item" data-type="CODE">
+      <span class="slash-item-icon">&lt;/&gt;</span> Code Block
+    </div>
+    <div class="slash-item" data-type="QUOTE">
+      <span class="slash-item-icon">”</span> Blockquote
+    </div>
+    <div class="slash-item" data-type="CALLOUT">
+      <span class="slash-item-icon">💡</span> Callout Box
+    </div>
+    <div class="slash-item" data-type="DIVIDER">
+      <span class="slash-item-icon">—</span> Divider Line
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------------------
+    // Editor State & Logic
+    // -------------------------------------------------------------------------
+    let currentAuthUser = null;
+    let pageId = null;
+    let spaceId = null;
+    let parentPageId = null;
+    let currentEmoji = '📄';
+    let blocks = [];
+    let slashTargetBlockIndex = -1;
+
+    const EMOJI_LIST = ['📄', '🏛️', '🚀', '💡', '⚙️', '📝', '📦', '🔒', '🛠️', '📊', '🌐', '📚'];
+
+    function getAuthToken() {
+      return localStorage.getItem('token') || localStorage.getItem('client_token');
+    }
+
+    async function init() {
+      const token = getAuthToken();
+      if (!token) {
+        window.location.href = '/index.html';
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      pageId = params.get('id');
+      spaceId = params.get('space_id');
+      parentPageId = params.get('parent_id');
+
+      // Check template query param
+      const templateId = params.get('template_id');
+
+      await verifyUserSession(token);
+
+      if (pageId) {
+        await loadExistingPage(pageId);
+      } else {
+        // Initialize new page
+        initNewPage(templateId);
+      }
+
+      setupEventListeners();
+    }
+
+    async function verifyUserSession(token) {
+      try {
+        const res = await fetch('/api/users/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          currentAuthUser = await res.json();
+          // Client guard: if role is client, reject edit access
+          if (currentAuthUser.role === 'client') {
+            alert('Clients have read-only access to documentation.');
+            window.location.href = '/wiki-spaces.html';
+          }
+        } else {
+          // If this is client portal, redirect immediately
+          window.location.href = '/wiki-spaces.html';
+        }
+      } catch (err) {
+        console.error('Session validation error:', err);
+      }
+    }
+
+    async function loadExistingPage(id) {
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`/api/wiki/page/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to load page');
+        }
+
+        const data = await res.json();
+        spaceId = data.space_id;
+        currentEmoji = data.emoji_icon || '📄';
+        document.getElementById('emojiBtn').textContent = currentEmoji;
+        document.getElementById('pageTitleInput').value = data.title;
+        document.getElementById('breadcrumbTitle').textContent = data.title;
+        document.getElementById('statusPill').textContent = data.status || 'PUBLISHED';
+        document.getElementById('previewBtn').href = `/wiki-page-view.html?id=${data.id}`;
+
+        if (Array.isArray(data.content)) {
+          blocks = data.content;
+        } else {
+          try {
+            blocks = JSON.parse(data.content);
+          } catch {
+            blocks = [{ id: crypto.randomUUID(), type: 'PARAGRAPH', content: String(data.content || '') }];
+          }
+        }
+
+        if (blocks.length === 0) {
+          blocks.push({ id: crypto.randomUUID(), type: 'PARAGRAPH', content: '' });
+        }
+
+        renderBlocks();
+        updateWordCount();
+        renderBacklinks(data.backlinks || []);
+      } catch (err) {
+        console.error('Error loading page:', err);
+      }
+    }
+
+    function initNewPage(templateId) {
+      document.getElementById('pageTitleInput').value = 'Untitled Page';
+      blocks = [
+        { id: crypto.randomUUID(), type: 'HEADING_1', content: 'Introduction' },
+        { id: crypto.randomUUID(), type: 'PARAGRAPH', content: 'Type "/" to insert new blocks or headings...' }
+      ];
+      renderBlocks();
+      updateWordCount();
+    }
+
+    function renderBlocks() {
+      const canvas = document.getElementById('blocksCanvas');
+      canvas.innerHTML = '';
+
+      blocks.forEach((block, idx) => {
+        const row = document.createElement('div');
+        row.className = 'block-row';
+        row.dataset.index = idx;
+
+        row.innerHTML = `
+          <div class="block-gutter">
+            <button class="gutter-btn move-up-btn" title="Move Up">↑</button>
+            <button class="gutter-btn move-down-btn" title="Move Down">↓</button>
+            <button class="gutter-btn delete-btn" title="Delete Block">✕</button>
+          </div>
+          <div class="block-content-area">
+            <textarea
+              class="block-input input-${block.type || 'PARAGRAPH'}"
+              data-index="${idx}"
+              rows="1"
+              placeholder="${getPlaceholder(block.type)}">${escapeHtml(block.content || '')}</textarea>
+          </div>
+        `;
+
+        canvas.appendChild(row);
+
+        // Auto-resize textarea
+        const textarea = row.querySelector('textarea');
+        adjustTextareaHeight(textarea);
+      });
+    }
+
+    function getPlaceholder(type) {
+      switch (type) {
+        case 'HEADING_1': return 'Heading 1...';
+        case 'HEADING_2': return 'Heading 2...';
+        case 'HEADING_3': return 'Heading 3...';
+        case 'CODE': return '// Paste or type code here...';
+        case 'QUOTE': return 'Quote text...';
+        case 'CALLOUT': return 'Important callout note...';
+        case 'TODO': return 'Todo task...';
+        default: return 'Write something, or type "/" for commands...';
+      }
+    }
+
+    function adjustTextareaHeight(el) {
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+
+    function updateWordCount() {
+      let words = 0;
+      blocks.forEach(b => {
+        if (b.content) {
+          const matched = b.content.trim().split(/\s+/).filter(Boolean);
+          words += matched.length;
+        }
+      });
+      document.getElementById('wordCountText').textContent = `${words} words`;
+      const mins = Math.max(1, Math.ceil(words / 200));
+      document.getElementById('readTimeText').textContent = `${mins} min read`;
+    }
+
+    function setupEventListeners() {
+      // Title input
+      document.getElementById('pageTitleInput').addEventListener('input', (e) => {
+        document.getElementById('breadcrumbTitle').textContent = e.target.value || 'Untitled Page';
+      });
+
+      // Emoji cycle
+      document.getElementById('emojiBtn').addEventListener('click', () => {
+        const nextIdx = (EMOJI_LIST.indexOf(currentEmoji) + 1) % EMOJI_LIST.length;
+        currentEmoji = EMOJI_LIST[nextIdx];
+        document.getElementById('emojiBtn').textContent = currentEmoji;
+      });
+
+      // Add block button
+      document.getElementById('addBlockBtn').addEventListener('click', () => {
+        blocks.push({ id: crypto.randomUUID(), type: 'PARAGRAPH', content: '' });
+        renderBlocks();
+        const textareas = document.querySelectorAll('.block-input');
+        if (textareas.length) textareas[textareas.length - 1].focus();
+      });
+
+      // Canvas delegation (gutter buttons & textarea input)
+      const canvas = document.getElementById('blocksCanvas');
+
+      canvas.addEventListener('input', (e) => {
+        if (e.target.classList.contains('block-input')) {
+          const idx = Number(e.target.dataset.index);
+          blocks[idx].content = e.target.value;
+          adjustTextareaHeight(e.target);
+          updateWordCount();
+
+          // Check slash command trigger
+          if (e.target.value.trim() === '/') {
+            showSlashMenu(e.target, idx);
+          } else {
+            hideSlashMenu();
+          }
+        }
+      });
+
+      canvas.addEventListener('click', (e) => {
+        const row = e.target.closest('.block-row');
+        if (!row) return;
+        const idx = Number(row.dataset.index);
+
+        if (e.target.classList.contains('delete-btn')) {
+          if (blocks.length > 1) {
+            blocks.splice(idx, 1);
+            renderBlocks();
+            updateWordCount();
+          }
+        } else if (e.target.classList.contains('move-up-btn')) {
+          if (idx > 0) {
+            const temp = blocks[idx];
+            blocks[idx] = blocks[idx - 1];
+            blocks[idx - 1] = temp;
+            renderBlocks();
+          }
+        } else if (e.target.classList.contains('move-down-btn')) {
+          if (idx < blocks.length - 1) {
+            const temp = blocks[idx];
+            blocks[idx] = blocks[idx + 1];
+            blocks[idx + 1] = temp;
+            renderBlocks();
+          }
+        }
+      });
+
+      // Slash command navigation
+      document.addEventListener('keydown', handleSlashMenuKeyboard);
+
+      // Save page button
+      document.getElementById('savePageBtn').addEventListener('click', savePage);
+
+      // History drawer toggle
+      document.getElementById('historyToggleBtn').addEventListener('click', toggleHistoryDrawer);
+      document.getElementById('closeSidebarBtn').addEventListener('click', toggleHistoryDrawer);
+    }
+
+    function showSlashMenu(targetEl, blockIndex) {
+      const menu = document.getElementById('slashMenu');
+      slashTargetBlockIndex = blockIndex;
+
+      const rect = targetEl.getBoundingClientRect();
+      menu.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+      menu.style.left = (rect.left + window.scrollX) + 'px';
+      menu.classList.add('active');
+
+      // Reset selection
+      const items = menu.querySelectorAll('.slash-item');
+      items.forEach((it, i) => it.classList.toggle('selected', i === 0));
+    }
+
+    function hideSlashMenu() {
+      const menu = document.getElementById('slashMenu');
+      menu.classList.remove('active');
+      slashTargetBlockIndex = -1;
+    }
+
+    function handleSlashMenuKeyboard(e) {
+      const menu = document.getElementById('slashMenu');
+      if (!menu.classList.contains('active')) return;
+
+      const items = Array.from(menu.querySelectorAll('.slash-item'));
+      let selectedIdx = items.findIndex(it => it.classList.contains('selected'));
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        items[selectedIdx].classList.remove('selected');
+        selectedIdx = (selectedIdx + 1) % items.length;
+        items[selectedIdx].classList.add('selected');
+        items[selectedIdx].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        items[selectedIdx].classList.remove('selected');
+        selectedIdx = (selectedIdx - 1 + items.length) % items.length;
+        items[selectedIdx].classList.add('selected');
+        items[selectedIdx].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const selected = items[selectedIdx];
+        if (selected) {
+          applySlashCommand(selected.dataset.type);
+        }
+      } else if (e.key === 'Escape') {
+        hideSlashMenu();
+      }
+    }
+
+    // Slash menu click
+    document.querySelectorAll('.slash-item').forEach(item => {
+      item.addEventListener('click', () => {
+        applySlashCommand(item.dataset.type);
+      });
+    });
+
+    function applySlashCommand(type) {
+      if (slashTargetBlockIndex >= 0 && slashTargetBlockIndex < blocks.length) {
+        blocks[slashTargetBlockIndex].type = type;
+        blocks[slashTargetBlockIndex].content = '';
+        renderBlocks();
+        hideSlashMenu();
+
+        // Focus converted block
+        const targetTextarea = document.querySelector(`.block-input[data-index="${slashTargetBlockIndex}"]`);
+        if (targetTextarea) targetTextarea.focus();
+      }
+    }
+
+    async function savePage() {
+      const token = getAuthToken();
+      const title = document.getElementById('pageTitleInput').value.trim() || 'Untitled Page';
+      const indicator = document.getElementById('saveIndicator');
+      const statusText = document.getElementById('saveStatusText');
+
+      indicator.className = 'save-indicator saving';
+      statusText.textContent = 'Saving...';
+
+      const payload = {
+        title,
+        content: JSON.stringify(blocks),
+        emoji_icon: currentEmoji,
+        change_summary: `Manual save at ${new Date().toLocaleTimeString()}`
+      };
+
+      try {
+        let res;
+        if (pageId) {
+          // Update existing page
+          res = await fetch(`/api/wiki/page/${pageId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          // Create new page
+          payload.space_id = Number(spaceId);
+          payload.parent_page_id = parentPageId ? Number(parentPageId) : null;
+          res = await fetch('/api/wiki/page/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to save');
+
+        if (!pageId && data.id) {
+          pageId = data.id;
+          window.history.replaceState({}, '', `/wiki-editor.html?id=${pageId}`);
+        }
+
+        indicator.className = 'save-indicator saved';
+        statusText.textContent = 'Saved';
+        document.getElementById('previewBtn').href = `/wiki-page-view.html?id=${pageId}`;
+
+        setTimeout(() => {
+          indicator.className = 'save-indicator';
+          statusText.textContent = 'Ready';
+        }, 3000);
+      } catch (err) {
+        indicator.className = 'save-indicator';
+        statusText.textContent = 'Error';
+        alert('Save failed: ' + err.message);
+      }
+    }
+
+    async function toggleHistoryDrawer() {
+      const sidebar = document.getElementById('editorSidebar');
+      sidebar.classList.toggle('active');
+
+      if (sidebar.classList.contains('active') && pageId) {
+        await loadVersionHistory();
+      }
+    }
+
+    async function loadVersionHistory() {
+      const token = getAuthToken();
+      const container = document.getElementById('versionsList');
+      container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem;">Loading versions...</p>';
+
+      try {
+        const res = await fetch(`/api/wiki/page/${pageId}/versions`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to load version history');
+
+        const versions = await res.json();
+        if (!versions.length) {
+          container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem;">No versions recorded yet.</p>';
+          return;
+        }
+
+        container.innerHTML = versions.map(v => `
+          <div class="version-card">
+            <div class="version-card-header">
+              <span class="version-num">Version ${v.version_number}</span>
+              <span style="color: var(--text-muted);">${formatRelativeTime(v.saved_at)}</span>
+            </div>
+            <div style="color: var(--text-muted); margin-bottom: 0.45rem;">
+              By ${escapeHtml(v.saved_by_name || 'Team Member')} • ${v.word_count || 0} words
+            </div>
+            <div style="font-style: italic; color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
+              "${escapeHtml(v.change_summary || 'Snapshot update')}"
+            </div>
+            <button class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;" onclick="restoreVersion(${v.id || v.version_number})">
+              ↺ Restore Version
+            </button>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<p style="color: var(--color-danger); font-size: 0.8rem;">${err.message}</p>`;
+      }
+    }
+
+    window.restoreVersion = async function(versionId) {
+      if (!confirm(`Are you sure you want to restore this version? This will create a new append-only version.`)) {
+        return;
+      }
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`/api/wiki/page/${pageId}/version/${versionId}/restore`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Restore failed');
+
+        alert('Version restored successfully!');
+        window.location.reload();
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    function renderBacklinks(backlinks) {
+      const container = document.getElementById('backlinksList');
+      if (!backlinks || !backlinks.length) {
+        container.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted);">No backlinks to this page yet.</p>';
+        return;
+      }
+      container.innerHTML = backlinks.map(b => `
+        <a href="/wiki-editor.html?id=${b.id}" class="backlink-item">
+          <span>${b.emoji_icon || '📄'}</span>
+          <span>${escapeHtml(b.title)}</span>
+        </a>
+      `).join('');
+    }
+
+    function formatRelativeTime(dateStr) {
+      if (!dateStr) return 'recently';
+      const d = new Date(dateStr);
+      const diffSecs = Math.floor((Date.now() - d.getTime()) / 1000);
+      if (diffSecs < 60) return 'just now';
+      if (diffSecs < 3600) return `${Math.floor(diffSecs / 60)}m ago`;
+      if (diffSecs < 86400) return `${Math.floor(diffSecs / 3600)}h ago`;
+      return `${Math.floor(diffSecs / 86400)}d ago`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

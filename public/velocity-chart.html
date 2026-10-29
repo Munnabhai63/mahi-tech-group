@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Velocity & Burndown Analytics — Mahi Tech Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <!-- Chart.js Open-Source Library -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #38bdf8;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #e2e8f0;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      color: #ffffff;
+      border-color: #475569;
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #1e293b;
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      border: 1px solid var(--border-card);
+    }
+
+    .role-badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    /* Container */
+    .analytics-wrapper {
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 1.5rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Summary Stats Grid */
+    .stats-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.85rem;
+      font-weight: 800;
+      font-family: 'Outfit', sans-serif;
+      color: #f8fafc;
+    }
+
+    .stat-subtext {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    /* Chart Section */
+    .chart-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .chart-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .chart-panel-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+    }
+
+    .chart-canvas-container {
+      position: relative;
+      width: 100%;
+      height: 380px;
+    }
+
+    /* Table Breakdown */
+    .table-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .table-header-title {
+      padding: 1rem 1.5rem;
+      background: rgba(30, 41, 59, 0.4);
+      border-bottom: 1px solid var(--border-card);
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    .data-table th {
+      padding: 0.85rem 1.25rem;
+      background: #0f172a;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .data-table td {
+      padding: 0.95rem 1.25rem;
+      border-bottom: 1px solid var(--border-light);
+      color: #f1f5f9;
+    }
+
+    .data-table tr:hover td {
+      background: #1e293b;
+    }
+
+    .points-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 0.75rem;
+    }
+
+    .points-committed {
+      background: rgba(148, 163, 184, 0.15);
+      color: #94a3b8;
+      border: 1px solid #475569;
+    }
+
+    .points-completed {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    /* Burndown Switcher */
+    .burndown-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .form-select {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    /* Toast */
+    .toast-box {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      color: #f8fafc;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+      z-index: 200;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1.5rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="top-nav" id="velocityNav">
+    <div class="brand-wrap">
+      <a href="/sprint-list.html" class="brand-title" id="navLogoLink">
+        <span>⚡</span> MAHI TECH GROUP
+      </a>
+      <span style="color: var(--border-card);">/</span>
+      <div class="nav-breadcrumbs">
+        <span id="projectBreadcrumb">Project</span>
+        <span style="color: var(--border-card);">/</span>
+        <strong>Velocity & Burndown</strong>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <a href="/sprint-board.html" class="btn-nav" id="linkSprintBoard">📌 Sprint Board</a>
+      <a href="/backlog.html" class="btn-nav" id="linkBacklog">📋 Backlog</a>
+      <a href="/sprint-list.html" class="btn-nav" id="linkSprintList">🏃 All Sprints</a>
+
+      <div class="user-pill" id="userPill">
+        <span id="userRoleBadge" class="role-badge">USER</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Analytics Container -->
+  <main class="analytics-wrapper">
+
+    <!-- KPI Summary Cards -->
+    <section class="stats-summary-grid">
+      <div class="stat-card">
+        <span class="stat-label">Total Completed Sprints</span>
+        <span class="stat-value" id="kpiTotalSprints">0</span>
+        <span class="stat-subtext">Completed delivery cycles</span>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-label">Average Velocity</span>
+        <span class="stat-value" id="kpiAvgVelocity" style="color: #38bdf8;">0 pts</span>
+        <span class="stat-subtext">Completed points per sprint</span>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-label">Average Completion Rate</span>
+        <span class="stat-value" id="kpiAvgRate" style="color: #34d399;">0%</span>
+        <span class="stat-subtext">Delivered vs committed points</span>
+      </div>
+    </section>
+
+    <!-- Velocity Chart Panel -->
+    <section class="chart-panel" id="velocityChartSection">
+      <div class="chart-panel-header">
+        <div>
+          <h3 class="chart-panel-title">Sprint Velocity Tracking</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.25rem 0 0 0;">
+            Story points committed vs completed across sprints with average velocity trendline.
+          </p>
+        </div>
+      </div>
+      
+      <div class="chart-canvas-container" id="velocityChartWrapper">
+        <canvas id="velocityChartCanvas"></canvas>
+      </div>
+    </section>
+
+    <!-- Burndown Chart Panel -->
+    <section class="chart-panel" id="burndownChartSection">
+      <div class="chart-panel-header">
+        <div>
+          <h3 class="chart-panel-title">Sprint Burndown Analysis</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.25rem 0 0 0;">
+            Day-by-day remaining story points dynamically derived from backlog item status transitions.
+          </p>
+        </div>
+        <div class="burndown-controls">
+          <label style="font-size: 0.85rem; color: var(--text-muted);">Select Sprint:</label>
+          <select id="burndownSprintSelect" class="form-select">
+            <option value="">Loading sprints...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="chart-canvas-container" id="burndownChartWrapper">
+        <canvas id="burndownChartCanvas"></canvas>
+      </div>
+    </section>
+
+    <!-- Sprint-by-Sprint Breakdown Table -->
+    <section class="table-panel">
+      <div class="table-header-title">Historical Velocity Breakdown</div>
+      <div style="overflow-x: auto;">
+        <table class="data-table" id="velocityTable">
+          <thead>
+            <tr>
+              <th>Sprint</th>
+              <th>Status</th>
+              <th>Dates</th>
+              <th>Committed</th>
+              <th>Completed</th>
+              <th>Completion Rate</th>
+              <th>Logged At</th>
+            </tr>
+          </thead>
+          <tbody id="velocityTableBody">
+            <tr><td colspan="7" class="empty-state">Loading velocity history...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast -->
+  <div class="toast-box" id="toastBox">
+    <span id="toastMsg">Action completed</span>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const urlParams = new URLSearchParams(window.location.search);
+      let projectId = urlParams.get('projectId') || urlParams.get('id');
+      let defaultSprintId = urlParams.get('sprintId');
+
+      const authToken = localStorage.getItem('mtg_auth_token') || localStorage.getItem('token') || '';
+      let currentUser = null;
+      let velocityData = null;
+      let velocityChartInstance = null;
+      let burndownChartInstance = null;
+
+      // Elements
+      const projectBreadcrumb = document.getElementById('projectBreadcrumb');
+      const userRoleBadge = document.getElementById('userRoleBadge');
+      const kpiTotalSprints = document.getElementById('kpiTotalSprints');
+      const kpiAvgVelocity = document.getElementById('kpiAvgVelocity');
+      const kpiAvgRate = document.getElementById('kpiAvgRate');
+      const velocityTableBody = document.getElementById('velocityTableBody');
+      const burndownSprintSelect = document.getElementById('burndownSprintSelect');
+
+      const toastBox = document.getElementById('toastBox');
+      const toastMsg = document.getElementById('toastMsg');
+
+      function showToast(msg, isError = false) {
+        toastMsg.textContent = msg;
+        toastBox.style.borderLeft = isError ? '4px solid #ef4444' : '4px solid #10b981';
+        toastBox.style.display = 'flex';
+        setTimeout(() => { toastBox.style.display = 'none'; }, 3000);
+      }
+
+      async function api(path, method = 'GET', body = null) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        const opts = { method, headers };
+        if (body && method !== 'GET') opts.body = JSON.stringify(body);
+        const res = await fetch(path, opts);
+        let data = null;
+        try { data = await res.json(); } catch (e) {}
+        return { status: res.status, ok: res.ok, data };
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      async function init() {
+        const meRes = await api('/api/users/me');
+        if (meRes.ok && meRes.data) {
+          currentUser = meRes.data;
+          userRoleBadge.textContent = currentUser.role || 'member';
+        }
+
+        if (!projectId) {
+          const projsRes = await api('/api/projects');
+          if (projsRes.ok && Array.isArray(projsRes.data) && projsRes.data.length > 0) {
+            projectId = projsRes.data[0].id;
+          } else {
+            document.querySelector('.analytics-wrapper').innerHTML = '<div class="empty-state">No project specified. Provide ?projectId= in URL.</div>';
+            return;
+          }
+        }
+
+        projectBreadcrumb.textContent = `Project #${projectId}`;
+        document.getElementById('linkSprintBoard').href = `/sprint-board.html?projectId=${projectId}`;
+        document.getElementById('linkBacklog').href = `/backlog.html?projectId=${projectId}`;
+        document.getElementById('linkSprintList').href = `/sprint-list.html?projectId=${projectId}`;
+
+        await Promise.all([loadVelocity(), loadSprintsForBurndown()]);
+
+        burndownSprintSelect.addEventListener('change', (e) => {
+          if (e.target.value) {
+            loadBurndown(e.target.value);
+          }
+        });
+      }
+
+      async function loadVelocity() {
+        const res = await api(`/api/sprint/velocity/${projectId}`);
+        if (!res.ok) {
+          showToast(res.data?.error || 'Failed to load velocity metrics', true);
+          velocityTableBody.innerHTML = '<tr><td colspan="7" class="empty-state">Error loading velocity log.</td></tr>';
+          return;
+        }
+
+        velocityData = res.data;
+        if (velocityData.project_title) {
+          projectBreadcrumb.textContent = velocityData.project_title;
+        }
+
+        // Render KPI cards
+        kpiTotalSprints.textContent = velocityData.total_sprints || 0;
+        kpiAvgVelocity.textContent = `${velocityData.average_velocity || 0} pts`;
+        kpiAvgRate.textContent = `${velocityData.average_completion_rate || 0}%`;
+
+        renderVelocityChart(velocityData);
+        renderVelocityTable(velocityData.velocity_log || []);
+      }
+
+      function renderVelocityChart(data) {
+        const logs = data.velocity_log || [];
+        const canvas = document.getElementById('velocityChartCanvas');
+
+        if (velocityChartInstance) {
+          velocityChartInstance.destroy();
+        }
+
+        if (logs.length === 0) {
+          document.getElementById('velocityChartWrapper').innerHTML = `
+            <div class="empty-state">
+              No completed sprints yet. Velocity points will appear once sprints are completed.
+            </div>
+          `;
+          return;
+        }
+
+        const labels = logs.map(l => l.sprint_name || `Sprint #${l.sprint_id}`);
+        const committedPoints = logs.map(l => l.total_points_committed || 0);
+        const completedPoints = logs.map(l => l.total_points_completed || 0);
+        const avgVelocityData = new Array(logs.length).fill(data.average_velocity || 0);
+
+        velocityChartInstance = new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Committed Points',
+                data: committedPoints,
+                backgroundColor: 'rgba(148, 163, 184, 0.4)',
+                borderColor: '#64748b',
+                borderWidth: 1.5,
+                borderRadius: 4
+              },
+              {
+                label: 'Completed Points',
+                data: completedPoints,
+                backgroundColor: 'rgba(16, 185, 129, 0.55)',
+                borderColor: '#10b981',
+                borderWidth: 1.5,
+                borderRadius: 4
+              },
+              {
+                type: 'line',
+                label: 'Avg Velocity',
+                data: avgVelocityData,
+                borderColor: '#38bdf8',
+                borderWidth: 2,
+                borderDash: [6, 4],
+                pointRadius: 3,
+                pointBackgroundColor: '#38bdf8',
+                fill: false
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: { color: '#cbd5e1', font: { family: 'Inter', size: 12 } }
+              },
+              tooltip: {
+                backgroundColor: '#1e293b',
+                titleColor: '#f8fafc',
+                bodyColor: '#cbd5e1',
+                borderColor: '#334155',
+                borderWidth: 1
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                ticks: { color: '#94a3b8', font: { family: 'Inter' } }
+              },
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                ticks: { color: '#94a3b8', font: { family: 'Inter' } },
+                title: { display: true, text: 'Story Points', color: '#64748b' }
+              }
+            }
+          }
+        });
+      }
+
+      function renderVelocityTable(logs) {
+        if (logs.length === 0) {
+          velocityTableBody.innerHTML = `
+            <tr><td colspan="7" class="empty-state">No velocity records logged yet.</td></tr>
+          `;
+          return;
+        }
+
+        velocityTableBody.innerHTML = '';
+        logs.forEach(row => {
+          const tr = document.createElement('tr');
+          const name = escapeHtml(row.sprint_name || `Sprint #${row.sprint_id}`);
+          const status = escapeHtml(row.sprint_status || 'COMPLETED');
+          const sDate = row.start_date || 'TBD';
+          const eDate = row.end_date || 'TBD';
+          const committed = Number(row.total_points_committed) || 0;
+          const completed = Number(row.total_points_completed) || 0;
+          const rate = Number(row.completion_rate) || 0;
+          const loggedAt = row.logged_at ? new Date(row.logged_at).toLocaleDateString() : '-';
+
+          tr.innerHTML = `
+            <td><strong>${name}</strong></td>
+            <td><span class="points-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">${status}</span></td>
+            <td style="color: #94a3b8;">${sDate} → ${eDate}</td>
+            <td><span class="points-badge points-committed">${committed} pts</span></td>
+            <td><span class="points-badge points-completed">${completed} pts</span></td>
+            <td><strong>${rate}%</strong></td>
+            <td style="color: #64748b;">${loggedAt}</td>
+          `;
+          velocityTableBody.appendChild(tr);
+        });
+      }
+
+      async function loadSprintsForBurndown() {
+        const res = await api(`/api/sprint/project/${projectId}`);
+        if (!res.ok || !Array.isArray(res.data)) {
+          burndownSprintSelect.innerHTML = '<option value="">No sprints found</option>';
+          return;
+        }
+
+        const sprints = res.data;
+        if (sprints.length === 0) {
+          burndownSprintSelect.innerHTML = '<option value="">No sprints found</option>';
+          return;
+        }
+
+        burndownSprintSelect.innerHTML = '';
+        sprints.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.name} (${s.status})`;
+          burndownSprintSelect.appendChild(opt);
+        });
+
+        // Select defaultSprintId if specified, or active sprint, or first
+        let selectedId = sprints[0].id;
+        if (defaultSprintId) {
+          const match = sprints.find(s => String(s.id) === String(defaultSprintId));
+          if (match) selectedId = match.id;
+        } else {
+          const active = sprints.find(s => s.status === 'ACTIVE');
+          if (active) selectedId = active.id;
+        }
+
+        burndownSprintSelect.value = selectedId;
+        await loadBurndown(selectedId);
+      }
+
+      async function loadBurndown(sprintId) {
+        const res = await api(`/api/sprint/${sprintId}/burndown`);
+        if (!res.ok) {
+          showToast(res.data?.error || 'Failed to load burndown', true);
+          return;
+        }
+
+        renderBurndownChart(res.data);
+      }
+
+      function renderBurndownChart(burndownData) {
+        const canvas = document.getElementById('burndownChartCanvas');
+        if (burndownChartInstance) {
+          burndownChartInstance.destroy();
+        }
+
+        const days = burndownData.days || [];
+        const labels = days.map(d => d.day);
+        const idealData = days.map(d => d.ideal_remaining);
+        const actualData = days.map(d => d.actual_remaining);
+
+        burndownChartInstance = new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Ideal Burndown',
+                data: idealData,
+                borderColor: '#94a3b8',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                pointRadius: 2,
+                fill: false,
+                tension: 0.1
+              },
+              {
+                label: 'Actual Remaining Points',
+                data: actualData,
+                borderColor: '#38bdf8',
+                backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                borderWidth: 3,
+                pointRadius: 4,
+                pointBackgroundColor: '#38bdf8',
+                fill: true,
+                tension: 0.15
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: { color: '#cbd5e1', font: { family: 'Inter', size: 12 } }
+              },
+              tooltip: {
+                backgroundColor: '#1e293b',
+                titleColor: '#f8fafc',
+                bodyColor: '#cbd5e1',
+                borderColor: '#334155',
+                borderWidth: 1
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                ticks: { color: '#94a3b8', font: { family: 'Inter' } }
+              },
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                ticks: { color: '#94a3b8', font: { family: 'Inter' } },
+                title: { display: true, text: 'Story Points Remaining', color: '#64748b' }
+              }
+            }
+          }
+        });
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

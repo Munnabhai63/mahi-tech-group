@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Order Center — Mahi Tech Group</title>
+  <meta name="description" content="Submit and track work requests, bug reports, and change orders.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-primary-hover: #0284c7;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-purple: #a855f7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    .portal-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.875rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+
+    .nav-logo-badge {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--color-primary);
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--color-primary);
+    }
+
+    .nav-user {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .client-badge-pill {
+      font-size: 0.8125rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      color: var(--text-main);
+    }
+
+    .btn-signout {
+      background: transparent;
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      padding: 0.4rem 0.875rem;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-signout:hover {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    /* Main Container */
+    .main-content {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-title-area h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0 0 0.35rem 0;
+      color: var(--text-main);
+    }
+
+    .header-title-area p {
+      color: var(--text-muted);
+      font-size: 0.9375rem;
+      margin: 0;
+    }
+
+    .btn-submit-order {
+      padding: 0.75rem 1.5rem;
+      background: var(--color-primary);
+      color: #04101e;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-submit-order:hover {
+      background: var(--color-primary-hover);
+      color: #ffffff;
+    }
+
+    /* Layout Split */
+    .orders-layout {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .orders-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Orders List Column */
+    .orders-column {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 1.25rem;
+      max-height: calc(100vh - 220px);
+      overflow-y: auto;
+    }
+
+    .order-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .order-card:hover, .order-card.selected {
+      border-color: var(--color-primary);
+      background: rgba(30, 41, 59, 0.9);
+    }
+
+    .order-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+      gap: 0.5rem;
+    }
+
+    .order-card-title {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    .order-card-desc {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      margin: 0 0 0.5rem 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .order-card-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Detail View Column */
+    .detail-column {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      min-height: 540px;
+    }
+
+    .order-detail-header {
+      border-bottom: 1px solid var(--border-card);
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .order-detail-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0 0 0.75rem 0;
+      color: var(--text-main);
+    }
+
+    /* Status Timeline Stepper */
+    .status-stepper {
+      display: flex;
+      justify-content: space-between;
+      margin: 1.5rem 0;
+      position: relative;
+    }
+
+    .status-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      z-index: 2;
+      flex: 1;
+    }
+
+    .step-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 2px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .status-step.completed .step-dot {
+      background: var(--color-success);
+      border-color: var(--color-success);
+      color: #04101e;
+    }
+
+    .status-step.active .step-dot {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #04101e;
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.2);
+    }
+
+    .step-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-step.completed .step-label, .status-step.active .step-label {
+      color: var(--text-main);
+    }
+
+    /* Messages Thread */
+    .messages-thread {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1rem 0;
+      max-height: 420px;
+    }
+
+    .chat-bubble {
+      max-width: 80%;
+      padding: 0.875rem 1.125rem;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .chat-bubble.client {
+      align-self: flex-end;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--text-main);
+    }
+
+    .chat-bubble.team {
+      align-self: flex-start;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+    }
+
+    .bubble-author {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--color-primary);
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .bubble-time {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+      text-align: right;
+    }
+
+    /* Reply Box */
+    .reply-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      border-top: 1px solid var(--border-card);
+      padding-top: 1.25rem;
+      margin-top: 1rem;
+    }
+
+    .reply-textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 0.75rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.875rem;
+      outline: none;
+      resize: vertical;
+    }
+
+    .reply-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .btn-send {
+      padding: 0.6rem 1.25rem;
+      background: var(--color-primary);
+      color: #04101e;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-submitted { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge-under_review { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-in_progress { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-completed { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    .empty-state {
+      padding: 3rem 1rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    /* Submit Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 1rem;
+    }
+
+    .modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      max-width: 560px;
+      width: 100%;
+      padding: 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+      color: var(--text-main);
+    }
+
+    .modal-subtitle {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin: 0 0 1.25rem 0;
+    }
+
+    .modal-form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .modal-form-label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-input, .modal-select, .modal-textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.875rem;
+      outline: none;
+    }
+
+    .modal-textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      border: none;
+      color: #04101e;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="portal-nav">
+    <a href="/client-dashboard.html" class="nav-brand">
+      <span class="nav-logo-badge">PORTAL</span>
+      <span class="nav-brand-title">Mahi Tech Group</span>
+    </a>
+
+    <div class="nav-links">
+      <a href="/client-dashboard.html" class="nav-link">Dashboard</a>
+      <a href="/client-project.html" class="nav-link">Projects</a>
+      <a href="/client-orders.html" class="nav-link active">My Orders</a>
+    </div>
+
+    <div class="nav-user">
+      <span id="clientNameBadge" class="client-badge-pill">Loading...</span>
+      <button id="signOutBtn" class="btn-signout">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="header-bar">
+      <div class="header-title-area">
+        <h1>Client Order Center</h1>
+        <p>Submit work requests, track progress updates, and exchange messages with your project team.</p>
+      </div>
+      <button id="openSubmitModalBtn" class="btn-submit-order">+ Submit New Request</button>
+    </div>
+
+    <div class="orders-layout">
+      <!-- Orders List -->
+      <div class="orders-column" id="ordersListContainer">
+        <div class="empty-state">Loading your orders...</div>
+      </div>
+
+      <!-- Order Detail + Message Thread -->
+      <div class="detail-column" id="orderDetailContainer">
+        <div class="empty-state">Select an order from the left to view details and communication thread.</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Submit New Order Modal -->
+  <div id="submitModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 class="modal-title">Submit New Work Request</h3>
+      <p class="modal-subtitle">Provide request details and our team will review and schedule execution.</p>
+
+      <form id="newOrderForm">
+        <div class="modal-form-group">
+          <label class="modal-form-label" for="orderProject">Project</label>
+          <select id="orderProject" class="modal-select" required>
+            <option value="">Select a shared project...</option>
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label" for="orderType">Order Type</label>
+          <select id="orderType" class="modal-select" required>
+            <option value="FEATURE">Feature Request</option>
+            <option value="BUG">Bug Report</option>
+            <option value="CHANGE_REQUEST">Change Request</option>
+            <option value="SUPPORT">Technical Support</option>
+            <option value="GENERAL">General Request</option>
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label" for="orderPriority">Priority</label>
+          <select id="orderPriority" class="modal-select" required>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM" selected>Medium</option>
+            <option value="HIGH">High</option>
+            <option value="URGENT">Urgent</option>
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label" for="orderTitle">Title</label>
+          <input type="text" id="orderTitle" class="modal-input" placeholder="Brief summary of request" required>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label" for="orderDescription">Description</label>
+          <textarea id="orderDescription" class="modal-textarea" placeholder="Detailed requirements and context..." required></textarea>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label" for="orderAttachments">Attachments (URLs / References)</label>
+          <input type="text" id="orderAttachments" class="modal-input" placeholder="Google Drive, Figma, or document links (optional)">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="cancelModalBtn" class="btn-secondary">Cancel</button>
+          <button type="submit" id="confirmOrderBtn" class="btn-primary">Submit Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Auth Guard
+    const clientToken = localStorage.getItem('clientToken');
+    if (!clientToken) {
+      window.location.replace('/client-login.html');
+    }
+
+    async function clientFetch(url, options = {}) {
+      const headers = Object.assign({}, options.headers, {
+        'Authorization': 'Bearer ' + clientToken
+      });
+      const response = await fetch(url, Object.assign({}, options, { headers }));
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('clientToken');
+        localStorage.removeItem('clientUser');
+        window.location.replace('/client-login.html');
+        return null;
+      }
+      return response;
+    }
+
+    // Sign out handler
+    document.getElementById('signOutBtn').addEventListener('click', async () => {
+      try {
+        await clientFetch('/api/client/auth/logout', { method: 'POST' });
+      } catch (e) {}
+      localStorage.removeItem('clientToken');
+      localStorage.removeItem('clientUser');
+      window.location.replace('/client-login.html');
+    });
+
+    let activeOrderId = null;
+    let ordersList = [];
+
+    // Modal Control
+    const submitModal = document.getElementById('submitModal');
+    document.getElementById('openSubmitModalBtn').addEventListener('click', () => {
+      submitModal.style.display = 'flex';
+    });
+    document.getElementById('cancelModalBtn').addEventListener('click', () => {
+      submitModal.style.display = 'none';
+    });
+
+    // Form Submit
+    document.getElementById('newOrderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const project_id = parseInt(document.getElementById('orderProject').value, 10);
+      const order_type = document.getElementById('orderType').value;
+      const priority = document.getElementById('orderPriority').value;
+      const title = document.getElementById('orderTitle').value.trim();
+      const description = document.getElementById('orderDescription').value.trim();
+      const attachments = document.getElementById('orderAttachments').value.trim();
+
+      const res = await clientFetch('/api/client/orders/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id,
+          order_type,
+          priority,
+          title,
+          description,
+          attachments: attachments ? [attachments] : []
+        })
+      });
+
+      if (res && res.ok) {
+        submitModal.style.display = 'none';
+        document.getElementById('newOrderForm').reset();
+        await loadOrders();
+      } else {
+        alert('Failed to submit request. Please check inputs and ensure project access.');
+      }
+    });
+
+    // Initialize
+    async function init() {
+      const meRes = await clientFetch('/api/client/auth/me');
+      if (!meRes || !meRes.ok) return;
+      const meData = await meRes.json();
+      document.getElementById('clientNameBadge').textContent = meData.client.name;
+
+      // Populate Project options in Modal
+      const projectsRes = await clientFetch('/api/client/projects');
+      if (projectsRes && projectsRes.ok) {
+        const pData = await projectsRes.json();
+        const projects = Array.isArray(pData) ? pData : (pData.projects || []);
+        const select = document.getElementById('orderProject');
+        select.innerHTML = '<option value="">Select a shared project...</option>' +
+          projects.map(p => `<option value="${p.id}">${escapeHTML(p.name || p.title)}</option>`).join('');
+      }
+
+      await loadOrders();
+
+      // Check query param for orderId
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramOrderId = urlParams.get('orderId');
+      if (paramOrderId) {
+        selectOrder(parseInt(paramOrderId, 10));
+      }
+    }
+
+    async function loadOrders() {
+      const container = document.getElementById('ordersListContainer');
+      const res = await clientFetch('/api/client/orders');
+      if (!res || !res.ok) {
+        container.innerHTML = '<div class="empty-state">Unable to load orders.</div>';
+        return;
+      }
+      const oData = await res.json();
+      ordersList = Array.isArray(oData) ? oData : (oData.orders || []);
+
+      if (ordersList.length === 0) {
+        container.innerHTML = '<div class="empty-state">No orders submitted yet. Click "Submit New Request" to create one.</div>';
+        return;
+      }
+
+      container.innerHTML = ordersList.map(o => {
+        let badgeClass = 'badge-submitted';
+        if (o.status === 'UNDER_REVIEW') badgeClass = 'badge-under_review';
+        if (o.status === 'IN_PROGRESS') badgeClass = 'badge-in_progress';
+        if (o.status === 'COMPLETED') badgeClass = 'badge-completed';
+
+        return `
+          <div class="order-card ${activeOrderId === o.id ? 'selected' : ''}" onclick="selectOrder(${o.id})">
+            <div class="order-card-header">
+              <h4 class="order-card-title">${escapeHTML(o.title)}</h4>
+              <span class="badge ${badgeClass}">${escapeHTML(o.status)}</span>
+            </div>
+            <p class="order-card-desc">${escapeHTML(o.description)}</p>
+            <div class="order-card-meta">
+              <span>${escapeHTML(o.order_type)} &bull; ${escapeHTML(o.priority)}</span>
+              <span>${new Date(o.created_at).toLocaleDateString()}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.selectOrder = async function(orderId) {
+      activeOrderId = orderId;
+      loadOrders(); // Refresh selection state
+
+      const detailContainer = document.getElementById('orderDetailContainer');
+      const res = await clientFetch(`/api/client/orders/${orderId}`);
+      if (!res || !res.ok) {
+        detailContainer.innerHTML = '<div class="empty-state">Error loading order details.</div>';
+        return;
+      }
+
+      const data = await res.json();
+      const order = data.order || data;
+      order.messages = data.messages || order.messages || [];
+      renderOrderDetail(order);
+    };
+
+    function renderOrderDetail(order) {
+      const container = document.getElementById('orderDetailContainer');
+      const stages = ['SUBMITTED', 'UNDER_REVIEW', 'IN_PROGRESS', 'COMPLETED'];
+      const currentIdx = stages.indexOf(order.status);
+
+      const stepperHTML = `
+        <div class="status-stepper">
+          ${stages.map((st, idx) => {
+            let cls = '';
+            if (idx < currentIdx) cls = 'completed';
+            else if (idx === currentIdx) cls = 'active';
+            return `
+              <div class="status-step ${cls}">
+                <div class="step-dot">${idx + 1}</div>
+                <div class="step-label">${st.replace('_', ' ')}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      const messages = order.messages || [];
+      const messagesHTML = messages.length === 0
+        ? '<div class="empty-state">No messages in this request yet. Reply below to communicate with the team.</div>'
+        : messages.map(m => {
+            const isClient = m.sender_type === 'CLIENT';
+            const bubbleClass = isClient ? 'client' : 'team';
+            const authorTitle = isClient ? 'You (Client)' : (m.sender_name || 'Project Team');
+            const timeStr = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            return `
+              <div class="chat-bubble ${bubbleClass}">
+                <div class="bubble-author">${escapeHTML(authorTitle)}</div>
+                <div class="bubble-text">${escapeHTML(m.message)}</div>
+                <div class="bubble-time">${escapeHTML(timeStr)}</div>
+              </div>
+            `;
+          }).join('');
+
+      container.innerHTML = `
+        <div class="order-detail-header">
+          <h2 class="order-detail-title">${escapeHTML(order.title)}</h2>
+          <div style="font-size:0.875rem; color:var(--text-muted); line-height:1.5;">
+            ${escapeHTML(order.description)}
+          </div>
+        </div>
+
+        ${stepperHTML}
+
+        <div class="messages-thread" id="chatThread">
+          ${messagesHTML}
+        </div>
+
+        <form class="reply-form" onsubmit="handleSendReply(event, ${order.id})">
+          <textarea id="replyText" class="reply-textarea" placeholder="Type a message or response to the team..." required></textarea>
+          <div class="reply-actions">
+            <button type="submit" class="btn-send">Send Message</button>
+          </div>
+        </form>
+      `;
+
+      // Auto scroll chat thread to bottom
+      const threadEl = document.getElementById('chatThread');
+      if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
+    }
+
+    window.handleSendReply = async function(e, orderId) {
+      e.preventDefault();
+      const textarea = document.getElementById('replyText');
+      const message = textarea.value.trim();
+      if (!message) return;
+
+      const res = await clientFetch(`/api/client/orders/${orderId}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      });
+
+      if (res && res.ok) {
+        selectOrder(orderId);
+      } else {
+        alert('Failed to send message.');
+      }
+    };
+
+    init();
+  </script>
+</body>
+</html>

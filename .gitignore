@@ -4,6 +4,10 @@ node_modules/
 *.sqlite-shm
 *.db
 .env
+.env.*
+*.env*
+!.env.example
+!**/.env.example
 .playwright-cli/
 uploads/
 scripts/smoke-test-results.json
@@ -18,4 +22,9 @@ scripts/reconciliation.json
 scripts/route-manifest.json
 scripts/comprehensive-test-report.json
 scripts/db-schema-dump.json
+
+# PRD 17: GitHub App Private Keys
+certs/
+*.pem
+
 

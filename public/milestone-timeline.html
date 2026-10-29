@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Milestone Timeline — Mahi Tech Group</title>
+  <meta name="description" content="Vertical chronological milestone timeline for Mahi Tech Group projects, with automated status tracking, achievement verification, and Gantt task linkage.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-purple: #a855f7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .select-project {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      max-width: 220px;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      color: #38bdf8;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      color: #ffffff;
+      border: 1px solid #38bdf8;
+      padding: 0.45rem 0.95rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+
+    /* Sub Toolbar */
+    .toolbar-bar {
+      background: #0d1424;
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.75rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn-group {
+      display: flex;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .btn-filter {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 0.35rem 0.8rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-filter:hover {
+      color: #f8fafc;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-filter.active {
+      background: #38bdf8;
+      color: #090d16;
+    }
+
+    .search-input {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      width: 220px;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #38bdf8;
+    }
+
+    /* Main Container */
+    .main-content {
+      flex: 1;
+      padding: 2rem 1.75rem 4rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Summary Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .stat-card {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.15rem 1.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: #475569;
+    }
+
+    .stat-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .stat-val-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .stat-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1;
+    }
+
+    .stat-card.achieved .stat-val { color: var(--color-success); }
+    .stat-card.pending .stat-val { color: var(--color-warning); }
+    .stat-card.missed .stat-val { color: var(--color-danger); }
+
+    /* Timeline Section */
+    .timeline-wrapper {
+      position: relative;
+      padding: 1rem 0 2rem 2.5rem;
+    }
+
+    /* Vertical Continuous Spine Line */
+    .timeline-spine {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 19px;
+      width: 2px;
+      background: linear-gradient(180deg, #38bdf8 0%, #334155 100%);
+      z-index: 1;
+    }
+
+    .milestone-item {
+      position: relative;
+      margin-bottom: 2rem;
+      z-index: 2;
+    }
+
+    .milestone-item:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Node Marker */
+    .milestone-node {
+      position: absolute;
+      top: 1.25rem;
+      left: -2.5rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #0f172a;
+      border: 3px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .milestone-item.achieved .milestone-node {
+      border-color: var(--color-success);
+      color: var(--color-success);
+      background: rgba(16, 185, 129, 0.12);
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.35);
+    }
+
+    .milestone-item.pending .milestone-node {
+      border-color: var(--color-warning);
+      color: var(--color-warning);
+      background: rgba(245, 158, 11, 0.12);
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
+    }
+
+    .milestone-item.missed .milestone-node {
+      border-color: var(--color-danger);
+      color: var(--color-danger);
+      background: rgba(239, 68, 68, 0.15);
+      box-shadow: 0 0 14px rgba(239, 68, 68, 0.35);
+    }
+
+    /* Card Content */
+    .milestone-card {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.35rem 1.5rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      transition: all 0.2s ease;
+    }
+
+    .milestone-card:hover {
+      border-color: #475569;
+      transform: translateX(4px);
+    }
+
+    .milestone-item.achieved .milestone-card {
+      border-left: 4px solid var(--color-success);
+    }
+
+    .milestone-item.pending .milestone-card {
+      border-left: 4px solid var(--color-warning);
+    }
+
+    .milestone-item.missed .milestone-card {
+      border-left: 4px solid var(--color-danger);
+    }
+
+    .milestone-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .milestone-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .milestone-date-tag {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .milestone-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0;
+    }
+
+    .milestone-badges {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-achieved {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--color-success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-pending {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--color-warning);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-missed {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--color-danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Linked Item Box */
+    .linked-item-box {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-top: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .linked-item-info {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.84rem;
+    }
+
+    .linked-item-name {
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .linked-progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      min-width: 140px;
+    }
+
+    .progress-bar-bg {
+      flex: 1;
+      height: 6px;
+      background: #0f172a;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--color-primary);
+      border-radius: 3px;
+    }
+
+    .progress-text {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      min-width: 35px;
+      text-align: right;
+    }
+
+    /* Milestone Card Actions */
+    .milestone-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      flex-wrap: wrap;
+    }
+
+    .meta-details {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    .action-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-action {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.35rem 0.65rem;
+      border-radius: 5px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: all 0.15s;
+    }
+
+    .btn-action:hover {
+      background: #334155;
+    }
+
+    .btn-achieve {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--color-success);
+      color: var(--color-success);
+    }
+
+    .btn-achieve:hover {
+      background: var(--color-success);
+      color: #090d16;
+    }
+
+    .btn-delete-milestone {
+      color: #ef4444;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-delete-milestone:hover {
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      background: #0f172a;
+      border: 1px dashed var(--border-card);
+      border-radius: 12px;
+      margin-top: 1.5rem;
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 0.75rem;
+      color: #64748b;
+    }
+
+    .empty-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0 0 0.5rem;
+    }
+
+    .empty-desc {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      max-width: 420px;
+      margin: 0 auto 1.5rem;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 120;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      width: 480px;
+      max-width: 90vw;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin: 0;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.4rem;
+      cursor: pointer;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 0.35rem;
+    }
+
+    .form-control {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #38bdf8;
+    }
+
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.65rem;
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-card);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-size: 0.85rem;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/gantt-chart.html" class="brand-title">
+        <span>📊</span> Mahi Tech Gantt
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>Timeline</span>
+        <span>/</span>
+        <span>Milestones</span>
+        <span>/</span>
+        <strong id="headerProjectName">Loading...</strong>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <select id="projectSelect" class="select-project" title="Select Project" aria-label="Select Project">
+        <option value="" disabled selected>Loading projects...</option>
+      </select>
+
+      <a href="/gantt-chart.html" class="btn-nav" title="View Gantt Chart">
+        <span>📈</span> Gantt Chart
+      </a>
+
+      <a href="/gantt-baseline.html" class="btn-nav" title="Planned vs Actual View">
+        <span>📐</span> Planned vs Actual
+      </a>
+
+      <button type="button" class="btn-primary" id="btnOpenCreateMilestone">
+        <span>+</span> Add Milestone
+      </button>
+    </div>
+  </header>
+
+  <!-- Control Sub Toolbar -->
+  <div class="toolbar-bar">
+    <div class="toolbar-group">
+      <div class="filter-btn-group">
+        <button type="button" class="btn-filter active" data-filter="ALL">All</button>
+        <button type="button" class="btn-filter" data-filter="PENDING">Pending</button>
+        <button type="button" class="btn-filter" data-filter="ACHIEVED">Achieved</button>
+        <button type="button" class="btn-filter" data-filter="MISSED">Missed</button>
+      </div>
+
+      <input type="text" id="milestoneSearch" class="search-input" placeholder="Search milestones..." aria-label="Search milestones">
+    </div>
+
+    <div class="toolbar-group">
+      <span style="font-size: 0.8rem; color: #94a3b8;" id="milestoneCountLabel">Showing 0 milestones</span>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="main-content">
+
+    <!-- Summary Stats Grid -->
+    <section class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <span class="stat-label">Total Milestones</span>
+        <div class="stat-val-wrap">
+          <span class="stat-val" id="statTotal">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card achieved">
+        <span class="stat-label">Achieved</span>
+        <div class="stat-val-wrap">
+          <span class="stat-val" id="statAchieved">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card pending">
+        <span class="stat-label">Pending</span>
+        <div class="stat-val-wrap">
+          <span class="stat-val" id="statPending">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card missed">
+        <span class="stat-label">Missed / Overdue</span>
+        <div class="stat-val-wrap">
+          <span class="stat-val" id="statMissed">0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vertical Chronological Timeline Track -->
+    <section class="timeline-wrapper" id="timelineContainer">
+      <div class="timeline-spine"></div>
+      <div id="milestoneList">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState" style="display: none;">
+      <div class="empty-icon">💎</div>
+      <h3 class="empty-title">No Milestones Found</h3>
+      <p class="empty-desc">There are no project milestones matching the current filter. Create key targets to anchor your project timeline.</p>
+      <button type="button" class="btn-primary" id="btnEmptyCreate">
+        <span>+</span> Add Milestone
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Modal: Create Milestone -->
+  <div class="modal-backdrop" id="createMilestoneModal" role="dialog" aria-modal="true" aria-labelledby="createMilestoneTitle">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="createMilestoneTitle">Create New Milestone</h3>
+        <button type="button" class="modal-close" id="btnCloseCreateModal" aria-label="Close dialog">&times;</button>
+      </div>
+      <form id="createMilestoneForm">
+        <div class="form-group">
+          <label class="form-label" for="newMilestoneTitle">Milestone Title *</label>
+          <input type="text" id="newMilestoneTitle" class="form-control" placeholder="e.g., Alpha Release Gate" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="newMilestoneDate">Milestone Date *</label>
+          <input type="date" id="newMilestoneDate" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="newMilestoneItem">Link to Gantt Item (Optional)</label>
+          <select id="newMilestoneItem" class="form-control">
+            <option value="">-- No Linked Item --</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-nav" id="btnCancelCreate">Cancel</button>
+          <button type="submit" class="btn-primary" id="btnSubmitCreate">Create Milestone</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Milestone -->
+  <div class="modal-backdrop" id="editMilestoneModal" role="dialog" aria-modal="true" aria-labelledby="editMilestoneTitle">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="editMilestoneTitle">Edit Milestone</h3>
+        <button type="button" class="modal-close" id="btnCloseEditModal" aria-label="Close dialog">&times;</button>
+      </div>
+      <form id="editMilestoneForm">
+        <input type="hidden" id="editMilestoneId">
+        <div class="form-group">
+          <label class="form-label" for="editMilestoneTitleInput">Milestone Title *</label>
+          <input type="text" id="editMilestoneTitleInput" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editMilestoneDateInput">Milestone Date *</label>
+          <input type="date" id="editMilestoneDateInput" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editMilestoneItemSelect">Link to Gantt Item (Optional)</label>
+          <select id="editMilestoneItemSelect" class="form-control">
+            <option value="">-- No Linked Item --</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-nav" id="btnCancelEdit">Cancel</button>
+          <button type="submit" class="btn-primary" id="btnSubmitEdit">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toastNotification" role="alert" aria-live="polite">
+    <span id="toastIcon">ℹ️</span>
+    <span id="toastMessage">Notification message</span>
+  </div>
+
+  <script>
+    // State management
+    const state = {
+      token: null,
+      currentUser: null,
+      projects: [],
+      activeProjectId: null,
+      milestones: [],
+      ganttItems: [],
+      activeFilter: 'ALL',
+      searchQuery: ''
+    };
+
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toastNotification');
+      const msg = document.getElementById('toastMessage');
+      const icon = document.getElementById('toastIcon');
+      if (!toast) return;
+
+      msg.textContent = message;
+      if (type === 'error') {
+        icon.textContent = '⚠️';
+        toast.style.borderColor = '#ef4444';
+      } else if (type === 'success') {
+        icon.textContent = '✅';
+        toast.style.borderColor = '#10b981';
+      } else {
+        icon.textContent = 'ℹ️';
+        toast.style.borderColor = '#38bdf8';
+      }
+
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
+
+    function getAuthToken() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get('token');
+      if (urlToken) {
+        localStorage.setItem('token', urlToken);
+        return urlToken;
+      }
+      return localStorage.getItem('token');
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (state.token) {
+        headers['Authorization'] = `Bearer ${state.token}`;
+      }
+
+      const opts = { method, headers };
+      if (body) {
+        opts.body = JSON.stringify(body);
+      }
+
+      const res = await fetch(endpoint, opts);
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (e) {
+        // non-json
+      }
+
+      if (!res.ok) {
+        const errorMsg = data?.message || data?.error || `HTTP error ${res.status}`;
+        const err = new Error(errorMsg);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+
+      return data;
+    }
+
+    function initAuth() {
+      state.token = getAuthToken();
+      if (!state.token) {
+        console.warn('No JWT token found in localStorage or query params.');
+      }
+    }
+
+    async function loadProjects() {
+      try {
+        const data = await apiRequest('/api/projects');
+        state.projects = data.projects || (Array.isArray(data) ? data : []);
+
+        const select = document.getElementById('projectSelect');
+        select.innerHTML = '';
+
+        if (state.projects.length === 0) {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = 'No projects found';
+          select.appendChild(opt);
+          return;
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestedProj = urlParams.get('projectId');
+
+        state.projects.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.title || `Project #${p.id}`;
+          select.appendChild(opt);
+        });
+
+        if (requestedProj && state.projects.some(p => String(p.id) === String(requestedProj))) {
+          state.activeProjectId = requestedProj;
+        } else {
+          state.activeProjectId = state.projects[0].id;
+        }
+
+        select.value = state.activeProjectId;
+        updateProjectHeader();
+        await loadProjectData();
+      } catch (err) {
+        console.error('Failed to load projects:', err);
+        showToast('Error loading projects list', 'error');
+      }
+    }
+
+    function updateProjectHeader() {
+      const proj = state.projects.find(p => String(p.id) === String(state.activeProjectId));
+      const headerTitle = document.getElementById('headerProjectName');
+      if (headerTitle) {
+        headerTitle.textContent = proj ? proj.title : `Project #${state.activeProjectId}`;
+      }
+    }
+
+    async function loadProjectData() {
+      if (!state.activeProjectId) return;
+      try {
+        const [milestonesRes, itemsRes] = await Promise.all([
+          apiRequest(`/api/gantt/milestones/${state.activeProjectId}`),
+          apiRequest(`/api/gantt/items/${state.activeProjectId}`)
+        ]);
+
+        state.milestones = milestonesRes.milestones || [];
+        state.ganttItems = itemsRes.items || [];
+
+        populateLinkedItemDropdowns();
+        renderMilestones();
+        renderStats();
+      } catch (err) {
+        console.error('Failed to load project milestones:', err);
+        showToast(err.message || 'Failed to fetch milestone timeline', 'error');
+      }
+    }
+
+    function populateLinkedItemDropdowns() {
+      const createSelect = document.getElementById('newMilestoneItem');
+      const editSelect = document.getElementById('editMilestoneItemSelect');
+
+      const optionsHtml = '<option value="">-- No Linked Item --</option>' +
+        state.ganttItems.map(item => `
+          <option value="${item.id}">${escapeHTML(item.title)} (${item.type})</option>
+        `).join('');
+
+      if (createSelect) createSelect.innerHTML = optionsHtml;
+      if (editSelect) editSelect.innerHTML = optionsHtml;
+    }
+
+    function renderStats() {
+      const total = state.milestones.length;
+      const achieved = state.milestones.filter(m => m.status === 'ACHIEVED').length;
+      const pending = state.milestones.filter(m => m.status === 'PENDING').length;
+      const missed = state.milestones.filter(m => m.status === 'MISSED').length;
+
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statAchieved').textContent = achieved;
+      document.getElementById('statPending').textContent = pending;
+      document.getElementById('statMissed').textContent = missed;
+    }
+
+    function getFilteredMilestones() {
+      return state.milestones.filter(m => {
+        // Filter by status tab
+        if (state.activeFilter !== 'ALL' && m.status !== state.activeFilter) {
+          return false;
+        }
+        // Search query
+        if (state.searchQuery.trim()) {
+          const q = state.searchQuery.toLowerCase();
+          const matchTitle = m.title && m.title.toLowerCase().includes(q);
+          const matchLinked = m.linked_item_title && m.linked_item_title.toLowerCase().includes(q);
+          return matchTitle || matchLinked;
+        }
+        return true;
+      });
+    }
+
+    function renderMilestones() {
+      const listContainer = document.getElementById('milestoneList');
+      const emptyState = document.getElementById('emptyState');
+      const countLabel = document.getElementById('milestoneCountLabel');
+
+      const filtered = getFilteredMilestones();
+      countLabel.textContent = `Showing ${filtered.length} of ${state.milestones.length} milestones`;
+
+      if (filtered.length === 0) {
+        listContainer.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      listContainer.innerHTML = filtered.map(m => {
+        const statusClass = m.status ? m.status.toLowerCase() : 'pending';
+        let statusBadge = '';
+        let nodeIcon = '🕒';
+
+        if (m.status === 'ACHIEVED') {
+          nodeIcon = '✔';
+          statusBadge = '<span class="status-badge badge-achieved">Achieved</span>';
+        } else if (m.status === 'MISSED') {
+          nodeIcon = '✖';
+          statusBadge = '<span class="status-badge badge-missed">Missed</span>';
+        } else {
+          nodeIcon = '🕒';
+          statusBadge = '<span class="status-badge badge-pending">Pending</span>';
+        }
+
+        // Linked item block
+        let linkedHtml = '';
+        if (m.linked_item_title) {
+          const progress = m.linked_item_progress_pct || 0;
+          linkedHtml = `
+            <div class="linked-item-box">
+              <div class="linked-item-info">
+                <span>🔗 Linked Task:</span>
+                <span class="linked-item-name">${escapeHTML(m.linked_item_title)}</span>
+                <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">(${escapeHTML(m.linked_item_status || 'NOT_STARTED')})</span>
+              </div>
+              <div class="linked-progress-wrap">
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill" style="width: ${progress}%;"></div>
+                </div>
+                <span class="progress-text">${progress}%</span>
+              </div>
+            </div>
+          `;
+        }
+
+        // Action buttons
+        let achieveBtn = '';
+        if (m.status !== 'ACHIEVED') {
+          achieveBtn = `
+            <button type="button" class="btn-action btn-achieve" onclick="handleAchieveMilestone(${m.id})">
+              <span>✔</span> Mark as Achieved
+            </button>
+          `;
+        }
+
+        const dateFormatted = formatDateDisplay(m.milestone_date);
+
+        return `
+          <div class="milestone-item ${statusClass}" data-id="${m.id}">
+            <div class="milestone-node" title="Status: ${m.status}">${nodeIcon}</div>
+            <div class="milestone-card">
+              <div class="milestone-header">
+                <div class="milestone-title-group">
+                  <span class="milestone-date-tag">
+                    <span>📅</span> ${dateFormatted}
+                  </span>
+                  <h4 class="milestone-title">${escapeHTML(m.title)}</h4>
+                </div>
+                <div class="milestone-badges">
+                  ${statusBadge}
+                </div>
+              </div>
+
+              ${linkedHtml}
+
+              <div class="milestone-footer">
+                <div class="meta-details">
+                  ${m.achieved_at ? `Achieved on ${formatDateDisplay(m.achieved_at.split('T')[0])}` : `Target: ${m.milestone_date}`}
+                </div>
+                <div class="action-group">
+                  ${achieveBtn}
+                  <button type="button" class="btn-action" onclick="openEditMilestone(${m.id})">
+                    <span>✏️</span> Edit
+                  </button>
+                  <button type="button" class="btn-action btn-delete-milestone" onclick="handleDeleteMilestone(${m.id})">
+                    <span>🗑</span> Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatDateDisplay(dateStr) {
+      if (!dateStr) return 'No Date';
+      try {
+        const parts = String(dateStr).split('-');
+        if (parts.length === 3) {
+          const date = new Date(Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
+          return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            timeZone: 'UTC'
+          });
+        }
+      } catch (e) {}
+      return dateStr;
+    }
+
+    // Modal Operations
+    function openCreateMilestoneModal() {
+      const modal = document.getElementById('createMilestoneModal');
+      const form = document.getElementById('createMilestoneForm');
+      form.reset();
+
+      // default date to today
+      const dateInput = document.getElementById('newMilestoneDate');
+      dateInput.value = new Date().toISOString().split('T')[0];
+
+      modal.classList.add('open');
+      document.getElementById('newMilestoneTitle').focus();
+    }
+
+    function closeCreateMilestoneModal() {
+      document.getElementById('createMilestoneModal').classList.remove('open');
+    }
+
+    function openEditMilestone(id) {
+      const milestone = state.milestones.find(m => Number(m.id) === Number(id));
+      if (!milestone) return;
+
+      document.getElementById('editMilestoneId').value = milestone.id;
+      document.getElementById('editMilestoneTitleInput').value = milestone.title || '';
+      document.getElementById('editMilestoneDateInput').value = milestone.milestone_date || '';
+      document.getElementById('editMilestoneItemSelect').value = milestone.gantt_item_id || '';
+
+      document.getElementById('editMilestoneModal').classList.add('open');
+      document.getElementById('editMilestoneTitleInput').focus();
+    }
+
+    function closeEditMilestoneModal() {
+      document.getElementById('editMilestoneModal').classList.remove('open');
+    }
+
+    // API Handlers
+    async function handleAchieveMilestone(id) {
+      try {
+        await apiRequest(`/api/gantt/milestone/${id}/achieve`, 'PATCH');
+        showToast('Milestone achieved! Great milestone completion.', 'success');
+        await loadProjectData();
+      } catch (err) {
+        showToast(err.message || 'Failed to mark milestone as achieved', 'error');
+      }
+    }
+
+    async function handleDeleteMilestone(id) {
+      if (!confirm('Are you sure you want to delete this milestone?')) return;
+      try {
+        await apiRequest(`/api/gantt/milestone/${id}`, 'DELETE');
+        showToast('Milestone deleted successfully', 'success');
+        await loadProjectData();
+      } catch (err) {
+        showToast(err.message || 'Failed to delete milestone', 'error');
+      }
+    }
+
+    // Event Listeners Setup
+    function setupEventListeners() {
+      // Project Selector change
+      document.getElementById('projectSelect').addEventListener('change', (e) => {
+        state.activeProjectId = e.target.value;
+        updateProjectHeader();
+        loadProjectData();
+      });
+
+      // Filter tabs
+      document.querySelectorAll('.btn-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.activeFilter = btn.dataset.filter;
+          renderMilestones();
+        });
+      });
+
+      // Search input
+      document.getElementById('milestoneSearch').addEventListener('input', (e) => {
+        state.searchQuery = e.target.value;
+        renderMilestones();
+      });
+
+      // Modal open / close
+      document.getElementById('btnOpenCreateMilestone').addEventListener('click', openCreateMilestoneModal);
+      document.getElementById('btnEmptyCreate').addEventListener('click', openCreateMilestoneModal);
+      document.getElementById('btnCloseCreateModal').addEventListener('click', closeCreateMilestoneModal);
+      document.getElementById('btnCancelCreate').addEventListener('click', closeCreateMilestoneModal);
+
+      document.getElementById('btnCloseEditModal').addEventListener('click', closeEditMilestoneModal);
+      document.getElementById('btnCancelEdit').addEventListener('click', closeEditMilestoneModal);
+
+      // Create Form Submission
+      document.getElementById('createMilestoneForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('newMilestoneTitle').value.trim();
+        const milestoneDate = document.getElementById('newMilestoneDate').value;
+        const ganttItemId = document.getElementById('newMilestoneItem').value || null;
+
+        if (!title || !milestoneDate) {
+          showToast('Title and Milestone Date are required', 'error');
+          return;
+        }
+
+        try {
+          await apiRequest('/api/gantt/milestone/create', 'POST', {
+            project_id: state.activeProjectId,
+            title,
+            milestone_date: milestoneDate,
+            gantt_item_id: ganttItemId
+          });
+
+          closeCreateMilestoneModal();
+          showToast('Milestone created successfully', 'success');
+          await loadProjectData();
+        } catch (err) {
+          showToast(err.message || 'Failed to create milestone', 'error');
+        }
+      });
+
+      // Edit Form Submission
+      document.getElementById('editMilestoneForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('editMilestoneId').value;
+        const title = document.getElementById('editMilestoneTitleInput').value.trim();
+        const milestoneDate = document.getElementById('editMilestoneDateInput').value;
+        const ganttItemId = document.getElementById('editMilestoneItemSelect').value || null;
+
+        if (!title || !milestoneDate) {
+          showToast('Title and Milestone Date are required', 'error');
+          return;
+        }
+
+        try {
+          await apiRequest(`/api/gantt/milestone/${id}`, 'PATCH', {
+            title,
+            milestone_date: milestoneDate,
+            gantt_item_id: ganttItemId
+          });
+
+          closeEditMilestoneModal();
+          showToast('Milestone updated successfully', 'success');
+          await loadProjectData();
+        } catch (err) {
+          showToast(err.message || 'Failed to update milestone', 'error');
+        }
+      });
+    }
+
+    // Window initialize
+    window.addEventListener('DOMContentLoaded', async () => {
+      initAuth();
+      setupEventListeners();
+      await loadProjects();
+    });
+  </script>
+</body>
+</html>

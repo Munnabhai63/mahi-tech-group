@@ -10,6 +10,8 @@ const state = {
   user: null,
   ws: null,
   wsConnected: false,
+  wsConnecting: false,
+  reconnectTimer: null,
   reconnectAttempts: 0,
   pollingInterval: null,
   activeProjects: [],
@@ -128,12 +130,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Restore existing session from localStorage if present
   const savedToken = localStorage.getItem('token');
   const savedUserStr = localStorage.getItem('user');
-  if (savedToken && savedUserStr) {
+  if (savedToken) {
     try {
       state.token = savedToken;
-      state.user = JSON.parse(savedUserStr);
-      updateUserBadge(state.user);
-      highlightActiveCornerPanel(state.user.role);
+      if (savedUserStr) {
+        state.user = JSON.parse(savedUserStr);
+      }
+      if (!state.user) {
+        const meRes = await apiFetch('/api/users/me');
+        if (meRes && meRes.user) {
+          state.user = meRes.user;
+          localStorage.setItem('user', JSON.stringify(meRes.user));
+        }
+      }
+      if (state.user) {
+        updateUserBadge(state.user);
+        highlightActiveCornerPanel(state.user.role);
+      }
       await refreshAllData();
       connectWebSocket();
     } catch (e) {
@@ -224,11 +237,17 @@ function connectWebSocket() {
   const wsUrl = `${protocol}//${window.location.host}/ws?token=${state.token}`;
 
   updateWsStatus('reconnecting', 'Connecting...');
+  state.wsConnecting = true;
   state.ws = new WebSocket(wsUrl);
 
   state.ws.onopen = () => {
+    state.wsConnecting = false;
     state.wsConnected = true;
     state.reconnectAttempts = 0;
+    if (state.reconnectTimer) {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = null;
+    }
     updateWsStatus('live', 'Live Connected');
 
     if (state.pollingInterval) {
@@ -247,6 +266,7 @@ function connectWebSocket() {
   };
 
   state.ws.onclose = () => {
+    state.wsConnecting = false;
     state.wsConnected = false;
     updateWsStatus('reconnecting', 'Reconnecting...');
     startPollingFallback();
@@ -254,6 +274,7 @@ function connectWebSocket() {
   };
 
   state.ws.onerror = () => {
+    state.wsConnecting = false;
     state.wsConnected = false;
     updateWsStatus('disconnected', 'WS Error (Polling active)');
   };
@@ -263,9 +284,17 @@ function connectWebSocket() {
  * Exponential backoff reconnect
  */
 function scheduleReconnect() {
+  if (state.wsConnecting) return;
+
+  if (state.reconnectTimer) {
+    clearTimeout(state.reconnectTimer);
+    state.reconnectTimer = null;
+  }
+
   const delay = Math.min(1000 * Math.pow(1.5, state.reconnectAttempts), 15000);
   state.reconnectAttempts++;
-  setTimeout(() => {
+  state.reconnectTimer = setTimeout(() => {
+    state.reconnectTimer = null;
     if (!state.wsConnected && state.token) {
       connectWebSocket();
     }
@@ -496,15 +525,32 @@ async function refreshAllData() {
 
 /**
  * Refresh task queues across corner panels
+ * Only queries tasks relevant to the current user's role to prevent duplicate calls
  */
 async function refreshCornerTasks() {
-  await Promise.allSettled([
-    fetchResearcherTasks(),
-    fetchResearcherIdeas(),
-    fetchDesignerTasks(),
-    fetchDeveloperTasks(),
-    fetchProducerTasks()
-  ]);
+  const role = state.user?.role;
+  if (!role) return;
+
+  if (role === 'researcher') {
+    await Promise.allSettled([
+      fetchResearcherTasks(),
+      fetchResearcherIdeas()
+    ]);
+  } else if (role === 'developer') {
+    await fetchDeveloperTasks();
+  } else if (role === 'producer') {
+    await fetchProducerTasks();
+  } else if (role === 'designer') {
+    await fetchDesignerTasks();
+  } else if (role === 'admin' || role === 'superadmin') {
+    await Promise.allSettled([
+      fetchResearcherTasks(),
+      fetchResearcherIdeas(),
+      fetchDesignerTasks(),
+      fetchDeveloperTasks(),
+      fetchProducerTasks()
+    ]);
+  }
 }
 
 /**

@@ -11,8 +11,21 @@ export function authenticate(req, res, next) {
 
   const token = authHeader.substring(7).trim();
 
+  // Guard: Client portal tokens must NEVER be accepted on internal routes
+  try {
+    const preCheck = jwt.decode(token);
+    if (preCheck && (preCheck.role === 'CLIENT' || preCheck.clientId)) {
+      return res.status(403).json({ error: 'Forbidden: Client tokens are not permitted on internal endpoints' });
+    }
+  } catch (e) {
+    // Continue to standard verification
+  }
+
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET);
+    if (decoded && (decoded.role === 'CLIENT' || decoded.clientId)) {
+      return res.status(403).json({ error: 'Forbidden: Client tokens are not permitted on internal endpoints' });
+    }
     const { sessionId, userId } = decoded;
 
     // Check session validity in database

@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Objective Detail — Mahi Tech Group</title>
+  <meta name="description" content="Detailed Key Results tracking, check-ins, alignment tree, and audit history for OKR Objective.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-purple: #a855f7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #e2e8f0;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border: 1px solid #38bdf8;
+      color: #ffffff;
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: background 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-danger:hover {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    .detail-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.75rem 2rem 3rem;
+      width: 100%;
+    }
+
+    /* Hero Card */
+    .objective-hero {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.75rem 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .hero-top-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .hero-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin: 0 0 0.5rem 0;
+      line-height: 1.3;
+    }
+
+    .badge-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.22rem 0.6rem;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-company { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge-team { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-individual { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    .badge-status-active { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+    .badge-status-completed { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .badge-status-archived { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+    .badge-status-draft { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+
+    .hero-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+
+    .hero-desc {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Overall Progress Box */
+    .hero-progress-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 1.15rem 1.4rem;
+    }
+
+    .hero-progress-labels {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.5rem;
+    }
+
+    .hero-progress-pct {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: var(--color-primary);
+    }
+
+    .hero-progress-track {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .hero-progress-fill {
+      height: 100%;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #0284c7, #38bdf8);
+      transition: width 0.4s ease;
+    }
+
+    /* Section Headers */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 2.25rem 0 1rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .section-header h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Key Result Cards */
+    .kr-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      transition: border-color 0.15s ease;
+    }
+
+    .kr-card:hover {
+      border-color: #475569;
+    }
+
+    .kr-top-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .kr-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin: 0 0 0.35rem 0;
+    }
+
+    .kr-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+
+    .badge-kr-type {
+      background: rgba(148, 163, 184, 0.15);
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+    }
+
+    .badge-kr-status {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .kr-status-ontrack { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .kr-status-atrisk { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .kr-status-offtrack { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .kr-status-completed { background: rgba(16, 185, 129, 0.25); color: #10b981; }
+
+    .kr-progress-row {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .kr-track {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .kr-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .fill-high { background: linear-gradient(90deg, #10b981, #34d399); }
+    .fill-mid { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .fill-low { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+    .kr-metrics {
+      min-width: 130px;
+      text-align: right;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .btn-checkin {
+      background: #1e293b;
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-checkin:hover {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    /* Alignment Hierarchy Cards */
+    .alignment-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    .alignment-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+    }
+
+    .alignment-card h3 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 0 0 0.65rem 0;
+    }
+
+    /* History Table */
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      text-align: left;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .history-table th {
+      background: #0f172a;
+      color: #cbd5e1;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-card);
+      font-weight: 600;
+    }
+
+    .history-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1.5rem;
+    }
+
+    .modal-box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 580px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
+      padding: 1.75rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.15rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 0.35rem;
+    }
+
+    .form-control {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 0.55rem 0.85rem;
+      color: #f8fafc;
+      font-size: 0.88rem;
+      font-family: inherit;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #38bdf8;
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 70px;
+    }
+
+    .checkin-history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin-top: 1rem;
+    }
+
+    .checkin-history-table th {
+      color: #94a3b8;
+      border-bottom: 1px solid #334155;
+      padding: 0.45rem 0.5rem;
+      text-align: left;
+    }
+
+    .checkin-history-table td {
+      color: #cbd5e1;
+      padding: 0.45rem 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/okr-dashboard.html" class="brand-title">
+        <span>🎯</span> Mahi Tech OKR
+      </a>
+      <div class="nav-breadcrumbs">
+        <a href="/okr-dashboard.html" class="btn-nav" style="padding:0.25rem 0.6rem; font-size:0.8rem;">← Back to Dashboard</a>
+        <span>/</span>
+        <span id="breadcrumbLevel">Objective</span>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <button type="button" class="btn-nav" id="btnAddKr" style="display:inline-flex;">
+        <span>+</span> Add Key Result
+      </button>
+
+      <button type="button" class="btn-danger" id="btnArchiveObj" style="display:none;">
+        Archive Objective
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="detail-container">
+
+    <!-- Objective Overview Hero -->
+    <section class="objective-hero" id="objectiveHero" aria-label="Objective Overview">
+      <div class="hero-top-row">
+        <div>
+          <h1 class="hero-title" id="objTitle">Loading Objective...</h1>
+          <div class="hero-meta-row">
+            <span class="badge-pill" id="badgeLevel">LEVEL</span>
+            <span class="badge-pill" id="badgeStatus">STATUS</span>
+            <span>📅 Cycle: <strong id="metaCycle" style="color:#f8fafc;">Q1-2026</strong></span>
+            <span>👤 Owner: <strong id="metaOwner" style="color:#f8fafc;">Team</strong></span>
+            <span id="metaProjectWrap" style="display:none;">📂 Project: <strong id="metaProject" style="color:#38bdf8;">--</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-desc" id="objDesc">Fetching objective details and key results...</div>
+
+      <!-- Hero Progress Box -->
+      <div class="hero-progress-box">
+        <div class="hero-progress-labels">
+          <span style="font-weight:600; color:#94a3b8; font-size:0.85rem;">Overall Objective Progress (Server-Calculated)</span>
+          <span class="hero-progress-pct" id="objProgressPct">0%</span>
+        </div>
+        <div class="hero-progress-track">
+          <div class="hero-progress-fill" id="objProgressFill" style="width: 0%;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: Key Results -->
+    <section aria-labelledby="headingKRs">
+      <div class="section-header">
+        <h2 id="headingKRs">
+          <span>🔑</span> Key Results (<span id="krCountBadge">0</span>)
+        </h2>
+      </div>
+
+      <div id="krListContainer">
+        <div style="text-align:center; padding:2rem; color:#94a3b8;">Loading key results...</div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: Alignment Hierarchy -->
+    <section aria-labelledby="headingAlignment">
+      <div class="section-header">
+        <h2 id="headingAlignment">
+          <span>🌳</span> Alignment Hierarchy
+        </h2>
+      </div>
+
+      <div class="alignment-grid">
+        <div class="alignment-card">
+          <h3>Parent Objective (Aligned Up)</h3>
+          <div id="parentObjectiveView">
+            <div style="color:#94a3b8; font-size:0.85rem;">No parent objective (Top-level goal)</div>
+          </div>
+        </div>
+
+        <div class="alignment-card">
+          <h3>Child Objectives (<span id="childCountBadge">0</span>)</h3>
+          <div id="childObjectivesView">
+            <div style="color:#94a3b8; font-size:0.85rem;">No child objectives aligned under this goal</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: Change Audit History -->
+    <section aria-labelledby="headingHistory" style="margin-top: 2rem;">
+      <div class="section-header">
+        <h2 id="headingHistory">
+          <span>📜</span> Change Audit Trail (Append-Only)
+        </h2>
+      </div>
+
+      <table class="history-table" id="historyTable">
+        <thead>
+          <tr>
+            <th>Changed At</th>
+            <th>Changed By</th>
+            <th>Field Changed</th>
+            <th>Old Value</th>
+            <th>New Value</th>
+          </tr>
+        </thead>
+        <tbody id="historyTableBody">
+          <tr><td colspan="5" style="text-align:center; color:#94a3b8;">Loading history...</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </main>
+
+  <!-- VIEW 3: Check-in Modal -->
+  <div class="modal-backdrop" id="checkinModal" role="dialog" aria-modal="true" aria-labelledby="checkinModalTitle">
+    <div class="modal-box">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+        <h3 id="checkinModalTitle" style="margin:0; font-family:'Outfit', sans-serif; font-size:1.2rem; color:#38bdf8;">
+          Submit Progress Check-in
+        </h3>
+        <button type="button" id="btnCloseCheckinModal" style="background:none; border:none; color:#94a3b8; font-size:1.25rem; cursor:pointer;">✕</button>
+      </div>
+
+      <div id="checkinKrInfo" style="background:rgba(15, 23, 42, 0.6); padding:0.85rem 1rem; border-radius:8px; margin-bottom:1.25rem; border:1px solid #334155;">
+        <div style="font-weight:700; color:#f8fafc; font-size:0.95rem;" id="checkinKrTitle">Key Result Title</div>
+        <div style="font-size:0.8rem; color:#94a3b8; margin-top:0.25rem;" id="checkinKrMeta">Target: 100 | Current: 0</div>
+      </div>
+
+      <form id="checkinForm">
+        <input type="hidden" id="checkinKrId">
+
+        <div class="form-group" id="groupNewValue">
+          <label for="inputCheckinNewVal" id="labelNewValue">New Current Value *</label>
+          <input type="number" step="any" id="inputCheckinNewVal" class="form-control" required placeholder="Enter updated value...">
+          <div id="boolToggleHint" style="display:none; font-size:0.75rem; color:#38bdf8; margin-top:0.35rem;">
+            BOOLEAN Key Result: Value must be 1 (Complete) or 0 (Not Complete).
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="selectCheckinConfidence">Confidence *</label>
+          <select id="selectCheckinConfidence" class="form-control" required>
+            <option value="HIGH">HIGH (On track, no blockers)</option>
+            <option value="MEDIUM" selected>MEDIUM (Progressing, monitor risks)</option>
+            <option value="LOW">LOW (High risk of missing target)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="inputCheckinNote">Note / Update Commentary (Optional)</label>
+          <textarea id="inputCheckinNote" class="form-control" placeholder="What progress was made? Any hurdles or milestones?"></textarea>
+        </div>
+
+        <div id="checkinError" style="color:#ef4444; font-size:0.82rem; margin-bottom:1rem; display:none;"></div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+          <button type="button" class="btn-nav" id="btnCancelCheckin">Cancel</button>
+          <button type="submit" class="btn-primary" id="btnSubmitCheckin">Submit Check-in</button>
+        </div>
+      </form>
+
+      <!-- Previous Check-ins List (Inside Modal) -->
+      <div style="margin-top: 1.75rem; border-top:1px solid #334155; padding-top:1.25rem;">
+        <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:#e2e8f0;">Previous Check-ins History</h4>
+        <table class="checkin-history-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Submitter</th>
+              <th>Transition</th>
+              <th>Confidence</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="checkinsHistoryBody">
+            <tr><td colspan="5" style="text-align:center; color:#94a3b8;">No check-ins yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Key Result Modal -->
+  <div class="modal-backdrop" id="addKrModal" role="dialog" aria-modal="true" aria-labelledby="addKrModalTitle">
+    <div class="modal-box">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+        <h3 id="addKrModalTitle" style="margin:0; font-family:'Outfit', sans-serif; font-size:1.25rem;">Add Key Result</h3>
+        <button type="button" id="btnCloseAddKrModal" style="background:none; border:none; color:#94a3b8; font-size:1.25rem; cursor:pointer;">✕</button>
+      </div>
+
+      <form id="addKrForm">
+        <div class="form-group">
+          <label for="inputKrTitle">Title *</label>
+          <input type="text" id="inputKrTitle" class="form-control" required placeholder="e.g. Achieve 99.99% service uptime">
+        </div>
+
+        <div class="form-group">
+          <label for="inputKrDesc">Description</label>
+          <textarea id="inputKrDesc" class="form-control" placeholder="Specific criteria for measuring this key result..."></textarea>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+          <div class="form-group">
+            <label for="selectKrType">Type *</label>
+            <select id="selectKrType" class="form-control" required>
+              <option value="PERCENTAGE">PERCENTAGE (%)</option>
+              <option value="NUMBER">NUMBER</option>
+              <option value="BOOLEAN">BOOLEAN (Yes/No)</option>
+              <option value="MILESTONE">MILESTONE</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="groupTargetValue">
+            <label for="inputKrTarget">Target Value *</label>
+            <input type="number" step="any" id="inputKrTarget" class="form-control" required value="100">
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+          <div class="form-group">
+            <label for="inputKrUnit">Unit (e.g. %, users, clients)</label>
+            <input type="text" id="inputKrUnit" class="form-control" value="%">
+          </div>
+
+          <div class="form-group">
+            <label for="inputKrDueDate">Due Date</label>
+            <input type="date" id="inputKrDueDate" class="form-control">
+          </div>
+        </div>
+
+        <div id="addKrError" style="color:#ef4444; font-size:0.82rem; margin-bottom:1rem; display:none;"></div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
+          <button type="button" class="btn-nav" id="btnCancelAddKr">Cancel</button>
+          <button type="submit" class="btn-primary" id="btnSubmitAddKr">Save Key Result</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token') || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const objectiveId = urlParams.get('id');
+
+    let currentObjective = null;
+
+    async function loadObjectiveDetail() {
+      if (!objectiveId) {
+        document.getElementById('objTitle').textContent = 'Error: No Objective ID provided';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/okr/objective/${objectiveId}`, { headers });
+        if (!res.ok) {
+          const errData = await res.json();
+          document.getElementById('objTitle').textContent = `Error: ${errData.error || 'Failed to fetch objective'}`;
+          return;
+        }
+
+        currentObjective = await res.json();
+        renderObjective(currentObjective);
+        loadHistory();
+      } catch (err) {
+        console.error('Error fetching objective detail:', err);
+      }
+    }
+
+    function renderObjective(obj) {
+      document.getElementById('objTitle').textContent = obj.title;
+      document.getElementById('objDesc').textContent = obj.description || 'No description provided.';
+      document.getElementById('breadcrumbLevel').textContent = `${obj.level} Objective #${obj.id}`;
+
+      // Badges
+      const badgeLevel = document.getElementById('badgeLevel');
+      badgeLevel.textContent = obj.level;
+      badgeLevel.className = `badge-pill badge-${obj.level.toLowerCase()}`;
+
+      const badgeStatus = document.getElementById('badgeStatus');
+      badgeStatus.textContent = obj.status;
+      badgeStatus.className = `badge-pill badge-status-${obj.status.toLowerCase()}`;
+
+      document.getElementById('metaCycle').textContent = obj.cycle;
+      document.getElementById('metaOwner').textContent = obj.owner_name || 'Team';
+
+      if (obj.project_title) {
+        document.getElementById('metaProject').textContent = obj.project_title;
+        document.getElementById('metaProjectWrap').style.display = 'inline';
+      }
+
+      // Progress
+      const pct = Number(obj.progress_pct) || 0;
+      document.getElementById('objProgressPct').textContent = `${pct}%`;
+      document.getElementById('objProgressFill').style.width = `${pct}%`;
+
+      // Archive button visibility
+      const btnArchive = document.getElementById('btnArchiveObj');
+      if (obj.status !== 'ARCHIVED') {
+        btnArchive.style.display = 'inline-flex';
+      } else {
+        btnArchive.style.display = 'none';
+      }
+
+      // Render KRs
+      renderKeyResults(obj.key_results || []);
+
+      // Render Alignment
+      renderAlignment(obj);
+    }
+
+    function renderKeyResults(krs) {
+      document.getElementById('krCountBadge').textContent = krs.length;
+      const container = document.getElementById('krListContainer');
+
+      if (!krs || krs.length === 0) {
+        container.innerHTML = '<div style="background:#1e293b; border:1px dashed #334155; border-radius:8px; padding:2rem; text-align:center; color:#94a3b8;">No Key Results attached to this objective. Click "+ Add Key Result" above to define one.</div>';
+        return;
+      }
+
+      container.innerHTML = krs.map(kr => {
+        const progress = Number(kr.progress_pct) || 0;
+        let fillClass = 'fill-high';
+        if (progress < 40) fillClass = 'fill-low';
+        else if (progress < 70) fillClass = 'fill-mid';
+
+        const statusClass = `kr-status-${(kr.status || 'ON_TRACK').toLowerCase().replace('_', '')}`;
+
+        return `
+          <div class="kr-card" id="kr-card-${kr.id}">
+            <div class="kr-top-row">
+              <div>
+                <h3 class="kr-title">${escapeHTML(kr.title)}</h3>
+                <div class="kr-meta">
+                  <span class="badge-kr-type">${kr.type}</span>
+                  <span class="badge-kr-status ${statusClass}">${escapeHTML(kr.status || 'ON_TRACK')}</span>
+                  <span>👤 Assignee: <strong>${escapeHTML(kr.assignee_name || 'Unassigned')}</strong></span>
+                  ${kr.due_date ? `<span>📅 Due: <strong>${escapeHTML(kr.due_date.substring(0, 10))}</strong></span>` : ''}
+                </div>
+              </div>
+
+              <div>
+                <button type="button" class="btn-checkin" id="btnCheckin-${kr.id}" onclick="openCheckinModal(${kr.id})">
+                  <span>⚡</span> Submit Check-in
+                </button>
+              </div>
+            </div>
+
+            ${kr.description ? `<div style="font-size:0.83rem; color:#94a3b8; line-height:1.4;">${escapeHTML(kr.description)}</div>` : ''}
+
+            <div class="kr-progress-row">
+              <div class="kr-track">
+                <div class="kr-fill ${fillClass}" style="width: ${progress}%;"></div>
+              </div>
+              <div class="kr-metrics">
+                <span>${kr.current_value} / ${kr.target_value} ${escapeHTML(kr.unit || '')} (${progress}%)</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAlignment(obj) {
+      // Parent
+      const parentContainer = document.getElementById('parentObjectiveView');
+      if (obj.parent_objective_id) {
+        parentContainer.innerHTML = `
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:6px; padding:0.85rem; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-weight:700; color:#f8fafc; font-size:0.9rem;">${escapeHTML(obj.parent_title || `Objective #${obj.parent_objective_id}`)}</div>
+              <span style="font-size:0.75rem; color:#38bdf8;">Aligned Parent Goal</span>
+            </div>
+            <a href="/okr-objective-detail.html?id=${obj.parent_objective_id}" class="btn-nav" style="padding:0.3rem 0.6rem; font-size:0.75rem;">View ↗</a>
+          </div>
+        `;
+      } else {
+        parentContainer.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem;">No parent objective (Top-level goal)</div>';
+      }
+
+      // Children
+      const childContainer = document.getElementById('childObjectivesView');
+      const children = obj.child_objectives || [];
+      document.getElementById('childCountBadge').textContent = children.length;
+
+      if (children.length > 0) {
+        childContainer.innerHTML = children.map(c => `
+          <div style="background:#0f172a; border:1px solid #334155; border-radius:6px; padding:0.75rem 1rem; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-weight:700; color:#f8fafc; font-size:0.88rem;">${escapeHTML(c.title)}</div>
+              <div style="font-size:0.75rem; color:#94a3b8;">${c.level} | ${c.progress_pct || 0}% Progress</div>
+            </div>
+            <a href="/okr-objective-detail.html?id=${c.id}" class="btn-nav" style="padding:0.3rem 0.6rem; font-size:0.75rem;">View ↗</a>
+          </div>
+        `).join('');
+      } else {
+        childContainer.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem;">No child objectives aligned under this goal</div>';
+      }
+    }
+
+    async function loadHistory() {
+      try {
+        const res = await fetch(`/api/okr/history/OBJECTIVE/${objectiveId}`, { headers });
+        if (!res.ok) return;
+        const history = await res.json();
+        const tbody = document.getElementById('historyTableBody');
+
+        if (!history || history.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">No recorded changes.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = history.map(h => `
+          <tr>
+            <td>${h.changed_at ? h.changed_at.substring(0, 19).replace('T', ' ') : '--'}</td>
+            <td><strong>${escapeHTML(h.user_name || `User #${h.changed_by}`)}</strong></td>
+            <td><code style="color:#38bdf8;">${escapeHTML(h.field_changed)}</code></td>
+            <td style="color:#94a3b8;">${escapeHTML(h.old_value ?? '—')}</td>
+            <td style="color:#34d399;">${escapeHTML(h.new_value ?? '—')}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load history:', err);
+      }
+    }
+
+    // View 3: Check-in Modal Interaction
+    window.openCheckinModal = async function(krId) {
+      if (!currentObjective) return;
+      const kr = (currentObjective.key_results || []).find(k => k.id === krId);
+      if (!kr) return;
+
+      document.getElementById('checkinKrId').value = kr.id;
+      document.getElementById('checkinKrTitle').textContent = kr.title;
+      document.getElementById('checkinKrMeta').textContent = `Type: ${kr.type} | Target: ${kr.target_value} ${kr.unit || ''} | Current: ${kr.current_value}`;
+      document.getElementById('inputCheckinNewVal').value = kr.current_value;
+      document.getElementById('checkinError').style.display = 'none';
+
+      const boolHint = document.getElementById('boolToggleHint');
+      if (kr.type === 'BOOLEAN') {
+        boolHint.style.display = 'block';
+      } else {
+        boolHint.style.display = 'none';
+      }
+
+      // Load previous check-ins
+      loadCheckinHistory(kr.id);
+
+      document.getElementById('checkinModal').style.display = 'flex';
+    };
+
+    async function loadCheckinHistory(krId) {
+      const tbody = document.getElementById('checkinsHistoryBody');
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Loading past check-ins...</td></tr>';
+
+      try {
+        const res = await fetch(`/api/okr/checkins/${krId}`, { headers });
+        if (!res.ok) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">No check-ins available.</td></tr>';
+          return;
+        }
+
+        const list = await res.json();
+        if (!list || list.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">No previous check-ins.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = list.map(c => `
+          <tr>
+            <td>${c.created_at ? c.created_at.substring(0, 16).replace('T', ' ') : '--'}</td>
+            <td>${escapeHTML(c.submitter_name || 'Member')}</td>
+            <td>${c.previous_value} → <strong>${c.new_value}</strong></td>
+            <td><span style="color:#38bdf8;">${c.confidence}</span></td>
+            <td>${escapeHTML(c.note || '—')}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#ef4444;">Failed to load check-ins.</td></tr>';
+      }
+    }
+
+    // Modal Close Handlers
+    const checkinModal = document.getElementById('checkinModal');
+    document.getElementById('btnCloseCheckinModal').addEventListener('click', () => checkinModal.style.display = 'none');
+    document.getElementById('btnCancelCheckin').addEventListener('click', () => checkinModal.style.display = 'none');
+
+    // Submit Check-in
+    document.getElementById('checkinForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const krId = Number(document.getElementById('checkinKrId').value);
+      const new_value = Number(document.getElementById('inputCheckinNewVal').value);
+      const confidence = document.getElementById('selectCheckinConfidence').value;
+      const note = document.getElementById('inputCheckinNote').value.trim();
+
+      try {
+        const res = await fetch('/api/okr/checkin/submit', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ key_result_id: krId, new_value, confidence, note })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const errEl = document.getElementById('checkinError');
+          errEl.textContent = data.error || 'Failed to submit check-in';
+          errEl.style.display = 'block';
+          return;
+        }
+
+        checkinModal.style.display = 'none';
+        document.getElementById('checkinForm').reset();
+        // Immediately reload objective detail to reflect updated progress
+        loadObjectiveDetail();
+      } catch (err) {
+        const errEl = document.getElementById('checkinError');
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+      }
+    });
+
+    // Add Key Result Modal Handlers
+    const addKrModal = document.getElementById('addKrModal');
+    document.getElementById('btnAddKr').addEventListener('click', () => {
+      document.getElementById('addKrError').style.display = 'none';
+      addKrModal.style.display = 'flex';
+    });
+    document.getElementById('btnCloseAddKrModal').addEventListener('click', () => addKrModal.style.display = 'none');
+    document.getElementById('btnCancelAddKr').addEventListener('click', () => addKrModal.style.display = 'none');
+
+    document.getElementById('selectKrType').addEventListener('change', (e) => {
+      const type = e.target.value;
+      const unitInput = document.getElementById('inputKrUnit');
+      const targetInput = document.getElementById('inputKrTarget');
+      if (type === 'PERCENTAGE') {
+        unitInput.value = '%';
+        targetInput.value = 100;
+      } else if (type === 'BOOLEAN') {
+        unitInput.value = '';
+        targetInput.value = 1;
+      } else if (type === 'MILESTONE') {
+        unitInput.value = 'milestones';
+        targetInput.value = 4;
+      } else {
+        unitInput.value = '';
+        targetInput.value = 50;
+      }
+    });
+
+    document.getElementById('addKrForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('inputKrTitle').value.trim();
+      const description = document.getElementById('inputKrDesc').value.trim();
+      const type = document.getElementById('selectKrType').value;
+      const target_value = Number(document.getElementById('inputKrTarget').value);
+      const unit = document.getElementById('inputKrUnit').value.trim();
+      const due_date = document.getElementById('inputKrDueDate').value || null;
+
+      try {
+        const res = await fetch('/api/okr/kr/create', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            objective_id: Number(objectiveId),
+            title,
+            description,
+            type,
+            target_value,
+            unit,
+            due_date
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          const errEl = document.getElementById('addKrError');
+          errEl.textContent = data.error || 'Failed to add key result';
+          errEl.style.display = 'block';
+          return;
+        }
+
+        addKrModal.style.display = 'none';
+        document.getElementById('addKrForm').reset();
+        loadObjectiveDetail();
+      } catch (err) {
+        const errEl = document.getElementById('addKrError');
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+      }
+    });
+
+    // Archive Objective Handler
+    document.getElementById('btnArchiveObj').addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to archive this objective? It will become read-only.')) return;
+      try {
+        const res = await fetch(`/api/okr/objective/${objectiveId}/archive`, {
+          method: 'PATCH',
+          headers
+        });
+        if (res.ok) {
+          loadObjectiveDetail();
+        } else {
+          const d = await res.json();
+          alert(d.error || 'Failed to archive objective');
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag));
+    }
+
+    document.addEventListener('DOMContentLoaded', loadObjectiveDetail);
+  </script>
+</body>
+</html>

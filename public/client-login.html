@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Portal Sign In — Mahi Tech Group</title>
+  <meta name="description" content="Secure Client Portal sign-in for Mahi Tech Group partners and enterprise clients.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-primary-hover: #0284c7;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-image: radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.07) 0%, transparent 60%);
+    }
+
+    .auth-container {
+      width: 100%;
+      max-width: 440px;
+      padding: 1.5rem;
+    }
+
+    .auth-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 2.25rem 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .brand-badge {
+      display: inline-block;
+      padding: 0.35rem 0.75rem;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 9999px;
+      color: var(--color-primary);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+      color: var(--text-main);
+    }
+
+    .brand-subtitle {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin: 0;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      color: var(--text-main);
+      font-size: 0.9375rem;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      background: var(--color-primary);
+      color: #04101e;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 0.5rem;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: var(--color-primary-hover);
+      color: #ffffff;
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      margin-bottom: 1.25rem;
+      display: none;
+    }
+
+    .alert-danger {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .alert-warning {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fde68a;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    .auth-footer a {
+      color: var(--color-primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .auth-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="brand-header">
+        <div class="brand-badge">Client Portal</div>
+        <h1 class="brand-title">Mahi Tech Group</h1>
+        <p class="brand-subtitle">Sign in to track deliverables, milestones, and orders</p>
+      </div>
+
+      <div id="alertBox" class="alert alert-danger" role="alert"></div>
+      <div id="warningBox" class="alert alert-warning" role="alert"></div>
+
+      <form id="loginForm" autocomplete="off">
+        <div class="form-group">
+          <label class="form-label" for="email">Work Email</label>
+          <input type="email" id="email" class="form-control" placeholder="client@company.com" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••••••" required>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn-submit">Sign In to Portal</button>
+      </form>
+
+      <div class="auth-footer">
+        First time here? <a href="/client-invite.html" id="inviteLink">Accept your invitation</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Escape HTML to prevent XSS injection
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    let failedAttempts = 0;
+
+    // Auto-redirect if client is already authenticated with active session
+    (async function checkExistingAuth() {
+      const clientToken = localStorage.getItem('clientToken');
+      if (clientToken) {
+        try {
+          const res = await fetch('/api/client/auth/me', {
+            headers: { 'Authorization': 'Bearer ' + clientToken }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.client?.role === 'CLIENT') {
+              window.location.replace('/client-dashboard.html');
+            }
+          }
+        } catch (e) {
+          // Token expired or server unreachable, stay on login page
+        }
+      }
+    })();
+
+    const form = document.getElementById('loginForm');
+    const alertBox = document.getElementById('alertBox');
+    const warningBox = document.getElementById('warningBox');
+    const submitBtn = document.getElementById('submitBtn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertBox.style.display = 'none';
+      warningBox.style.display = 'none';
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      // Client-side UX validation
+      if (!email || !password) {
+        alertBox.textContent = 'Please provide both email and password.';
+        alertBox.style.display = 'block';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in...';
+
+      try {
+        const response = await fetch('/api/client/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.token) {
+          failedAttempts = 0;
+          // Store CLIENT JWT under clientToken — strictly segregated from internal user token
+          localStorage.setItem('clientToken', data.token);
+
+          // Store sanitized client info (never password hash or internal notes)
+          if (data.client) {
+            localStorage.setItem('clientUser', JSON.stringify({
+              id: data.client.id,
+              name: data.client.name,
+              email: data.client.email,
+              company_name: data.client.company_name,
+              role: data.client.role
+            }));
+          }
+
+          window.location.replace('/client-dashboard.html');
+          return;
+        }
+
+        // Handle error responses
+        failedAttempts++;
+        alertBox.textContent = data.error || 'Invalid email or password.';
+        alertBox.style.display = 'block';
+
+        if (response.status === 429) {
+          warningBox.textContent = 'Account temporarily locked. Please wait 15 minutes before retrying.';
+          warningBox.style.display = 'block';
+        } else if (failedAttempts >= 3) {
+          warningBox.textContent = 'Warning: Multiple failed attempts. Accounts are locked after 5 failed attempts.';
+          warningBox.style.display = 'block';
+        }
+
+      } catch (err) {
+        alertBox.textContent = 'Network or connection error. Please try again.';
+        alertBox.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In to Portal';
+      }
+    });
+  </script>
+</body>
+</html>

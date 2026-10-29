@@ -10,16 +10,18 @@ import { loginLimiter, signupLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
-// 0. POST /api/auth/signup (Public with Rate Limiting)
-router.post('/signup', signupLimiter, async (req, res) => {
-  const { name, email, password, phone_number, desired_role, desired_sub_role } = req.body || {};
+// 0. POST /api/auth/signup & POST /api/auth/register (Public with Rate Limiting)
+router.post(['/signup', '/register'], signupLimiter, async (req, res) => {
+  const { name, email, password, phone_number, desired_sub_role } = req.body || {};
+  let desired_role = req.body.desired_role || req.body.role;
+  if (desired_role === 'tester') desired_role = 'producer';
   const ipAddress = req.ip || req.socket.remoteAddress;
 
   if (!name || !email || !password || !desired_role) {
     return res.status(400).json({ error: 'Name, email, password, and desired_role are required' });
   }
 
-  const validDesiredRoles = ['researcher', 'developer', 'producer', 'designer'];
+  const validDesiredRoles = ['researcher', 'developer', 'producer', 'designer', 'admin'];
   if (!validDesiredRoles.includes(desired_role)) {
     return res.status(400).json({
       error: `Invalid desired_role. Must be one of: ${validDesiredRoles.join(', ')}`
@@ -51,6 +53,8 @@ router.post('/signup', signupLimiter, async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, config.BCRYPT_SALT_ROUNDS);
   const userId = crypto.randomUUID();
+  const userStatus = desired_role === 'admin' ? 'active' : 'pending';
+  const userRole = desired_role === 'admin' ? 'admin' : null;
 
   execute(`
     INSERT INTO users (
@@ -58,15 +62,17 @@ router.post('/signup', signupLimiter, async (req, res) => {
       desired_role, desired_sub_role, role, sub_role, status,
       rating_avg, idea_quota_used, quota_reset_date, wallet_balance,
       wallet_frozen, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, 'pending', 0.0, 0, null, 0.0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 0.0, 0, null, 0.0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
   `, [
     userId,
     name.trim(),
     normalizedEmail,
     passwordHash,
     phone_number ? phone_number.trim() : null,
-    desired_role,
-    desired_sub_role || null
+    desired_role === 'admin' ? null : desired_role,
+    desired_sub_role || null,
+    userRole,
+    userStatus
   ]);
 
   logAccess({
@@ -152,6 +158,25 @@ router.post('/login', loginLimiter, async (req, res) => {
 
   logAccess({ userId: user.id, action: 'login', resource: '/api/auth/login', ipAddress });
 
+  // PRD 28: Upsert mobile device token on login if provided
+  if (req.body?.fcm_token || req.body?.device_token) {
+    const mobileToken = req.body.fcm_token || req.body.device_token;
+    const deviceId = req.body.device_id || `device-${user.id.substring(0, 8)}`;
+    const platform = (req.body.platform || req.body.device_type || 'ANDROID').toUpperCase();
+    execute(`
+      INSERT INTO device_tokens (user_id, platform, token, fcm_token, device_type, device_id, is_active, last_seen_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+      ON CONFLICT(user_id, device_id) DO UPDATE SET
+        token = excluded.token,
+        fcm_token = excluded.fcm_token,
+        platform = excluded.platform,
+        device_type = excluded.device_type,
+        is_active = 1,
+        last_seen_at = datetime('now'),
+        updated_at = datetime('now')
+    `, [user.id, platform, mobileToken, mobileToken, platform, deviceId]);
+  }
+
   return res.status(200).json({
     token,
     user: {
@@ -172,6 +197,13 @@ router.post('/logout', authenticate, (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
 
   execute('UPDATE sessions SET is_revoked = 1 WHERE id = ?', [req.session.id]);
+
+  // PRD 28: Deactivate mobile device tokens on logout
+  if (req.body?.device_id) {
+    execute("UPDATE device_tokens SET is_active = 0, updated_at = datetime('now') WHERE user_id = ? AND device_id = ?", [req.user.id, req.body.device_id]);
+  } else {
+    execute("UPDATE device_tokens SET is_active = 0, updated_at = datetime('now') WHERE user_id = ?", [req.user.id]);
+  }
 
   logAccess({ userId: req.user.id, action: 'logout', resource: '/api/auth/logout', ipAddress });
 
@@ -200,6 +232,137 @@ router.post('/refresh', authenticate, (req, res) => {
   logAccess({ userId: user.id, action: 'token_refresh', resource: '/api/auth/refresh', ipAddress });
 
   return res.status(200).json({ token: newToken });
+});
+
+// 4. GET /api/auth/invites/:token (Public - Validate invite token)
+router.get('/invites/:token', (req, res) => {
+  const { token } = req.params;
+  if (!token) {
+    return res.status(400).json({ error: 'Invite token is required' });
+  }
+
+  const invite = queryOne('SELECT * FROM team_invites WHERE token = ?', [token]);
+  if (!invite) {
+    return res.status(404).json({ error: 'Invite not found or invalid' });
+  }
+
+  if (invite.status !== 'pending') {
+    return res.status(400).json({ error: `Invite is no longer active (Status: ${invite.status})` });
+  }
+
+  if (new Date(invite.expires_at) < new Date()) {
+    execute("UPDATE team_invites SET status = 'expired' WHERE id = ?", [invite.id]);
+    return res.status(410).json({ error: 'Invite link has expired. Please request a new invite from your Admin.' });
+  }
+
+  return res.status(200).json({
+    valid: true,
+    invite: {
+      id: invite.id,
+      email: invite.email,
+      role: invite.role,
+      sub_role: invite.sub_role,
+      expires_at: invite.expires_at
+    }
+  });
+});
+
+// 5. POST /api/auth/invites/:token/accept (Public - Member sets password & registers)
+router.post('/invites/:token/accept', async (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { token } = req.params;
+  const { name, password } = req.body || {};
+
+  if (!token) {
+    return res.status(400).json({ error: 'Invite token is required' });
+  }
+
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'Full name is required' });
+  }
+
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+  }
+
+  const invite = queryOne('SELECT * FROM team_invites WHERE token = ?', [token]);
+  if (!invite) {
+    return res.status(404).json({ error: 'Invite not found or invalid' });
+  }
+
+  if (invite.status !== 'pending') {
+    return res.status(400).json({ error: `Invite is no longer active (Status: ${invite.status})` });
+  }
+
+  if (new Date(invite.expires_at) < new Date()) {
+    execute("UPDATE team_invites SET status = 'expired' WHERE id = ?", [invite.id]);
+    return res.status(410).json({ error: 'Invite link has expired' });
+  }
+
+  // Check if an account already exists with this email
+  const existingUser = queryOne('SELECT id FROM users WHERE email = ?', [invite.email]);
+  if (existingUser) {
+    execute("UPDATE team_invites SET status = 'accepted', accepted_at = CURRENT_TIMESTAMP WHERE id = ?", [invite.id]);
+    return res.status(409).json({ error: 'An account with this email already exists' });
+  }
+
+  const newUserId = crypto.randomUUID();
+  const passwordHash = await bcrypt.hash(password, config.BCRYPT_SALT_ROUNDS);
+
+  execute(`
+    INSERT INTO users (
+      id, name, email, password_hash, role, sub_role, status,
+      rating_avg, idea_quota_used, quota_reset_date, wallet_balance,
+      wallet_frozen, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, 'active', 5.0, 0, null, 0.0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  `, [
+    newUserId,
+    name.trim(),
+    invite.email,
+    passwordHash,
+    invite.role || 'developer',
+    invite.sub_role || null
+  ]);
+
+  // Mark invite as accepted
+  execute("UPDATE team_invites SET status = 'accepted', accepted_at = CURRENT_TIMESTAMP WHERE id = ?", [invite.id]);
+
+  // Create active session and issue JWT token
+  const sessionId = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const authToken = jwt.sign(
+    { userId: newUserId, sessionId, role: invite.role || 'developer', email: invite.email },
+    config.JWT_SECRET,
+    { expiresIn: config.JWT_EXPIRES_IN }
+  );
+
+  const deviceInfo = req.headers['user-agent'] || 'Invite Acceptance Flow';
+  execute(
+    `INSERT INTO sessions (id, user_id, token, device_info, ip_address, created_at, expires_at, is_revoked)
+     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 0)`,
+    [sessionId, newUserId, authToken, deviceInfo, ipAddress, expiresAt]
+  );
+
+  logAccess({
+    userId: newUserId,
+    action: 'invite_accepted',
+    resource: `/api/auth/invites/${token}/accept`,
+    ipAddress
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: 'Welcome to the team! Your account is active.',
+    user: {
+      id: newUserId,
+      name: name.trim(),
+      email: invite.email,
+      role: invite.role || 'developer',
+      sub_role: invite.sub_role || null,
+      status: 'active'
+    },
+    token: authToken
+  });
 });
 
 export default router;

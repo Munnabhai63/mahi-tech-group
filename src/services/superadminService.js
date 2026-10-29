@@ -59,7 +59,7 @@ export function getCommandCenterOverview() {
 // LAYER 2: Full Member Directory
 // ===================================================================
 
-export function getAllMembers({ status = null, role = null, search = null, sort_by = 'created_at', order = 'DESC' } = {}) {
+export function getAllMembers({ status = null, role = null, search = null, sort_by = 'created_at', order = 'DESC', limit = 100, offset = 0 } = {}) {
   let sql = `
     SELECT 
       u.id, u.name, u.email, u.phone_number, u.role, u.sub_role,
@@ -97,7 +97,8 @@ export function getAllMembers({ status = null, role = null, search = null, sort_
   const safeSort = allowedSort.includes(sort_by) ? sort_by : 'created_at';
   const safeOrder = String(order).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-  sql += ` ORDER BY ${safeSort} ${safeOrder}`;
+  sql += ` ORDER BY ${safeSort} ${safeOrder} LIMIT ? OFFSET ?`;
+  params.push(Number(limit) || 100, Number(offset) || 0);
 
   const rows = queryAll(sql, params);
   return rows.map(r => ({
@@ -122,9 +123,40 @@ export function getAllMembers({ status = null, role = null, search = null, sort_
 }
 
 export function getMemberDetail(userId) {
-  const members = getAllMembers();
-  const member = members.find(m => m.id === userId);
-  if (!member) return null;
+  const sql = `
+    SELECT 
+      u.id, u.name, u.email, u.phone_number, u.role, u.sub_role,
+      u.desired_role, u.status, u.created_at, u.last_active_at,
+      u.avatar_url, u.bio, u.wallet_frozen,
+      (SELECT COUNT(*) FROM ideas i WHERE i.owner_id = u.id) as ideas_count,
+      (SELECT COUNT(*) FROM project_members pm WHERE pm.user_id = u.id) as projects_count,
+      COALESCE((SELECT SUM(amount) FROM revenue_splits rs WHERE rs.user_id = u.id), 0.0) as total_earnings,
+      (SELECT COUNT(*) FROM meeting_attendance ma WHERE ma.user_id = u.id) as meetings_attended
+    FROM users u
+    WHERE u.id = ?
+  `;
+  const r = queryOne(sql, [userId]);
+  if (!r) return null;
+
+  const member = {
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    phone_number: r.phone_number,
+    role: r.role,
+    sub_role: r.sub_role,
+    desired_role: r.desired_role,
+    status: r.status,
+    created_at: r.created_at,
+    last_active_at: r.last_active_at,
+    avatar_url: r.avatar_url,
+    bio: r.bio,
+    wallet_frozen: Number(r.wallet_frozen || 0),
+    ideas_count: Number(r.ideas_count || 0),
+    projects_count: Number(r.projects_count || 0),
+    total_earnings: Number(r.total_earnings || 0),
+    meetings_attended: Number(r.meetings_attended || 0)
+  };
 
   const ideas_history = queryAll(`
     SELECT id, title, status, created_at
@@ -432,16 +464,158 @@ export function getUserPerformance(userId) {
   };
 }
 
-export function getAllPerformance() {
-  const activeUsers = queryAll("SELECT id FROM users WHERE status = 'active'");
-  const list = [];
-  for (const u of activeUsers) {
-    const perf = getUserPerformance(u.id);
-    if (perf) {
-      const { monthly_breakdown, ...summary } = perf;
-      list.push(summary);
-    }
-  }
+export function getAllPerformance({ limit = 100, offset = 0 } = {}) {
+  const activeUsers = queryAll("SELECT id, name, role, status FROM users WHERE status = 'active' ORDER BY created_at DESC LIMIT ? OFFSET ?", [Number(limit) || 100, Number(offset) || 0]);
+  if (!activeUsers.length) return [];
+
+  const userIds = activeUsers.map(u => u.id);
+  const placeholders = userIds.map(() => '?').join(',');
+  const weights = getPerformanceConfig();
+
+  // 1. Batch Ideas
+  const ideasRows = queryAll(`
+    SELECT owner_id,
+           COUNT(*) as ideas_submitted,
+           SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) as ideas_approved,
+           SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END) as ideas_rejected
+    FROM ideas
+    WHERE owner_id IN (${placeholders}) AND status != 'DRAFT'
+    GROUP BY owner_id
+  `, userIds);
+  const ideasMap = new Map(ideasRows.map(r => [r.owner_id, r]));
+
+  // 2. Batch Tasks
+  const tasksRows = queryAll(`
+    SELECT assigned_to,
+           COUNT(*) as tasks_assigned,
+           SUM(CASE WHEN status = 'DONE' THEN 1 ELSE 0 END) as tasks_completed,
+           SUM(CASE WHEN status = 'BLOCKED' THEN 1 ELSE 0 END) as tasks_overdue,
+           AVG(CASE WHEN status = 'DONE' THEN (julianday(COALESCE(completed_at, created_at)) - julianday(created_at)) ELSE NULL END) as avg_days
+    FROM project_tasks
+    WHERE assigned_to IN (${placeholders})
+    GROUP BY assigned_to
+  `, userIds);
+  const tasksMap = new Map(tasksRows.map(r => [r.assigned_to, r]));
+
+  // 3. Batch Voting
+  const votableIdeasRow = queryOne("SELECT COUNT(*) as cnt FROM ideas WHERE status IN ('APPROVED', 'REJECTED', 'REVISE', 'PENDING_REVIEW')");
+  const total_votable = Number(votableIdeasRow?.cnt || 0);
+  const votesRows = queryAll(`
+    SELECT voter_id, COUNT(*) as votes_cast
+    FROM votes
+    WHERE voter_id IN (${placeholders})
+    GROUP BY voter_id
+  `, userIds);
+  const votesMap = new Map(votesRows.map(r => [r.voter_id, Number(r.votes_cast || 0)]));
+
+  // 4. Batch Meetings
+  const totalMeetingsRow = queryOne("SELECT COUNT(*) as cnt FROM meetings");
+  const total_meetings = Number(totalMeetingsRow?.cnt || 0);
+  const attendanceRows = queryAll(`
+    SELECT user_id, COUNT(*) as attended
+    FROM meeting_attendance
+    WHERE user_id IN (${placeholders})
+    GROUP BY user_id
+  `, userIds);
+  const attendanceMap = new Map(attendanceRows.map(r => [r.user_id, Number(r.attended || 0)]));
+
+  // 5. Batch Coworking
+  const coworkingRows = queryAll(`
+    SELECT user_id, COUNT(*) as sessions
+    FROM room_participants
+    WHERE user_id IN (${placeholders})
+    GROUP BY user_id
+  `, userIds);
+  const coworkingMap = new Map(coworkingRows.map(r => [r.user_id, Number(r.sessions || 0)]));
+
+  // 6. Batch Revenue
+  const revGenRows = queryAll(`
+    SELECT p.owner_id, COALESCE(SUM(re.amount), 0) as total
+    FROM revenue_events re
+    JOIN projects p ON re.project_id = p.id
+    WHERE p.owner_id IN (${placeholders})
+    GROUP BY p.owner_id
+  `, userIds);
+  const revGenMap = new Map(revGenRows.map(r => [r.owner_id, Number(r.total || 0)]));
+
+  const revEarnedRows = queryAll(`
+    SELECT user_id, COALESCE(SUM(amount), 0) as total
+    FROM revenue_splits
+    WHERE user_id IN (${placeholders})
+    GROUP BY user_id
+  `, userIds);
+  const revEarnedMap = new Map(revEarnedRows.map(r => [r.user_id, Number(r.total || 0)]));
+
+  const maxTeamRevRow = queryOne(`
+    SELECT COALESCE(MAX(team_sum), 0) as max_rev 
+    FROM (SELECT SUM(amount) as team_sum FROM revenue_splits GROUP BY user_id)
+  `);
+  const max_team_revenue = Number(maxTeamRevRow?.max_rev || 0);
+
+  const list = activeUsers.map(user => {
+    const ideasData = ideasMap.get(user.id) || {};
+    const ideas_submitted = Number(ideasData.ideas_submitted || 0);
+    const ideas_approved = Number(ideasData.ideas_approved || 0);
+    const ideas_rejected = Number(ideasData.ideas_rejected || 0);
+    const idea_approval_rate = ideas_submitted > 0 ? Number(((ideas_approved / ideas_submitted) * 100).toFixed(1)) : 0.0;
+
+    const taskData = tasksMap.get(user.id) || {};
+    const tasks_assigned = Number(taskData.tasks_assigned || 0);
+    const tasks_completed = Number(taskData.tasks_completed || 0);
+    const tasks_overdue = Number(taskData.tasks_overdue || 0);
+    const task_completion_rate = tasks_assigned > 0 ? Number(((tasks_completed / tasks_assigned) * 100).toFixed(1)) : 0.0;
+    const avg_task_completion_days = taskData.avg_days !== null && taskData.avg_days !== undefined
+      ? Number(Number(taskData.avg_days).toFixed(1))
+      : null;
+
+    const votes_cast = votesMap.get(user.id) || 0;
+    const voting_participation_rate = total_votable > 0
+      ? Number(Math.min(100, (votes_cast / total_votable) * 100).toFixed(1))
+      : 0.0;
+
+    const meetings_attended = attendanceMap.get(user.id) || 0;
+    const meeting_attendance_rate = total_meetings > 0
+      ? Number(Math.min(100, (meetings_attended / total_meetings) * 100).toFixed(1))
+      : 0.0;
+
+    const coworking_sessions_count = coworkingMap.get(user.id) || 0;
+    const revenue_generated = revGenMap.get(user.id) || 0;
+    const revenue_earned = revEarnedMap.get(user.id) || 0;
+    const revenue_ratio = max_team_revenue > 0 ? Math.min(1.0, revenue_earned / max_team_revenue) : 0.0;
+
+    const taskComponent = (task_completion_rate / 100) * weights.performance_weight_task;
+    const ideaComponent = (idea_approval_rate / 100) * weights.performance_weight_idea;
+    const votingComponent = (voting_participation_rate / 100) * weights.performance_weight_voting;
+    const meetingComponent = (meeting_attendance_rate / 100) * weights.performance_weight_meeting;
+    const revenueComponent = revenue_ratio * weights.performance_weight_revenue;
+
+    const rawComposite = taskComponent + ideaComponent + votingComponent + meetingComponent + revenueComponent;
+    const composite_score = Number(Math.max(0, Math.min(1, rawComposite)).toFixed(2));
+
+    return {
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      status: user.status,
+      ideas_submitted,
+      ideas_approved,
+      ideas_rejected,
+      idea_approval_rate,
+      tasks_assigned,
+      tasks_completed,
+      tasks_overdue,
+      task_completion_rate,
+      avg_task_completion_days,
+      voting_participation_rate,
+      meeting_attendance_rate,
+      coworking_sessions_count,
+      revenue_generated,
+      revenue_earned,
+      composite_score,
+      trend: 'stable'
+    };
+  });
+
   list.sort((a, b) => b.composite_score - a.composite_score);
   return list;
 }
@@ -465,7 +639,7 @@ export function getPerformanceLeaderboard() {
 /**
  * List all ideas with vote counts, owner name, revenue clock start, fan-out summary
  */
-export function listAllIdeasCommand() {
+export function listAllIdeasCommand({ limit = 100, offset = 0 } = {}) {
   const ideas = queryAll(`
     SELECT i.*, 
            u.name as owner_name, 
@@ -481,7 +655,8 @@ export function listAllIdeasCommand() {
     LEFT JOIN projects p ON p.idea_id = i.id
     LEFT JOIN users kb ON i.killed_by = kb.id
     ORDER BY i.created_at DESC
-  `);
+    LIMIT ? OFFSET ?
+  `, [Number(limit) || 100, Number(offset) || 0]);
 
   return ideas.map(idea => {
     const total = Number(idea.tasks_total || 0);

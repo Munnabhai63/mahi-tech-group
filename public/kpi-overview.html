@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Company KPI Overview — Mahi Tech Group</title>
+  <meta name="description" content="Company-wide key performance indicators, real-time snapshot trends, threshold alerting, and health metrics.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-accent: #818cf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .badge-alert-count {
+      background: var(--color-danger);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .btn-nav {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-nav:hover {
+      background: #273549;
+      border-color: var(--color-primary);
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #04121e;
+      border: 1px solid transparent;
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #67e8f9;
+    }
+
+    .btn-success {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid var(--color-success);
+      color: var(--color-success);
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-success:hover {
+      background: rgba(16, 185, 129, 0.3);
+    }
+
+    .app-main {
+      flex: 1;
+      padding: 1.75rem;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin: 0 0 0.35rem 0;
+      color: var(--text-main);
+    }
+
+    .page-subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    /* KPI Summary Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--color-primary);
+      box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+    }
+
+    .kpi-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .kpi-name {
+      font-weight: 600;
+      font-size: 0.92rem;
+      color: var(--text-main);
+      line-height: 1.3;
+    }
+
+    .badge-status {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .badge-on-track {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--color-success);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .badge-at-risk {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--color-warning);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    .badge-critical {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--color-danger);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .kpi-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .kpi-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .kpi-unit {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .kpi-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      padding-top: 0.25rem;
+      border-top: 1px solid var(--border-light);
+    }
+
+    .trend-arrow {
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .trend-up {
+      color: var(--color-success);
+    }
+
+    .trend-down {
+      color: var(--color-danger);
+    }
+
+    .trend-flat {
+      color: var(--text-muted);
+    }
+
+    /* Sparkline inside card */
+    .sparkline-wrap {
+      height: 38px;
+      width: 100%;
+      margin-top: 0.25rem;
+    }
+
+    /* Access Denied Card */
+    .access-denied-box {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      color: #fca5a5;
+      display: none;
+    }
+
+    /* Modal Drill-Down */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-content {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      max-width: 750px;
+      width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .chart-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 220px;
+    }
+
+    .snapshot-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      text-align: left;
+    }
+
+    .snapshot-table th {
+      background: var(--bg-card);
+      padding: 0.6rem 0.8rem;
+      border-bottom: 1px solid var(--border-card);
+      color: var(--text-muted);
+    }
+
+    .snapshot-table td {
+      padding: 0.6rem 0.8rem;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      z-index: 150;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/kpi-overview.html" class="brand-title">
+        <span>📊</span> MAHI ANALYTICS
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <span>KPI Overview</span>
+      </div>
+      <nav class="nav-links-sub">
+        <a href="/kpi-overview.html" class="nav-link-sub active">Company Overview</a>
+        <a href="/dashboard-builder.html" class="nav-link-sub">Dashboard Builder</a>
+        <a href="/sprint-analytics.html" class="nav-link-sub">Sprint Analytics</a>
+        <a href="/team-analytics.html" class="nav-link-sub" id="navTeamAnalytics">Team Performance</a>
+        <a href="/kpi-alerts.html" class="nav-link-sub" id="navKpiAlerts">Alert Center</a>
+      </nav>
+    </div>
+
+    <div class="nav-actions">
+      <a href="/kpi-alerts.html" class="badge-alert-count" id="badgeAlertLink" style="display:none;">
+        <span>🔔</span>
+        <span id="alertCountText">0</span>
+      </a>
+      <div id="userBadge" style="font-size:0.85rem; color:var(--text-muted);">
+        <span id="userName">Verifying...</span>
+      </div>
+      <button type="button" class="btn-nav" id="btnLogout">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="app-main">
+
+    <!-- Access Denied Banner for Non-Admin -->
+    <div class="access-denied-box" id="accessDeniedBanner">
+      <h2>🔒 Access Restricted</h2>
+      <p>Company-wide KPI Overview is restricted to Administrator and SuperAdmin roles. Please visit your personal <a href="/dashboard-builder.html" style="color:var(--color-primary);">Dashboard Builder</a> or <a href="/sprint-analytics.html" style="color:var(--color-primary);">Sprint Analytics</a>.</p>
+    </div>
+
+    <!-- Admin Content Container -->
+    <div id="adminContent" style="display:none; flex-direction:column; gap:1.5rem;">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Company KPI Overview</h1>
+          <p class="page-subtitle">Platform health indicators across Sprints, OKRs, Workload, Time Tracking, and Pipeline</p>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="btn-nav" id="btnRefreshAll">
+            <span>🔄</span> Refresh All
+          </button>
+          <button type="button" class="btn-success" id="btnExportCsv">
+            <span>📥</span> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards Grid -->
+      <div class="kpi-grid" id="kpiGridContainer">
+        <!-- Rendered dynamically -->
+        <div style="color:var(--text-muted); font-size:0.9rem;">Loading KPI summary...</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- KPI Drill-down Modal -->
+  <div class="modal-overlay" id="kpiModal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="modalKpiTitle">KPI Details</h3>
+          <span style="font-size:0.8rem; color:var(--text-muted);" id="modalKpiMeta"></span>
+        </div>
+        <button type="button" class="btn-nav" id="btnCloseModal" style="padding:0.25rem 0.5rem;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div>
+          <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:var(--color-primary);">30-Snapshot Historical Trend</h4>
+          <div class="chart-box" id="modalChartBox">
+            <!-- Rendered SVG chart -->
+          </div>
+        </div>
+
+        <div>
+          <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:var(--text-muted);">Recent Snapshot Records</h4>
+          <div style="max-height:200px; overflow-y:auto; border:1px solid var(--border-card); border-radius:6px;">
+            <table class="snapshot-table">
+              <thead>
+                <tr>
+                  <th>Period / Timestamp</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody id="modalSnapshotTableBody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toastBox">
+    <span id="toastMsg"></span>
+  </div>
+
+  <script>
+    // Pure Security Utility — escapeHTML against XSS
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Dynamic Auth Token Retrieval
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/app.html#/login';
+    }
+
+    const state = {
+      token,
+      currentUser: null,
+      kpis: [],
+      alertsCount: 0
+    };
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toastBox');
+      const text = document.getElementById('toastMsg');
+      if (!toast || !text) return;
+      text.textContent = msg;
+      toast.style.borderColor = isError ? 'var(--color-danger)' : 'var(--color-primary)';
+      toast.style.display = 'flex';
+      setTimeout(() => { toast.style.display = 'none'; }, 3500);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      };
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, opts);
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Unauthorized');
+      }
+
+      let data = null;
+      try { data = await res.json(); } catch(e) {}
+
+      if (!res.ok) {
+        const err = new Error(data?.error || data?.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    // Render Clean SVG Sparkline
+    function renderSparklineSVG(trendArray) {
+      if (!trendArray || trendArray.length < 2) {
+        return '<svg width="100%" height="34" viewBox="0 0 100 34"><line x1="0" y1="17" x2="100" y2="17" stroke="#334155" stroke-dasharray="2" /></svg>';
+      }
+      const vals = trendArray.map(t => Number(t.value) || 0);
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      const range = (max - min) === 0 ? 1 : (max - min);
+
+      const pts = vals.map((v, idx) => {
+        const x = (idx / (vals.length - 1)) * 100;
+        const y = 30 - ((v - min) / range) * 26;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ');
+
+      return `
+        <svg width="100%" height="34" viewBox="0 0 100 34" preserveAspectRatio="none">
+          <polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${pts}" />
+        </svg>
+      `;
+    }
+
+    // Render Full SVG Line Chart for Modal
+    function renderModalLineChart(snapshots, unit) {
+      if (!snapshots || snapshots.length === 0) {
+        return '<div style="color:var(--text-muted); text-align:center; padding:3rem 0;">No snapshot records available.</div>';
+      }
+      const sorted = [...snapshots].reverse(); // Oldest to newest
+      const vals = sorted.map(s => Number(s.value) || 0);
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      const range = (max - min) === 0 ? 1 : (max - min);
+
+      const w = 680;
+      const h = 200;
+      const pad = 35;
+
+      const pts = vals.map((v, i) => {
+        const x = pad + (i / Math.max(1, vals.length - 1)) * (w - pad * 2);
+        const y = (h - pad) - ((v - min) / range) * (h - pad * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ');
+
+      return `
+        <svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" style="overflow:visible;">
+          <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h - pad}" stroke="#334155" stroke-width="1" />
+          <line x1="${pad}" y1="${h - pad}" x2="${w - pad}" y2="${h - pad}" stroke="#334155" stroke-width="1" />
+          <text x="5" y="${pad + 10}" fill="#94a3b8" font-size="10">${escapeHTML(max.toFixed(1))} ${escapeHTML(unit)}</text>
+          <text x="5" y="${h - pad}" fill="#94a3b8" font-size="10">${escapeHTML(min.toFixed(1))} ${escapeHTML(unit)}</text>
+          <polyline fill="none" stroke="#38bdf8" stroke-width="2.5" points="${pts}" />
+        </svg>
+      `;
+    }
+
+    // Load Company Summary Cards
+    async function loadCompanyKpis() {
+      const container = document.getElementById('kpiGridContainer');
+      try {
+        const res = await apiRequest('/api/analytics/summary/company');
+        state.kpis = res.kpis || [];
+
+        if (state.kpis.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted);">No active KPIs found.</div>';
+          return;
+        }
+
+        container.innerHTML = state.kpis.map(kpi => {
+          const statusClass = kpi.status === 'ON_TRACK' ? 'badge-on-track' :
+                              kpi.status === 'AT_RISK' ? 'badge-at-risk' : 'badge-critical';
+          
+          let trendIcon = '→';
+          let trendClass = 'trend-flat';
+          if (kpi.trend_arrow === 'UP') {
+            trendIcon = '↑';
+            trendClass = 'trend-up';
+          } else if (kpi.trend_arrow === 'DOWN') {
+            trendIcon = '↓';
+            trendClass = 'trend-down';
+          }
+
+          const targetStr = kpi.target_value !== null && kpi.target_value !== undefined ?
+            `Target: ${escapeHTML(kpi.target_value)} ${escapeHTML(kpi.unit || '')}` : 'No target set';
+
+          const sparkHtml = renderSparklineSVG(kpi.trend_snapshots || []);
+
+          return `
+            <div class="kpi-card" data-kpi-id="${escapeHTML(kpi.id)}">
+              <div class="kpi-card-header">
+                <span class="kpi-name">${escapeHTML(kpi.name)}</span>
+                <span class="badge-status ${statusClass}">${escapeHTML(kpi.status || 'ON_TRACK')}</span>
+              </div>
+              <div class="kpi-value-row">
+                <span class="kpi-value">${escapeHTML(Number(kpi.current_value || 0).toLocaleString())}</span>
+                <span class="kpi-unit">${escapeHTML(kpi.unit || '')}</span>
+              </div>
+              <div class="sparkline-wrap">
+                ${sparkHtml}
+              </div>
+              <div class="kpi-meta-row">
+                <span>${targetStr}</span>
+                <span class="trend-arrow ${trendClass}">${trendIcon} ${escapeHTML(kpi.trend_arrow || 'FLAT')}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Attach drill-down click listeners
+        container.querySelectorAll('.kpi-card').forEach(card => {
+          card.addEventListener('click', () => {
+            const kpiId = card.getAttribute('data-kpi-id');
+            openKpiDrilldown(kpiId);
+          });
+        });
+
+      } catch (err) {
+        container.innerHTML = `<div style="color:var(--color-danger);">Failed to load KPI summary: ${escapeHTML(err.message)}</div>`;
+      }
+    }
+
+    // Open Drill-Down Modal
+    async function openKpiDrilldown(kpiId) {
+      const modal = document.getElementById('kpiModal');
+      const title = document.getElementById('modalKpiTitle');
+      const meta = document.getElementById('modalKpiMeta');
+      const chartBox = document.getElementById('modalChartBox');
+      const tbody = document.getElementById('modalSnapshotTableBody');
+
+      modal.style.display = 'flex';
+      chartBox.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:3rem 0;">Loading historical snapshots...</div>';
+      tbody.innerHTML = '<tr><td colspan="2" style="color:var(--text-muted);">Loading...</td></tr>';
+
+      try {
+        const data = await apiRequest(`/api/analytics/kpi/${kpiId}`);
+        const kpi = data.kpi || {};
+        const snapshots = data.snapshots || [];
+
+        title.textContent = kpi.name || 'KPI Drill-Down';
+        meta.textContent = `Source: ${kpi.data_source || ''} | Refresh: ${kpi.refresh_interval_minutes || 60}m | Unit: ${kpi.unit || ''}`;
+
+        chartBox.innerHTML = renderModalLineChart(snapshots, kpi.unit || '');
+
+        if (snapshots.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="2" style="color:var(--text-muted);">No snapshot history recorded.</td></tr>';
+        } else {
+          tbody.innerHTML = snapshots.map(s => `
+            <tr>
+              <td>${escapeHTML(s.snapshotted_at || s.period_label || 'Recent')}</td>
+              <td style="font-weight:600; color:#fff;">${escapeHTML(Number(s.value).toLocaleString())} ${escapeHTML(kpi.unit || '')}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        chartBox.innerHTML = `<div style="color:var(--color-danger); text-align:center; padding:2rem 0;">Failed to load drill-down: ${escapeHTML(err.message)}</div>`;
+      }
+    }
+
+    // Refresh All Due KPIs
+    async function refreshAllKpis() {
+      const btn = document.getElementById('btnRefreshAll');
+      btn.disabled = true;
+      btn.textContent = 'Refreshing...';
+      try {
+        for (const k of state.kpis) {
+          try {
+            await apiRequest(`/api/analytics/kpi/${k.id}/refresh`, 'POST');
+          } catch(e) {}
+        }
+        showToast('KPI recalculation completed successfully');
+        await loadCompanyKpis();
+      } catch (err) {
+        showToast('Refresh encountered errors: ' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔄</span> Refresh All';
+      }
+    }
+
+    // Trigger RFC 4180 CSV Export Download
+    async function exportCompanySummaryCsv() {
+      try {
+        const res = await fetch('/api/analytics/report/export?report_type=KPI_SUMMARY&format=csv', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (!res.ok) throw new Error('Failed to export CSV report');
+        const csvBlob = await res.blob();
+        const downloadUrl = window.URL.createObjectURL(csvBlob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `kpi_summary_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+        showToast('CSV export downloaded');
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    // Check Open Alerts for Top-Right Badge
+    async function checkAlertsBadge() {
+      try {
+        const res = await apiRequest('/api/analytics/alerts');
+        const unacked = (res.alerts || []).filter(a => !a.acknowledged_at);
+        const link = document.getElementById('badgeAlertLink');
+        const countSpan = document.getElementById('alertCountText');
+        if (unacked.length > 0) {
+          countSpan.textContent = unacked.length;
+          link.style.display = 'inline-flex';
+        } else {
+          link.style.display = 'none';
+        }
+      } catch (e) {}
+    }
+
+    // App Initialization with Role Verification
+    async function initApp() {
+      try {
+        state.currentUser = await apiRequest('/api/users/me');
+        document.getElementById('userName').textContent = state.currentUser.name || state.currentUser.email;
+
+        const isAdmin = state.currentUser.role === 'admin' || state.currentUser.role === 'superadmin';
+        if (!isAdmin) {
+          document.getElementById('accessDeniedBanner').style.display = 'block';
+          document.getElementById('adminContent').style.display = 'none';
+          return;
+        }
+
+        document.getElementById('adminContent').style.display = 'flex';
+        await loadCompanyKpis();
+        await checkAlertsBadge();
+
+        document.getElementById('btnRefreshAll').addEventListener('click', refreshAllKpis);
+        document.getElementById('btnExportCsv').addEventListener('click', exportCompanySummaryCsv);
+        document.getElementById('btnCloseModal').addEventListener('click', () => {
+          document.getElementById('kpiModal').style.display = 'none';
+        });
+
+      } catch (err) {
+        document.getElementById('accessDeniedBanner').innerHTML = `<h2>Authentication Error</h2><p>${escapeHTML(err.message)}</p>`;
+        document.getElementById('accessDeniedBanner').style.display = 'block';
+      }
+    }
+
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = '/app.html#/login';
+    });
+
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>

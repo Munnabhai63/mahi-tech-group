@@ -190,6 +190,14 @@ function initMenu() {
 
   toggle.addEventListener('click', () => setMenu(!open));
   nav.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setMenu(false, false)));
+  
+  // Close menu on outside click so main never stays inert
+  document.addEventListener('click', (event) => {
+    if (open && !nav.contains(event.target) && !toggle.contains(event.target)) {
+      setMenu(false, false);
+    }
+  });
+
   document.addEventListener('keydown', (event) => {
     if (!open) return;
     if (event.key === 'Escape') {
@@ -284,9 +292,35 @@ function initScrollEffects() {
 }
 
 function initContactLinks() {
+  let session = null;
+  let token = null;
+  try {
+    token = localStorage.getItem('mtg_auth_token');
+    const sessionStr = localStorage.getItem('mtg-session-v1');
+    if (sessionStr) session = JSON.parse(sessionStr);
+  } catch {}
+
+  const user = session?.user;
+  const isSignedIn = Boolean(token || session);
+  const targetWorkspaceUrl = isSignedIn 
+    ? (user?.role === 'admin' ? '/app.html#/admin' : user?.status === 'inactive' ? '/app.html#/app/former-member' : '/app.html#/app/dashboard')
+    : siteConfig.routes.workspace;
+
   document.querySelectorAll('[data-contact-link]').forEach((link) => {
-    const route = siteConfig.routes[link.dataset.contactLink];
-    if (route) link.href = route;
+    const contactKey = link.dataset.contactLink;
+    if (contactKey === 'workspace') {
+      link.href = targetWorkspaceUrl;
+      if (isSignedIn) {
+        if (link.classList.contains('nav-cta')) {
+          link.innerHTML = `Workspace <svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg>`;
+        } else if (link.id === 'hero-workspace-btn') {
+          link.innerHTML = `Enter Workspace <svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"/></svg>`;
+        }
+      }
+    } else {
+      const route = siteConfig.routes[contactKey];
+      if (route) link.href = route;
+    }
   });
 }
 

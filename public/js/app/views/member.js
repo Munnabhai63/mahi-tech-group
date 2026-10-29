@@ -28,8 +28,7 @@ import {
   fetchLiveDashboard,
   fetchLiveQuota,
   fetchLiveWallet,
-  fetchLiveProfile,
-  isDemoMode
+  fetchLiveProfile
 } from '../store.js';
 import { api, getAuthToken } from '../api.js';
 import {
@@ -52,8 +51,7 @@ import {
   toast,
   bindTabs,
   formValues,
-  setFormError,
-  showPlaceholder
+  setFormError
 } from '../ui.js';
 import { openTaskDialog, taskRow } from './projects.js';
 
@@ -65,14 +63,17 @@ function miniProject(project) {
 
 export function renderDashboard() {
   const user = currentUser();
-  if (state.live.backendError && !isDemoMode()) {
+  if (state.live.backendError) {
     return {
-      html: `${pageHead('Operational Workspace', 'Live backend connection required.', 'All organization records, task dependencies, and project gates require an active server connection.')}${renderBackendError('Dashboard Data Unavailable', 'Unable to reach the live backend server. Offline mock data has been disabled in compliance with data safety standards.')}`,
+      html: `${pageHead('Operational Workspace', 'Live backend connection required.', 'All organization records, task dependencies, and project gates require an active server connection.')}${renderBackendError('Dashboard Data Unavailable', state.live.backendErrorMessage || 'Unable to reach the live backend server. Offline fallback data has been disabled in compliance with data safety standards.')}`,
       mount() {
-        if (getAuthToken()) {
-          fetchLiveDashboard();
-          fetchLiveQuota();
-        }
+        document.querySelector('[data-action="retry-route"]')?.addEventListener('click', async () => {
+          state.live.backendError = false;
+          toast('Reconnecting to server...', 'info');
+          await fetchLiveDashboard();
+          await fetchLiveQuota();
+          window.dispatchEvent(new CustomEvent('app:refresh'));
+        });
       }
     };
   }
@@ -100,7 +101,7 @@ export function renderDashboard() {
   
   const hero = `<section class="command-hero"><div class="command-hero__copy"><div class="eyebrow eyebrow--lime">${role?.label || titleCase(user.role)} workspace</div><h1>Welcome, ${escapeHTML(user.name.split(' ')[0])}.<br><em>Here’s what needs your attention.</em></h1><p>${role?.description || 'Coordinate the team, projects, and operational record.'} Your queue contains ${tasks.filter(task => ['TODO', 'IN_PROGRESS'].includes(task.status)).length} actionable tasks and ${pendingVotes.length} pending votes.</p><div class="command-hero__actions"><a class="btn btn--lime" href="#/app/workspace">Open my workspace ${icon('arrow-up-right')}</a><a class="btn btn--outline" href="#/app/voting">Review voting queue</a></div></div><div class="command-hero__side"><div><div class="eyebrow">${nextMeeting?.status === 'LIVE' ? 'Happening now' : 'Next meeting'}</div>${nextMeeting ? `<h2 class="next-meeting">${escapeHTML(nextMeeting.title)}</h2><div class="next-meeting-meta"><span>${formatTime(nextMeeting.scheduledAt || nextMeeting.scheduled_at)}</span><span>${nextMeeting.duration || 30} min</span><span>${(nextMeeting.participantIds || []).length || 2} invited</span></div>` : '<h2 class="next-meeting">No meetings scheduled</h2><p class="small muted">Your upcoming meetings will appear here.</p>'}</div>${nextMeeting ? `<a class="btn btn--lime btn--sm" href="#/app/meetings/${nextMeeting.id}">${nextMeeting.status === 'LIVE' ? 'Enter room' : 'View meeting'} ${icon('arrow-up-right', 'icon--sm')}</a>` : '<a class="btn btn--outline btn--sm" href="#/app/meetings">View calendar</a>'}</div></section>`;
   
-  const content = `${stats}<div class="dashboard-grid"><div class="dashboard-grid__main"><section class="card card--flush"><div class="card-head"><div><h2>Shared project pipeline</h2><p>Your assigned projects and their current delivery gates.</p></div><a class="btn btn--ghost btn--sm" href="#/app/projects">Full pipeline ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body">${projects.length ? `<div class="mini-project-grid">${projects.slice(0, 4).map(miniProject).join('')}</div>` : emptyState('No assigned projects', 'Approved ideas and task assignments will bring projects into this dashboard.', '', 'folder')}</div></section><section class="card card--flush"><div class="card-head"><div><h2>Task focus</h2><p>Actionable work first; blocked dependencies remain visible.</p></div><a class="btn btn--ghost btn--sm" href="#/app/tasks">Full queue ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body"><div class="task-list">${tasks.filter(task => task.status !== 'DONE').slice(0, 3).map(task => taskRow(task, getProject(task.projectId || task.project_id))).join('') || emptyState('No open tasks', 'Your assigned task queue is clear.', '', 'check')}</div></div></section></div><aside class="dashboard-grid__side"><section class="card card--flush"><div class="card-head"><div><h2>Voting queue</h2><p>Ideas waiting for your input.</p></div><span class="badge badge--info badge--no-dot">${pendingVotes.length}</span></div><div class="card-body">${pendingVotes.length ? pendingVotes.slice(0, 3).map(idea => `<a class="list-row list-row--button" href="#/app/ideas/${idea.id}"><span class="notification-item__icon">${icon('vote')}</span><span class="list-row__main"><strong>${escapeHTML(idea.title)}</strong><p>Closes ${relativeTime(idea.deadline || idea.voting_deadline)}</p></span>${icon('chevron-right', 'icon--sm')}</a>`).join('') : emptyState('No votes waiting', 'You have no pending ballots.', '', 'vote')}</div>${pendingVotes.length ? '<div class="card-foot"><a class="link-btn small" href="#/app/voting">Open voting queue</a></div>' : ''}</section><section class="card card--flush"><div class="card-head"><div><h2>Recent notifications</h2><p>${unread.length} unread in your workspace.</p></div><button class="btn btn--ghost btn--icon btn--sm" data-open-notifications aria-label="Open notifications">${icon('bell', 'icon--sm')}</button></div><div class="card-body">${visibleNotifications().slice(0, 4).map(note => `<a class="list-row list-row--button" href="${note.link}"><span class="notification-item__icon">${icon(note.type === 'meeting' ? 'video' : note.type === 'vote' ? 'vote' : note.type === 'support' ? 'support' : 'check-square')}</span><span class="list-row__main"><strong>${escapeHTML(note.message)}</strong><p>${relativeTime(note.at)}</p></span></a>`).join('') || emptyState('No notifications', 'Workspace updates will appear here.', '', 'bell')}</div></section><section class="card card--pad"><div class="eyebrow">Workspace role</div><div class="mt-2">${person(user, `${role?.label || titleCase(user.role)}${user.subRole ? ` · ${titleCase(user.subRole)}` : ''}`, '')}</div><p class="small muted mt-2">Active authenticated role session.</p><a class="btn btn--outline btn--full mt-2" href="#/role-selection">Switch test role</a></section></aside></div>`;
+  const content = `${stats}<div class="dashboard-grid"><div class="dashboard-grid__main"><section class="card card--flush"><div class="card-head"><div><h2>Shared project pipeline</h2><p>Your assigned projects and their current delivery gates.</p></div><a class="btn btn--ghost btn--sm" href="#/app/projects">Full pipeline ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body">${projects.length ? `<div class="mini-project-grid">${projects.slice(0, 4).map(miniProject).join('')}</div>` : emptyState('No assigned projects', 'Approved ideas and task assignments will bring projects into this dashboard.', '<a class="btn btn--outline btn--sm mt-2" href="#/app/projects">Browse projects</a>', 'folder')}</div></section><section class="card card--flush"><div class="card-head"><div><h2>Task focus</h2><p>Actionable work first; blocked dependencies remain visible.</p></div><a class="btn btn--ghost btn--sm" href="#/app/tasks">Full queue ${icon('arrow-up-right', 'icon--sm')}</a></div><div class="card-body"><div class="task-list">${tasks.filter(task => task.status !== 'DONE').slice(0, 3).map(task => taskRow(task, getProject(task.projectId || task.project_id))).join('') || emptyState('No open tasks', 'Your assigned task queue is clear.', '<a class="btn btn--outline btn--sm mt-2" href="#/app/tasks">Open task queue</a>', 'check')}</div></div></section></div><aside class="dashboard-grid__side"><section class="card card--flush"><div class="card-head"><div><h2>Voting queue</h2><p>Ideas waiting for your input.</p></div><span class="badge badge--info badge--no-dot">${pendingVotes.length}</span></div><div class="card-body">${pendingVotes.length ? pendingVotes.slice(0, 3).map(idea => `<a class="list-row list-row--button" href="#/app/ideas/${idea.id}"><span class="notification-item__icon">${icon('vote')}</span><span class="list-row__main"><strong>${escapeHTML(idea.title)}</strong><p>Closes ${relativeTime(idea.deadline || idea.voting_deadline)}</p></span>${icon('chevron-right', 'icon--sm')}</a>`).join('') : emptyState('No votes waiting', 'You have no pending ballots.', '<a class="btn btn--outline btn--sm mt-2" href="#/app/ideas">Browse ideas</a>', 'vote')}</div>${pendingVotes.length ? '<div class="card-foot"><a class="link-btn small" href="#/app/voting">Open voting queue</a></div>' : ''}</section><section class="card card--flush"><div class="card-head"><div><h2>Recent notifications</h2><p>${unread.length} unread in your workspace.</p></div><button class="btn btn--ghost btn--icon btn--sm" data-open-notifications aria-label="Open notifications">${icon('bell', 'icon--sm')}</button></div><div class="card-body">${visibleNotifications().slice(0, 4).map(note => `<a class="list-row list-row--button" href="${note.link}"><span class="notification-item__icon">${icon(note.type === 'meeting' ? 'video' : note.type === 'vote' ? 'vote' : note.type === 'support' ? 'support' : 'check-square')}</span><span class="list-row__main"><strong>${escapeHTML(note.message)}</strong><p>${relativeTime(note.at)}</p></span></a>`).join('') || emptyState('No notifications', 'Workspace updates will appear here.', '<a class="btn btn--ghost btn--sm mt-2" href="#/app/workspace">Refresh status</a>', 'bell')}</div></section><section class="card card--pad"><div class="eyebrow">Workspace role</div><div class="mt-2">${person(user, `${role?.label || titleCase(user.role)}${user.subRole ? ` · ${titleCase(user.subRole)}` : ''}`, '')}</div><p class="small muted mt-2">Active authenticated role session.</p><a class="btn btn--outline btn--full mt-2" href="#/role-selection">Switch test role</a></section></aside></div>`;
   
   const banners = (state.live.activeBanners || []).map(b => `<div class="card card--pad mb-2" style="border-left:4px solid var(--lime);display:flex;align-items:center;gap:1rem"><span class="notification-item__icon" style="color:var(--lime)">${icon('check')}</span><div style="flex:1"><strong>${escapeHTML(b.title)}</strong><p class="small muted mt-1">${escapeHTML(b.message)}</p></div>${b.projectId ? `<a class="btn btn--outline btn--sm" href="#/app/projects/${b.projectId}">View project</a>` : ''}</div>`).join('');
   
@@ -108,7 +109,7 @@ export function renderDashboard() {
     html: `${banners ? `<div class="mb-2">${banners}</div>` : ''}${hero}${withPreview(content, { title: 'Your dashboard is clear', description: 'No projects, tasks, votes, or notifications are shown in this empty-state preview.', icon: 'grid' })}`,
     mount() {
       document.querySelectorAll('[data-open-task]').forEach(button => button.addEventListener('click', () => openTaskDialog(button.dataset.openTask)));
-      if (getAuthToken()) {
+      if (getAuthToken() && !state.live.dashboardSummary) {
         fetchLiveDashboard();
         fetchLiveQuota();
       }
@@ -182,6 +183,24 @@ export function renderTasks() {
   const user = currentUser();
   const tasks = state.live.myTasks?.length ? state.live.myTasks : userTasks();
   const projects = userProjects();
+
+  if (!tasks.length) {
+    const empty = emptyState('No tasks assigned yet', 'Your personal task queue is completely clear. You can explore organization projects or join active initiatives.', '<a class="btn btn--outline btn--sm mt-2" href="#/app/projects">Explore projects →</a>', 'check-square');
+    return {
+      html: `${pageHead('Assignment queue', 'Every task. Every prerequisite.', user?.role === 'admin' ? 'Admin can inspect and reassign work across all projects.' : 'Your role-filtered assignments across active and historical projects.', '<a class="btn btn--outline" href="#/app/projects">Project pipeline</a>')}<div class="card card--pad mt-3">${empty}</div>`,
+      mount() {
+        if (getAuthToken()) {
+          api.get('/api/projects/my-tasks').then(res => {
+            if (res?.tasks?.length) {
+              state.live.myTasks = res.tasks;
+              window.dispatchEvent(new CustomEvent('app:refresh'));
+            }
+          }).catch(() => {});
+        }
+      }
+    };
+  }
+
   const rows = tasks.map(task => {
     const project = getProject(task.projectId || task.project_id);
     const assignee = getUser(task.assignedTo || task.assigned_to);
@@ -192,7 +211,7 @@ export function renderTasks() {
   const content = `<div class="filter-bar"><div class="field field--search"><label for="task-search">Search queue</label><div class="input-wrap">${icon('search')}<input class="input" id="task-search" placeholder="Task, project, or assignee"></div></div><div class="field"><label for="task-status-filter">Status</label><select class="select" id="task-status-filter"><option value="all">All statuses</option><option>TODO</option><option>BLOCKED</option><option>IN_PROGRESS</option><option>DONE</option></select></div><div class="field"><label for="task-project-filter">Project</label><select class="select" id="task-project-filter"><option value="all">All projects</option>${projects.map(project => `<option value="${project.id}">${escapeHTML(project.title)}</option>`).join('')}</select></div><span class="filter-count" id="task-count">${tasks.length} tasks</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Task</th><th>Project</th><th>Assignee</th><th>Status</th><th>Dependencies</th><th></th></tr></thead><tbody id="task-table-body">${rows}</tbody></table><div id="task-empty" hidden>${emptyState('No tasks match these filters', 'Clear a filter to see more assignments.', '', 'search')}</div></div>`;
   
   return {
-    html: `${pageHead('Assignment queue', 'Every task. Every prerequisite.', user.role === 'admin' ? 'Admin can inspect and reassign work across all projects.' : 'Your role-filtered assignments across active and historical projects.', '<a class="btn btn--outline" href="#/app/projects">Project pipeline</a>')}${withPreview(content, { title: 'No assigned tasks', description: 'Project fan-out and Admin assignments will add tasks to this queue.', icon: 'check-square' })}`,
+    html: `${pageHead('Assignment queue', 'Every task. Every prerequisite.', user?.role === 'admin' ? 'Admin can inspect and reassign work across all projects.' : 'Your role-filtered assignments across active and historical projects.', '<a class="btn btn--outline" href="#/app/projects">Project pipeline</a>')}${withPreview(content, { title: 'No assigned tasks', description: 'Project fan-out and Admin assignments will add tasks to this queue.', icon: 'check-square' })}`,
     mount() {
       document.querySelectorAll('[data-open-task]').forEach(button => button.addEventListener('click', () => openTaskDialog(button.dataset.openTask)));
       const search = document.querySelector('#task-search');
@@ -227,7 +246,7 @@ export function renderTasks() {
 export function renderNotifications() {
   const user = currentUser();
   const notes = visibleNotifications();
-  const content = `<div class="filter-bar"><div class="segmented" aria-label="Notification filters"><button class="is-active" data-notif-filter="all" aria-pressed="true">All ${notes.length}</button><button data-notif-filter="unread" aria-pressed="false">Unread ${unreadNotifications().length}</button><button data-notif-filter="read" aria-pressed="false">Read</button></div><button class="btn btn--outline btn--sm" id="mark-all-read" ${unreadNotifications().length ? '' : 'disabled'}>${icon('check', 'icon--sm')} Mark all read</button></div><section class="card card--pad" id="notification-page-list">${notes.length ? notes.map(note => { const unread = !note.readBy.includes(user.id); return `<article class="notification-item ${unread ? 'is-unread' : ''}" data-read="${!unread}"><span class="notification-item__icon">${icon(note.type === 'meeting' ? 'video' : note.type === 'vote' ? 'vote' : note.type === 'support' ? 'support' : 'check-square')}</span><div class="list-row__main"><p>${escapeHTML(note.message)}</p><time>${formatDateTime(note.at)} · ${relativeTime(note.at)}</time><div class="cluster mt-1"><a class="link-btn small" href="${note.link}">Open related view</a>${unread ? `<button class="link-btn small" data-mark-read="${note.id}">Mark read</button>` : ''}</div></div></article>`; }).join('') : emptyState('No notifications', 'Project, meeting, vote, and support updates will appear here.', '', 'bell')}</section>`;
+  const content = `<div class="filter-bar"><div class="segmented" aria-label="Notification filters"><button class="is-active" data-notif-filter="all" aria-pressed="true">All ${notes.length}</button><button data-notif-filter="unread" aria-pressed="false">Unread ${unreadNotifications().length}</button><button data-notif-filter="read" aria-pressed="false">Read</button></div><button class="btn btn--outline btn--sm" id="mark-all-read" ${unreadNotifications().length ? '' : 'disabled'}>${icon('check', 'icon--sm')} Mark all read</button></div><section class="card card--pad" id="notification-page-list">${notes.length ? notes.map(note => { const unread = !note.readBy.includes(user.id); return `<article class="notification-item ${unread ? 'is-unread' : ''}" data-read="${!unread}"><span class="notification-item__icon">${icon(note.type === 'meeting' ? 'video' : note.type === 'vote' ? 'vote' : note.type === 'support' ? 'support' : 'check-square')}</span><div class="list-row__main"><p>${escapeHTML(note.message)}</p><time>${formatDateTime(note.at)} · ${relativeTime(note.at)}</time><div class="cluster mt-1"><a class="link-btn small" href="${note.link}">Open related view</a>${unread ? `<button class="link-btn small" data-mark-read="${note.id}">Mark read</button>` : ''}</div></div></article>`; }).join('') : emptyState('All caught up!', 'No notifications at this time. Workspace updates will appear here.', '<a class="btn btn--outline btn--sm mt-2" href="#/app/dashboard">Back to dashboard →</a>', 'bell')}</section>`;
   return {
     html: `${pageHead('Workspace updates', 'Notifications', 'Relevant updates with direct links back into the operational record.', '<button class="btn btn--outline" data-open-notifications>Open drawer</button>')}${withPreview(content, { title: 'No notifications', description: 'Your notification inbox is empty in this preview.', icon: 'bell' })}`,
     mount() {
@@ -295,7 +314,7 @@ export function renderProfile(id = null) {
 
 export function renderWallet() {
   const user = currentUser();
-  if (state.live.backendError && !isDemoMode()) {
+  if (state.live.backendError) {
     return {
       html: `${pageHead('Wallet & settlements', 'Your earnings, with a visible review gate.', 'Balance, recorded splits, withdrawal requests, frozen states, and settlement history.', '<a class="btn btn--outline" href="#/app/dashboard">Back to dashboard</a>')}${renderBackendError('Financial Service Unavailable', 'Unable to reach the live backend server. Wallet balances and withdrawal ledgers require an active server connection.')}`,
       mount() {
@@ -309,13 +328,13 @@ export function renderWallet() {
   const walletData = state.live.walletData;
   
   // Real withdrawals from GET /api/users/me/earnings
-  const withdrawals = walletData?.withdrawals || (isDemoMode() ? state.data.withdrawals.filter(item => item.userId === user.id) : []);
+  const withdrawals = walletData?.withdrawals || [];
   const pending = withdrawals.filter(item => item.status === 'PENDING').reduce((sum, item) => sum + Number(item.amount), 0);
 
   // Timeline from GET /api/users/:id/earnings
   const timeline = walletData?.timeline || [];
-  const monthly = timeline.length ? timeline.map(t => t.month) : (isDemoMode() ? ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'] : []);
-  const values = timeline.length ? timeline.map(t => Number(t.monthly_total)) : monthly.map(() => 0);
+  const monthly = timeline.length ? timeline.map(t => t.month) : [];
+  const values = timeline.length ? timeline.map(t => Number(t.monthly_total)) : [];
   const max = Math.max(...values, 1);
   const withdrawalBlocked = user.frozen || user.status !== 'active';
 

@@ -8,8 +8,7 @@ const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 const authToken = localStorage.getItem('token');
 
 if (!authToken || !currentUser || currentUser.role !== 'admin') {
-  alert('Access Denied — Insufficient Privileges');
-  window.location.href = '/';
+  window.location.replace('/app.html#/app/403');
 }
 
 // 2. Formatting Utility: formatINR (reused from dashboard.js)
@@ -140,6 +139,8 @@ function initNavigation() {
         loadGatewayConfig();
       } else if (targetPaneId === 'paneGovernance') {
         loadGovernanceMembers();
+      } else if (targetPaneId === 'paneAudit') {
+        loadAuditStream();
       }
     });
   });
@@ -1003,6 +1004,35 @@ function initEventListeners() {
 
   const btnSubmitGovModal = document.getElementById('btnSubmitAddGovernance');
   if (btnSubmitGovModal) btnSubmitGovModal.addEventListener('click', submitAddGovernanceUI);
+
+  // Section 9: Unified Audit Stream Listeners
+  const auditSearch = document.getElementById('auditSearchInput');
+  if (auditSearch) {
+    auditSearch.addEventListener('input', () => {
+      clearTimeout(auditDebounceTimer);
+      auditDebounceTimer = setTimeout(() => {
+        loadAuditStream();
+      }, 300);
+    });
+  }
+
+  const auditSevFilter = document.getElementById('auditSeverityFilter');
+  if (auditSevFilter) {
+    auditSevFilter.addEventListener('change', () => loadAuditStream());
+  }
+
+  const btnRefreshAudit = document.getElementById('btnRefreshAudit');
+  if (btnRefreshAudit) {
+    btnRefreshAudit.addEventListener('click', () => {
+      loadAuditStream();
+      toasts.show('Forensic audit stream refreshed', 'info');
+    });
+  }
+
+  const btnExportAuditCSV = document.getElementById('btnExportAuditCSV');
+  if (btnExportAuditCSV) {
+    btnExportAuditCSV.addEventListener('click', () => exportAuditStreamCSV());
+  }
 }
 
 // ===================================================================
@@ -2366,6 +2396,142 @@ function exportGovernanceCSV() {
   window.open(`/api/superadmin/members/export?user_id=${selectedGovernanceUserId}`, '_blank');
 }
 
+// ==========================================================================
+// 10. SECTION 9: FORENSIC AUDIT STREAM CONTROLLER
+// ==========================================================================
+let currentAuditLogs = [];
+let auditDebounceTimer = null;
+
+function computeAuditSeverity(action) {
+  const act = String(action || '').toUpperCase();
+  if (/KILL|DELETE|BLOCK|LOCK|SUSPEND|PURGE|TERMINATE|BREACH|OVERRIDE|FAIL|UNAUTHORIZED|REJECT/.test(act)) {
+    return 'critical';
+  }
+  if (/WARN|UPDATE|CONFIG|REVOKE|DISPUTE|CHANGE|RESET|LIMIT|RESTORE|EXPORT|WITHDRAW/.test(act)) {
+    return 'warning';
+  }
+  return 'info';
+}
+
+async function loadAuditStream() {
+  const tbody = document.getElementById('auditStreamTableBody');
+  const searchInput = document.getElementById('auditSearchInput');
+  const severityFilter = document.getElementById('auditSeverityFilter');
+  const btnRefresh = document.getElementById('btnRefreshAudit');
+
+  if (btnRefresh) btnRefresh.classList.add('loading');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="6" class="sa-loading-cell">Loading forensic audit stream...</td></tr>';
+  }
+
+  try {
+    const searchVal = searchInput?.value.trim().toLowerCase() || '';
+    const severityVal = severityFilter?.value || '';
+
+    const params = new URLSearchParams();
+    params.set('limit', '200');
+    if (searchVal) {
+      params.set('action', searchVal);
+    }
+
+    const res = await apiCall(`/api/superadmin/audit?${params.toString()}`);
+    if (!res.ok) {
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="6" class="sa-empty-cell">Failed to load forensic audit records.</td></tr>';
+      }
+      toasts.show(res.data?.error || 'Failed to load audit stream', 'error');
+      return;
+    }
+
+    let logs = res.data?.logs || [];
+    logs = logs.map(item => ({
+      ...item,
+      severity: computeAuditSeverity(item.action)
+    }));
+
+    if (severityVal) {
+      logs = logs.filter(item => item.severity === severityVal);
+    }
+
+    if (searchVal) {
+      logs = logs.filter(item => {
+        const fullText = `${item.action || ''} ${item.user_name || ''} ${item.user_email || ''} ${item.resource || ''} ${item.ip_address || ''}`.toLowerCase();
+        return fullText.includes(searchVal);
+      });
+    }
+
+    currentAuditLogs = logs;
+
+    if (!tbody) return;
+
+    if (logs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:28px; color:var(--sa-text-muted);">No audit trail records found matching criteria.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = logs.map(l => {
+      const ts = l.timestamp ? new Date(l.timestamp).toLocaleString() : '—';
+      const sev = l.severity;
+      const sevBadge = `<span class="sa-badge-${sev}">${sev.toUpperCase()}</span>`;
+      const actor = l.user_name 
+        ? `<div><strong>${escapeHtml(l.user_name)}</strong><br><small style="color:var(--sa-text-muted);">${escapeHtml(l.user_email || '')}</small></div>`
+        : `<span style="color:var(--sa-text-muted);">System / Anonymous</span>`;
+      const action = `<span style="font-family:monospace; font-size:12px; color:var(--sa-text-primary);">${escapeHtml(l.action || 'UNKNOWN')}</span>`;
+      const ip = `<span style="font-family:monospace; font-size:11px; color:var(--sa-text-muted);">${escapeHtml(l.ip_address || '—')}</span>`;
+      const meta = `<span style="font-size:12px; color:var(--sa-text-secondary);">${escapeHtml(l.resource || '—')}</span>`;
+
+      return `
+        <tr>
+          <td style="white-space:nowrap; font-size:12px; color:var(--sa-text-muted);">${ts}</td>
+          <td>${sevBadge}</td>
+          <td>${actor}</td>
+          <td>${action}</td>
+          <td>${ip}</td>
+          <td>${meta}</td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error loading audit stream:', err);
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="6" class="sa-empty-cell">Network error loading audit stream.</td></tr>';
+    }
+    toasts.show('Network error while refreshing audit stream', 'error');
+  } finally {
+    if (btnRefresh) btnRefresh.classList.remove('loading');
+  }
+}
+
+function exportAuditStreamCSV() {
+  if (!currentAuditLogs || currentAuditLogs.length === 0) {
+    toasts.show('No audit logs available to export', 'info');
+    return;
+  }
+
+  const headers = ['Timestamp', 'Severity', 'Action', 'Resource', 'Actor Name', 'Actor Email', 'IP Address'];
+  const rows = currentAuditLogs.map(l => [
+    `"${(l.timestamp || '').replace(/"/g, '""')}"`,
+    `"${(l.severity || '').replace(/"/g, '""')}"`,
+    `"${(l.action || '').replace(/"/g, '""')}"`,
+    `"${(l.resource || '').replace(/"/g, '""')}"`,
+    `"${(l.user_name || '').replace(/"/g, '""')}"`,
+    `"${(l.user_email || '').replace(/"/g, '""')}"`,
+    `"${(l.ip_address || '').replace(/"/g, '""')}"`
+  ]);
+
+  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `audit-stream-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toasts.show('Audit stream CSV exported successfully', 'success');
+}
+
 // Global window exposures for inline onclick handlers in generated table markup
 window.openTicketThread = openTicketThread;
 window.openKillIdeaModal = openKillIdeaModal;
@@ -2373,6 +2539,8 @@ window.openRestoreIdeaModal = openRestoreIdeaModal;
 window.openDisputeDetail = openDisputeDetail;
 window.blockMemberUI = blockMemberUI;
 window.unblockMemberUI = unblockMemberUI;
+window.loadAuditStream = loadAuditStream;
+window.exportAuditStreamCSV = exportAuditStreamCSV;
 
 // 10. Initialize Admin Profile info in sidebar
 function initAdminInfo() {

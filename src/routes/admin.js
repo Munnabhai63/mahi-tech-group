@@ -27,6 +27,9 @@ import {
 } from '../services/payoutService.js';
 import { createNotification } from '../services/notificationService.js';
 import { confirmMeetingNotes } from '../services/meetingService.js';
+import * as pipelineService from '../services/pipelineService.js';
+import * as clientAuthService from '../services/clientAuthService.js';
+import adminClientsRouter from './adminClients.routes.js';
 
 const router = express.Router();
 
@@ -94,6 +97,179 @@ router.post('/members/add', authenticate, requirePermission('member.add'), async
   });
 });
 
+// PRD 29: POST /api/admin/invites (Admin only - RBAC: member.add)
+router.post('/invites', authenticate, requirePermission('member.add'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { email, role = 'developer', sub_role = null } = req.body || {};
+
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ error: 'A valid email address is required for invitation' });
+  }
+
+  const validRoles = ['researcher', 'developer', 'producer', 'admin', 'designer'];
+  if (!validRoles.includes(role)) {
+    return res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+  }
+
+  if (sub_role && !['frontend', 'backend'].includes(sub_role)) {
+    return res.status(400).json({ error: "Invalid sub_role. Must be 'frontend', 'backend', or null" });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Check if user already exists
+  const existingUser = queryOne('SELECT id FROM users WHERE email = ?', [normalizedEmail]);
+  if (existingUser) {
+    return res.status(409).json({ error: 'User with this email already exists in the system' });
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const inviteId = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  execute(`
+    INSERT INTO team_invites (
+      id, email, token, role, sub_role, invited_by, status, expires_at, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, CURRENT_TIMESTAMP)
+  `, [
+    inviteId,
+    normalizedEmail,
+    token,
+    role,
+    sub_role || null,
+    req.user.id,
+    expiresAt
+  ]);
+
+  // Determine platform URL
+  const platformCfg = queryOne("SELECT value FROM system_config WHERE key = 'platform_url'");
+  const baseUrl = platformCfg ? platformCfg.value : (req.protocol + '://' + (req.get('host') || 'localhost:3000'));
+  const inviteUrl = `${baseUrl}/#/invite/${token}`;
+
+  logAccess({
+    userId: req.user.id,
+    action: 'team_invite_created',
+    resource: `/api/admin/invites (email: ${normalizedEmail}, role: ${role})`,
+    ipAddress
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: 'Team invitation created successfully',
+    invite: {
+      id: inviteId,
+      email: normalizedEmail,
+      token,
+      role,
+      sub_role: sub_role || null,
+      invite_url: inviteUrl,
+      expires_at: expiresAt
+    }
+  });
+});
+
+// PRD 29: GET /api/admin/invites (Admin only - RBAC: member.add)
+router.get('/invites', authenticate, requirePermission('member.add'), (req, res) => {
+  const invites = queryAll(`
+    SELECT ti.id, ti.email, ti.token, ti.role, ti.sub_role, ti.status, ti.expires_at, ti.created_at,
+           u.name as invited_by_name
+    FROM team_invites ti
+    LEFT JOIN users u ON ti.invited_by = u.id
+    ORDER BY ti.created_at DESC
+  `);
+  return res.status(200).json({ invites });
+});
+
+// PRD 29: PATCH /api/admin/members/:id/role (Admin only - RBAC: member.add)
+router.patch('/members/:id/role', authenticate, requirePermission('member.add'), (req, res) => {
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const { id } = req.params;
+  const { role, sub_role } = req.body || {};
+
+  const validRoles = ['researcher', 'developer', 'producer', 'admin', 'designer'];
+  if (!role || !validRoles.includes(role)) {
+    return res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+  }
+
+  if (sub_role && !['frontend', 'backend'].includes(sub_role)) {
+    return res.status(400).json({ error: "Invalid sub_role. Must be 'frontend', 'backend', or null" });
+  }
+
+  const member = queryOne('SELECT * FROM users WHERE id = ?', [id]);
+  if (!member) {
+    return res.status(404).json({ error: 'Member not found' });
+  }
+
+  execute(
+    'UPDATE users SET role = ?, sub_role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [role, sub_role || null, id]
+  );
+
+  logAccess({
+    userId: req.user.id,
+    action: `member_role_updated_to_${role}`,
+    resource: `/api/admin/members/${id}/role`,
+    ipAddress
+  });
+
+  const updated = queryOne('SELECT id, name, email, role, sub_role, status, updated_at FROM users WHERE id = ?', [id]);
+  return res.status(200).json({
+    success: true,
+    message: `Role updated to ${role} successfully`,
+    user: updated
+  });
+});
+
+// PRD 29: GET /api/admin/onboarding-status (Admin only)
+router.get('/onboarding-status', authenticate, (req, res) => {
+  try {
+    // 1. Admin account created
+    const adminRow = queryOne("SELECT COUNT(*) as count FROM users WHERE role IN ('admin', 'superadmin')");
+    const adminCreated = adminRow ? Number(adminRow.count) > 0 : false;
+
+    // 2. At least 1 team member invited
+    const invitesRow = queryOne("SELECT COUNT(*) as count FROM team_invites");
+    const membersRow = queryOne("SELECT COUNT(*) as count FROM users WHERE role NOT IN ('admin', 'superadmin')");
+    const memberInvited = (invitesRow && Number(invitesRow.count) > 0) || (membersRow && Number(membersRow.count) > 0);
+
+    // 3. First project created
+    const projectRow = queryOne("SELECT COUNT(*) as count FROM projects");
+    const firstProjectCreated = projectRow ? Number(projectRow.count) > 0 : false;
+
+    // 4. First task created
+    let taskCount = 0;
+    try {
+      const tasksRow = queryOne("SELECT COUNT(*) as count FROM tasks");
+      if (tasksRow) taskCount += Number(tasksRow.count);
+    } catch (e) {}
+    try {
+      const projTasksRow = queryOne("SELECT COUNT(*) as count FROM project_tasks");
+      if (projTasksRow) taskCount += Number(projTasksRow.count);
+    } catch (e) {}
+    const firstTaskCreated = taskCount > 0;
+
+    const checklist = {
+      adminCreated,
+      memberInvited,
+      firstProjectCreated,
+      firstTaskCreated
+    };
+
+    const completedCount = Object.values(checklist).filter(Boolean).length;
+    const totalCount = 4;
+    const allComplete = completedCount === totalCount;
+
+    return res.status(200).json({
+      checklist,
+      completedCount,
+      totalCount,
+      allComplete
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to evaluate onboarding status', message: err.message });
+  }
+});
+
 // 5. PATCH /api/admin/members/:id/status (Admin only - RBAC: member.remove)
 // NON-NEGOTIABLE RULE: NEVER USE DELETE QUERY. ONLY SOFT STATUS TRANSITION.
 router.patch('/members/:id/status', authenticate, requirePermission('member.remove'), (req, res) => {
@@ -151,13 +327,17 @@ router.patch('/members/:id/status', authenticate, requirePermission('member.remo
 
 // 7. GET /api/admin/members (Admin only - RBAC: member.add)
 router.get('/members', authenticate, requirePermission('member.add'), (req, res) => {
+  const limit = req.query.limit ? Math.min(Number(req.query.limit), 500) : 100;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+
   const members = queryAll(`
     SELECT id, name, email, role, sub_role, status, rating_avg,
            idea_quota_used, quota_reset_date, wallet_balance, profile_photo_url,
            created_at, updated_at, deactivated_at
     FROM users
     ORDER BY created_at DESC
-  `);
+    LIMIT ? OFFSET ?
+  `, [limit, offset]);
 
   return res.status(200).json({ members });
 });
@@ -168,13 +348,17 @@ router.get('/applications/pending', authenticate, requirePermission('application
     return res.status(403).json({ error: 'Forbidden: Only administrators can view pending applications' });
   }
 
+  const limit = req.query.limit ? Math.min(Number(req.query.limit), 500) : 100;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+
   const applications = queryAll(`
     SELECT id, name, email, phone_number, desired_role, desired_sub_role,
            status, created_at, updated_at
     FROM users
     WHERE status = 'pending'
     ORDER BY created_at ASC
-  `);
+    LIMIT ? OFFSET ?
+  `, [limit, offset]);
 
   return res.status(200).json({
     count: applications.length,
@@ -475,6 +659,9 @@ router.get('/projects/all', authenticate, (req, res) => {
     return res.status(403).json({ error: 'Forbidden: Only administrators can view all projects' });
   }
 
+  const limit = req.query.limit ? Math.min(Number(req.query.limit), 500) : 100;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+
   const projects = queryAll(`
     SELECT p.*, COALESCE(u.name, 'Unknown Owner') as owner_name, COALESCE(u.email, '') as owner_email,
            (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id AND pm.removed_at IS NULL) as member_count,
@@ -483,7 +670,8 @@ router.get('/projects/all', authenticate, (req, res) => {
     FROM projects p
     LEFT JOIN users u ON p.owner_id = u.id
     ORDER BY p.created_at DESC
-  `);
+    LIMIT ? OFFSET ?
+  `, [limit, offset]);
 
   return res.status(200).json({
     count: projects.length,
@@ -586,6 +774,20 @@ router.patch('/projects/:id/final-review', authenticate, (req, res) => {
 
   if (typeof approved !== 'boolean') {
     return res.status(400).json({ error: "'approved' boolean flag (true/false) is required" });
+  }
+
+  // PRD 15 Layer 6 Integration 2: Pipeline Go-Live -> Project Final Review Gate
+  if (approved) {
+    const pendingDeliverables = queryOne(`
+      SELECT COUNT(*) as count FROM pipeline_deliverables
+      WHERE project_id = ? AND status != 'LIVE' AND status != 'CANCELLED'
+    `, [id]);
+
+    if (pendingDeliverables && Number(pendingDeliverables.count) > 0) {
+      return res.status(400).json({
+        error: 'Pipeline deliverables must all reach LIVE status before final project review. Use Admin Pipeline Approval first.'
+      });
+    }
   }
 
   const result = adminFinalReview({
@@ -818,6 +1020,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     JOIN users u ON i.owner_id = u.id
     WHERE i.status = 'PENDING_REVIEW'
     ORDER BY i.created_at DESC
+    LIMIT 20
   `);
   const activeResearchTasks = queryAll(`
     SELECT pt.id, pt.task_name, pt.status, p.title as project_title, u.name as assigned_to_name
@@ -826,6 +1029,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     LEFT JOIN users u ON pt.assigned_to = u.id
     WHERE pt.task_type = 'research' AND pt.status IN ('TODO', 'IN_PROGRESS')
     ORDER BY pt.created_at ASC
+    LIMIT 20
   `);
 
   // 2. Developer Corner data
@@ -838,6 +1042,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     LEFT JOIN project_tasks dep ON pt.depends_on_task_id = dep.id
     WHERE pt.task_type IN ('backend', 'frontend') AND pt.status IN ('TODO', 'BLOCKED', 'IN_PROGRESS')
     ORDER BY pt.created_at ASC
+    LIMIT 20
   `);
 
   // 3. Producer Corner data
@@ -848,6 +1053,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     LEFT JOIN users u ON pt.assigned_to = u.id
     WHERE pt.task_type = 'testing' AND pt.status IN ('TODO', 'BLOCKED', 'IN_PROGRESS')
     ORDER BY pt.created_at ASC
+    LIMIT 20
   `);
 
   // 3b. UI/UX Designer Corner data
@@ -860,6 +1066,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     LEFT JOIN project_tasks dep ON pt.depends_on_task_id = dep.id
     WHERE pt.task_type = 'design' AND pt.status IN ('TODO', 'BLOCKED', 'IN_PROGRESS')
     ORDER BY pt.created_at ASC
+    LIMIT 20
   `);
 
   // 4. Admin Corner data
@@ -869,6 +1076,7 @@ router.get('/corners-overview', authenticate, (req, res) => {
     FROM projects p
     LEFT JOIN users u ON p.owner_id = u.id
     WHERE p.current_stage = 'ADMIN_REVIEW' AND p.status = 'ACTIVE'
+    LIMIT 20
   `);
   const activeMembersCount = queryOne("SELECT COUNT(*) as count FROM users WHERE status = 'active'")?.count || 0;
   const liveProjectsCount = queryOne("SELECT COUNT(*) as count FROM projects WHERE current_stage = 'LIVE'")?.count || 0;
@@ -1442,5 +1650,84 @@ router.patch('/meetings/:id/notes/confirm', authenticate, (req, res) => {
 
   return res.status(result.status).json(result.notes ? { message: result.message, notes: result.notes } : { error: result.error });
 });
+
+/**
+ * 25. GET /api/admin/projects/:id/pipeline/summary (Admin only)
+ * Full audit summary of pipeline for a project
+ */
+router.get('/projects/:id/pipeline/summary', authenticate, (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Admin role required' });
+    }
+
+    const project = queryOne('SELECT * FROM projects WHERE id = ?', [req.params.id]);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const deliverables = queryAll(
+      'SELECT * FROM pipeline_deliverables WHERE project_id = ? ORDER BY created_at ASC',
+      [req.params.id]
+    );
+
+    const details = deliverables.map(d => pipelineService.getDeliverableDetail(d.id));
+
+    const handoffs = queryAll(`
+      SELECT h.* FROM pipeline_stage_handoffs h 
+      JOIN pipeline_deliverables d ON h.deliverable_id = d.id 
+      WHERE d.project_id = ? 
+      ORDER BY h.created_at ASC
+    `, [req.params.id]);
+
+    const addendums = queryAll(`
+      SELECT a.* FROM pipeline_addendum_requests a 
+      JOIN pipeline_deliverables d ON a.deliverable_id = d.id 
+      WHERE d.project_id = ? 
+      ORDER BY a.created_at ASC
+    `, [req.params.id]);
+
+    return res.status(200).json({
+      project,
+      deliverables: details,
+      handoffs,
+      addendums
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * 26. PATCH /api/admin/projects/:id/pipeline/approve-live (Admin only)
+ * Approves pipeline go-live when all deliverables COMPLETE and 0 open addendums
+ */
+router.patch('/projects/:id/pipeline/approve-live', authenticate, (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Admin role required' });
+    }
+
+    const { approval_notes } = req.body || {};
+    try {
+      const updatedProject = pipelineService.adminApproveLive(
+        req.params.id,
+        req.user.id,
+        approval_notes || ''
+      );
+      return res.status(200).json(updatedProject);
+    } catch (serviceErr) {
+      if (serviceErr.message.includes('not found')) {
+        return res.status(404).json({ error: serviceErr.message });
+      }
+      return res.status(400).json({ error: serviceErr.message });
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Mount PRD 24 Admin Client Management routes
+router.use(adminClientsRouter);
 
 export default router;

@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprint Board — Mahi Tech Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-todo: #94a3b8;
+      --color-inprogress: #38bdf8;
+      --color-inreview: #a855f7;
+      --color-done: #10b981;
+      --color-critical: #ef4444;
+      --color-high: #f59e0b;
+      --color-medium: #3b82f6;
+      --color-low: #64748b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #38bdf8;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .nav-breadcrumbs strong {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #e2e8f0;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      color: #ffffff;
+      border-color: #475569;
+    }
+
+    .btn-complete-sprint {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      border: 1px solid #34d399;
+      color: #ffffff;
+      padding: 0.5rem 1.1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+
+    .btn-complete-sprint:hover {
+      background: linear-gradient(135deg, #047857 0%, #059669 100%);
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-complete-sprint:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #1e293b;
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      border: 1px solid var(--border-card);
+    }
+
+    .role-badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    /* Subheader / Sprint Info Bar */
+    .sprint-summary-bar {
+      background: rgba(15, 23, 42, 0.75);
+      border-bottom: 1px solid var(--border-card);
+      backdrop-filter: blur(8px);
+      padding: 1rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .sprint-identity {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .sprint-title-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .sprint-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+    }
+
+    .sprint-status-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-active { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+    .status-draft { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.4); }
+    .status-completed { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+
+    .sprint-goal-text {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .sprint-metrics {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .progress-bar-wrap {
+      width: 160px;
+      height: 8px;
+      background: #1e293b;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-top: 0.25rem;
+      border: 1px solid var(--border-card);
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8 0%, #10b981 100%);
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    /* Kanban Board Layout */
+    .board-container {
+      flex: 1;
+      padding: 1.5rem 1.75rem;
+      overflow-x: auto;
+    }
+
+    .kanban-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(280px, 1fr));
+      gap: 1.25rem;
+      min-height: calc(100vh - 240px);
+      align-items: start;
+    }
+
+    .kanban-col {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 200px);
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .kanban-col.drag-over {
+      background: rgba(30, 41, 59, 0.9);
+      border-color: #38bdf8;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.15);
+    }
+
+    .col-header {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top-left-radius: 9px;
+      border-top-right-radius: 9px;
+    }
+
+    .col-title-group {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .col-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .col-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .col-badge-count {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid var(--border-card);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+    }
+
+    .col-points-sum {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .cards-list {
+      padding: 0.85rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-height: 200px;
+      flex: 1;
+    }
+
+    /* Card Item */
+    .kanban-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 0.9rem;
+      cursor: grab;
+      position: relative;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .kanban-card:hover {
+      border-color: #475569;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.35);
+    }
+
+    .kanban-card.is-dragging {
+      opacity: 0.4;
+      cursor: grabbing;
+      transform: scale(0.98);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .badge-type {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-type.STORY { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-type.BUG { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-type.TASK { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge-type.EPIC { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
+
+    .badge-priority {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .priority-CRITICAL { color: #f87171; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); }
+    .priority-HIGH { color: #fbbf24; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); }
+    .priority-MEDIUM { color: #60a5fa; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); }
+    .priority-LOW { color: #94a3b8; background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.25); }
+
+    .card-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin: 0 0 0.5rem 0;
+      line-height: 1.4;
+    }
+
+    .card-description {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin: 0 0 0.65rem 0;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      border-top: 1px solid var(--border-light);
+      padding-top: 0.5rem;
+      margin-top: 0.35rem;
+    }
+
+    .points-tag {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      color: #38bdf8;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .assignee-info {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Modal Backdrop */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 480px;
+      padding: 1.75rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-card h3 {
+      margin-top: 0;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+    }
+
+    /* Notification Banner */
+    .toast-box {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      color: #f8fafc;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+      z-index: 200;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <nav class="top-nav" id="sprintBoardNav">
+    <div class="brand-wrap">
+      <a href="/sprint-list.html" class="brand-title" id="navLogoLink">
+        <span>⚡</span> MAHI TECH GROUP
+      </a>
+      <span style="color: var(--border-card);">/</span>
+      <div class="nav-breadcrumbs">
+        <span id="projectBreadcrumb">Project</span>
+        <span style="color: var(--border-card);">/</span>
+        <strong id="sprintBreadcrumb">Sprint Board</strong>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <a href="/backlog.html" class="btn-nav" id="linkBacklog">📋 Backlog</a>
+      <a href="/sprint-list.html" class="btn-nav" id="linkSprintList">🏃 All Sprints</a>
+      <a href="/velocity-chart.html" class="btn-nav" id="linkVelocityChart">📊 Velocity & Burndown</a>
+      
+      <button class="btn-complete-sprint" id="btnCompleteSprint" style="display:none;">
+        🏁 Complete Sprint
+      </button>
+
+      <div class="user-pill" id="userPill">
+        <span id="userRoleBadge" class="role-badge">USER</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Sprint Info Bar -->
+  <header class="sprint-summary-bar" id="sprintSummaryBar">
+    <div class="sprint-identity">
+      <div class="sprint-title-row">
+        <h1 class="sprint-title" id="sprintNameDisplay">Loading Sprint...</h1>
+        <span class="sprint-status-tag status-draft" id="sprintStatusTag">DRAFT</span>
+      </div>
+      <p class="sprint-goal-text" id="sprintGoalDisplay">Goal: ...</p>
+    </div>
+
+    <div class="sprint-metrics">
+      <div class="metric-item">
+        <span class="metric-label">Dates</span>
+        <span class="metric-value" id="sprintDatesDisplay" style="font-size: 0.95rem;">-</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Committed</span>
+        <span class="metric-value" id="sprintCommittedDisplay">0 pts</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Completed</span>
+        <span class="metric-value" id="sprintCompletedDisplay" style="color: #34d399;">0 pts</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Progress</span>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="sprintProgressBar"></div>
+          </div>
+          <span id="sprintProgressPct" style="font-size: 0.85rem; font-weight: 700;">0%</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Kanban Board Columns -->
+  <main class="board-container">
+    <div class="kanban-grid" id="kanbanGrid">
+      
+      <!-- 1. TODO -->
+      <section class="kanban-col" id="col-TODO" data-status="TODO">
+        <div class="col-header" style="border-top: 3px solid var(--color-todo);">
+          <div class="col-title-group">
+            <span class="col-dot" style="background: var(--color-todo);"></span>
+            <span class="col-title" style="color: var(--color-todo);">TODO</span>
+            <span class="col-badge-count" id="count-TODO">0</span>
+          </div>
+          <span class="col-points-sum" id="points-TODO">0 pts</span>
+        </div>
+        <div class="cards-list" id="cards-TODO" data-status="TODO"></div>
+      </section>
+
+      <!-- 2. IN_PROGRESS -->
+      <section class="kanban-col" id="col-IN_PROGRESS" data-status="IN_PROGRESS">
+        <div class="col-header" style="border-top: 3px solid var(--color-inprogress);">
+          <div class="col-title-group">
+            <span class="col-dot" style="background: var(--color-inprogress);"></span>
+            <span class="col-title" style="color: var(--color-inprogress);">IN PROGRESS</span>
+            <span class="col-badge-count" id="count-IN_PROGRESS">0</span>
+          </div>
+          <span class="col-points-sum" id="points-IN_PROGRESS">0 pts</span>
+        </div>
+        <div class="cards-list" id="cards-IN_PROGRESS" data-status="IN_PROGRESS"></div>
+      </section>
+
+      <!-- 3. IN_REVIEW -->
+      <section class="kanban-col" id="col-IN_REVIEW" data-status="IN_REVIEW">
+        <div class="col-header" style="border-top: 3px solid var(--color-inreview);">
+          <div class="col-title-group">
+            <span class="col-dot" style="background: var(--color-inreview);"></span>
+            <span class="col-title" style="color: var(--color-inreview);">IN REVIEW</span>
+            <span class="col-badge-count" id="count-IN_REVIEW">0</span>
+          </div>
+          <span class="col-points-sum" id="points-IN_REVIEW">0 pts</span>
+        </div>
+        <div class="cards-list" id="cards-IN_REVIEW" data-status="IN_REVIEW"></div>
+      </section>
+
+      <!-- 4. DONE -->
+      <section class="kanban-col" id="col-DONE" data-status="DONE">
+        <div class="col-header" style="border-top: 3px solid var(--color-done);">
+          <div class="col-title-group">
+            <span class="col-dot" style="background: var(--color-done);"></span>
+            <span class="col-title" style="color: var(--color-done);">DONE</span>
+            <span class="col-badge-count" id="count-DONE">0</span>
+          </div>
+          <span class="col-points-sum" id="points-DONE">0 pts</span>
+        </div>
+        <div class="cards-list" id="cards-DONE" data-status="DONE"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Complete Sprint Modal -->
+  <div class="modal-backdrop" id="completeSprintModal">
+    <div class="modal-card">
+      <h3 style="color: #34d399;">🏁 Complete Active Sprint</h3>
+      <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.5;">
+        Completing this sprint will lock all tasks and automatically log team velocity into the append-only velocity ledger.
+      </p>
+      <div style="background: #0f172a; padding: 1rem; border-radius: 8px; margin: 1.25rem 0; border: 1px solid var(--border-card);">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span style="color: var(--text-muted); font-size: 0.85rem;">Committed Points:</span>
+          <strong id="modalCommittedPoints">0</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span style="color: var(--text-muted); font-size: 0.85rem;">Completed Points:</span>
+          <strong id="modalCompletedPoints" style="color: #34d399;">0</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted); font-size: 0.85rem;">Completion Rate:</span>
+          <strong id="modalCompletionRate">0%</strong>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn-nav" id="btnCancelComplete">Cancel</button>
+        <button type="button" class="btn-complete-sprint" id="btnConfirmComplete">Confirm & Complete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-box" id="toastBox">
+    <span id="toastMsg">Action completed</span>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const urlParams = new URLSearchParams(window.location.search);
+      let sprintId = urlParams.get('sprintId') || urlParams.get('id');
+      let projectId = urlParams.get('projectId');
+
+      const authToken = localStorage.getItem('mtg_auth_token') || localStorage.getItem('token') || '';
+      let currentUser = null;
+      let currentSprint = null;
+      let draggedCardId = null;
+
+      // Elements
+      const sprintNameDisplay = document.getElementById('sprintNameDisplay');
+      const sprintStatusTag = document.getElementById('sprintStatusTag');
+      const sprintGoalDisplay = document.getElementById('sprintGoalDisplay');
+      const sprintDatesDisplay = document.getElementById('sprintDatesDisplay');
+      const sprintCommittedDisplay = document.getElementById('sprintCommittedDisplay');
+      const sprintCompletedDisplay = document.getElementById('sprintCompletedDisplay');
+      const sprintProgressBar = document.getElementById('sprintProgressBar');
+      const sprintProgressPct = document.getElementById('sprintProgressPct');
+      const btnCompleteSprint = document.getElementById('btnCompleteSprint');
+      const userRoleBadge = document.getElementById('userRoleBadge');
+      const toastBox = document.getElementById('toastBox');
+      const toastMsg = document.getElementById('toastMsg');
+
+      const modalBackdrop = document.getElementById('completeSprintModal');
+      const btnCancelComplete = document.getElementById('btnCancelComplete');
+      const btnConfirmComplete = document.getElementById('btnConfirmComplete');
+      const modalCommittedPoints = document.getElementById('modalCommittedPoints');
+      const modalCompletedPoints = document.getElementById('modalCompletedPoints');
+      const modalCompletionRate = document.getElementById('modalCompletionRate');
+
+      const columns = {
+        TODO: document.getElementById('cards-TODO'),
+        IN_PROGRESS: document.getElementById('cards-IN_PROGRESS'),
+        IN_REVIEW: document.getElementById('cards-IN_REVIEW'),
+        DONE: document.getElementById('cards-DONE')
+      };
+
+      function showToast(msg, isError = false) {
+        toastMsg.textContent = msg;
+        toastBox.style.borderLeft = isError ? '4px solid #ef4444' : '4px solid #10b981';
+        toastBox.style.display = 'flex';
+        setTimeout(() => { toastBox.style.display = 'none'; }, 3000);
+      }
+
+      async function api(path, method = 'GET', body = null) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        const opts = { method, headers };
+        if (body && method !== 'GET') opts.body = JSON.stringify(body);
+        const res = await fetch(path, opts);
+        let data = null;
+        try { data = await res.json(); } catch (e) {}
+        return { status: res.status, ok: res.ok, data };
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      async function init() {
+        // Authenticate user
+        const meRes = await api('/api/users/me');
+        if (meRes.ok && meRes.data) {
+          currentUser = meRes.data;
+          const role = (currentUser.role || 'member').toLowerCase();
+          userRoleBadge.textContent = role;
+          if (role === 'admin' || role === 'lead' || (currentUser.sub_role === 'lead')) {
+            btnCompleteSprint.style.display = 'inline-flex';
+          }
+        }
+
+        // If sprintId is missing, check if projectId was given
+        if (!sprintId && projectId) {
+          const sprintsRes = await api(`/api/sprint/project/${projectId}`);
+          if (sprintsRes.ok && Array.isArray(sprintsRes.data)) {
+            const active = sprintsRes.data.find(s => s.status === 'ACTIVE') || sprintsRes.data[0];
+            if (active) sprintId = active.id;
+          }
+        }
+
+        if (!sprintId) {
+          sprintNameDisplay.textContent = 'No Sprint Specified';
+          sprintGoalDisplay.textContent = 'Please choose a sprint from All Sprints list or Backlog.';
+          return;
+        }
+
+        // Update nav links with projectId
+        await loadSprint();
+        setupDragAndDrop();
+      }
+
+      async function loadSprint() {
+        const res = await api(`/api/sprint/${sprintId}`);
+        if (!res.ok) {
+          showToast(res.data?.error || 'Failed to load sprint detail', true);
+          sprintNameDisplay.textContent = 'Sprint Not Found';
+          return;
+        }
+
+        currentSprint = res.data;
+        projectId = currentSprint.project_id;
+
+        // Update Nav breadcrumb & links
+        document.getElementById('projectBreadcrumb').textContent = currentSprint.project_title || `Project #${projectId}`;
+        document.getElementById('sprintBreadcrumb').textContent = currentSprint.name;
+        document.getElementById('linkBacklog').href = `/backlog.html?projectId=${projectId}`;
+        document.getElementById('linkSprintList').href = `/sprint-list.html?projectId=${projectId}`;
+        document.getElementById('linkVelocityChart').href = `/velocity-chart.html?projectId=${projectId}&sprintId=${sprintId}`;
+
+        // Header info
+        sprintNameDisplay.textContent = currentSprint.name;
+        sprintStatusTag.textContent = currentSprint.status;
+        sprintStatusTag.className = `sprint-status-tag status-${currentSprint.status.toLowerCase()}`;
+        sprintGoalDisplay.textContent = currentSprint.goal ? `Goal: ${currentSprint.goal}` : 'No goal specified';
+
+        const sDate = currentSprint.start_date || 'TBD';
+        const eDate = currentSprint.end_date || 'TBD';
+        sprintDatesDisplay.textContent = `${sDate} → ${eDate}`;
+
+        const committed = currentSprint.total_points || 0;
+        const completed = currentSprint.completed_points || 0;
+        const rate = committed > 0 ? Math.round((completed / committed) * 100) : 0;
+
+        sprintCommittedDisplay.textContent = `${committed} pts`;
+        sprintCompletedDisplay.textContent = `${completed} pts`;
+        sprintProgressBar.style.width = `${Math.min(100, rate)}%`;
+        sprintProgressPct.textContent = `${rate}%`;
+
+        // Enable or disable Complete button based on status
+        if (currentSprint.status !== 'ACTIVE') {
+          btnCompleteSprint.disabled = true;
+          btnCompleteSprint.title = `Sprint is ${currentSprint.status}`;
+        } else {
+          btnCompleteSprint.disabled = false;
+        }
+
+        renderItems(currentSprint.items || []);
+      }
+
+      function renderItems(items) {
+        // Clear all columns
+        Object.keys(columns).forEach(status => {
+          columns[status].innerHTML = '';
+        });
+
+        const statusCounts = { TODO: 0, IN_PROGRESS: 0, IN_REVIEW: 0, DONE: 0 };
+        const statusPoints = { TODO: 0, IN_PROGRESS: 0, IN_REVIEW: 0, DONE: 0 };
+
+        items.forEach(item => {
+          const status = item.status || 'TODO';
+          if (!columns[status]) return;
+
+          statusCounts[status]++;
+          statusPoints[status] += (Number(item.story_points) || 0);
+
+          const card = createCardElement(item);
+          columns[status].appendChild(card);
+        });
+
+        // Update column headers
+        Object.keys(columns).forEach(status => {
+          document.getElementById(`count-${status}`).textContent = statusCounts[status];
+          document.getElementById(`points-${status}`).textContent = `${statusPoints[status]} pts`;
+
+          if (statusCounts[status] === 0) {
+            columns[status].innerHTML = `<div class="empty-state">No items in ${status.replace('_', ' ')}</div>`;
+          }
+        });
+      }
+
+      function createCardElement(item) {
+        const card = document.createElement('div');
+        card.className = 'kanban-card';
+        card.id = `item-card-${item.id}`;
+        card.draggable = true;
+        card.dataset.itemId = item.id;
+        card.dataset.status = item.status;
+
+        const type = escapeHtml(item.type || 'STORY');
+        const priority = escapeHtml(item.priority || 'MEDIUM');
+        const points = Number(item.story_points) || 0;
+        const title = escapeHtml(item.title);
+        const desc = item.description ? `<p class="card-description">${escapeHtml(item.description)}</p>` : '';
+        const assigneeName = item.assigned_to_name ? escapeHtml(item.assigned_to_name) : 'Unassigned';
+
+        card.innerHTML = `
+          <div class="card-top">
+            <span class="badge-type ${type}">${type}</span>
+            <span class="badge-priority priority-${priority}">${priority}</span>
+          </div>
+          <h4 class="card-title">${title}</h4>
+          ${desc}
+          <div class="card-bottom">
+            <span class="points-tag">⚡ ${points} pts</span>
+            <span class="assignee-info" title="${assigneeName}">👤 ${assigneeName}</span>
+          </div>
+        `;
+
+        card.addEventListener('dragstart', handleDragStart);
+        card.addEventListener('dragend', handleDragEnd);
+
+        return card;
+      }
+
+      function setupDragAndDrop() {
+        const dropZones = document.querySelectorAll('.cards-list');
+
+        dropZones.forEach(zone => {
+          zone.addEventListener('dragover', e => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            zone.closest('.kanban-col').classList.add('drag-over');
+          });
+
+          zone.addEventListener('dragleave', () => {
+            zone.closest('.kanban-col').classList.remove('drag-over');
+          });
+
+          zone.addEventListener('drop', async e => {
+            e.preventDefault();
+            const col = zone.closest('.kanban-col');
+            col.classList.remove('drag-over');
+
+            const newStatus = zone.dataset.status;
+            if (!draggedCardId || !newStatus) return;
+
+            const card = document.getElementById(`item-card-${draggedCardId}`);
+            if (!card) return;
+
+            const oldStatus = card.dataset.status;
+            if (oldStatus === newStatus) return;
+
+            // Optimistic move
+            card.dataset.status = newStatus;
+            zone.appendChild(card);
+
+            // API Call: PATCH /api/backlog/item/:itemId/status
+            const res = await api(`/api/backlog/item/${draggedCardId}/status`, 'PATCH', { status: newStatus });
+            if (!res.ok) {
+              showToast(res.data?.error || 'Failed to update item status', true);
+              await loadSprint(); // Revert on failure
+            } else {
+              showToast(`Item status updated to ${newStatus}`);
+              await loadSprint(); // Recalculate sums and progress
+            }
+          });
+        });
+      }
+
+      function handleDragStart(e) {
+        draggedCardId = this.dataset.itemId;
+        this.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', draggedCardId);
+      }
+
+      function handleDragEnd() {
+        this.classList.remove('is-dragging');
+        document.querySelectorAll('.kanban-col').forEach(col => col.classList.remove('drag-over'));
+      }
+
+      // Complete Sprint Handler
+      btnCompleteSprint.addEventListener('click', () => {
+        if (!currentSprint) return;
+        const committed = currentSprint.total_points || 0;
+        const completed = currentSprint.completed_points || 0;
+        const rate = committed > 0 ? Math.round((completed / committed) * 100) : 0;
+
+        modalCommittedPoints.textContent = `${committed} pts`;
+        modalCompletedPoints.textContent = `${completed} pts`;
+        modalCompletionRate.textContent = `${rate}%`;
+        modalBackdrop.style.display = 'flex';
+      });
+
+      btnCancelComplete.addEventListener('click', () => {
+        modalBackdrop.style.display = 'none';
+      });
+
+      btnConfirmComplete.addEventListener('click', async () => {
+        btnConfirmComplete.disabled = true;
+        btnConfirmComplete.textContent = 'Completing...';
+
+        const res = await api(`/api/sprint/${sprintId}/complete`, 'PATCH');
+        btnConfirmComplete.disabled = false;
+        btnConfirmComplete.textContent = 'Confirm & Complete';
+        modalBackdrop.style.display = 'none';
+
+        if (!res.ok) {
+          showToast(res.data?.error || 'Failed to complete sprint', true);
+          return;
+        }
+
+        showToast('Sprint completed and velocity recorded!');
+        setTimeout(() => {
+          window.location.href = `/velocity-chart.html?projectId=${projectId}&sprintId=${sprintId}`;
+        }, 1200);
+      });
+
+      init();
+    })();
+  </script>
+</body>
+</html>

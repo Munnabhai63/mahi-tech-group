@@ -10,8 +10,7 @@
     (function() {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       if (user.role !== 'admin') {
-        alert('Access Denied — Insufficient Privileges');
-        window.location.href = '/';
+        window.location.replace('/app.html#/app/403');
       }
     })();
   </script>
@@ -795,18 +794,51 @@
       </div>
     </section>
 
-    <!-- Section 8: Unified Audit Stream Placeholder (Layer 6) -->
+    <!-- Section 9: Unified Audit Stream -->
     <section class="sa-pane" id="paneAudit">
       <div class="sa-header">
         <div class="sa-header-title">
           <h2>Unified Audit Stream</h2>
           <p>Consolidated administrative forensic timeline across all modules.</p>
         </div>
+        <div class="sa-header-actions" style="display:flex; gap:10px;">
+          <button class="sa-btn-outline" id="btnExportAuditCSV">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+          <button class="sa-btn-refresh" id="btnRefreshAudit">
+            <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Refresh Stream
+          </button>
+        </div>
       </div>
-      <div class="sa-placeholder-card">
-        <h3>Section 8: Unified Audit Stream</h3>
-        <p>Consolidated timeline, severity tagging (Critical/Warning/Info), and CSV audit stream export.</p>
-        <span class="sa-layer-tag">Scheduled for Layer 6 Implementation</span>
+
+      <div class="sa-table-controls" style="margin-bottom:16px; display:flex; gap:12px; flex-wrap:wrap;">
+        <input type="text" id="auditSearchInput" class="sa-search-input" placeholder="Search by actor, action, or details..." style="flex:1; min-width:220px; padding:8px 12px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); color:#fff; font-size:13px;">
+        <select id="auditSeverityFilter" style="padding:8px 12px; background:var(--sa-card-bg); border:1px solid var(--sa-card-border); border-radius:var(--radius-sm); color:#fff; font-size:13px;">
+          <option value="">All Severities</option>
+          <option value="critical">Critical</option>
+          <option value="warning">Warning</option>
+          <option value="info">Info</option>
+        </select>
+      </div>
+
+      <div class="sa-table-card">
+        <table class="sa-table" id="auditStreamTable">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Severity</th>
+              <th>Actor</th>
+              <th>Action</th>
+              <th>IP Address</th>
+              <th>Metadata</th>
+            </tr>
+          </thead>
+          <tbody id="auditStreamTableBody">
+            <tr><td colspan="6" class="sa-loading-cell">Loading forensic audit stream...</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -1309,6 +1341,7 @@
 <div id="toastContainer"></div>
 
 <!-- Core Super Admin Logic -->
+<script src="/js/offline-handler.js"></script>
 <script src="/js/superadmin.js"></script>
 </body>
 </html>

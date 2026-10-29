@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Time Tracker — Mahi Tech Group</title>
+  <meta name="description" content="Personal time tracking, live active stopwatch timer, daily time entries, and weekly workload summary.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-accent: #818cf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #1e293b;
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      border: 1px solid var(--border-card);
+      font-size: 0.82rem;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #090d16;
+      border: none;
+      padding: 0.55rem 1.15rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #7dd3fc;
+    }
+
+    .btn-danger {
+      background: var(--color-danger);
+      color: #fff;
+      border: none;
+      padding: 0.55rem 1.15rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    /* Main Container */
+    .app-main {
+      flex: 1;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+    }
+
+    /* Card Panels */
+    .card-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    .card-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .card-panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    /* Active Timer Widget */
+    .timer-running-card {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, rgba(30, 41, 59, 0.7) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 12px;
+      padding: 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .timer-info-block {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .timer-meta-badges {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .timer-clock-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .timer-digital-display {
+      font-family: 'Outfit', monospace;
+      font-size: 3.5rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: var(--color-primary);
+      text-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
+      line-height: 1;
+    }
+
+    .timer-digital-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .timer-start-form {
+      display: grid;
+      grid-template-columns: 1.5fr 2fr 1fr 1fr auto;
+      gap: 0.75rem;
+      align-items: end;
+    }
+
+    @media (max-width: 1024px) {
+      .timer-start-form {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .timer-start-form {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .form-input, .form-select {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.55rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: var(--color-primary);
+    }
+
+    .form-checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      cursor: pointer;
+      margin-bottom: 0.55rem;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-info {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .badge-muted {
+      background: rgba(148, 163, 184, 0.15);
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    /* Data Table */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    .data-table th {
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-card);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+    }
+
+    .data-table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      vertical-align: middle;
+    }
+
+    .data-table tr:hover {
+      background: rgba(30, 41, 59, 0.4);
+    }
+
+    /* Weekly Bar Chart */
+    .chart-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .chart-bars-wrap {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1rem;
+      align-items: end;
+      height: 200px;
+      padding-top: 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .chart-bar-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .chart-bar-stem {
+      width: 100%;
+      max-width: 48px;
+      background: #1e293b;
+      border-radius: 6px 6px 0 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      overflow: hidden;
+      height: 0%;
+      transition: height 0.4s ease;
+      position: relative;
+    }
+
+    .chart-bar-billable {
+      background: var(--color-primary);
+      width: 100%;
+      transition: height 0.3s ease;
+    }
+
+    .chart-bar-nonbillable {
+      background: #64748b;
+      width: 100%;
+      transition: height 0.3s ease;
+    }
+
+    .chart-bar-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .chart-bar-val {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      animation: modalFadeIn 0.2s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      background: var(--bg-card);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      z-index: 150;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+
+    .toast.show {
+      display: flex;
+      animation: slideInUp 0.3s ease-out;
+    }
+
+    @keyframes slideInUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/legacy-dashboard.html" class="brand-title">
+        <span>⏱️</span> MAHI TIME
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <span>My Time Tracker</span>
+      </div>
+      <nav class="nav-links-sub">
+        <a href="/my-time-tracker.html" class="nav-link-sub active">My Tracker</a>
+        <a href="/team-time-report.html" class="nav-link-sub" id="navTeamReport" style="display:none;">Team Report</a>
+        <a href="/time-approval-queue.html" class="nav-link-sub" id="navApprovalQueue" style="display:none;">Approval Queue</a>
+        <a href="/billable-rates.html" class="nav-link-sub" id="navBillableRates" style="display:none;">Billable Rates</a>
+        <a href="/workload-dashboard.html" class="nav-link-sub">Workload</a>
+        <a href="/gantt-chart.html" class="nav-link-sub">Gantt</a>
+        <a href="/backlog.html" class="nav-link-sub">Backlog</a>
+      </nav>
+    </div>
+
+    <div class="nav-actions">
+      <div class="user-badge" id="userBadge">
+        <span id="userRoleIcon">👤</span>
+        <span id="userName">Loading...</span>
+        <span class="badge badge-info" id="userRoleBadge">MEMBER</span>
+      </div>
+      <button type="button" class="btn-nav" id="btnLogout">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="app-main">
+
+    <!-- TOP SECTION: Active Timer Widget -->
+    <section class="card-panel" id="timerWidget">
+      <div class="card-panel-header">
+        <div class="card-panel-title">
+          <span>⏱️</span> Active Timer
+        </div>
+        <button type="button" class="btn-nav" id="btnOpenManualModal">
+          <span>+</span> Log Manual Entry
+        </button>
+      </div>
+
+      <!-- State A: Timer is running -->
+      <div id="timerRunningSection" style="display: none;">
+        <div class="timer-running-card">
+          <div class="timer-info-block">
+            <div class="timer-meta-badges">
+              <span class="badge badge-success">● RUNNING</span>
+              <span class="badge badge-info" id="activeProjectTitle">Project</span>
+              <span class="badge badge-muted" id="activeBillableBadge">Billable</span>
+              <span class="badge badge-muted" id="activeSourceRef" style="display:none;">Task</span>
+            </div>
+            <h2 id="activeTaskDesc" style="margin: 0.5rem 0 0 0; font-size: 1.35rem; font-family: 'Outfit', sans-serif;">
+              Working on task...
+            </h2>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">
+              Started at <span id="activeStartTime">--:--</span>
+            </div>
+          </div>
+
+          <div class="timer-clock-container">
+            <div class="timer-digital-display" id="timerDisplay">00:00:00</div>
+            <div class="timer-digital-label">Elapsed Time</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 200px;">
+            <input type="text" id="stopNotesInput" class="form-input" placeholder="Completion notes / summary...">
+            <button type="button" class="btn-danger" id="btnStopTimer">
+              <span>⏹</span> Stop Timer
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- State B: No timer running -->
+      <div id="timerIdleSection">
+        <form id="startTimerForm" class="timer-start-form">
+          <div class="form-group">
+            <label class="form-label" for="timerProjectSelect">Project *</label>
+            <select id="timerProjectSelect" class="form-select" required>
+              <option value="">Select a Project...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="timerTaskInput">Task Description *</label>
+            <input type="text" id="timerTaskInput" class="form-input" placeholder="What are you working on right now?" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="timerSourceType">Source Reference</label>
+            <select id="timerSourceType" class="form-select">
+              <option value="">None (Ad-hoc)</option>
+              <option value="BACKLOG_ITEM">Backlog Item</option>
+              <option value="GANTT_ITEM">Gantt Item</option>
+              <option value="PIPELINE_POINT">Pipeline Point</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="timerSourceId">Source Ref ID</label>
+            <input type="text" id="timerSourceId" class="form-input" placeholder="e.g. TASK-101">
+          </div>
+
+          <div style="display: flex; flex-direction: column; justify-content: flex-end; gap: 0.4rem;">
+            <label class="form-checkbox-label">
+              <input type="checkbox" id="timerBillableCheck" checked>
+              Billable
+            </label>
+            <button type="submit" class="btn-primary" id="btnStartTimer">
+              <span>▶</span> Start Timer
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- MIDDLE SECTION: Today's Time Entries List -->
+    <section class="card-panel" id="todayEntriesSection">
+      <div class="card-panel-header">
+        <div class="card-panel-title">
+          <span>📋</span> Today's Time Entries
+        </div>
+        <div style="display: flex; align-items: center; gap: 1.25rem;">
+          <div style="font-size: 0.85rem; color: var(--text-muted);">
+            Total Logged: <strong id="todayTotalHrs" style="color: var(--text-main);">0.0 hrs</strong>
+          </div>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">
+            Estimated Value: <strong id="todayBillableAmount" style="color: var(--color-primary);">₹0</strong>
+          </div>
+        </div>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="data-table" id="todayEntriesTable">
+          <thead>
+            <tr>
+              <th>Task Description</th>
+              <th>Project</th>
+              <th>Time Span</th>
+              <th>Duration</th>
+              <th>Billable</th>
+              <th>Status</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="todayEntriesTableBody">
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem 0;">
+                Loading your time entries...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- BOTTOM SECTION: Weekly Summary Bar Chart -->
+    <section class="card-panel" id="weeklySummarySection">
+      <div class="card-panel-header">
+        <div class="card-panel-title">
+          <span>📊</span> This Week Summary
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <button type="button" class="btn-nav" id="btnPrevWeek">&larr; Prev Week</button>
+          <span id="currentWeekRange" style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600;">Current Week</span>
+          <button type="button" class="btn-nav" id="btnNextWeek">Next Week &rarr;</button>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <div class="chart-bars-wrap" id="weeklyChartWrap">
+          <!-- Mon through Sun Bar Columns generated dynamically -->
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: var(--text-muted); flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="width: 12px; height: 12px; background: var(--color-primary); border-radius: 2px;"></span>
+              Billable Hours
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="width: 12px; height: 12px; background: #64748b; border-radius: 2px;"></span>
+              Non-Billable Hours
+            </div>
+          </div>
+          <div>
+            Week Total: <strong id="weeklyGrandTotalHrs" style="color: var(--text-main);">0.0 hrs</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: Log Manual Time Entry -->
+  <div class="modal-overlay" id="manualEntryModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Log Manual Time Entry</h3>
+        <button type="button" class="btn-nav" id="btnCloseManualModal" style="padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+      <form id="manualEntryForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="manualProjectSelect">Project *</label>
+            <select id="manualProjectSelect" class="form-select" required>
+              <option value="">Select Project...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="manualDescInput">Task Description *</label>
+            <input type="text" id="manualDescInput" class="form-input" placeholder="Description of work done" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="manualStartTime">Start Time *</label>
+              <input type="datetime-local" id="manualStartTime" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="manualEndTime">End Time *</label>
+              <input type="datetime-local" id="manualEndTime" class="form-input" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="manualSourceType">Source Type</label>
+              <select id="manualSourceType" class="form-select">
+                <option value="">None</option>
+                <option value="BACKLOG_ITEM">Backlog Item</option>
+                <option value="GANTT_ITEM">Gantt Item</option>
+                <option value="PIPELINE_POINT">Pipeline Point</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="manualSourceId">Source ID</label>
+              <input type="text" id="manualSourceId" class="form-input" placeholder="e.g. TASK-102">
+            </div>
+          </div>
+
+          <label class="form-checkbox-label">
+            <input type="checkbox" id="manualBillableCheck" checked>
+            Is Billable
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-nav" id="btnCancelManual">Cancel</button>
+          <button type="submit" class="btn-primary" id="btnSubmitManual">Save Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Edit Entry (Within 24hr window) -->
+  <div class="modal-overlay" id="editEntryModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Time Entry</h3>
+        <button type="button" class="btn-nav" id="btnCloseEditModal" style="padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+      <form id="editEntryForm">
+        <input type="hidden" id="editEntryId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="editDescInput">Task Description *</label>
+            <input type="text" id="editDescInput" class="form-input" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="editStartTime">Start Time *</label>
+              <input type="datetime-local" id="editStartTime" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="editEndTime">End Time *</label>
+              <input type="datetime-local" id="editEndTime" class="form-input" required>
+            </div>
+          </div>
+
+          <label class="form-checkbox-label">
+            <input type="checkbox" id="editBillableCheck">
+            Is Billable
+          </label>
+
+          <div style="font-size: 0.75rem; color: var(--text-muted);">
+            ℹ️ Changes are recorded in immutable audit history. Entries older than 24 hours cannot be modified by members.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-nav" id="btnCancelEdit">Cancel</button>
+          <button type="submit" class="btn-primary" id="btnSubmitEdit">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toastNotification" role="alert" aria-live="polite">
+    <span id="toastIcon">ℹ️</span>
+    <span id="toastMessage">Notification</span>
+  </div>
+
+  <script>
+    // Pure Security Utility — escapeHTML against XSS
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Auth & App State
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/app.html#/login';
+    }
+
+    const state = {
+      token,
+      currentUser: null,
+      projects: [],
+      activeTimer: null,
+      timerInterval: null,
+      weekOffset: 0,
+      todayEntries: []
+    };
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toastNotification');
+      const icon = document.getElementById('toastIcon');
+      const message = document.getElementById('toastMessage');
+      if (!toast) return;
+
+      message.textContent = msg;
+      if (type === 'success') {
+        icon.textContent = '✅';
+        toast.style.borderColor = '#10b981';
+      } else if (type === 'error') {
+        icon.textContent = '⚠️';
+        toast.style.borderColor = '#ef4444';
+      } else {
+        icon.textContent = 'ℹ️';
+        toast.style.borderColor = '#38bdf8';
+      }
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3500);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      };
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, opts);
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Unauthorized');
+      }
+
+      let data = null;
+      try { data = await res.json(); } catch(e) {}
+
+      if (!res.ok) {
+        const err = new Error(data?.error || data?.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    // Clock formatter (hh:mm:ss)
+    function formatDuration(totalSeconds) {
+      const hrs = Math.floor(totalSeconds / 3600);
+      const mins = Math.floor((totalSeconds % 3600) / 60);
+      const secs = totalSeconds % 60;
+      return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    // App Initialization
+    async function initApp() {
+      try {
+        state.currentUser = await apiRequest('/api/users/me');
+        document.getElementById('userName').textContent = state.currentUser.name || state.currentUser.email;
+        document.getElementById('userRoleBadge').textContent = (state.currentUser.role || 'member').toUpperCase();
+
+        // Server-verified admin navigation links
+        if (state.currentUser.role === 'admin') {
+          document.getElementById('navTeamReport').style.display = 'inline-block';
+          document.getElementById('navApprovalQueue').style.display = 'inline-block';
+          document.getElementById('navBillableRates').style.display = 'inline-block';
+        }
+
+        // Load Projects
+        try {
+          state.projects = await apiRequest('/api/projects');
+          populateProjectDropdowns();
+        } catch (e) {
+          console.warn('Failed loading projects:', e);
+        }
+
+        // Check active timer status
+        await refreshTimerStatus();
+
+        // Load today's entries
+        await loadTodayEntries();
+
+        // Load weekly report chart
+        await loadWeeklyChart();
+
+      } catch (err) {
+        console.error('App init failed:', err);
+        showToast(err.message || 'Failed to initialize session', 'error');
+      }
+    }
+
+    function populateProjectDropdowns() {
+      const timerSelect = document.getElementById('timerProjectSelect');
+      const manualSelect = document.getElementById('manualProjectSelect');
+
+      const options = state.projects.map(p => 
+        `<option value="${escapeHTML(p.id)}">${escapeHTML(p.title || p.name || p.id)}</option>`
+      ).join('');
+
+      timerSelect.innerHTML = '<option value="">Select a Project...</option>' + options;
+      manualSelect.innerHTML = '<option value="">Select a Project...</option>' + options;
+    }
+
+    // Refresh Active Timer Status
+    async function refreshTimerStatus() {
+      try {
+        const status = await apiRequest('/api/time/timer/status');
+        if (status && status.active && status.timer) {
+          state.activeTimer = status.timer;
+          renderRunningTimer(status.timer);
+        } else {
+          state.activeTimer = null;
+          renderIdleTimer();
+        }
+      } catch (err) {
+        console.error('Failed refreshing timer:', err);
+      }
+    }
+
+    function renderRunningTimer(timer) {
+      document.getElementById('timerRunningSection').style.display = 'block';
+      document.getElementById('timerIdleSection').style.display = 'none';
+
+      document.getElementById('activeTaskDesc').textContent = timer.task_description || 'Active Work';
+      const proj = state.projects.find(p => String(p.id) === String(timer.project_id));
+      document.getElementById('activeProjectTitle').textContent = proj ? (proj.title || proj.name) : `Project #${timer.project_id}`;
+      document.getElementById('activeBillableBadge').textContent = timer.is_billable ? 'Billable' : 'Non-Billable';
+      document.getElementById('activeBillableBadge').className = timer.is_billable ? 'badge badge-success' : 'badge badge-muted';
+
+      if (timer.source_ref_type) {
+        const refBadge = document.getElementById('activeSourceRef');
+        refBadge.textContent = `${timer.source_ref_type}: ${timer.source_ref_id || ''}`;
+        refBadge.style.display = 'inline-block';
+      }
+
+      document.getElementById('activeStartTime').textContent = new Date(timer.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      // Start local JavaScript clock (no server polling)
+      if (state.timerInterval) clearInterval(state.timerInterval);
+      const startMs = new Date(timer.start_time).getTime();
+
+      const updateClock = () => {
+        const diffSecs = Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+        document.getElementById('timerDisplay').textContent = formatDuration(diffSecs);
+      };
+
+      updateClock();
+      state.timerInterval = setInterval(updateClock, 1000);
+    }
+
+    function renderIdleTimer() {
+      if (state.timerInterval) {
+        clearInterval(state.timerInterval);
+        state.timerInterval = null;
+      }
+      document.getElementById('timerRunningSection').style.display = 'none';
+      document.getElementById('timerIdleSection').style.display = 'block';
+    }
+
+    // Start Timer Handler
+    document.getElementById('startTimerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const project_id = document.getElementById('timerProjectSelect').value;
+      const task_description = document.getElementById('timerTaskInput').value.trim();
+      const source_ref_type = document.getElementById('timerSourceType').value || null;
+      const source_ref_id = document.getElementById('timerSourceId').value.trim() || null;
+      const is_billable = document.getElementById('timerBillableCheck').checked;
+
+      if (!project_id || !task_description) {
+        showToast('Please select a project and provide a task description', 'error');
+        return;
+      }
+
+      try {
+        await apiRequest('/api/time/timer/start', 'POST', {
+          project_id,
+          task_description,
+          source_ref_type,
+          source_ref_id,
+          is_billable
+        });
+        showToast('Timer started successfully', 'success');
+        document.getElementById('timerTaskInput').value = '';
+        await refreshTimerStatus();
+      } catch (err) {
+        showToast(err.message || 'Failed to start timer', 'error');
+      }
+    });
+
+    // Stop Timer Handler
+    document.getElementById('btnStopTimer').addEventListener('click', async () => {
+      const notes = document.getElementById('stopNotesInput').value.trim();
+      try {
+        await apiRequest('/api/time/timer/stop', 'POST', { notes: notes || undefined });
+        showToast('Timer stopped and entry logged', 'success');
+        document.getElementById('stopNotesInput').value = '';
+        await refreshTimerStatus();
+        await loadTodayEntries();
+        await loadWeeklyChart();
+      } catch (err) {
+        showToast(err.message || 'Failed to stop timer', 'error');
+      }
+    });
+
+    // Load Today Entries
+    async function loadTodayEntries() {
+      const tbody = document.getElementById('todayEntriesTableBody');
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      try {
+        const entries = await apiRequest(`/api/time/entries/my?from=${todayStr}&to=${todayStr}`);
+        state.todayEntries = entries || [];
+
+        if (!entries || entries.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem 0;">
+                No time entries logged for today yet. Start a timer or log a manual entry!
+              </td>
+            </tr>
+          `;
+          document.getElementById('todayTotalHrs').textContent = '0.0 hrs';
+          document.getElementById('todayBillableAmount').textContent = '₹0';
+          return;
+        }
+
+        let totalMins = 0;
+        let totalVal = 0;
+
+        tbody.innerHTML = entries.map(entry => {
+          totalMins += (entry.duration_minutes || 0);
+          totalVal += (entry.billable_amount || 0);
+
+          const startFmt = new Date(entry.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const endFmt = entry.end_time ? new Date(entry.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active';
+          const durHours = ((entry.duration_minutes || 0) / 60).toFixed(1);
+
+          let statusBadgeClass = 'badge-warning';
+          if (entry.status === 'APPROVED') statusBadgeClass = 'badge-success';
+          if (entry.status === 'REJECTED') statusBadgeClass = 'badge-danger';
+          if (entry.status === 'LOCKED') statusBadgeClass = 'badge-muted';
+
+          // 24hr edit check (member can edit manual entries within 24h)
+          const isManual = entry.source_type === 'MANUAL';
+          const createdSecAgo = Math.floor((Date.now() - new Date(entry.created_at).getTime()) / 1000);
+          const canEdit = state.currentUser.role === 'admin' || (isManual && createdSecAgo <= 86400);
+
+          const canSubmitApproval = entry.status === 'PENDING' && entry.end_time;
+
+          return `
+            <tr data-entry-id="${escapeHTML(entry.id)}">
+              <td style="font-weight: 600;">
+                ${escapeHTML(entry.task_description || entry.description)}
+                ${entry.source_ref_type ? `<div style="font-size: 0.72rem; color: var(--text-muted);">${escapeHTML(entry.source_ref_type)}: ${escapeHTML(entry.source_ref_id)}</div>` : ''}
+              </td>
+              <td>${escapeHTML(entry.project_title || entry.project_id)}</td>
+              <td>${startFmt} – ${endFmt}</td>
+              <td>${durHours}h (${entry.duration_minutes || 0}m)</td>
+              <td>
+                <span class="badge ${entry.is_billable ? 'badge-success' : 'badge-muted'}">
+                  ${entry.is_billable ? 'Billable' : 'Non-Billable'}
+                </span>
+              </td>
+              <td>
+                <span class="badge ${statusBadgeClass}">
+                  ${escapeHTML(entry.status)}
+                </span>
+                ${entry.rejection_reason ? `<div style="font-size: 0.7rem; color: #f87171; margin-top: 2px;">Note: ${escapeHTML(entry.rejection_reason)}</div>` : ''}
+              </td>
+              <td style="text-align: right;">
+                <div style="display: inline-flex; gap: 0.4rem;">
+                  ${canSubmitApproval ? `
+                    <button type="button" class="btn-nav btn-submit-approval" data-id="${escapeHTML(entry.id)}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                      Submit Approval
+                    </button>
+                  ` : ''}
+                  <button type="button" class="btn-nav btn-edit-entry" data-id="${escapeHTML(entry.id)}" 
+                    ${canEdit ? '' : 'disabled title="Editing locked outside 24h or for timer entries"'} 
+                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem; ${canEdit ? '' : 'opacity: 0.4; cursor: not-allowed;'}">
+                    Edit
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        document.getElementById('todayTotalHrs').textContent = `${(totalMins / 60).toFixed(1)} hrs`;
+        document.getElementById('todayBillableAmount').textContent = `₹${totalVal.toLocaleString('en-IN')}`;
+
+        // Bind Submit Approval Buttons
+        document.querySelectorAll('.btn-submit-approval').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const entryId = btn.getAttribute('data-id');
+            try {
+              await apiRequest(`/api/time/approval/request/${entryId}`, 'POST');
+              showToast('Submitted for Admin approval', 'success');
+              await loadTodayEntries();
+            } catch (err) {
+              showToast(err.message || 'Failed to submit approval', 'error');
+            }
+          });
+        });
+
+        // Bind Edit Buttons
+        document.querySelectorAll('.btn-edit-entry').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const entryId = btn.getAttribute('data-id');
+            const entry = state.todayEntries.find(e => String(e.id) === String(entryId));
+            if (entry) openEditModal(entry);
+          });
+        });
+
+      } catch (err) {
+        console.error('Failed loading entries:', err);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align: center; color: #ef4444; padding: 1.5rem 0;">
+              Failed to load entries: ${escapeHTML(err.message)}
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // Weekly Chart Renderer
+    async function loadWeeklyChart() {
+      const now = new Date();
+      now.setDate(now.getDate() + (state.weekOffset * 7));
+
+      // Calculate Monday of current week
+      const dayOfWeek = now.getDay(); // 0 is Sunday
+      const diffToMon = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const monday = new Date(now.setDate(diffToMon));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+
+      const fromStr = monday.toISOString().split('T')[0];
+      const toStr = sunday.toISOString().split('T')[0];
+
+      document.getElementById('currentWeekRange').textContent = `${fromStr} to ${toStr}`;
+
+      try {
+        const report = await apiRequest(`/api/time/report/my?from=${fromStr}&to=${toStr}`);
+        const entries = await apiRequest(`/api/time/entries/my?from=${fromStr}&to=${toStr}`);
+
+        // Aggregate by day of week (0..6 -> Mon..Sun)
+        const dayBuckets = Array(7).fill(0).map(() => ({ billable: 0, nonbillable: 0 }));
+
+        (entries || []).forEach(e => {
+          const entryDate = new Date(e.start_time);
+          let dIndex = entryDate.getDay() - 1;
+          if (dIndex === -1) dIndex = 6; // Sunday
+          const hrs = (e.duration_minutes || 0) / 60;
+          if (e.is_billable) {
+            dayBuckets[dIndex].billable += hrs;
+          } else {
+            dayBuckets[dIndex].nonbillable += hrs;
+          }
+        });
+
+        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        let maxHrs = 8;
+        dayBuckets.forEach(b => {
+          const total = b.billable + b.nonbillable;
+          if (total > maxHrs) maxHrs = total;
+        });
+
+        const chartWrap = document.getElementById('weeklyChartWrap');
+        chartWrap.innerHTML = dayBuckets.map((b, idx) => {
+          const totalDayHrs = b.billable + b.nonbillable;
+          const totalPct = Math.min(100, Math.round((totalDayHrs / maxHrs) * 100));
+          const billablePct = totalDayHrs > 0 ? (b.billable / totalDayHrs) * 100 : 0;
+          const nonBillablePct = totalDayHrs > 0 ? (b.nonbillable / totalDayHrs) * 100 : 0;
+
+          return `
+            <div class="chart-bar-col">
+              <div class="chart-bar-val">${totalDayHrs > 0 ? totalDayHrs.toFixed(1) : ''}</div>
+              <div class="chart-bar-stem" style="height: ${totalPct}%;">
+                <div class="chart-bar-nonbillable" style="height: ${nonBillablePct}%;"></div>
+                <div class="chart-bar-billable" style="height: ${billablePct}%;"></div>
+              </div>
+              <div class="chart-bar-label">${dayNames[idx]}</div>
+            </div>
+          `;
+        }).join('');
+
+        document.getElementById('weeklyGrandTotalHrs').textContent = `${(report?.total_hrs || 0).toFixed(1)} hrs`;
+
+      } catch (err) {
+        console.error('Failed loading weekly chart:', err);
+      }
+    }
+
+    document.getElementById('btnPrevWeek').addEventListener('click', () => {
+      state.weekOffset--;
+      loadWeeklyChart();
+    });
+
+    document.getElementById('btnNextWeek').addEventListener('click', () => {
+      state.weekOffset++;
+      loadWeeklyChart();
+    });
+
+    // Manual Entry Modal
+    const manualModal = document.getElementById('manualEntryModal');
+    document.getElementById('btnOpenManualModal').addEventListener('click', () => {
+      const now = new Date();
+      const prevHour = new Date(now.getTime() - (60 * 60 * 1000));
+      document.getElementById('manualStartTime').value = prevHour.toISOString().slice(0, 16);
+      document.getElementById('manualEndTime').value = now.toISOString().slice(0, 16);
+      manualModal.classList.add('active');
+    });
+
+    document.getElementById('btnCloseManualModal').addEventListener('click', () => manualModal.classList.remove('active'));
+    document.getElementById('btnCancelManual').addEventListener('click', () => manualModal.classList.remove('active'));
+
+    document.getElementById('manualEntryForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const project_id = document.getElementById('manualProjectSelect').value;
+      const task_description = document.getElementById('manualDescInput').value.trim();
+      const start_time = new Date(document.getElementById('manualStartTime').value).toISOString();
+      const end_time = new Date(document.getElementById('manualEndTime').value).toISOString();
+      const source_ref_type = document.getElementById('manualSourceType').value || null;
+      const source_ref_id = document.getElementById('manualSourceId').value.trim() || null;
+      const is_billable = document.getElementById('manualBillableCheck').checked;
+
+      try {
+        await apiRequest('/api/time/entry/create', 'POST', {
+          project_id,
+          task_description,
+          start_time,
+          end_time,
+          source_ref_type,
+          source_ref_id,
+          is_billable
+        });
+        showToast('Manual entry created successfully', 'success');
+        manualModal.classList.remove('active');
+        document.getElementById('manualDescInput').value = '';
+        await loadTodayEntries();
+        await loadWeeklyChart();
+      } catch (err) {
+        showToast(err.message || 'Failed to create manual entry', 'error');
+      }
+    });
+
+    // Edit Entry Modal
+    const editModal = document.getElementById('editEntryModal');
+    function openEditModal(entry) {
+      document.getElementById('editEntryId').value = entry.id;
+      document.getElementById('editDescInput').value = entry.task_description || entry.description || '';
+      document.getElementById('editStartTime').value = new Date(entry.start_time).toISOString().slice(0, 16);
+      document.getElementById('editEndTime').value = entry.end_time ? new Date(entry.end_time).toISOString().slice(0, 16) : '';
+      document.getElementById('editBillableCheck').checked = Boolean(entry.is_billable);
+      editModal.classList.add('active');
+    }
+
+    document.getElementById('btnCloseEditModal').addEventListener('click', () => editModal.classList.remove('active'));
+    document.getElementById('btnCancelEdit').addEventListener('click', () => editModal.classList.remove('active'));
+
+    document.getElementById('editEntryForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const entryId = document.getElementById('editEntryId').value;
+      const task_description = document.getElementById('editDescInput').value.trim();
+      const start_time = new Date(document.getElementById('editStartTime').value).toISOString();
+      const end_time = new Date(document.getElementById('editEndTime').value).toISOString();
+      const is_billable = document.getElementById('editBillableCheck').checked;
+
+      try {
+        await apiRequest(`/api/time/entry/${entryId}`, 'PATCH', {
+          task_description,
+          start_time,
+          end_time,
+          is_billable
+        });
+        showToast('Entry updated successfully', 'success');
+        editModal.classList.remove('active');
+        await loadTodayEntries();
+        await loadWeeklyChart();
+      } catch (err) {
+        showToast(err.message || 'Failed to update entry', 'error');
+      }
+    });
+
+    // Sign Out
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = '/app.html#/login';
+    });
+
+    // Launch
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>

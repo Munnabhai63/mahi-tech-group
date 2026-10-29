@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automation Error Center — Mahi Tech Group</title>
+  <meta name="description" content="Centralized error monitoring, triage, failure diagnosis, and automated retry management for workflow automation jobs.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #24344d;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-accent: #818cf8;
+      --color-purple: #c084fc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-link-sub.active {
+      color: var(--color-primary);
+      border-bottom: 2px solid var(--color-primary);
+      border-radius: 6px 6px 0 0;
+    }
+
+    .main-wrap {
+      flex: 1;
+      padding: 1.75rem;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 800;
+      margin: 0 0 0.35rem 0;
+      color: var(--text-main);
+    }
+
+    .page-desc {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    /* KPI STATS CARDS */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .stat-card.danger {
+      border-left: 4px solid var(--color-danger);
+    }
+
+    .stat-card.warning {
+      border-left: 4px solid var(--color-warning);
+    }
+
+    .stat-card.success {
+      border-left: 4px solid var(--color-success);
+    }
+
+    .stat-card.info {
+      border-left: 4px solid var(--color-primary);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.4rem;
+      font-weight: 600;
+    }
+
+    .stat-val {
+      font-size: 1.85rem;
+      font-weight: 800;
+      font-family: 'Outfit', sans-serif;
+      color: var(--text-main);
+    }
+
+    .stat-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    /* FILTERS & SEARCH */
+    .filters-bar {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .form-control {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      color: var(--text-main);
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      border-color: var(--color-primary);
+    }
+
+    /* TABS */
+    .tabs-nav {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-card);
+      margin-bottom: 1.25rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.6rem 1.25rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      color: var(--color-danger);
+      border-bottom-color: var(--color-danger);
+    }
+
+    .tab-btn.active.ack-tab {
+      color: var(--color-success);
+      border-bottom-color: var(--color-success);
+    }
+
+    .tab-count {
+      padding: 0.15rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* TABLE */
+    .table-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      overflow-x: auto;
+      margin-bottom: 2rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    td {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border-card);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-info { background: rgba(56, 189, 248, 0.15); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge-muted { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+
+    .err-msg-box {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      background: rgba(0,0,0,0.3);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      border-left: 3px solid var(--color-danger);
+      color: #fca5a5;
+      max-width: 450px;
+      word-break: break-all;
+      margin-top: 0.25rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      outline: none;
+    }
+
+    .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+    .btn-outline {
+      background: transparent;
+      border-color: var(--border-card);
+      color: var(--text-main);
+    }
+    .btn-outline:hover {
+      background: var(--bg-card);
+      border-color: var(--text-muted);
+    }
+
+    .btn-ack {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+    .btn-ack:hover {
+      background: rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-retry {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.3);
+      color: #7dd3fc;
+    }
+    .btn-retry:hover {
+      background: rgba(56, 189, 248, 0.3);
+    }
+
+    .btn-danger {
+      background: var(--color-danger);
+      color: white;
+    }
+
+    /* SUMMARY CARDS / BREAKDOWN */
+    .breakdown-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .breakdown-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+
+    .breakdown-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 0 0 1rem 0;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .type-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.85rem;
+    }
+    .type-row:last-child { border-bottom: none; }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      padding: 0.75rem 1.25rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      color: var(--text-main);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      display: none;
+      z-index: 200;
+      font-size: 0.85rem;
+    }
+    .toast.success { border-color: var(--color-success); color: #34d399; }
+    .toast.error { border-color: var(--color-danger); color: #f87171; }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP NAVIGATION -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/app.html" class="brand-title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        MAHI TECH GROUP
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <span style="color:var(--text-main);font-weight:600;">Automation</span>
+        <span>/</span>
+        <span>Error Center</span>
+      </div>
+    </div>
+    <nav class="nav-links-sub">
+      <a href="/automation-rules.html" class="nav-link-sub">Rules</a>
+      <a href="/automation-builder.html" class="nav-link-sub">Builder</a>
+      <a href="/automation-history.html" class="nav-link-sub">Run History</a>
+      <a href="/automation-errors.html" class="nav-link-sub active">Error Center</a>
+      <a href="/automation-templates.html" class="nav-link-sub">Templates</a>
+      <a href="/app.html" class="nav-link-sub">Dashboard</a>
+    </nav>
+  </header>
+
+  <!-- MAIN VIEW -->
+  <main class="main-wrap">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Automation Error Center</h1>
+        <p class="page-desc">Triage automation execution faults, analyze failure traces, acknowledge resolutions, and trigger immediate retries.</p>
+      </div>
+      <div>
+        <button class="btn btn-outline" onclick="loadErrors()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Refresh Feeds
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI STATS -->
+    <div class="stats-grid">
+      <div class="stat-card danger">
+        <div class="stat-label">Unacknowledged Errors</div>
+        <div class="stat-val" id="statUnack">0</div>
+        <div class="stat-sub">Requires triage & review</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">Acknowledged Errors</div>
+        <div class="stat-val" id="statAck">0</div>
+        <div class="stat-sub">Resolved by operators</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-label">Pending Retries</div>
+        <div class="stat-val" id="statPendingRetries">0</div>
+        <div class="stat-sub">Scheduled in automation queue</div>
+      </div>
+      <div class="stat-card info">
+        <div class="stat-label">Total Errors Logged</div>
+        <div class="stat-val" id="statTotalErrors">0</div>
+        <div class="stat-sub">System-wide audit trail</div>
+      </div>
+    </div>
+
+    <!-- TABS: UNACKNOWLEDGED vs RESOLVED -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" id="tabUnack" onclick="switchTab('unack')">
+        Active Faults (Unacknowledged)
+        <span class="tab-count" id="unackTabBadge">0</span>
+      </button>
+      <button class="tab-btn ack-tab" id="tabAck" onclick="switchTab('ack')">
+        Resolved Archive (Acknowledged)
+        <span class="tab-count" id="ackTabBadge">0</span>
+      </button>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters-bar">
+      <div class="form-group" style="flex:1; min-width:240px;">
+        <label class="form-label">Search Faults</label>
+        <input type="text" id="searchInput" class="form-control" placeholder="Search by rule name, error message, type..." oninput="renderTable()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Error Type</label>
+        <select id="typeFilter" class="form-control" onchange="renderTable()">
+          <option value="">All Error Types</option>
+          <option value="ACTION_EXECUTION_FAILED">ACTION_EXECUTION_FAILED</option>
+          <option value="VARIABLE_RESOLUTION_FAILED">VARIABLE_RESOLUTION_FAILED</option>
+          <option value="TIMEOUT">TIMEOUT</option>
+          <option value="RULE_EVALUATION_FAILED">RULE_EVALUATION_FAILED</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Automation Rule</th>
+            <th>Error Type</th>
+            <th>Step</th>
+            <th>Failure Detail & Stack</th>
+            <th>Timestamp</th>
+            <th>Retry Status</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="errorTbody">
+          <tr>
+            <td colspan="7" class="empty-state">Loading automation errors...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- BREAKDOWN & DIAGNOSTICS -->
+    <div class="breakdown-grid">
+      <div class="breakdown-card">
+        <div class="breakdown-title">
+          <span>Failures by Error Type</span>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Audit distribution</span>
+        </div>
+        <div id="typeBreakdownList">
+          <div style="color:var(--text-muted); font-size:0.85rem;">Calculating error metrics...</div>
+        </div>
+      </div>
+      <div class="breakdown-card">
+        <div class="breakdown-title">
+          <span>Failures by Trigger Module</span>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Root subsystems</span>
+        </div>
+        <div id="moduleBreakdownList">
+          <div style="color:var(--text-muted); font-size:0.85rem;">Calculating module metrics...</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const state = {
+      token: localStorage.getItem('token') || '',
+      currentTab: 'unack',
+      errors: [],
+      stats: {}
+    };
+
+    function showToast(msg, isSuccess = true) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.className = 'toast ' + (isSuccess ? 'success' : 'error');
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3500);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, opts);
+      if (!res.ok) {
+        let errData;
+        try { errData = await res.json(); } catch(e) { errData = { error: res.statusText }; }
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+      return await res.json();
+    }
+
+    function switchTab(tab) {
+      state.currentTab = tab;
+      document.getElementById('tabUnack').className = 'tab-btn' + (tab === 'unack' ? ' active' : '');
+      document.getElementById('tabAck').className = 'tab-btn ack-tab' + (tab === 'ack' ? ' active' : '');
+      renderTable();
+    }
+
+    async function loadErrors() {
+      try {
+        const errors = await apiRequest('/api/automation/errors');
+        state.errors = Array.isArray(errors) ? errors : [];
+        updateStats();
+        renderTable();
+        renderBreakdowns();
+      } catch (err) {
+        console.error('Failed to load automation errors:', err);
+        document.getElementById('errorTbody').innerHTML = `
+          <tr>
+            <td colspan="7" class="empty-state" style="color:var(--color-danger);">
+              Failed to load errors: ${escapeHtml(err.message)}
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    function updateStats() {
+      const unack = state.errors.filter(e => !e.acknowledged_at);
+      const ack = state.errors.filter(e => !!e.acknowledged_at);
+      const retried = state.errors.filter(e => e.retry_scheduled === 1);
+
+      document.getElementById('statUnack').innerText = unack.length;
+      document.getElementById('statAck').innerText = ack.length;
+      document.getElementById('statPendingRetries').innerText = retried.length;
+      document.getElementById('statTotalErrors').innerText = state.errors.length;
+
+      document.getElementById('unackTabBadge').innerText = unack.length;
+      document.getElementById('ackTabBadge').innerText = ack.length;
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('errorTbody');
+      const search = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+      const typeFilter = document.getElementById('typeFilter')?.value || '';
+
+      const isUnackTab = state.currentTab === 'unack';
+      let list = state.errors.filter(e => isUnackTab ? !e.acknowledged_at : !!e.acknowledged_at);
+
+      if (typeFilter) {
+        list = list.filter(e => e.error_type === typeFilter);
+      }
+
+      if (search) {
+        list = list.filter(e => {
+          const ruleName = (e.rule_name || '').toLowerCase();
+          const errMsg = (e.error_message || '').toLowerCase();
+          const errType = (e.error_type || '').toLowerCase();
+          return ruleName.includes(search) || errMsg.includes(search) || errType.includes(search);
+        });
+      }
+
+      if (list.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="empty-state">
+              ${isUnackTab ? 'No unacknowledged errors. All automation jobs are healthy.' : 'No acknowledged errors in the archive.'}
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = list.map(err => {
+        const timeStr = err.created_at ? new Date(err.created_at).toLocaleString() : 'N/A';
+        const stepNum = (err.action_index !== null && err.action_index !== undefined) ? `Action #${err.action_index + 1}` : 'N/A';
+        
+        let retryBadge = '<span class="badge badge-muted">None</span>';
+        if (err.retry_scheduled === 1) {
+          retryBadge = '<span class="badge badge-warning">Retry Scheduled</span>';
+        }
+
+        let ackInfo = '';
+        if (err.acknowledged_at) {
+          const ackTime = new Date(err.acknowledged_at).toLocaleString();
+          const ackUser = err.acknowledged_by_name || `User #${err.acknowledged_by}`;
+          ackInfo = `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">Acknowledged by ${escapeHtml(ackUser)} on ${ackTime}</div>`;
+        }
+
+        return `
+          <tr id="err-row-${err.id}">
+            <td>
+              <div style="font-weight:600; color:var(--text-main);">${escapeHtml(err.rule_name || `Rule #${err.automation_id}`)}</div>
+              <div style="display:flex; gap:0.35rem; margin-top:0.35rem; flex-wrap:wrap;">
+                <span class="badge badge-info">${escapeHtml(err.trigger_module || 'TRIGGER')}</span>
+                <span class="badge badge-muted">${escapeHtml(err.trigger_event || 'EVENT')}</span>
+              </div>
+            </td>
+            <td>
+              <span class="badge badge-danger">${escapeHtml(err.error_type || 'FAULT')}</span>
+            </td>
+            <td>
+              <span style="font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:var(--text-muted);">${stepNum}</span>
+            </td>
+            <td>
+              <div class="err-msg-box">${escapeHtml(err.error_message || 'No detail provided')}</div>
+              ${ackInfo}
+            </td>
+            <td style="white-space:nowrap; color:var(--text-muted); font-size:0.8rem;">
+              ${timeStr}
+            </td>
+            <td>
+              ${retryBadge}
+            </td>
+            <td style="text-align:right; white-space:nowrap;">
+              ${!err.acknowledged_at ? `
+                <button class="btn btn-sm btn-ack" title="Acknowledge fault" onclick="acknowledgeError(${err.id})">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                  Ack
+                </button>
+              ` : ''}
+              <button class="btn btn-sm btn-retry" title="Retry execution" onclick="retryError(${err.id})">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                Retry
+              </button>
+              <a href="/automation-history.html?runId=${err.run_log_id || ''}" class="btn btn-sm btn-outline" title="Inspect Run Log">
+                Log
+              </a>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function acknowledgeError(errorId) {
+      try {
+        await apiRequest(`/api/automation/error/${errorId}/acknowledge`, 'PATCH');
+        showToast('Error acknowledged successfully');
+        await loadErrors();
+      } catch (err) {
+        showToast(err.message, false);
+      }
+    }
+
+    async function retryError(errorId) {
+      try {
+        const res = await apiRequest(`/api/automation/error/${errorId}/retry`, 'PATCH');
+        showToast(`Job re-queued successfully (Attempt ${res.attempt || 1})`);
+        await loadErrors();
+      } catch (err) {
+        showToast(err.message, false);
+      }
+    }
+
+    function renderBreakdowns() {
+      // By Error Type
+      const typeCounts = {};
+      const moduleCounts = {};
+
+      state.errors.forEach(e => {
+        const t = e.error_type || 'UNKNOWN';
+        typeCounts[t] = (typeCounts[t] || 0) + 1;
+
+        const m = e.trigger_module || 'UNKNOWN';
+        moduleCounts[m] = (moduleCounts[m] || 0) + 1;
+      });
+
+      const typeBox = document.getElementById('typeBreakdownList');
+      const typeKeys = Object.keys(typeCounts);
+      if (typeKeys.length === 0) {
+        typeBox.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">No error records logged.</div>';
+      } else {
+        typeBox.innerHTML = typeKeys.map(k => `
+          <div class="type-row">
+            <span style="font-weight:600; font-family:'JetBrains Mono',monospace;">${escapeHtml(k)}</span>
+            <span class="badge badge-danger">${typeCounts[k]}</span>
+          </div>
+        `).join('');
+      }
+
+      const modBox = document.getElementById('moduleBreakdownList');
+      const modKeys = Object.keys(moduleCounts);
+      if (modKeys.length === 0) {
+        modBox.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">No module error data.</div>';
+      } else {
+        modBox.innerHTML = modKeys.map(k => `
+          <div class="type-row">
+            <span style="font-weight:600; text-transform:uppercase;">${escapeHtml(k)}</span>
+            <span class="badge badge-info">${moduleCounts[k]}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Auto-init
+    document.addEventListener('DOMContentLoaded', () => {
+      loadErrors();
+    });
+  </script>
+</body>
+</html>

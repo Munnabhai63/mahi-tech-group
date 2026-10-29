@@ -9,7 +9,7 @@ const TOKEN_KEY = 'mtg_auth_token';
 
 export function getAuthToken() {
   try {
-    return localStorage.getItem(TOKEN_KEY) || null;
+    return localStorage.getItem(TOKEN_KEY) || localStorage.getItem('token') || null;
   } catch {
     return null;
   }
@@ -19,8 +19,10 @@ export function setAuthToken(token) {
   try {
     if (token) {
       localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem('token', token);
     } else {
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('token');
     }
   } catch {
     /* Storage unavailable in restricted sandbox */
@@ -30,6 +32,7 @@ export function setAuthToken(token) {
 export function clearAuthToken() {
   try {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem('token');
   } catch {
     /* noop */
   }
@@ -93,7 +96,8 @@ async function executeRefreshCall(oldToken) {
 }
 
 export async function request(path, options = {}, isRetry = false) {
-  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+  const base = (typeof window !== 'undefined' && window.__API_BASE__) || (typeof globalThis !== 'undefined' && globalThis.__API_BASE__) || API_BASE || '';
+  const url = path.startsWith('http') ? path : `${base}${path}`;
   const headers = {
     'Accept': 'application/json',
     ...(options.headers || {})
@@ -119,7 +123,7 @@ export async function request(path, options = {}, isRetry = false) {
       // If already a retry, or no token present: clear token, broadcast expiry and reject
       if (isRetry || !currentToken) {
         clearAuthToken();
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && currentToken) {
           window.dispatchEvent(new CustomEvent('auth:expired', { detail: { path } }));
         }
         let data = null;

@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Workload & Availability — Mahi Tech Group</title>
+  <meta name="description" content="Personal workload dashboard, 5-week forward capacity forecast, active task assignments, and planned leave availability management.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-underload: #3b82f6;
+      --color-nearcap: #eab308;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Header */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: #fff;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-nav {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #f8fafc;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-nav:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border: 1px solid #38bdf8;
+      color: #fff;
+      padding: 0.45rem 0.95rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Container */
+    .my-container {
+      flex: 1;
+      padding: 1.5rem 2rem;
+      max-width: 1300px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Header Profile Card */
+    .profile-hero {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.7) 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.5rem 1.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+    }
+
+    .user-profile-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-big-avatar {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: #0369a1;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: 800;
+      font-family: 'Outfit', sans-serif;
+      border: 2px solid var(--color-primary);
+    }
+
+    .user-name-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin: 0 0 0.25rem 0;
+      color: #fff;
+    }
+
+    .user-meta-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .profile-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* Week Gauge Overview Grid */
+    .gauge-overview {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .gauge-overview {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+    }
+
+    .card-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border-card);
+      padding-bottom: 0.5rem;
+    }
+
+    .card-panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Big Circular / Radial Gauge Style */
+    .gauge-center-box {
+      text-align: center;
+      padding: 1rem 0;
+    }
+
+    .gauge-big-num {
+      font-family: 'Outfit', sans-serif;
+      font-size: 3rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+
+    .gauge-status-badge {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    .gauge-metrics-row {
+      display: flex;
+      justify-content: space-around;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 0.85rem;
+      text-align: center;
+    }
+
+    .gauge-stat-val {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .gauge-stat-lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    /* 5-Week Forward Forecast Bar Chart */
+    .forecast-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.75rem;
+      align-items: end;
+      min-height: 180px;
+      padding-top: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .forecast-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+    }
+
+    .forecast-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .forecast-bar-wrap {
+      width: 48px;
+      height: 110px;
+      background: #1e293b;
+      border-radius: 6px;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+
+    .forecast-bar-fill {
+      width: 100%;
+      border-radius: 6px;
+      transition: height 0.4s ease;
+    }
+
+    .forecast-week-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+
+    .forecast-week-sub {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    .forecast-pct-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.25rem;
+    }
+
+    /* Active Assignments List */
+    .assignments-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .assignments-table th {
+      text-align: left;
+      padding: 0.7rem 0.8rem;
+      background: #1e293b;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .assignments-table td {
+      padding: 0.85rem 0.8rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: middle;
+    }
+
+    .assignments-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .source-tag {
+      display: inline-block;
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--color-primary);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 500px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      margin: 0;
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+    }
+
+    .modal-footer {
+      padding: 0.85rem 1.25rem;
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.65rem;
+      background: rgba(15, 23, 42, 0.5);
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 0.35rem;
+    }
+
+    .form-control {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #fff;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      z-index: 120;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/app.html" class="brand-title">
+        <span>⚡</span> Mahi Tech Group
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <span>Workload Management</span>
+        <span>/</span>
+        <span style="color:#fff; font-weight:600;">My Workload</span>
+      </div>
+    </div>
+
+    <!-- Sub Navigation Tabs -->
+    <div class="nav-links-sub">
+      <a href="/workload-dashboard.html" class="nav-link-sub">Team Dashboard</a>
+      <a href="/workload-heatmap.html" class="nav-link-sub">Heatmap</a>
+      <a href="/my-workload.html" class="nav-link-sub active">My Workload</a>
+      <a href="/capacity-planning.html" class="nav-link-sub">Capacity Planning</a>
+    </div>
+
+    <div class="nav-actions">
+      <button type="button" id="btnMarkAvailabilityTop" class="btn-primary">
+        <span>🏖️</span> Mark Availability / Leave
+      </button>
+      <a href="/app.html" class="btn-nav"><span>🏠</span> App</a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="my-container">
+
+    <!-- Profile Hero -->
+    <div class="profile-hero">
+      <div class="user-profile-left">
+        <div class="user-big-avatar" id="userAvatar">U</div>
+        <div>
+          <h1 class="user-name-title" id="userName">Loading Member...</h1>
+          <div class="user-meta-sub" id="userMeta">Role &bull; Email</div>
+        </div>
+      </div>
+      <div class="profile-actions">
+        <div style="text-align: right; margin-right: 0.5rem;">
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Standard Weekly Capacity</div>
+          <div style="font-size: 1.3rem; font-weight: 800; color: #38bdf8;" id="userWeeklyCapacity">-- hrs/week</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gauge Overview & 5-Week Forecast -->
+    <div class="gauge-overview">
+
+      <!-- Current Week Utilization Gauge -->
+      <section class="card-panel">
+        <div class="card-panel-header">
+          <div class="card-panel-title">
+            <span>⏱️</span> This Week Utilization
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted);" id="currentWeekDateRange"></span>
+        </div>
+
+        <div class="gauge-center-box">
+          <div class="gauge-big-num" id="gaugePct">0%</div>
+          <div>
+            <span class="gauge-status-badge" id="gaugeStatusBadge">OPTIMAL</span>
+          </div>
+
+          <!-- Progress Fill Bar -->
+          <div style="width: 100%; height: 10px; background: #1e293b; border-radius: 5px; overflow: hidden; margin-bottom: 1.25rem;">
+            <div id="gaugeProgressBar" style="height: 100%; width: 0%; border-radius: 5px; background: #10b981; transition: width 0.4s ease;"></div>
+          </div>
+
+          <div class="gauge-metrics-row">
+            <div>
+              <div class="gauge-stat-val" id="statAllocatedHrs">0.0h</div>
+              <div class="gauge-stat-lbl">Allocated</div>
+            </div>
+            <div>
+              <div class="gauge-stat-val" id="statAvailableHrs">0.0h</div>
+              <div class="gauge-stat-lbl">Available</div>
+            </div>
+            <div>
+              <div class="gauge-stat-val" id="statCapacityHrs">0.0h</div>
+              <div class="gauge-stat-lbl">Capacity</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Next 5 Weeks Forecast Chart -->
+      <section class="card-panel">
+        <div class="card-panel-header">
+          <div class="card-panel-title">
+            <span>📈</span> 5-Week Forward Forecast
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Predictive Load Distribution</span>
+        </div>
+
+        <div class="forecast-grid" id="forecastGrid">
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem 0;">
+            ⏳ Computing 5-week workload forecast...
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Active Assignments Table -->
+    <section class="card-panel" style="margin-bottom: 1.5rem;">
+      <div class="card-panel-header">
+        <div class="card-panel-title">
+          <span>📋</span> My Active Task Assignments
+        </div>
+        <span style="font-size: 0.78rem; color: var(--text-muted);" id="assignmentCountLabel">0 active tasks</span>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="assignments-table">
+          <thead>
+            <tr>
+              <th>Task Title</th>
+              <th>Source</th>
+              <th>Date Span</th>
+              <th>Total Est Hrs</th>
+              <th>Prorated This Week</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="assignmentsTableBody">
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 2rem 0; color: var(--text-muted);">
+                Loading assignments...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- My Availability & Leave Records -->
+    <section class="card-panel">
+      <div class="card-panel-header">
+        <div class="card-panel-title">
+          <span>🏖️</span> My Availability & Planned Leave
+        </div>
+        <button type="button" class="btn-nav" id="btnOpenLeaveModal" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">
+          + Add Leave / Exception
+        </button>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="assignments-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Date Range</th>
+              <th>Hours / Day</th>
+              <th>Status</th>
+              <th>Notes / Reason</th>
+            </tr>
+          </thead>
+          <tbody id="availabilityTableBody">
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 1.5rem 0; color: var(--text-muted);">
+                No planned leave or availability exceptions on file.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Mark Availability / Leave Modal -->
+  <div class="modal-overlay" id="availabilityModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Mark Availability / Leave</h3>
+        <button type="button" class="btn-nav" id="btnCloseAvailModal" style="padding: 0.2rem 0.5rem;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="availType">Availability Type</label>
+          <select id="availType" class="form-control">
+            <option value="LEAVE">Leave / Vacation (Requires Admin Approval)</option>
+            <option value="TRAINING">Training / Upskilling</option>
+            <option value="PARTIAL">Partial Day (Reduced Hours)</option>
+            <option value="HOLIDAY">Holiday</option>
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label" for="availStartDate">Start Date</label>
+            <input type="date" id="availStartDate" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="availEndDate">End Date</label>
+            <input type="date" id="availEndDate" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="availHours">Hours Per Day Deducted</label>
+          <input type="number" id="availHours" class="form-control" value="8" min="1" max="24" step="0.5">
+          <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 0.25rem;">Standard full day = 8.0 hours</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="availNotes">Notes / Reason (Optional)</label>
+          <textarea id="availNotes" class="form-control" rows="2" placeholder="e.g. Annual leave, family trip, attending conference..."></textarea>
+        </div>
+        <div style="font-size: 0.75rem; color: #94a3b8; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 6px;">
+          ⚠️ <strong>Policy Notice:</strong> Members can only schedule availability for future dates. Leave requests will automatically notify admins for review and reduce your available capacity once approved.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-nav" id="btnCancelAvailModal">Cancel</button>
+        <button type="button" class="btn-primary" id="btnSubmitAvailability">Submit Request</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toastNotification" role="alert" aria-live="polite">
+    <span id="toastIcon">ℹ️</span>
+    <span id="toastMessage">Notification</span>
+  </div>
+
+  <script>
+    // Pure Security Utility — escapeHTML against XSS
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Auth & App State
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/app.html#/login';
+    }
+
+    const state = {
+      token,
+      currentUser: null,
+      currentWeekStart: getMonday(new Date()),
+      forecastData: null,
+      myAssignments: [],
+      myAvailability: []
+    };
+
+    function getMonday(d) {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      date.setDate(diff);
+      return date.toISOString().split('T')[0];
+    }
+
+    function addDays(isoDate, days) {
+      const d = new Date(isoDate);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    }
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toastNotification');
+      const icon = document.getElementById('toastIcon');
+      const message = document.getElementById('toastMessage');
+      if (!toast) return;
+
+      message.textContent = msg;
+      if (type === 'success') {
+        icon.textContent = '✅';
+        toast.style.borderColor = '#10b981';
+      } else if (type === 'error') {
+        icon.textContent = '⚠️';
+        toast.style.borderColor = '#ef4444';
+      } else {
+        icon.textContent = 'ℹ️';
+        toast.style.borderColor = '#38bdf8';
+      }
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3500);
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      };
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, opts);
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/app.html#/login';
+        throw new Error('Unauthorized');
+      }
+
+      let data = null;
+      try { data = await res.json(); } catch(e) {}
+
+      if (!res.ok) {
+        const err = new Error(data?.error || data?.message || `HTTP ${res.status}`);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    // App Initialization
+    async function initMyWorkload() {
+      try {
+        state.currentUser = await apiRequest('/api/users/me');
+
+        // Populate Profile Hero
+        const initials = (state.currentUser.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        document.getElementById('userAvatar').textContent = initials;
+        document.getElementById('userName').textContent = state.currentUser.name;
+        document.getElementById('userMeta').textContent = `${state.currentUser.role.toUpperCase()} • ${state.currentUser.email}`;
+
+        // Set date inputs to tomorrow by default
+        const tomorrow = addDays(new Date().toISOString().split('T')[0], 1);
+        document.getElementById('availStartDate').value = tomorrow;
+        document.getElementById('availStartDate').min = tomorrow;
+        document.getElementById('availEndDate').value = tomorrow;
+        document.getElementById('availEndDate').min = tomorrow;
+
+        await Promise.all([
+          loadMyCapacity(),
+          loadMyForecast(),
+          loadMyAssignments(),
+          loadMyAvailabilityList()
+        ]);
+
+        setupEventListeners();
+      } catch (err) {
+        console.error('Failed to init My Workload:', err);
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadMyCapacity() {
+      try {
+        const cap = await apiRequest(`/api/workload/capacity/${state.currentUser.id}`);
+        document.getElementById('userWeeklyCapacity').textContent = `${cap.current_capacity_hours || 40.0} hrs/week`;
+      } catch (err) {
+        console.error('Failed to load capacity:', err);
+      }
+    }
+
+    async function loadMyForecast() {
+      try {
+        const forecast = await apiRequest(`/api/workload/dashboard/member/${state.currentUser.id}?week_start_date=${state.currentWeekStart}`);
+        state.forecastData = forecast;
+
+        // Render This Week's Gauge
+        const thisWeek = forecast.current_week || {};
+        const util = Number(thisWeek.utilization_pct || 0);
+        const status = thisWeek.status || 'OPTIMAL';
+
+        document.getElementById('currentWeekDateRange').textContent = `${thisWeek.week_start_date} to ${thisWeek.week_end_date}`;
+        document.getElementById('gaugePct').textContent = `${util.toFixed(1)}%`;
+        document.getElementById('statAllocatedHrs').textContent = `${thisWeek.allocated_hours}h`;
+        document.getElementById('statAvailableHrs').textContent = `${thisWeek.available_hours}h`;
+        document.getElementById('statCapacityHrs').textContent = `${thisWeek.capacity_hours}h`;
+
+        const badge = document.getElementById('gaugeStatusBadge');
+        const fillBar = document.getElementById('gaugeProgressBar');
+
+        badge.textContent = status.replace('_', ' ');
+        fillBar.style.width = `${Math.min(util, 100)}%`;
+
+        if (status === 'OVERLOADED') {
+          badge.style.background = 'rgba(239, 68, 68, 0.2)';
+          badge.style.color = '#fca5a5';
+          badge.style.border = '1px solid #ef4444';
+          fillBar.style.background = '#ef4444';
+        } else if (status === 'NEAR_CAPACITY') {
+          badge.style.background = 'rgba(234, 179, 8, 0.2)';
+          badge.style.color = '#fde047';
+          badge.style.border = '1px solid #eab308';
+          fillBar.style.background = '#eab308';
+        } else if (status === 'UNDERLOADED') {
+          badge.style.background = 'rgba(59, 130, 246, 0.2)';
+          badge.style.color = '#93c5fd';
+          badge.style.border = '1px solid #3b82f6';
+          fillBar.style.background = '#3b82f6';
+        } else {
+          badge.style.background = 'rgba(16, 185, 129, 0.2)';
+          badge.style.color = '#6ee7b7';
+          badge.style.border = '1px solid #10b981';
+          fillBar.style.background = '#10b981';
+        }
+
+        // Render 5-Week Forward Forecast Bars
+        const grid = document.getElementById('forecastGrid');
+        const weeks = forecast.forecast || [];
+
+        grid.innerHTML = weeks.map((w, idx) => {
+          const wUtil = Number(w.utilization_pct || 0);
+          const barHeight = Math.min(Math.max((wUtil / 150) * 100, 5), 100);
+
+          let barColor = '#3b82f6'; // underloaded
+          if (w.status === 'OVERLOADED') barColor = '#ef4444';
+          else if (w.status === 'NEAR_CAPACITY') barColor = '#eab308';
+          else if (w.status === 'OPTIMAL') barColor = '#10b981';
+
+          const label = idx === 0 ? 'This Week' : `Week +${idx}`;
+
+          return `
+            <div class="forecast-col">
+              <span class="forecast-pct-label" style="color: ${barColor};">${wUtil.toFixed(0)}%</span>
+              <div class="forecast-bar-wrap">
+                <div class="forecast-bar-fill" style="height: ${barHeight}%; background: ${barColor};"></div>
+              </div>
+              <div class="forecast-week-title">${label}</div>
+              <div class="forecast-week-sub">${w.week_start_date.substring(5)}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load forecast:', err);
+      }
+    }
+
+    async function loadMyAssignments() {
+      const tbody = document.getElementById('assignmentsTableBody');
+      try {
+        const assignments = await apiRequest(`/api/workload/assignments/${state.currentUser.id}`);
+        state.myAssignments = assignments;
+
+        document.getElementById('assignmentCountLabel').textContent = `${assignments.length} Active Assignments`;
+
+        if (assignments.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 2rem 0; color: var(--text-muted);">
+                🎉 No active tasks assigned to you currently.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = assignments.map(a => `
+          <tr>
+            <td style="font-weight: 600; color: #fff;">${escapeHTML(a.title)}</td>
+            <td><span class="source-tag">${escapeHTML(a.source_type)}</span></td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">${escapeHTML(a.start_date)} to ${escapeHTML(a.end_date)}</td>
+            <td style="color: #cbd5e1;">${a.estimated_hours}h</td>
+            <td style="color: #38bdf8; font-weight: 700;">${a.prorated_week_hours || a.estimated_hours}h</td>
+            <td><span style="font-size: 0.72rem; color: #34d399; font-weight: 600;">${escapeHTML(a.status)}</span></td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load assignments:', err);
+        tbody.innerHTML = `<tr><td colspan="6" style="color: #ef4444;">Error: ${escapeHTML(err.message)}</td></tr>`;
+      }
+    }
+
+    async function loadMyAvailabilityList() {
+      const tbody = document.getElementById('availabilityTableBody');
+      try {
+        const list = await apiRequest(`/api/workload/availability/${state.currentUser.id}`);
+        state.myAvailability = list;
+
+        if (list.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 1.5rem 0; color: var(--text-muted);">
+                No planned leave or availability exceptions on file.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = list.map(item => {
+          let statusBadge = '<span style="color: #34d399; font-weight: 700;">APPROVED</span>';
+          if (item.status === 'PENDING') {
+            statusBadge = '<span style="color: #fde047; font-weight: 700;">PENDING APPROVAL</span>';
+          }
+
+          return `
+            <tr>
+              <td style="font-weight: 600; color: #fff;">${escapeHTML(item.availability_type)}</td>
+              <td style="color: var(--text-muted); font-size: 0.82rem;">${escapeHTML(item.start_date)} to ${escapeHTML(item.end_date)}</td>
+              <td style="color: #cbd5e1;">${item.hours_per_day}h / day</td>
+              <td>${statusBadge}</td>
+              <td style="color: var(--text-muted); font-size: 0.8rem;">${escapeHTML(item.notes || '—')}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load availability:', err);
+      }
+    }
+
+    function setupEventListeners() {
+      const openModal = () => document.getElementById('availabilityModal').classList.add('open');
+      const closeModal = () => document.getElementById('availabilityModal').classList.remove('open');
+
+      document.getElementById('btnMarkAvailabilityTop').addEventListener('click', openModal);
+      document.getElementById('btnOpenLeaveModal').addEventListener('click', openModal);
+      document.getElementById('btnCloseAvailModal').addEventListener('click', closeModal);
+      document.getElementById('btnCancelAvailModal').addEventListener('click', closeModal);
+
+      // Submit Availability Form
+      document.getElementById('btnSubmitAvailability').addEventListener('click', async () => {
+        const availability_type = document.getElementById('availType').value;
+        const start_date = document.getElementById('availStartDate').value;
+        const end_date = document.getElementById('availEndDate').value;
+        const hours_per_day = Number(document.getElementById('availHours').value) || 8;
+        const notes = document.getElementById('availNotes').value.trim();
+
+        if (!start_date || !end_date) {
+          alert('Please select both start date and end date.');
+          return;
+        }
+
+        if (start_date > end_date) {
+          alert('Start date cannot be after end date.');
+          return;
+        }
+
+        try {
+          await apiRequest('/api/workload/availability/set', 'POST', {
+            user_id: state.currentUser.id,
+            start_date,
+            end_date,
+            availability_type,
+            hours_per_day,
+            notes
+          });
+
+          closeModal();
+          showToast('Availability request submitted successfully!', 'success');
+          await Promise.all([
+            loadMyForecast(),
+            loadMyAvailabilityList()
+          ]);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    // Launch App
+    window.addEventListener('DOMContentLoaded', initMyWorkload);
+  </script>
+</body>
+</html>

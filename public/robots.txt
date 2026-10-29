@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /app.html
+Allow: /assets/
+Allow: /css/
+Allow: /js/
+
+Disallow: /api/
+
+Sitemap: /sitemap.xml

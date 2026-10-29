@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Participation Dashboard — Mahi Tech Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-primary: #3b82f6;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-bar {
+      background: #0f172a;
+      border-bottom: 1px solid var(--border-card);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-link-btn {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .nav-link-btn:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .nav-link-btn.active {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: #3b82f6;
+      color: #60a5fa;
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #020617;
+      border: 1px solid var(--border-card);
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+    }
+
+    .main-container {
+      max-width: 1400px;
+      width: 100%;
+      margin: 1.5rem auto;
+      padding: 0 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Shortcut Card */
+    .shortcut-card {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35);
+    }
+
+    .shortcut-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .stage-metric-pills {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 800px) {
+      .stage-metric-pills {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .stage-metric-box {
+      background: #020617;
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .stage-metric-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .stage-metric-val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #f8fafc;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .warning-alert-banner {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    /* Threshold Bar */
+    .threshold-bar {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    /* Data Table */
+    .card-table-wrapper {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .table-head-bar {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .participation-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    .participation-table th {
+      background: #020617;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .participation-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e293b;
+      vertical-align: middle;
+    }
+
+    .participation-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Badges */
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .badge-eligible { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-at-risk   { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .badge-blocked   { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+
+    .progress-bar-wrap {
+      width: 100px;
+      height: 8px;
+      background: #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--color-primary);
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-box {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      padding: 1.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Embedded Mode for New UI */
+    body.is-embedded {
+      background: transparent !important;
+      min-height: auto !important;
+    }
+    body.is-embedded .header-bar {
+      display: none !important;
+    }
+    body.is-embedded .main-container {
+      padding: 0.25rem 0 1rem 0 !important;
+      max-width: 100% !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header-bar">
+    <div class="brand-group">
+      <a href="/app.html#/app/dashboard" class="brand-logo"><span>⚡</span> MAHI TECH GROUP</a>
+      <span style="color: var(--border-card);">/</span>
+      <div>
+        <span id="projectTitleDisplay" style="font-size: 1.15rem; font-weight: 700; font-family: 'Outfit', sans-serif;">Loading Project...</span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <a href="#" class="nav-link-btn" id="linkPointPool">Point Pool Board</a>
+      <a href="#" class="nav-link-btn active" id="linkParticipation">Participation %</a>
+      <a href="#" class="nav-link-btn" id="linkProjectDetail">← Project Details</a>
+      <div class="user-pill">
+        <span id="userRoleBadge" class="badge-status badge-eligible">USER</span>
+        <span id="userNameDisplay">Checking Auth...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-container">
+    <!-- 1. "My Participation" Shortcut Card -->
+    <section class="shortcut-card" id="myParticipationCard">
+      <div class="shortcut-top">
+        <div>
+          <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600;">Personal Contributor Status</span>
+          <h2 style="margin: 0.25rem 0 0 0; font-size: 1.5rem; font-family: 'Outfit', sans-serif; color: #f8fafc;">My Participation Overview</h2>
+        </div>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="text-align: right;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">OVERALL PARTICIPATION</div>
+            <div style="font-size: 2rem; font-weight: 800; color: #3b82f6; font-family: 'Outfit', sans-serif;" id="myOverallPct">0.00%</div>
+          </div>
+          <div id="myStatusBadgeWrap">
+            <span class="badge-status badge-eligible" id="myStatusBadge">ELIGIBLE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 Stages Grid -->
+      <div class="stage-metric-pills">
+        <div class="stage-metric-box">
+          <span class="stage-metric-label">🔍 Research Stage</span>
+          <span class="stage-metric-val" id="myResPct">0.00%</span>
+        </div>
+        <div class="stage-metric-box">
+          <span class="stage-metric-label">🎨 Design Stage</span>
+          <span class="stage-metric-val" id="myDesPct">0.00%</span>
+        </div>
+        <div class="stage-metric-box">
+          <span class="stage-metric-label">💻 Dev Stage</span>
+          <span class="stage-metric-val" id="myDevPct">0.00%</span>
+        </div>
+        <div class="stage-metric-box">
+          <span class="stage-metric-label">🧪 Test Stage</span>
+          <span class="stage-metric-val" id="myTestPct">0.00%</span>
+        </div>
+      </div>
+
+      <!-- At-Risk Warning Alert Banner -->
+      <div class="warning-alert-banner" id="myAtRiskBanner" style="display: none;">
+        <span style="font-size: 1.25rem;">⚠️</span>
+        <div>
+          <strong>Participation At-Risk Warning:</strong> Your overall contribution is within 10% of the project eligibility threshold or below it. Claim and approve active checklist points to guarantee your revenue share distribution.
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Threshold Display Bar (Admin only controls, visible stats for all) -->
+    <section class="threshold-bar" id="thresholdSection">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <span style="font-size: 1.5rem;">🎯</span>
+        <div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Governance Threshold Gate</div>
+          <div style="font-size: 1rem; color: #f8fafc; font-weight: 600;">
+            Minimum Participation: <span id="thresholdPctDisplay" style="color: #60a5fa;">20.00%</span> · Abandonment Window: <span id="abandonmentDaysDisplay" style="color: #cbd5e1;">7 days</span>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span id="thresholdStatusBadge" class="badge-status badge-eligible" style="display: none;">THRESHOLD ACTIVE</span>
+        <a href="#" id="btnManageThreshold" class="nav-link-btn" style="display: none;">⚙️ Manage Threshold</a>
+      </div>
+    </section>
+
+    <!-- 3. Members Participation Table -->
+    <section class="card-table-wrapper">
+      <div class="table-head-bar">
+        <div>
+          <h3 style="margin: 0; font-size: 1.15rem; font-family: 'Outfit', sans-serif;">Team Participation Ledger</h3>
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);" id="tableSubtitle">
+            Contribution percentage computed across all approved checklist point weights.
+          </p>
+        </div>
+        <span class="badge-status badge-eligible" id="memberCountBadge">0 Members</span>
+      </div>
+      <table class="participation-table">
+        <thead>
+          <tr>
+            <th>Member</th>
+            <th>Role</th>
+            <th>Overall Contribution</th>
+            <th>Research</th>
+            <th>Design</th>
+            <th>Development</th>
+            <th>Testing</th>
+            <th style="text-align: right;">Revenue Gate</th>
+          </tr>
+        </thead>
+        <tbody id="participationTableBody">
+          <tr><td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">Loading team participation data...</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 4. Admin Only: Revenue Block Panel -->
+    <section class="card-table-wrapper" id="revenueBlocksPanel" style="display: none; border-color: #7f1d1d;">
+      <div class="table-head-bar" style="background: rgba(127, 29, 29, 0.2);">
+        <div>
+          <h3 style="margin: 0; font-size: 1.15rem; font-family: 'Outfit', sans-serif; color: #fca5a5;">
+            🛑 Disqualified Revenue Splits (Participation Gate Blocks)
+          </h3>
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: #fca5a5;">
+            Members who failed to reach the required participation threshold upon project go-live. Admin override with audit justification.
+          </p>
+        </div>
+        <span class="badge-status badge-at-risk" id="blockedCountBadge">0 Blocked</span>
+      </div>
+      <table class="participation-table">
+        <thead>
+          <tr style="color: #fca5a5;">
+            <th>Member</th>
+            <th>Event / Rule</th>
+            <th>Amount</th>
+            <th>Block Reason</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="revenueBlocksTableBody">
+          <tr><td colspan="5" style="text-align: center; padding: 1.5rem; color: #94a3b8;">No blocked revenue splits found.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Unblock Reason Modal -->
+  <div class="modal-backdrop" id="unblockModal">
+    <div class="modal-box">
+      <h3 style="margin-top: 0; color: #34d399; font-family: 'Outfit', sans-serif;">Unblock Revenue Share</h3>
+      <p style="font-size: 0.85rem; color: #94a3b8;">
+        Enter a clear justification for overriding this member's revenue block. The reason must be at least 10 characters long and is logged permanently to the compliance audit ledger.
+      </p>
+      <form id="unblockForm" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+        <input type="hidden" id="unblockSplitId">
+        <div>
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.35rem;">
+            Audit Justification (min 10 characters):
+          </label>
+          <textarea id="unblockReasonInput" required placeholder="e.g. Exceptional architectural contribution in off-platform research sprint" style="width: 100%; box-sizing: border-box; background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px; color: #f8fafc; font-size: 0.85rem; min-height: 80px;"></textarea>
+          <div id="unblockModalError" style="color: #f87171; font-size: 0.8rem; display: none; margin-top: 0.35rem;"></div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="nav-link-btn" id="btnCancelUnblock">Cancel</button>
+          <button type="submit" class="nav-link-btn" id="btnConfirmUnblock" style="background: #10b981; color: #ffffff; border: none;">Confirm Unblock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/participation-dashboard.js?v=179313"></script>
+  <script>
+    if (window.self !== window.top || new URLSearchParams(window.location.search).get('embedded') === 'true') {
+      document.body.classList.add('is-embedded');
+    }
+  </script>
+</body>
+</html>

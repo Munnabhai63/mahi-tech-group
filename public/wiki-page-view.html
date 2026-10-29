@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wiki Page — Mahi Tech Group</title>
+  <meta name="description" content="Knowledge base documentation page reader with table of contents, backlinks, and collaboration tools.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #24344d;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-primary-hover: #0284c7;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --glass-bg: rgba(15, 23, 42, 0.85);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Nav */
+    .view-nav {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.75rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    .nav-breadcrumbs a {
+      color: var(--color-primary);
+      text-decoration: none;
+    }
+    .nav-breadcrumbs a:hover { text-decoration: underline; }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      padding: 0.45rem 0.95rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--color-primary); color: #04101e; }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+    .btn-secondary { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-card); }
+    .btn-secondary:hover { background: var(--bg-card-hover); border-color: var(--color-primary); }
+
+    /* Layout */
+    .view-container {
+      display: flex;
+      flex: 1;
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+      gap: 2.5rem;
+      padding: 2.5rem 1.75rem 5rem 1.75rem;
+    }
+
+    .article-wrap {
+      flex: 1;
+      min-width: 0;
+      max-width: 820px;
+    }
+
+    .page-header-block {
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.4rem;
+      font-weight: 800;
+      margin: 0 0 0.75rem 0;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .page-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+
+    /* Content Typography & Rendered Blocks */
+    .content-body {
+      line-height: 1.75;
+      font-size: 1.02rem;
+      color: #e2e8f0;
+    }
+
+    .content-body h1, .content-body h2, .content-body h3 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      margin-top: 2rem;
+      margin-bottom: 0.85rem;
+      scroll-margin-top: 80px;
+    }
+    .content-body h1 { font-size: 1.75rem; color: var(--text-main); }
+    .content-body h2 { font-size: 1.4rem; color: var(--color-primary); border-bottom: 1px solid var(--border-light); padding-bottom: 0.4rem; }
+    .content-body h3 { font-size: 1.15rem; color: var(--text-main); }
+
+    .content-body p {
+      margin: 0 0 1.2rem 0;
+    }
+
+    .content-body pre {
+      background: #020617;
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      color: #38bdf8;
+      margin: 1.2rem 0;
+    }
+
+    .content-body blockquote {
+      border-left: 4px solid var(--color-primary);
+      margin: 1.2rem 0;
+      padding: 0.5rem 1.25rem;
+      background: rgba(56, 189, 248, 0.05);
+      border-radius: 0 8px 8px 0;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .content-body ul, .content-body ol {
+      margin: 0 0 1.2rem 0;
+      padding-left: 1.5rem;
+    }
+    .content-body li {
+      margin-bottom: 0.35rem;
+    }
+
+    .callout-box {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .callout-icon { font-size: 1.3rem; line-height: 1; }
+
+    .divider-line {
+      border: none;
+      border-top: 1px solid var(--border-card);
+      margin: 2rem 0;
+    }
+
+    /* Reactions Bar */
+    .reactions-bar {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .reaction-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 20px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s;
+    }
+    .reaction-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--color-primary);
+    }
+    .reaction-btn.has-reacted {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      font-weight: 700;
+    }
+
+    /* Backlinks Section */
+    .backlinks-section {
+      margin-top: 2.5rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+    .backlinks-header {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 0 0 0.75rem 0;
+    }
+    .backlink-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    .backlink-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      padding: 0.4rem 0.75rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .backlink-card:hover {
+      color: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+
+    /* Sticky Sidebar (TOC & Comments) */
+    .sidebar-panel {
+      width: 320px;
+      position: sticky;
+      top: 5rem;
+      height: fit-content;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Table of Contents */
+    .toc-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+    .toc-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin: 0 0 0.85rem 0;
+      color: var(--text-main);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+    .toc-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      display: block;
+      transition: all 0.15s;
+      line-height: 1.4;
+    }
+    .toc-link:hover, .toc-link.active {
+      color: var(--color-primary);
+      transform: translateX(3px);
+    }
+    .toc-link.depth-1 { font-weight: 600; color: #cbd5e1; }
+    .toc-link.depth-2 { padding-left: 0.75rem; }
+    .toc-link.depth-3 { padding-left: 1.5rem; font-size: 0.78rem; }
+
+    /* Comments Section Container */
+    .comments-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+    .comments-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 0 0 1rem 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .comment-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.82rem;
+    }
+    .comment-header {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+      font-size: 0.75rem;
+    }
+    .comment-author { font-weight: 700; color: var(--text-main); }
+    .comment-body { color: #cbd5e1; line-height: 1.45; margin-bottom: 0.45rem; }
+    .comment-actions {
+      display: flex;
+      gap: 0.5rem;
+      font-size: 0.72rem;
+    }
+    .comment-action-link {
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+    }
+    .comment-action-link:hover { color: var(--color-primary); }
+
+    .comment-form textarea {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      padding: 0.5rem;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.82rem;
+      resize: vertical;
+      min-height: 60px;
+      margin-bottom: 0.5rem;
+    }
+    .comment-form textarea:focus { outline: none; border-color: var(--color-primary); }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .view-container { flex-direction: column; }
+      .sidebar-panel { width: 100%; position: static; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="view-nav">
+    <div class="nav-breadcrumbs">
+      <a href="/wiki-spaces.html">Wiki Spaces</a>
+      <span>/</span>
+      <span id="breadcrumbSpace">Space</span>
+      <span>/</span>
+      <span id="breadcrumbTitle" style="color: var(--text-main); font-weight: 600;">Page</span>
+    </div>
+
+    <div class="nav-actions">
+      <button id="exportBtn" class="btn btn-secondary">
+        📥 Export Markdown
+      </button>
+      <a id="editPageBtn" href="#" class="btn btn-primary" style="display: none;">
+        ✏️ Edit Page
+      </a>
+    </div>
+  </header>
+
+  <!-- Layout Container -->
+  <div class="view-container">
+
+    <!-- Main Reading Column -->
+    <article class="article-wrap">
+      
+      <div class="page-header-block">
+        <h1 class="page-title">
+          <span id="pageEmoji">📄</span>
+          <span id="pageTitleText">Loading page...</span>
+        </h1>
+        <div class="page-meta-row">
+          <span id="metaAuthor">Author: ...</span>
+          <span>•</span>
+          <span id="metaEdited">Last edited ...</span>
+          <span>•</span>
+          <span id="metaWordCount">0 words</span>
+          <span>•</span>
+          <span id="metaReadTime">1 min read</span>
+          <span id="clientSharedBadge" style="display: none; background: rgba(16, 185, 129, 0.15); color: var(--color-success); padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">
+            SHARED WITH CLIENT
+          </span>
+        </div>
+      </div>
+
+      <!-- Content Rendered HTML -->
+      <div id="contentBody" class="content-body">
+        <!-- Rendered blocks inserted here -->
+      </div>
+
+      <!-- Emoji Reactions Bar -->
+      <div id="reactionsBar" class="reactions-bar">
+        <!-- Emojis injected dynamically -->
+      </div>
+
+      <!-- Backlinks Section -->
+      <div id="backlinksSection" class="backlinks-section" style="display: none;">
+        <h4 class="backlinks-header">Pages Linking Here</h4>
+        <div id="backlinksGrid" class="backlink-grid">
+          <!-- Backlinks injected here -->
+        </div>
+      </div>
+
+    </article>
+
+    <!-- Sticky Sidebar (Table of Contents & Comments) -->
+    <aside class="sidebar-panel">
+      
+      <!-- Table of Contents -->
+      <div class="toc-card" id="tocCard">
+        <h4 class="toc-title">Table of Contents</h4>
+        <ul id="tocList" class="toc-list">
+          <li style="color: var(--text-muted); font-size: 0.8rem;">No headings found on this page.</li>
+        </ul>
+      </div>
+
+      <!-- Threaded Comments Section (STRICT: Omitted for clients) -->
+      <div class="comments-card" id="commentsSection">
+        <h4 class="comments-title">
+          <span>Comments</span>
+          <span id="commentsCountBadge" style="font-size: 0.75rem; color: var(--text-muted);">0</span>
+        </h4>
+
+        <div id="commentsList">
+          <!-- Comments injected here -->
+        </div>
+
+        <form id="addCommentForm" class="comment-form" style="margin-top: 1rem;">
+          <textarea id="commentInput" placeholder="Add a comment or question..."></textarea>
+          <div style="display: flex; justify-content: flex-end;">
+            <button type="submit" class="btn btn-primary" style="padding: 0.35rem 0.75rem; font-size: 0.78rem;">
+              Post Comment
+            </button>
+          </div>
+        </form>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <script>
+    // -------------------------------------------------------------------------
+    // Page View Logic & Security Enforcements
+    // -------------------------------------------------------------------------
+    let currentAuthUser = null;
+    let pageData = null;
+    let pageId = null;
+
+    const SUPPORTED_REACTIONS = ['👍', '❤️', '🎉', '🚀', '👀', '💡'];
+
+    function getAuthToken() {
+      return localStorage.getItem('token') || localStorage.getItem('client_token');
+    }
+
+    async function init() {
+      const token = getAuthToken();
+      if (!token) {
+        window.location.href = '/index.html';
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      pageId = params.get('id');
+      const spaceId = params.get('space_id');
+
+      if (!pageId && spaceId) {
+        // If only space_id is given, find first page in that space
+        await loadFirstPageInSpace(spaceId);
+        return;
+      }
+
+      if (!pageId) {
+        window.location.href = '/wiki-spaces.html';
+        return;
+      }
+
+      await verifyUserSession(token);
+      await loadPage(pageId);
+      setupEventListeners();
+    }
+
+    async function verifyUserSession(token) {
+      try {
+        const res = await fetch('/api/users/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          currentAuthUser = await res.json();
+          currentAuthUser.isClient = false;
+        } else {
+          const clientRes = await fetch('/api/client/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (clientRes.ok) {
+            const client = await clientRes.json();
+            currentAuthUser = { ...client, role: 'client', isClient: true };
+          }
+        }
+      } catch (err) {
+        console.error('Session check error:', err);
+      }
+    }
+
+    async function loadFirstPageInSpace(spaceId) {
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`/api/wiki/space/${spaceId}/pages`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const tree = await res.json();
+          if (tree.length > 0) {
+            window.location.href = `/wiki-page-view.html?id=${tree[0].id}`;
+            return;
+          }
+        }
+        // If space is empty
+        alert('This space has no documentation pages yet.');
+        window.location.href = '/wiki-spaces.html';
+      } catch {
+        window.location.href = '/wiki-spaces.html';
+      }
+    }
+
+    async function loadPage(id) {
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`/api/wiki/page/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          throw new Error('Page not found or access denied');
+        }
+
+        pageData = await res.json();
+        renderPageDetails();
+      } catch (err) {
+        document.getElementById('contentBody').innerHTML = `
+          <div style="text-align: center; padding: 3rem; color: var(--color-danger);">
+            <h3>Access Denied or Page Not Found</h3>
+            <p>${escapeHtml(err.message)}</p>
+            <a href="/wiki-spaces.html" class="btn btn-secondary" style="margin-top: 1rem;">Back to Spaces</a>
+          </div>
+        `;
+      }
+    }
+
+    function renderPageDetails() {
+      if (!pageData) return;
+
+      // Title & Emoji
+      document.getElementById('pageEmoji').textContent = pageData.emoji_icon || '📄';
+      document.getElementById('pageTitleText').textContent = pageData.title;
+      document.title = `${pageData.title} — Mahi Wiki`;
+      document.getElementById('breadcrumbTitle').textContent = pageData.title;
+
+      // Meta row
+      document.getElementById('metaAuthor').textContent = `Created by Team Member`;
+      document.getElementById('metaEdited').textContent = `Updated ${formatRelativeTime(pageData.updated_at)}`;
+      document.getElementById('metaWordCount').textContent = `${pageData.word_count || 0} words`;
+      document.getElementById('metaReadTime').textContent = `${pageData.reading_time_minutes || 1} min read`;
+
+      if (pageData.is_client_shared === 1) {
+        document.getElementById('clientSharedBadge').style.display = 'inline-block';
+      }
+
+      // Permissions check for "Edit Page" button
+      const canEdit = !currentAuthUser?.isClient &&
+        (['admin', 'superadmin'].includes(currentAuthUser?.role) || pageData.user_space_role === 'EDITOR' || pageData.user_space_role === 'MANAGER');
+
+      const editBtn = document.getElementById('editPageBtn');
+      if (canEdit && pageData.status !== 'ARCHIVED') {
+        editBtn.style.display = 'inline-flex';
+        editBtn.href = `/wiki-editor.html?id=${pageData.id}`;
+      } else {
+        editBtn.style.display = 'none';
+      }
+
+      // Render content blocks
+      let blocks = [];
+      if (Array.isArray(pageData.content)) {
+        blocks = pageData.content;
+      } else {
+        try {
+          blocks = JSON.parse(pageData.content);
+        } catch {
+          blocks = [{ id: 'b0', type: 'PARAGRAPH', content: String(pageData.content || '') }];
+        }
+      }
+
+      renderBlocksHtml(blocks);
+      generateTableOfContents(blocks);
+      renderReactions(pageData.reactions || []);
+      renderBacklinks(pageData.backlinks || []);
+
+      // Client Isolation for Comments UI
+      if (currentAuthUser?.isClient) {
+        // STRICT RULE: Completely remove comment section from DOM for clients
+        const commentsSec = document.getElementById('commentsSection');
+        if (commentsSec) commentsSec.remove();
+      } else {
+        renderComments(pageData.comments || []);
+      }
+    }
+
+    function renderBlocksHtml(blocks) {
+      const container = document.getElementById('contentBody');
+      const htmlParts = [];
+      let headingIndex = 0;
+
+      blocks.forEach(block => {
+        if (!block) return;
+        const type = block.type || 'PARAGRAPH';
+        const text = escapeHtml(block.content || '');
+
+        switch (type) {
+          case 'HEADING_1':
+            headingIndex++;
+            htmlParts.push(`<h1 id="heading-${headingIndex}">${text}</h1>`);
+            break;
+          case 'HEADING_2':
+            headingIndex++;
+            htmlParts.push(`<h2 id="heading-${headingIndex}">${text}</h2>`);
+            break;
+          case 'HEADING_3':
+            headingIndex++;
+            htmlParts.push(`<h3 id="heading-${headingIndex}">${text}</h3>`);
+            break;
+          case 'CODE':
+            htmlParts.push(`<pre><code>${text}</code></pre>`);
+            break;
+          case 'QUOTE':
+            htmlParts.push(`<blockquote>${text}</blockquote>`);
+            break;
+          case 'CALLOUT':
+            htmlParts.push(`
+              <div class="callout-box">
+                <span class="callout-icon">💡</span>
+                <div>${text}</div>
+              </div>
+            `);
+            break;
+          case 'DIVIDER':
+            htmlParts.push(`<hr class="divider-line">`);
+            break;
+          case 'BULLET_LIST': {
+            const items = String(block.content || '').split('\n').filter(Boolean);
+            htmlParts.push(`<ul>${items.map(it => `<li>${escapeHtml(it)}</li>`).join('')}</ul>`);
+            break;
+          }
+          case 'NUMBERED_LIST': {
+            const items = String(block.content || '').split('\n').filter(Boolean);
+            htmlParts.push(`<ol>${items.map(it => `<li>${escapeHtml(it)}</li>`).join('')}</ol>`);
+            break;
+          }
+          case 'TODO':
+            htmlParts.push(`
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+                <input type="checkbox" disabled ${block.attrs?.checked ? 'checked' : ''}>
+                <span>${text}</span>
+              </div>
+            `);
+            break;
+          default:
+            htmlParts.push(`<p>${text}</p>`);
+            break;
+        }
+      });
+
+      container.innerHTML = htmlParts.join('');
+    }
+
+    function generateTableOfContents(blocks) {
+      const tocList = document.getElementById('tocList');
+      const headings = [];
+      let hIdx = 0;
+
+      blocks.forEach(b => {
+        if (!b) return;
+        if (['HEADING_1', 'HEADING_2', 'HEADING_3'].includes(b.type)) {
+          hIdx++;
+          let depth = 1;
+          if (b.type === 'HEADING_2') depth = 2;
+          if (b.type === 'HEADING_3') depth = 3;
+          headings.push({ id: `heading-${hIdx}`, text: b.content || 'Section', depth });
+        }
+      });
+
+      if (!headings.length) {
+        tocList.innerHTML = '<li style="color: var(--text-muted); font-size: 0.8rem;">No headings on this page.</li>';
+        return;
+      }
+
+      tocList.innerHTML = headings.map(h => `
+        <li>
+          <a href="#${h.id}" class="toc-link depth-${h.depth}">${escapeHtml(h.text)}</a>
+        </li>
+      `).join('');
+    }
+
+    function renderReactions(reactions) {
+      const container = document.getElementById('reactionsBar');
+      if (currentAuthUser?.isClient) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.innerHTML = SUPPORTED_REACTIONS.map(emoji => {
+        const match = reactions.find(r => r.reaction === emoji);
+        const count = match ? match.count : 0;
+        const hasReacted = match ? match.has_reacted : false;
+
+        return `
+          <button class="reaction-btn ${hasReacted ? 'has-reacted' : ''}" onclick="toggleEmojiReaction('${emoji}')">
+            <span>${emoji}</span>
+            <span>${count}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    window.toggleEmojiReaction = async function(emoji) {
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`/api/wiki/page/${pageId}/react`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ reaction: emoji })
+        });
+        if (res.ok) {
+          await loadPage(pageId);
+        }
+      } catch (err) {
+        console.error('Reaction toggle error:', err);
+      }
+    };
+
+    function renderBacklinks(backlinks) {
+      const section = document.getElementById('backlinksSection');
+      const grid = document.getElementById('backlinksGrid');
+
+      if (!backlinks || !backlinks.length) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      grid.innerHTML = backlinks.map(b => `
+        <a href="/wiki-page-view.html?id=${b.id}" class="backlink-card">
+          <span>${b.emoji_icon || '📄'}</span>
+          <span>${escapeHtml(b.title)}</span>
+          <span style="font-size: 0.7rem; color: var(--text-muted);">(${escapeHtml(b.space_name)})</span>
+        </a>
+      `).join('');
+    }
+
+    function renderComments(comments) {
+      const listEl = document.getElementById('commentsList');
+      const badge = document.getElementById('commentsCountBadge');
+      badge.textContent = comments.length;
+
+      if (!comments.length) {
+        listEl.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.5rem 0;">No comments yet.</p>';
+        return;
+      }
+
+      listEl.innerHTML = comments.map(c => `
+        <div class="comment-item" data-id="${c.id}">
+          <div class="comment-header">
+            <span class="comment-author">${escapeHtml(c.user_name || 'Member')}</span>
+            <span>${formatRelativeTime(c.created_at)}</span>
+          </div>
+          <div class="comment-body">${escapeHtml(c.content)}</div>
+          <div class="comment-actions">
+            ${c.is_resolved ? '<span style="color: var(--color-success);">✓ Resolved</span>' : `
+              <button class="comment-action-link" onclick="resolveComment(${c.id})">✓ Resolve</button>
+            `}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    window.resolveComment = async function(commentId) {
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`/api/wiki/comment/${commentId}/resolve`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          await loadPage(pageId);
+        }
+      } catch (err) {
+        console.error('Comment resolve error:', err);
+      }
+    };
+
+    function setupEventListeners() {
+      // Export markdown
+      document.getElementById('exportBtn').addEventListener('click', async () => {
+        const token = getAuthToken();
+        try {
+          const res = await fetch(`/api/wiki/page/${pageId}/export`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Export failed');
+
+          await navigator.clipboard.writeText(data.markdown);
+          alert('Markdown copied to clipboard!');
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+
+      // Post comment
+      const commentForm = document.getElementById('addCommentForm');
+      if (commentForm) {
+        commentForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const input = document.getElementById('commentInput');
+          const content = input.value.trim();
+          if (!content) return;
+
+          const token = getAuthToken();
+          try {
+            const res = await fetch(`/api/wiki/page/${pageId}/comment`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ content })
+            });
+
+            if (res.ok) {
+              input.value = '';
+              await loadPage(pageId);
+            }
+          } catch (err) {
+            console.error('Post comment error:', err);
+          }
+        });
+      }
+    }
+
+    function formatRelativeTime(dateStr) {
+      if (!dateStr) return 'recently';
+      const d = new Date(dateStr);
+      const diffSecs = Math.floor((Date.now() - d.getTime()) / 1000);
+      if (diffSecs < 60) return 'just now';
+      if (diffSecs < 3600) return `${Math.floor(diffSecs / 60)}m ago`;
+      if (diffSecs < 86400) return `${Math.floor(diffSecs / 3600)}h ago`;
+      return `${Math.floor(diffSecs / 86400)}d ago`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

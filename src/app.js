@@ -12,9 +12,26 @@ import dashboardRouter from './routes/dashboard.js';
 import meetingsRouter from './routes/meetings.js';
 import superadminRouter from './routes/superadmin.js';
 import signRouter from './routes/sign.js';
+import pipelineRouter from './routes/pipeline.routes.js';
+import pointPoolRouter from './routes/pointPool.routes.js';
+import githubWebhookRouter from './routes/githubWebhook.routes.js';
+import githubSettingsRouter from './routes/githubSettings.routes.js';
+import sprintRouter from './routes/sprint.routes.js';
+import backlogRouter from './routes/backlog.routes.js';
+import okrRouter from './routes/okr.routes.js';
+import ganttRouter from './routes/gantt.routes.js';
+import workloadRouter from './routes/workload.routes.js';
+import timeRouter from './routes/time.routes.js';
+import analyticsRouter from './routes/analytics.routes.js';
+import clientRouter from './routes/client.routes.js';
+import financeRouter from './routes/finance.routes.js';
+import automationRouter from './routes/automation.routes.js';
+import wikiRouter from './routes/wiki.routes.js';
+import mobileRouter from './routes/mobile.routes.js';
+import setupRouter from './routes/setup.routes.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { queryAll } from './db/database.js';
+import { queryAll, queryOne } from './db/database.js';
 import { config } from './config.js';
 import { securityHeaders } from './middleware/securityHeaders.js';
 
@@ -27,6 +44,11 @@ export function createApp() {
 
   app.use(securityHeaders);
   app.use(cors());
+
+  // Webhook raw body parser MUST be mounted BEFORE global express.json()
+  app.use('/api/github/webhook', express.raw({ type: 'application/json' }));
+  app.use('/api/github', githubWebhookRouter);
+
   app.use(express.json());
 
   // Enhanced health check endpoint
@@ -54,10 +76,65 @@ export function createApp() {
     next(new Error('Simulated internal database crash'));
   });
 
+  // Helper to determine if system has 0 registered users (fresh install)
+  function isFirstRun() {
+    try {
+      const row = queryOne('SELECT COUNT(*) as count FROM users');
+      return Boolean(row && Number(row.count) === 0);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Explicit /setup route serving setup.html
+  app.get('/setup', (req, res) => {
+    if (!isFirstRun()) {
+      return res.redirect('/');
+    }
+    return res.sendFile(path.join(publicPath, 'setup.html'));
+  });
+
+  // First-run detection redirect: On zero users in DB, redirect all browser GET requests to /setup
+  app.use((req, res, next) => {
+    if (req.method !== 'GET') return next();
+
+    const firstRunActive = isFirstRun();
+    const p = req.path;
+
+    if (firstRunActive) {
+      if (
+        p.startsWith('/api/setup') ||
+        p.startsWith('/api/health') ||
+        p === '/setup' ||
+        p === '/setup.html' ||
+        p.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|map)$/i)
+      ) {
+        return next();
+      }
+      return res.redirect('/setup');
+    } else {
+      if (p === '/setup' || p === '/setup.html') {
+        return res.redirect('/');
+      }
+    }
+    next();
+  });
+
   // Serve static frontend assets
-  app.use(express.static(publicPath));
+  app.use(express.static(publicPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+      }
+    }
+  }));
 
   // Mount API routers
+  app.use('/api/setup', setupRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/sign', signRouter); // Member digital signing ceremony (authenticate only)
   app.use('/api/admin', adminRouter);
@@ -69,8 +146,42 @@ export function createApp() {
   app.use('/api/withdrawals', withdrawalsRouter);
   app.use('/api/coworking-rooms', coworkingRouter);
   app.use('/api/meetings', meetingsRouter);
+  app.use('/api/pipeline', pipelineRouter);
+  app.use('/api/pointpool', pointPoolRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api', dashboardRouter); // Covers /api/notifications/* and /api/activity/*
+  app.use('/api/github/settings', githubSettingsRouter);
+  app.use('/api/sprint', sprintRouter);
+  app.use('/api/backlog', backlogRouter);
+  app.use('/api/okr', okrRouter);
+  app.use('/api/gantt', ganttRouter);
+  app.use('/api/workload', workloadRouter);
+  app.use('/api/time', timeRouter);
+  app.use('/api/analytics', analyticsRouter);
+  app.use('/api/client', clientRouter);
+  app.use('/api/finance', financeRouter);
+  app.use('/api/automation', automationRouter);
+  app.use('/api/wiki', wikiRouter);
+  app.use('/api/mobile', mobileRouter);
+  app.use('/api/device', mobileRouter);
+
+  // Direct shortcut redirects for common workspace and auth routes (Express 5 compatible)
+  app.use((req, res, next) => {
+    if (req.method !== 'GET') return next();
+    const p = req.path;
+    if (
+      p === '/app' || p.startsWith('/app/') ||
+      p === '/workspace' || p.startsWith('/workspace/') ||
+      p === '/dashboard' || p.startsWith('/dashboard/') ||
+      p === '/login' || p === '/signup' ||
+      p === '/admin' || p.startsWith('/admin/') ||
+      p === '/superadmin' || p.startsWith('/superadmin/')
+    ) {
+      const targetHash = p.startsWith('/app') ? p : `/${p.replace(/^\/+/, '')}`;
+      return res.redirect(`/app.html#${targetHash}`);
+    }
+    next();
+  });
 
   // Client-side SPA fallback for non-API routes (Express 5 compatible)
   app.use((req, res, next) => {

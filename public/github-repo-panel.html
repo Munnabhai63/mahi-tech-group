@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project GitHub Repository — Mahi Tech Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-sidebar: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --color-success: #10b981;
+      --color-danger: #ef4444;
+      --color-warning: #f59e0b;
+      --color-archived: #64748b;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-nav {
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border-card);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .brand-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .nav-btn-link {
+      background: #1e293b;
+      border: 1px solid var(--border-card);
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .nav-btn-link:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .page-container {
+      max-width: 960px;
+      width: 100%;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      flex: 1;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+      padding-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .status-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-active {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+
+    .status-archived {
+      background: rgba(100, 116, 139, 0.2);
+      border: 1px solid rgba(100, 116, 139, 0.4);
+      color: #94a3b8;
+    }
+
+    .status-failed {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+
+    .status-pending {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+    }
+
+    .repo-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .meta-item {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .meta-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.35rem;
+    }
+
+    .meta-value {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #f8fafc;
+      word-break: break-all;
+    }
+
+    .btn-github-open {
+      background: #24292e;
+      color: #ffffff;
+      border: 1px solid #444d56;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.15s ease;
+    }
+
+    .btn-github-open:hover {
+      background: #2f363d;
+      color: #ffffff;
+    }
+
+    .btn-setup {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.15s ease;
+    }
+
+    .btn-setup:hover {
+      background: var(--primary-hover);
+    }
+
+    .branch-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .branch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+    }
+
+    .branch-name {
+      font-family: monospace;
+      font-size: 0.95rem;
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .branch-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+    }
+
+    .branch-protected {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .branch-feature {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 100;
+    }
+
+    .modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      max-width: 500px;
+      width: 100%;
+      padding: 2rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0 0 1rem 0;
+      color: #f8fafc;
+    }
+
+    .modal-body {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    .btn-cancel {
+      background: #334155;
+      color: #cbd5e1;
+      border: 1px solid var(--border-card);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Embedded Mode for New UI */
+    body.is-embedded {
+      background: transparent !important;
+      min-height: auto !important;
+    }
+    body.is-embedded .top-nav {
+      display: none !important;
+    }
+    body.is-embedded .page-container {
+      padding: 0.25rem 0 1rem 0 !important;
+      max-width: 100% !important;
+    }
+  </style>
+</head>
+<body>
+  <header class="top-nav">
+    <a href="/app.html#/app/dashboard" class="brand-logo">
+      <span>🐙</span> Mahi Tech Group
+    </a>
+    <nav class="nav-links">
+      <a href="#" id="linkBackProject" class="nav-btn-link">← Project Detail</a>
+      <a href="/app.html#/admin" class="nav-btn-link" id="navAdminLink" style="display: none;">Admin Console</a>
+    </nav>
+  </header>
+
+  <main class="page-container">
+    <div id="bannerSuccess" class="banner banner-success" style="display:none; padding:1rem; border-radius:8px; margin-bottom:1.5rem; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); color:#34d399;"></div>
+    <div id="bannerError" class="banner banner-error" style="display:none; padding:1rem; border-radius:8px; margin-bottom:1.5rem; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#f87171;"></div>
+
+    <!-- State A: Repository Active / Configured Card -->
+    <section class="card" id="repoCard" style="display: none;">
+      <div class="card-header">
+        <div>
+          <h1 class="card-title" id="repoTitle">
+            <span>📦</span> <span id="repoName">mahi-repo</span>
+          </h1>
+          <div style="font-size:0.85rem; color:var(--text-muted); margin-top:0.3rem;" id="repoFullName">
+            mahitechgroup/mahi-repo
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <span class="status-badge" id="repoStatusBadge">ACTIVE</span>
+          <a href="#" id="btnOpenGitHub" class="btn-github-open" target="_blank" rel="noopener noreferrer">
+            <span>↗</span> Open on GitHub
+          </a>
+        </div>
+      </div>
+
+      <div class="repo-meta-grid">
+        <div class="meta-item">
+          <div class="meta-label">Default Branch</div>
+          <div class="meta-value" id="metaDefaultBranch">main</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Created At</div>
+          <div class="meta-value" id="metaCreatedAt">--</div>
+        </div>
+        <div class="meta-item" id="archivedMetaBlock" style="display: none;">
+          <div class="meta-label">Archived At</div>
+          <div class="meta-value" id="metaArchivedAt">--</div>
+        </div>
+      </div>
+
+      <!-- GitFlow Branch Structure -->
+      <div style="margin-top: 2rem;">
+        <h2 style="font-family:'Outfit', sans-serif; font-size:1.15rem; font-weight:700; color:#f8fafc; margin-bottom:1rem;">
+          🌳 GitFlow Branch Architecture
+        </h2>
+        <div class="branch-list">
+          <div class="branch-row">
+            <div class="branch-name"><span>🌿</span> main</div>
+            <span class="branch-tag branch-protected">Protected Branch</span>
+          </div>
+          <div class="branch-row">
+            <div class="branch-name"><span>🌿</span> develop</div>
+            <span class="branch-tag branch-protected">Protected Branch</span>
+          </div>
+          <div class="branch-row">
+            <div class="branch-name"><span>🌿</span> feature/research</div>
+            <span class="branch-tag branch-feature">Feature Branch</span>
+          </div>
+          <div class="branch-row">
+            <div class="branch-name"><span>🌿</span> feature/design</div>
+            <span class="branch-tag branch-feature">Feature Branch</span>
+          </div>
+          <div class="branch-row">
+            <div class="branch-name"><span>🌿</span> feature/dev</div>
+            <span class="branch-tag branch-feature">Feature Branch</span>
+          </div>
+          <div class="branch-row">
+            <div class="branch-name"><span>🌿</span> feature/test</div>
+            <span class="branch-tag branch-feature">Feature Branch</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- State B: No Repository / Setup Needed -->
+    <section class="card" id="noRepoCard" style="display: none; text-align: center; padding: 3rem 1.5rem;">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">🐙</div>
+      <h2 style="font-family:'Outfit',sans-serif; font-size:1.5rem; margin:0 0 0.5rem 0;">No GitHub Repository Configured</h2>
+      <p style="color:var(--text-muted); max-width:500px; margin:0 auto 1.5rem auto; font-size:0.95rem;">
+        This project does not have an automated GitHub repository setup yet. Repositories provide GitFlow branch architecture and sub-team access.
+      </p>
+      <div id="adminSetupControls" style="display: none;">
+        <button class="btn-setup" id="btnTriggerSetup">
+          <span>🚀</span> Set Up GitHub Repository
+        </button>
+      </div>
+      <div id="nonAdminNotice" style="color:var(--text-muted); font-size:0.85rem; display:none;">
+        Contact a project Lead or Platform Admin to provision the GitHub repository.
+      </div>
+    </section>
+
+    <!-- State C: Failed State -->
+    <section class="card" id="failedRepoCard" style="display: none; border-color: rgba(239,68,68,0.4);">
+      <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+        <span class="status-badge status-failed">FAILED</span>
+        <h2 style="font-family:'Outfit',sans-serif; font-size:1.3rem; margin:0; color:#f87171;">GitHub Provisioning Failed</h2>
+      </div>
+      <p id="failedErrorText" style="color:#cbd5e1; font-size:0.9rem; margin-bottom:1.5rem;">
+        The repository creation encountered an error during automated provisioning.
+      </p>
+      <div id="adminRetryControls" style="display: none;">
+        <button class="btn-setup" id="btnRetrySetup" style="background:#dc2626;">
+          <span>🔄</span> Retry Setup
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Setup Confirmation Modal -->
+  <div class="modal-backdrop" id="setupModal" style="display: none;">
+    <div class="modal-card">
+      <h3 class="modal-title">Confirm GitHub Repository Setup</h3>
+      <div class="modal-body">
+        This will create a private GitHub repository under the Mahi Tech Group organization with GitFlow branches (<code>main</code>, <code>develop</code>, <code>feature/*</code>) and per-role team permissions.
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="btnCancelModal">Cancel</button>
+        <button class="btn-setup" id="btnConfirmSetup">
+          <span id="setupSpinner" class="spinner" style="display: none;"></span>
+          <span id="setupBtnText">Confirm & Create Repo</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/github-repo-panel.js?v=179313"></script>
+  <script>
+    if (window.self !== window.top || new URLSearchParams(window.location.search).get('embedded') === 'true') {
+      document.body.classList.add('is-embedded');
+    }
+  </script>
+</body>
+</html>

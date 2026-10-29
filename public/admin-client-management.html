@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Management & Orders — Mahi Tech Group Admin</title>
+  <meta name="description" content="Admin console for managing client portal accounts, project permissions, shared deliverables, and client work orders.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-primary-hover: #0284c7;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-purple: #a855f7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    .admin-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.875rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+
+    .nav-logo-badge {
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      color: var(--color-purple);
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--color-primary);
+    }
+
+    .nav-user {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .admin-badge-pill {
+      font-size: 0.8125rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      color: var(--color-purple);
+      font-weight: 600;
+    }
+
+    .btn-signout {
+      background: transparent;
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      padding: 0.4rem 0.875rem;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    /* Main Container */
+    .main-content {
+      flex: 1;
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .section-title-area h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0 0 0.35rem 0;
+      color: var(--text-main);
+    }
+
+    .section-title-area p {
+      color: var(--text-muted);
+      font-size: 0.9375rem;
+      margin: 0;
+    }
+
+    .btn-primary {
+      padding: 0.65rem 1.25rem;
+      background: var(--color-primary);
+      color: #04101e;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      background: var(--color-primary-hover);
+      color: #ffffff;
+    }
+
+    /* Navigation Tabs */
+    .admin-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-card);
+      margin-bottom: 1.75rem;
+    }
+
+    .admin-tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      padding: 0.75rem 1.25rem;
+      cursor: pointer;
+    }
+
+    .admin-tab-btn.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+    }
+
+    .admin-tab-pane {
+      display: none;
+    }
+
+    .admin-tab-pane.active {
+      display: block;
+    }
+
+    /* Panel and Tables */
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .data-table th {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .data-table td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.875rem;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-active { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-invited { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge-suspended { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-internal { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    .btn-action-sm {
+      padding: 0.35rem 0.65rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-action-sm:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    .btn-danger-sm {
+      padding: 0.35rem 0.65rem;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+
+    .modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      max-width: 680px;
+      width: 100%;
+      padding: 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+      color: var(--text-main);
+    }
+
+    .modal-subtitle {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin: 0 0 1.25rem 0;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.875rem;
+      outline: none;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    .token-display-box {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px dashed rgba(56, 189, 248, 0.4);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      word-break: break-all;
+      font-family: monospace;
+      font-size: 0.8125rem;
+      color: #bae6fd;
+    }
+
+    .chat-bubble.internal {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+
+    .chat-bubble.public {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-state {
+      padding: 2.5rem 1rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="admin-nav">
+    <a href="/admin-client-management.html" class="nav-brand">
+      <span class="nav-logo-badge">ADMIN</span>
+      <span class="nav-brand-title">Mahi Tech Group — Client Management</span>
+    </a>
+
+    <div class="nav-links">
+      <a href="/admin-client-management.html" class="nav-link active">Clients & Orders</a>
+      <a href="/client-dashboard.html" class="nav-link" target="_blank">View Client Portal ↗</a>
+    </div>
+
+    <div class="nav-user">
+      <span id="adminNameBadge" class="admin-badge-pill">Admin</span>
+      <button id="adminSignOutBtn" class="btn-signout">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="section-header">
+      <div class="section-title-area">
+        <h1>Client Accounts & Order Operations</h1>
+        <p>Invite clients, grant project permissions, share deliverables, and manage work orders.</p>
+      </div>
+      <button id="openCreateClientBtn" class="btn-primary">+ Create Client Account</button>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="admin-tabs">
+      <button class="admin-tab-btn active" data-tab="clients">Client Accounts</button>
+      <button class="admin-tab-btn" data-tab="orders">Client Orders & Internal Notes</button>
+    </div>
+
+    <!-- TAB 1: Clients Table -->
+    <div id="tab-clients" class="admin-tab-pane active">
+      <div class="panel">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Client Name</th>
+              <th>Company</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Projects</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="clientsTableBody">
+            <tr><td colspan="7" class="empty-state">Loading client directory...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 2: Orders & Internal Notes -->
+    <div id="tab-orders" class="admin-tab-pane">
+      <div class="panel">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Client</th>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Internal Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="adminOrdersTableBody">
+            <tr><td colspan="7" class="empty-state">Loading client orders...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Create Client Modal -->
+  <div id="createClientModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 class="modal-title">Invite New Client</h3>
+      <p class="modal-subtitle">Generate a 32-byte secure invitation link for first-time onboarding.</p>
+
+      <form id="createClientForm">
+        <div class="form-group">
+          <label class="form-label" for="clientName">Full Name</label>
+          <input type="text" id="clientName" class="form-control" placeholder="Acme Representative" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="clientEmail">Email Address</label>
+          <input type="email" id="clientEmail" class="form-control" placeholder="client@acme.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="clientCompany">Company Name</label>
+          <input type="text" id="clientCompany" class="form-control" placeholder="Acme Corp">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="clientPhone">Phone Number</label>
+          <input type="text" id="clientPhone" class="form-control" placeholder="+1 555-0199">
+        </div>
+
+        <div id="inviteResultBox" style="display:none;">
+          <div class="form-label">Client Invitation Link (Single-use, 72h expiry):</div>
+          <div id="inviteTokenUrl" class="token-display-box"></div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="closeCreateClientBtn" class="btn-secondary">Close</button>
+          <button type="submit" id="submitCreateClientBtn" class="btn-primary">Generate Invite</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Client Detail & Management Modal -->
+  <div id="clientDetailModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 800px;">
+      <h3 id="clientDetailTitle" class="modal-title">Client Details</h3>
+      <p id="clientDetailSubtitle" class="modal-subtitle">Manage project access and shared deliverables.</p>
+
+      <input type="hidden" id="currentDetailClientId">
+
+      <!-- Sub-tabs: Access | Shared Items | Activity -->
+      <div style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid var(--border-card);">
+        <button class="btn-action-sm" onclick="showDetailTab('access')">Project Access</button>
+        <button class="btn-action-sm" onclick="showDetailTab('shared')">Shared Items</button>
+        <button class="btn-action-sm" onclick="showDetailTab('activity')">Activity Log</button>
+      </div>
+
+      <!-- Detail Sub-Pane 1: Project Access -->
+      <div id="subpane-access">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+          <h4 style="margin:0; font-size:1rem;">Linked Projects</h4>
+          <button class="btn-action-sm" onclick="openGrantAccessPrompt()">+ Grant Project Access</button>
+        </div>
+        <div id="projectAccessList">Loading projects...</div>
+      </div>
+
+      <!-- Detail Sub-Pane 2: Shared Items -->
+      <div id="subpane-shared" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+          <h4 style="margin:0; font-size:1rem;">Shared Deliverables</h4>
+          <button class="btn-action-sm" onclick="openShareItemPrompt()">+ Share Item</button>
+        </div>
+        <div id="sharedItemsList">Loading shared items...</div>
+      </div>
+
+      <!-- Detail Sub-Pane 3: Activity Log -->
+      <div id="subpane-activity" style="display:none;">
+        <h4 style="margin:0 0 0.75rem 0; font-size:1rem;">Activity Log</h4>
+        <div id="clientActivityList" style="max-height:300px; overflow-y:auto;">Loading activity...</div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" onclick="closeClientDetailModal()" class="btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Manage Modal -->
+  <div id="orderManageModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 750px;">
+      <h3 id="orderManageTitle" class="modal-title">Manage Order</h3>
+      <p id="orderManageMeta" class="modal-subtitle">Review request, update status, and manage internal notes.</p>
+
+      <input type="hidden" id="manageOrderId">
+
+      <div class="form-group">
+        <label class="form-label">Update Status</label>
+        <select id="orderStatusSelect" class="form-control">
+          <option value="SUBMITTED">SUBMITTED</option>
+          <option value="UNDER_REVIEW">UNDER_REVIEW</option>
+          <option value="IN_PROGRESS">IN_PROGRESS</option>
+          <option value="COMPLETED">COMPLETED</option>
+          <option value="CANCELLED">CANCELLED</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Internal Notes (Visible only to internal team)</label>
+        <textarea id="orderInternalNotes" class="form-control" style="min-height:80px;"></textarea>
+      </div>
+
+      <div style="text-align:right; margin-bottom:1.5rem;">
+        <button type="button" class="btn-action-sm" onclick="saveOrderStatusAndNotes()">Save Status & Notes</button>
+      </div>
+
+      <h4 style="margin:1rem 0 0.5rem 0; font-size:1rem;">Conversation & Team Notes</h4>
+      <div id="adminChatThread" style="max-height:220px; overflow-y:auto; margin-bottom:1rem; border:1px solid var(--border-card); border-radius:8px; padding:0.75rem;">
+        Loading thread...
+      </div>
+
+      <form id="adminMessageForm" onsubmit="sendAdminMessage(event)">
+        <div class="form-group">
+          <textarea id="adminMessageText" class="form-control" placeholder="Write a response..." required></textarea>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <label style="font-size:0.8125rem; color:var(--color-warning); cursor:pointer;">
+            <input type="checkbox" id="adminIsInternalCheck"> Mark as Internal Note (hidden from client)
+          </label>
+          <button type="submit" class="btn-primary">Post Message</button>
+        </div>
+      </form>
+
+      <div class="modal-actions">
+        <button type="button" onclick="closeOrderManageModal()" class="btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Admin Auth Guard: internal user token
+    const adminToken = localStorage.getItem('token');
+    if (!adminToken) {
+      window.location.replace('/login.html');
+    }
+
+    async function adminFetch(url, options = {}) {
+      const headers = Object.assign({}, options.headers, {
+        'Authorization': 'Bearer ' + adminToken
+      });
+      const response = await fetch(url, Object.assign({}, options, { headers }));
+      if (response.status === 401 || response.status === 403) {
+        window.location.replace('/login.html');
+        return null;
+      }
+      return response;
+    }
+
+    // Admin sign out
+    document.getElementById('adminSignOutBtn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.replace('/login.html');
+    });
+
+    // Tab switching
+    const tabs = document.querySelectorAll('.admin-tab-btn');
+    const panes = document.querySelectorAll('.admin-tab-pane');
+    tabs.forEach(t => {
+      t.addEventListener('click', () => {
+        tabs.forEach(btn => btn.classList.remove('active'));
+        panes.forEach(p => p.classList.remove('active'));
+        t.classList.add('active');
+        document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Initialize
+    async function init() {
+      // 1. Verify admin role
+      const meRes = await adminFetch('/api/users/me');
+      if (!meRes || !meRes.ok) return;
+      const meData = await meRes.json();
+      if (!['admin', 'superadmin'].includes(meData.role)) {
+        alert('Access denied: Admin role required.');
+        window.location.replace('/login.html');
+        return;
+      }
+      document.getElementById('adminNameBadge').textContent = meData.name + ' (' + meData.role.toUpperCase() + ')';
+
+      await loadClientsTable();
+      await loadAdminOrdersTable();
+    }
+
+    // Load Clients
+    async function loadClientsTable() {
+      const tbody = document.getElementById('clientsTableBody');
+      const res = await adminFetch('/api/admin/clients');
+      if (!res || !res.ok) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Unable to load clients.</td></tr>';
+        return;
+      }
+      const clients = await res.json();
+      if (clients.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No clients found. Click "+ Create Client Account" to invite one.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = clients.map(c => {
+        let badgeClass = 'badge-active';
+        if (c.status === 'INVITED') badgeClass = 'badge-invited';
+        if (c.status === 'SUSPENDED') badgeClass = 'badge-suspended';
+
+        let resendBtn = '';
+        if (c.status === 'INVITED') {
+          resendBtn = `<button class="btn-action-sm" onclick="resendInvite(${c.id})">Resend Invite</button>`;
+        }
+
+        return `
+          <tr>
+            <td><strong>${escapeHTML(c.name)}</strong></td>
+            <td>${escapeHTML(c.company_name || '-')}</td>
+            <td>${escapeHTML(c.email)}</td>
+            <td><span class="badge ${badgeClass}">${escapeHTML(c.status)}</span></td>
+            <td>${c.project_access_count || 0}</td>
+            <td>${c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}</td>
+            <td style="display:flex; gap:0.5rem;">
+              <button class="btn-action-sm" onclick="openClientDetailModal(${c.id})">Manage</button>
+              ${resendBtn}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Resend Invite
+    window.resendInvite = async function(clientId) {
+      const res = await adminFetch(`/api/admin/clients/${clientId}/invite/resend`, { method: 'POST' });
+      if (res && res.ok) {
+        const data = await res.json();
+        alert('Invitation resent! Token: ' + data.invite_token);
+        loadClientsTable();
+      } else {
+        alert('Failed to resend invitation.');
+      }
+    };
+
+    // Create Client Modal
+    const createModal = document.getElementById('createClientModal');
+    document.getElementById('openCreateClientBtn').addEventListener('click', () => {
+      document.getElementById('createClientForm').reset();
+      document.getElementById('inviteResultBox').style.display = 'none';
+      createModal.style.display = 'flex';
+    });
+    document.getElementById('closeCreateClientBtn').addEventListener('click', () => {
+      createModal.style.display = 'none';
+      loadClientsTable();
+    });
+
+    document.getElementById('createClientForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('clientName').value.trim();
+      const email = document.getElementById('clientEmail').value.trim();
+      const company_name = document.getElementById('clientCompany').value.trim();
+      const phone = document.getElementById('clientPhone').value.trim();
+
+      const res = await adminFetch('/api/admin/clients/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, company_name, phone })
+      });
+
+      if (res && res.ok) {
+        const data = await res.json();
+        const urlBox = document.getElementById('inviteTokenUrl');
+        const inviteLink = window.location.origin + '/client-invite.html?token=' + data.invite_token;
+        urlBox.innerHTML = `<strong>Invitation Link:</strong><br><a href="${inviteLink}" target="_blank" style="color:#38bdf8">${inviteLink}</a>`;
+        document.getElementById('inviteResultBox').style.display = 'block';
+      } else {
+        alert('Failed to invite client. Check if email already exists.');
+      }
+    });
+
+    // Client Detail Modal
+    const detailModal = document.getElementById('clientDetailModal');
+    window.openClientDetailModal = async function(clientId) {
+      document.getElementById('currentDetailClientId').value = clientId;
+      const res = await adminFetch(`/api/admin/clients/${clientId}`);
+      if (!res || !res.ok) return;
+      const detail = await res.json();
+
+      document.getElementById('clientDetailTitle').textContent = detail.name + ' (' + (detail.company_name || 'No Company') + ')';
+      document.getElementById('clientDetailSubtitle').textContent = 'Email: ' + detail.email + ' • Status: ' + detail.status;
+
+      renderProjectAccess(detail.project_access || []);
+      renderSharedItems(detail.shared_items || []);
+      renderActivityLog(detail.activity_log || []);
+
+      showDetailTab('access');
+      detailModal.style.display = 'flex';
+    };
+
+    window.closeClientDetailModal = function() {
+      detailModal.style.display = 'none';
+      loadClientsTable();
+    };
+
+    window.showDetailTab = function(tabName) {
+      document.getElementById('subpane-access').style.display = tabName === 'access' ? 'block' : 'none';
+      document.getElementById('subpane-shared').style.display = tabName === 'shared' ? 'block' : 'none';
+      document.getElementById('subpane-activity').style.display = tabName === 'activity' ? 'block' : 'none';
+    };
+
+    function renderProjectAccess(list) {
+      const container = document.getElementById('projectAccessList');
+      if (list.length === 0) {
+        container.innerHTML = '<div class="empty-state">No projects currently granted to this client.</div>';
+        return;
+      }
+      container.innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>Project</th><th>Access</th><th>Granted</th><th>Action</th></tr></thead>
+          <tbody>
+            ${list.map(p => `
+              <tr>
+                <td><strong>${escapeHTML(p.project_name || 'Project #' + p.project_id)}</strong></td>
+                <td>${escapeHTML(p.access_level)}</td>
+                <td>${p.granted_at ? new Date(p.granted_at).toLocaleDateString() : '-'}</td>
+                <td><button class="btn-danger-sm" onclick="revokeAccess(${p.project_id})">Revoke</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    window.revokeAccess = async function(projectId) {
+      const clientId = document.getElementById('currentDetailClientId').value;
+      const res = await adminFetch(`/api/admin/clients/${clientId}/access/revoke`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: projectId })
+      });
+      if (res && res.ok) {
+        openClientDetailModal(clientId);
+      } else {
+        alert('Failed to revoke project access.');
+      }
+    };
+
+    window.openGrantAccessPrompt = async function() {
+      const clientId = document.getElementById('currentDetailClientId').value;
+      const projectIdStr = prompt('Enter Project ID to grant access:');
+      if (!projectIdStr) return;
+      const access_level = prompt('Enter access level (READ, COMMENT, WRITE):', 'READ') || 'READ';
+
+      const res = await adminFetch(`/api/admin/clients/${clientId}/access/grant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: parseInt(projectIdStr, 10), access_level })
+      });
+
+      if (res && res.ok) {
+        openClientDetailModal(clientId);
+      } else {
+        alert('Failed to grant project access.');
+      }
+    };
+
+    function renderSharedItems(list) {
+      const container = document.getElementById('sharedItemsList');
+      if (list.length === 0) {
+        container.innerHTML = '<div class="empty-state">No shared deliverables or items for this client.</div>';
+        return;
+      }
+      container.innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>Type</th><th>Item ID / Title</th><th>Shared</th><th>Action</th></tr></thead>
+          <tbody>
+            ${list.map(item => `
+              <tr>
+                <td>${escapeHTML(item.item_type)}</td>
+                <td><strong>${escapeHTML(item.title || '#' + item.item_id)}</strong></td>
+                <td>${item.shared_at ? new Date(item.shared_at).toLocaleDateString() : '-'}</td>
+                <td><button class="btn-danger-sm" onclick="unshareItem(${item.id})">Unshare</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    window.unshareItem = async function(shareId) {
+      const clientId = document.getElementById('currentDetailClientId').value;
+      const res = await adminFetch(`/api/admin/clients/${clientId}/share/item/${shareId}/unshare`, {
+        method: 'PATCH'
+      });
+      if (res && res.ok) {
+        openClientDetailModal(clientId);
+      } else {
+        alert('Failed to unshare item.');
+      }
+    };
+
+    window.openShareItemPrompt = async function() {
+      const clientId = document.getElementById('currentDetailClientId').value;
+      const projectIdStr = prompt('Enter Project ID:');
+      if (!projectIdStr) return;
+      const item_type = prompt('Enter Item Type (GANTT_TASK, MILESTONE, DELIVERABLE, DOCUMENT):', 'DELIVERABLE');
+      if (!item_type) return;
+      const itemIdStr = prompt('Enter Item ID:');
+      if (!itemIdStr) return;
+
+      const res = await adminFetch(`/api/admin/clients/${clientId}/share/item`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: parseInt(projectIdStr, 10),
+          item_type,
+          item_id: parseInt(itemIdStr, 10)
+        })
+      });
+
+      if (res && res.ok) {
+        openClientDetailModal(clientId);
+      } else {
+        alert('Failed to share item. Verify item exists.');
+      }
+    };
+
+    function renderActivityLog(list) {
+      const container = document.getElementById('clientActivityList');
+      if (list.length === 0) {
+        container.innerHTML = '<div class="empty-state">No actions logged yet.</div>';
+        return;
+      }
+      container.innerHTML = list.map(a => `
+        <div style="padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.8125rem;">
+          <span style="color:var(--color-primary); font-weight:600;">${escapeHTML(a.action)}</span>
+          <span style="color:var(--text-muted);">&bull; ${a.created_at ? new Date(a.created_at).toLocaleString() : ''}</span>
+          ${a.item_type ? `<span style="color:var(--text-muted);">(${escapeHTML(a.item_type)} #${a.item_id})</span>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // Load Admin Orders
+    async function loadAdminOrdersTable() {
+      const tbody = document.getElementById('adminOrdersTableBody');
+      const res = await adminFetch('/api/admin/orders');
+      if (!res || !res.ok) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Unable to load orders.</td></tr>';
+        return;
+      }
+      const orders = await res.json();
+      if (orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No client orders placed.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = orders.map(o => `
+        <tr>
+          <td><strong>#${o.id}</strong></td>
+          <td>${escapeHTML(o.client_name || 'Client #' + o.client_id)}</td>
+          <td><strong>${escapeHTML(o.title)}</strong></td>
+          <td>${escapeHTML(o.order_type)}</td>
+          <td><span class="badge badge-active">${escapeHTML(o.status)}</span></td>
+          <td style="color:var(--color-warning); font-size:0.8125rem;">${escapeHTML(o.internal_notes || '-')}</td>
+          <td>
+            <button class="btn-action-sm" onclick="openOrderManageModal(${o.id})">Manage</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    const orderManageModal = document.getElementById('orderManageModal');
+    window.openOrderManageModal = async function(orderId) {
+      document.getElementById('manageOrderId').value = orderId;
+      // Get order detail
+      const res = await adminFetch('/api/admin/orders');
+      if (!res || !res.ok) return;
+      const allOrders = await res.json();
+      const order = allOrders.find(o => o.id === orderId);
+      if (!order) return;
+
+      document.getElementById('orderManageTitle').textContent = `Order #${order.id}: ${order.title}`;
+      document.getElementById('orderManageMeta').textContent = `Client: ${order.client_name} • Priority: ${order.priority} • Type: ${order.order_type}`;
+      document.getElementById('orderStatusSelect').value = order.status;
+      document.getElementById('orderInternalNotes').value = order.internal_notes || '';
+
+      await loadAdminOrderMessages(orderId);
+      orderManageModal.style.display = 'flex';
+    };
+
+    window.closeOrderManageModal = function() {
+      orderManageModal.style.display = 'none';
+      loadAdminOrdersTable();
+    };
+
+    async function loadAdminOrderMessages(orderId) {
+      const container = document.getElementById('adminChatThread');
+      // Fetch order details via client facing service or query
+      const res = await adminFetch(`/api/client/orders/${orderId}`);
+      if (!res || !res.ok) {
+        container.innerHTML = '<div class="empty-state">Unable to load messages.</div>';
+        return;
+      }
+      const data = await res.json();
+      const msgs = data.messages || [];
+
+      if (msgs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No messages on this order yet.</div>';
+        return;
+      }
+
+      container.innerHTML = msgs.map(m => {
+        const isInternal = m.is_internal === 1;
+        const cls = isInternal ? 'internal' : 'public';
+        return `
+          <div class="chat-bubble ${cls}">
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:0.25rem;">
+              <strong>${escapeHTML(m.sender_name || m.sender_type)}</strong>
+              ${isInternal ? '<span class="badge badge-internal">INTERNAL NOTE</span>' : ''}
+            </div>
+            <div>${escapeHTML(m.message)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.saveOrderStatusAndNotes = async function() {
+      const orderId = document.getElementById('manageOrderId').value;
+      const status = document.getElementById('orderStatusSelect').value;
+      const internal_notes = document.getElementById('orderInternalNotes').value.trim();
+
+      const res = await adminFetch(`/api/admin/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, internal_notes })
+      });
+
+      if (res && res.ok) {
+        alert('Order status and internal notes updated successfully.');
+        loadAdminOrdersTable();
+      } else {
+        alert('Failed to update order.');
+      }
+    };
+
+    window.sendAdminMessage = async function(e) {
+      e.preventDefault();
+      const orderId = document.getElementById('manageOrderId').value;
+      const textarea = document.getElementById('adminMessageText');
+      const isInternal = document.getElementById('adminIsInternalCheck').checked;
+      const message = textarea.value.trim();
+
+      if (!message) return;
+
+      const res = await adminFetch(`/api/admin/orders/${orderId}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, is_internal: isInternal })
+      });
+
+      if (res && res.ok) {
+        textarea.value = '';
+        await loadAdminOrderMessages(orderId);
+      } else {
+        alert('Failed to post message.');
+      }
+    };
+
+    init();
+  </script>
+</body>
+</html>

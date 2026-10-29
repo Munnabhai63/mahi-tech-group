@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import express from 'express';
 import { queryOne, queryAll, execute } from '../db/database.js';
 import { authenticate } from '../middleware/auth.js';
@@ -7,6 +8,39 @@ import { createAsset, getProjectAssets } from '../services/assetService.js';
 import { getRoomDetails, getOrCreateRoomForProject, isUserProjectContributor } from '../services/coworkingService.js';
 
 const router = express.Router();
+
+/**
+ * 0. POST /api/projects (Authenticated)
+ * Direct project creation (Admin or Project Owner)
+ */
+router.post('/', authenticate, (req, res) => {
+  const { title, description, category, priority, idea_id } = req.body || {};
+  if (!title) {
+    return res.status(400).json({ error: 'Project title is required' });
+  }
+
+  const projectId = crypto.randomUUID();
+  let backingIdeaId = idea_id;
+
+  if (!backingIdeaId) {
+    backingIdeaId = crypto.randomUUID();
+    execute(`
+      INSERT INTO ideas (id, owner_id, title, description, status, submitted_at)
+      VALUES (?, ?, ?, ?, 'APPROVED', CURRENT_TIMESTAMP)
+    `, [backingIdeaId, req.user.id, title, description || title]);
+  }
+
+  execute(`
+    INSERT INTO projects (id, idea_id, org_id, title, owner_id, current_stage, status)
+    VALUES (?, ?, 'DEFAULT_ORG', ?, ?, 'RESEARCH_DEV_PARALLEL', 'ACTIVE')
+  `, [projectId, backingIdeaId, title, req.user.id]);
+
+  const project = queryOne('SELECT * FROM projects WHERE id = ?', [projectId]);
+  return res.status(201).json({
+    message: 'Project created successfully',
+    project
+  });
+});
 
 /**
  * 1. POST /api/projects/auto-create (Internal / Admin trigger)
@@ -32,7 +66,7 @@ router.post('/auto-create', authenticate, (req, res) => {
   }
 
   try {
-    const fanoutResult = triggerProjectFanout(idea_id);
+    const fanoutResult = triggerProjectFanout(idea_id, req.user?.id);
     return res.status(201).json({
       message: fanoutResult.alreadyExisted ? 'Project already existed for this idea' : 'Parallel fanout successfully initiated',
       project: fanoutResult.project,
@@ -101,7 +135,11 @@ router.get('/my-tasks', authenticate, (req, res) => {
     params.push(status);
   }
 
-  query += ' ORDER BY pt.created_at ASC';
+  const limit = req.query.limit ? Math.min(Number(req.query.limit), 100) : 50;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+
+  query += ' ORDER BY pt.created_at ASC LIMIT ? OFFSET ?';
+  params.push(limit, offset);
 
   const tasks = queryAll(query, params);
 
@@ -113,18 +151,34 @@ router.get('/my-tasks', authenticate, (req, res) => {
 });
 
 /**
- * 2b. GET /api/projects/my (Authenticated)
- * Returns projects where the current user is owner or an active member
+ * 2b. GET /api/projects and GET /api/projects/my (Authenticated)
+ * Returns all projects for admin, or projects where current user is owner/member
  */
-router.get('/my', authenticate, (req, res) => {
-  const projects = queryAll(`
-    SELECT DISTINCT p.*, u.name as owner_name, u.email as owner_email
-    FROM projects p
-    JOIN users u ON p.owner_id = u.id
-    LEFT JOIN project_members pm ON p.id = pm.project_id AND pm.user_id = ? AND pm.removed_at IS NULL
-    WHERE p.owner_id = ? OR pm.user_id = ?
-    ORDER BY p.created_at DESC
-  `, [req.user.id, req.user.id, req.user.id]);
+router.get(['/', '/my'], authenticate, (req, res) => {
+  const limit = req.query.limit ? Math.min(Number(req.query.limit), 100) : 50;
+  const offset = req.query.offset ? Math.max(Number(req.query.offset), 0) : 0;
+  const isAdmin = req.user.role === 'admin';
+
+  let projects;
+  if (isAdmin && req.path === '/') {
+    projects = queryAll(`
+      SELECT DISTINCT p.*, u.name as owner_name, u.email as owner_email
+      FROM projects p
+      JOIN users u ON p.owner_id = u.id
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [limit, offset]);
+  } else {
+    projects = queryAll(`
+      SELECT DISTINCT p.*, u.name as owner_name, u.email as owner_email
+      FROM projects p
+      JOIN users u ON p.owner_id = u.id
+      LEFT JOIN project_members pm ON p.id = pm.project_id AND pm.user_id = ? AND pm.removed_at IS NULL
+      WHERE p.owner_id = ? OR pm.user_id = ?
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [req.user.id, req.user.id, req.user.id, limit, offset]);
+  }
 
   return res.status(200).json({
     count: projects.length,
