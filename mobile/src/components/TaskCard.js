@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { DARK_SURFACE, DARK_ACCENT } from '../theme/theme.js';
 import { StatusBadge } from './StatusBadge.js';
 
-export const TaskCard = ({ title, status, storyPoints, assignee, onPress }) => {
+const TaskCardComponent = ({ title, status, storyPoints, assignee, onPress }) => {
   return React.createElement(
     TouchableOpacity,
     {
@@ -26,6 +26,8 @@ export const TaskCard = ({ title, status, storyPoints, assignee, onPress }) => {
     )
   );
 };
+
+export const TaskCard = React.memo ? React.memo(TaskCardComponent) : TaskCardComponent;
 
 const styles = StyleSheet.create({
   card: {

@@ -104,6 +104,10 @@ export const BacklogScreen = ({
       : React.createElement(FlatList, {
           data: filteredItems,
           keyExtractor: (item) => String(item.id),
+          initialNumToRender: 10,
+          maxToRenderPerBatch: 10,
+          windowSize: 5,
+          removeClippedSubviews: true,
           refreshControl: React.createElement(RefreshControl, {
             refreshing,
             onRefresh: loadBacklog,

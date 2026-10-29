@@ -188,6 +188,10 @@ export const SprintBoardScreen = ({
       : React.createElement(FlatList, {
           data: filteredTasks,
           keyExtractor: (item) => String(item.id),
+          initialNumToRender: 10,
+          maxToRenderPerBatch: 10,
+          windowSize: 5,
+          removeClippedSubviews: true,
           refreshControl: React.createElement(RefreshControl, {
             refreshing,
             onRefresh: loadBoardTasks,

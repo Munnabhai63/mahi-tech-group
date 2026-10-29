@@ -12,9 +12,25 @@ export const apiClient = axios.create({
   }
 });
 
-// Request Interceptor: Attach JWT Token from Encrypted MMKV
+import { validateRequestUrl } from './sslPinning.js';
+
+// Request Interceptor: Attach JWT Token from Encrypted MMKV & Enforce SSL Pinning
 apiClient.interceptors.request.use(
   (requestConfig) => {
+    // 1. SSL Certificate Pinning Verification (MITM Prevention)
+    const certFingerprint = requestConfig.headers?.['x-cert-fingerprint'] || requestConfig.certFingerprint;
+    if (certFingerprint) {
+      const targetUrl = requestConfig.url?.startsWith('http')
+        ? requestConfig.url
+        : `${requestConfig.baseURL || ''}${requestConfig.url || ''}`;
+      const pinResult = validateRequestUrl(targetUrl, certFingerprint);
+      if (!pinResult.valid) {
+        return Promise.reject(new Error(pinResult.message || 'SSL Pinning validation failed'));
+      }
+      delete requestConfig.headers['x-cert-fingerprint'];
+    }
+
+    // 2. Attach JWT Token from Encrypted MMKV
     const token = secureStorage.getString('auth_token');
     if (token) {
       requestConfig.headers.Authorization = `Bearer ${token}`;

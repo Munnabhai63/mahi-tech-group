@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { DARK_SURFACE, DARK_ACCENT } from '../theme/theme.js';
 import { formatDate } from '../utils/dateHelpers.js';
 
-export const NotificationItem = ({ title, body, date, isRead = false, onPress }) => {
+const NotificationItemComponent = ({ title, body, date, isRead = false, onPress }) => {
   return React.createElement(
     TouchableOpacity,
     {
@@ -24,6 +24,8 @@ export const NotificationItem = ({ title, body, date, isRead = false, onPress })
     date && React.createElement(Text, { style: styles.date }, formatDate(date))
   );
 };
+
+export const NotificationItem = React.memo ? React.memo(NotificationItemComponent) : NotificationItemComponent;
 
 const styles = StyleSheet.create({
   container: {

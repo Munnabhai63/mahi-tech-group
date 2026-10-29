@@ -6,7 +6,7 @@ export const ProjectsScreen = () => {
   return React.createElement(
     View,
     { style: styles.container },
-    React.createElement(Text, { style: styles.header }, 'rojects creen'),
+    React.createElement(Text, { style: styles.header }, 'Projects'),
     React.createElement(
       View,
       { style: styles.card },
