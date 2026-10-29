@@ -1162,7 +1162,15 @@
       - `pipelineService.js`: `PIPELINE_STAGE_COMPLETED` in `approveHandoff`.
     - Batch Queue Processing & Non-blocking Safety: Verified `processQueueBatch` executes queued triggers end-to-end, and `fireTrigger` safely handles null/undefined/unknown parameters without throwing.
     - Verified with `scripts/verify-prd26-layer5.js` -> **39 / 39 PASS (100%)**.
+    - **PRD 26 Layer 5 Status**: 100% COMPLETE & VERIFIED (Commit `678a4c7`).
+  - **Layer 6 (Frontend Views: 5 Production Automation Views in `public/` — 100% COMPLETE & VERIFIED)**:
+    - Created 5 responsive, high-end dark-themed production views implementing the complete Automation Engine UI surface:
+      - `public/automation-rules.html`: Rules governance hub with real-time stats cards (Total Rules, Active Rules, Success Rate, Errors), module & scope filters, interactive toggle switches (`PATCH /api/automation/rule/:id/toggle`), deletion confirmation modals, and quick navigation.
+      - `public/automation-builder.html`: 4-step wizard interface (Trigger event selection, dynamic multi-condition builder with 8 comparison operators and AND/OR logic gates, drag/ordered declarative action pipeline with `{{ variable }}` helper, and live dry-run simulation panel calling `/api/automation/rule/:id/test`). Pre-fills from edit links (`?editRuleId=:id`) or templates (`?templateId=:id`).
+      - `public/automation-history.html`: Execution audit trail with search, status filters (`SUCCESS`, `PARTIAL`, `FAILED`, `SKIPPED`), execution table, and deep drilldown modal inspecting conditions evaluated, actions executed, errors, and resolved variables from `automation_variable_store`.
+      - `public/automation-errors.html`: Error Center triage board with KPI counters (Unacknowledged, Acknowledged, Pending Retries, Total Logged), tabbed triage views (Active Faults vs Resolved Archive), per-fault "Acknowledge" (`PATCH /api/automation/error/:id/acknowledge`) and "Retry Now" (`PATCH /api/automation/error/:id/retry`) triggers, error type breakdown, and stack inspections.
+      - `public/automation-templates.html`: Blueprint library with category filter tabs (Sprints, OKRs, Notifications, Finance, Client, GitHub, General), system lock indicators (`is_system_template === 1`), custom blueprint creator (`POST /api/automation/template/save`), custom blueprint deletion, and one-click deployment modal (`POST /api/automation/template/:id/use`).
+    - Verified with `scripts/verify-prd26-layer6.js` -> **95 / 95 PASS (100%)**.
     - Core Platform Regression: `npm test` -> **13 / 13 test suites PASS (100%)**.
-    - Layer 4 Regression: `scripts/verify-prd26-layer4.js` -> **98 / 98 PASS (100%)**.
-    - **PRD 26 Layer 5 Status**: 100% COMPLETE & VERIFIED.
-    - Next Layer: **PRD 26 Layer 6 (Frontend Views: 5 Production Automation Views in `public/`)**.
+    - **PRD 26 Layer 6 Status**: 100% COMPLETE & VERIFIED.
+    - Next Layer: **PRD 26 Layer 7 (Master End-to-End Integration Suite & PRD 26 Permanent Sealing)**.

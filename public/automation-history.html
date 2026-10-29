@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automation Run History — Mahi Tech Group</title>
+  <meta name="description" content="Audit trail and execution history for all workflow automation trigger occurrences, variable stores, and action pipelines.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #1e293b;
+      --border-card: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --color-primary: #38bdf8;
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-accent: #818cf8;
+      --color-purple: #c084fc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .nav-links-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link-sub {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-link-sub:hover, .nav-link-sub.active {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-link-sub.active {
+      color: var(--color-primary);
+      border-bottom: 2px solid var(--color-primary);
+      border-radius: 6px 6px 0 0;
+    }
+
+    .main-wrap {
+      flex: 1;
+      padding: 1.75rem;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 800;
+      margin: 0 0 0.35rem 0;
+      color: var(--text-main);
+    }
+
+    .page-desc {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease-in-out;
+      border: 1px solid var(--border-card);
+      background: transparent;
+      color: var(--text-main);
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--text-muted);
+    }
+
+    .btn-sm {
+      padding: 0.3rem 0.6rem;
+      font-size: 0.78rem;
+    }
+
+    .filters-bar {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .form-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .form-control {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.45rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-family: inherit;
+    }
+
+    .table-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.9);
+      padding: 0.9rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.85rem;
+      vertical-align: middle;
+      cursor: pointer;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 9999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-muted { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+    .badge-purple { background: rgba(192, 132, 252, 0.15); color: #d8b4fe; border: 1px solid rgba(192, 132, 252, 0.3); }
+
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-content {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 800px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+      padding-bottom: 1rem;
+    }
+
+    .modal-title {
+      margin: 0;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin: 1.5rem 0 0.75rem 0;
+    }
+
+    .detail-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .empty-state {
+      padding: 3rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      padding: 0.75rem 1.25rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      color: var(--text-main);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      display: none;
+      z-index: 200;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="top-nav">
+    <div class="brand-wrap">
+      <a href="/app.html" class="brand-title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        MAHI TECH GROUP
+      </a>
+      <div class="nav-breadcrumbs">
+        <span>/</span>
+        <a href="/automation-rules.html" style="color:var(--text-muted);text-decoration:none;">Automation</a>
+        <span>/</span>
+        <span style="color:var(--text-main);font-weight:600;">Run History</span>
+      </div>
+    </div>
+    <nav class="nav-links-sub">
+      <a href="/automation-rules.html" class="nav-link-sub">Rules</a>
+      <a href="/automation-builder.html" class="nav-link-sub">Builder</a>
+      <a href="/automation-history.html" class="nav-link-sub active">Run History</a>
+      <a href="/automation-errors.html" class="nav-link-sub">Error Center</a>
+      <a href="/automation-templates.html" class="nav-link-sub">Templates</a>
+      <a href="/app.html" class="nav-link-sub">Dashboard</a>
+    </nav>
+  </header>
+
+  <main class="main-wrap">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Automation Execution History</h1>
+        <p class="page-desc">Complete immutable audit trail of automated actions, condition evaluation passes, and variable substitutions.</p>
+      </div>
+      <div>
+        <button class="btn" onclick="loadLogs()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters-bar">
+      <div class="form-group" style="flex:1; min-width:200px;">
+        <label class="form-label">Search History</label>
+        <input type="text" id="searchInput" class="form-control" placeholder="Search by rule name, event, status...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select id="statusFilter" class="form-control">
+          <option value="">All Statuses</option>
+          <option value="SUCCESS">SUCCESS</option>
+          <option value="PARTIAL">PARTIAL</option>
+          <option value="FAILED">FAILED</option>
+          <option value="SKIPPED">SKIPPED</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- HISTORY TABLE -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Automation Rule</th>
+            <th>Trigger Event</th>
+            <th>Source Entity</th>
+            <th>Triggered By</th>
+            <th>Status</th>
+            <th>Executed At</th>
+            <th>Actions Summary</th>
+          </tr>
+        </thead>
+        <tbody id="historyTbody">
+          <tr>
+            <td colspan="7" class="empty-state">Loading history logs...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- DRILLDOWN DETAIL MODAL -->
+  <div class="modal-backdrop" id="detailModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalRuleName">Execution Detail</h3>
+        <button class="btn btn-sm" onclick="closeModal()">✕</button>
+      </div>
+
+      <div id="modalMetaBar" style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;"></div>
+
+      <div class="section-title">Conditions Evaluated</div>
+      <div id="modalConditions"></div>
+
+      <div class="section-title">Actions Executed</div>
+      <div id="modalActions"></div>
+
+      <div class="section-title">Resolved Variables (Variable Store)</div>
+      <div id="modalVariables"></div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;gap:0.75rem;">
+        <button class="btn btn-outline" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const state = {
+      token: localStorage.getItem('token') || '',
+      logs: []
+    };
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+
+    async function apiRequest(endpoint, method = 'GET') {
+      const res = await fetch(endpoint, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.token}`
+        }
+      });
+      if (res.status === 401) {
+        window.location.href = '/app.html#/login';
+        throw new Error('Unauthorized');
+      }
+      return await res.json();
+    }
+
+    async function init() {
+      if (!state.token) {
+        window.location.href = '/app.html#/login';
+        return;
+      }
+      await loadLogs();
+    }
+
+    async function loadLogs() {
+      try {
+        const logs = await apiRequest('/api/automation/logs');
+        state.logs = Array.isArray(logs) ? logs : [];
+        renderLogs();
+      } catch (e) {
+        document.getElementById('historyTbody').innerHTML = `<tr><td colspan="7" class="empty-state" style="color:var(--color-danger);">${escapeHTML(e.message)}</td></tr>`;
+      }
+    }
+
+    function renderLogs() {
+      const search = document.getElementById('searchInput').value.trim().toLowerCase();
+      const statusFilter = document.getElementById('statusFilter').value;
+
+      const filtered = state.logs.filter(l => {
+        if (search && !l.rule_name?.toLowerCase().includes(search) && !l.trigger_event?.toLowerCase().includes(search)) {
+          return false;
+        }
+        if (statusFilter && l.overall_status !== statusFilter) return false;
+        return true;
+      });
+
+      const tbody = document.getElementById('historyTbody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No execution logs found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(l => {
+        let badgeClass = 'badge-muted';
+        if (l.overall_status === 'SUCCESS') badgeClass = 'badge-success';
+        else if (l.overall_status === 'PARTIAL') badgeClass = 'badge-warning';
+        else if (l.overall_status === 'FAILED') badgeClass = 'badge-danger';
+
+        const actionsArr = typeof l.actions_executed === 'string' ? JSON.parse(l.actions_executed || '[]') : (l.actions_executed || []);
+        const actionsSummary = actionsArr.map(a => a.action).join(' → ') || 'No actions';
+
+        return `
+          <tr onclick="showLogDetail(${l.id})">
+            <td>
+              <div style="font-weight:600;color:var(--text-main);">${escapeHTML(l.rule_name || `Rule #${l.automation_id}`)}</div>
+            </td>
+            <td><code style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:#e2e8f0;">${escapeHTML(l.trigger_event)}</code></td>
+            <td style="color:var(--text-muted);font-size:0.8rem;">${l.trigger_source_type || 'N/A'}:${l.trigger_source_id || ''}</td>
+            <td style="color:var(--text-muted);font-size:0.8rem;">${escapeHTML(l.triggered_by_name || 'System / Auto')}</td>
+            <td><span class="badge ${badgeClass}">${l.overall_status}</span></td>
+            <td style="font-size:0.8rem;color:var(--text-muted);">${new Date(l.completed_at || l.started_at).toLocaleString()}</td>
+            <td style="font-size:0.8rem;color:var(--color-primary);">${escapeHTML(actionsSummary)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function showLogDetail(logId) {
+      try {
+        const detail = await apiRequest(`/api/automation/log/${logId}`);
+        document.getElementById('modalRuleName').innerText = detail.rule_name || `Execution Log #${detail.id}`;
+
+        let badgeClass = 'badge-muted';
+        if (detail.overall_status === 'SUCCESS') badgeClass = 'badge-success';
+        else if (detail.overall_status === 'PARTIAL') badgeClass = 'badge-warning';
+        else if (detail.overall_status === 'FAILED') badgeClass = 'badge-danger';
+
+        document.getElementById('modalMetaBar').innerHTML = `
+          <span class="badge ${badgeClass}">${detail.overall_status}</span>
+          <span class="badge badge-purple">${detail.trigger_event}</span>
+          <span style="font-size:0.8rem;color:var(--text-muted);">Timestamp: ${new Date(detail.started_at).toLocaleString()}</span>
+        `;
+
+        // Conditions
+        const conds = detail.conditions_evaluated || [];
+        const condsContainer = document.getElementById('modalConditions');
+        if (conds.length === 0) {
+          condsContainer.innerHTML = '<div class="detail-card" style="color:var(--text-muted);">No conditions (executed unconditionally).</div>';
+        } else {
+          condsContainer.innerHTML = conds.map(c => `
+            <div class="detail-card" style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <strong>${escapeHTML(c.field)}</strong> ${c.operator} <code>${escapeHTML(String(c.value))}</code>
+                <div style="font-size:0.75rem;color:var(--text-muted);">Actual Value: ${escapeHTML(String(c.actual_value !== undefined ? c.actual_value : 'N/A'))}</div>
+              </div>
+              <span class="badge ${c.passed ? 'badge-success' : 'badge-danger'}">${c.passed ? 'PASS' : 'FAIL'}</span>
+            </div>
+          `).join('');
+        }
+
+        // Actions
+        const actions = detail.actions_executed || [];
+        const actionsContainer = document.getElementById('modalActions');
+        actionsContainer.innerHTML = actions.map((a, i) => `
+          <div class="detail-card">
+            <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem;">
+              <strong>Step ${i + 1}: ${escapeHTML(a.action)}</strong>
+              <span class="badge ${a.status === 'SUCCESS' ? 'badge-success' : 'badge-danger'}">${a.status}</span>
+            </div>
+            <pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:#cbd5e1;overflow-x:auto;">${escapeHTML(JSON.stringify(a.params || {}, null, 2))}</pre>
+            ${a.error ? `<div style="color:var(--color-danger);margin-top:0.5rem;font-size:0.8rem;">Error: ${escapeHTML(a.error)}</div>` : ''}
+          </div>
+        `).join('');
+
+        // Variables
+        const vars = detail.resolved_variables || [];
+        const varsContainer = document.getElementById('modalVariables');
+        if (vars.length === 0) {
+          varsContainer.innerHTML = '<div class="detail-card" style="color:var(--text-muted);">No variable templates recorded for this execution.</div>';
+        } else {
+          varsContainer.innerHTML = `
+            <div class="detail-card">
+              ${vars.map(v => `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;"><code>{{ ${escapeHTML(v.variable_name)} }}</code> <span style="color:var(--color-primary);">${escapeHTML(v.variable_value)}</span></div>`).join('')}
+            </div>
+          `;
+        }
+
+        document.getElementById('detailModal').style.display = 'flex';
+      } catch (e) {
+        showToast('Failed to load log details: ' + e.message);
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('detailModal').style.display = 'none';
+    }
+
+    document.getElementById('searchInput').addEventListener('input', renderLogs);
+    document.getElementById('statusFilter').addEventListener('change', renderLogs);
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag));
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
