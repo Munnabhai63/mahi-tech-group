@@ -70,7 +70,7 @@ router.post(['/objective/create', '/objectives', '/objective', '/'], authenticat
  * Returns: all objectives (filtered by level, cycle, project_id via query params)
  * Role: All (Rule 8: Member can only see own INDIVIDUAL objectives)
  */
-router.get('/objectives', authenticate, (req, res) => {
+router.get(['/objectives', '/', ''], authenticate, (req, res) => {
   try {
     const { level, cycle, project_id, status, owner_id } = req.query || {};
     const objectives = okrService.getObjectives({

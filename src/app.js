@@ -24,6 +24,7 @@ import workloadRouter from './routes/workload.routes.js';
 import timeRouter from './routes/time.routes.js';
 import analyticsRouter from './routes/analytics.routes.js';
 import clientRouter from './routes/client.routes.js';
+import adminClientsRouter from './routes/adminClients.routes.js';
 import financeRouter from './routes/finance.routes.js';
 import automationRouter from './routes/automation.routes.js';
 import wikiRouter from './routes/wiki.routes.js';
@@ -163,7 +164,7 @@ export function createApp() {
   app.use('/api/time', timeRouter);
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/client', clientRouter);
-  app.use('/api/clients', clientRouter);
+  app.use('/api/clients', adminClientsRouter);
   app.use('/api/finance', financeRouter);
   app.use('/api/automation', automationRouter);
   app.use('/api/wiki', wikiRouter);

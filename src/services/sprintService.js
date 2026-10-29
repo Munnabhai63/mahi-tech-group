@@ -151,6 +151,38 @@ export function getProjectSprints(projectId, userId = null) {
 }
 
 /**
+ * 2b. Get all sprints across all projects
+ * Role: All authenticated users
+ */
+export function getAllSprints(userId = null) {
+  const rows = queryAll(`
+    SELECT 
+      s.*,
+      u.name as creator_name,
+      p.title as project_title,
+      COUNT(bi.id) as item_count,
+      COALESCE(SUM(bi.story_points), 0) as total_story_points,
+      COALESCE(SUM(CASE WHEN bi.status = 'DONE' THEN bi.story_points ELSE 0 END), 0) as completed_story_points
+    FROM sprints s
+    JOIN projects p ON s.project_id = p.id
+    LEFT JOIN users u ON s.created_by = u.id
+    LEFT JOIN backlog_items bi ON bi.sprint_id = s.id
+    GROUP BY s.id
+    ORDER BY s.id DESC
+  `);
+
+  return rows.map(row => ({
+    ...row,
+    item_count: Number(row.item_count) || 0,
+    total_story_points: Number(row.total_story_points) || 0,
+    completed_story_points: Number(row.completed_story_points) || 0,
+    completion_rate: (Number(row.total_story_points) || 0) > 0
+      ? Math.round(((Number(row.completed_story_points) || 0) / Number(row.total_story_points)) * 10000) / 100
+      : 0.0
+  }));
+}
+
+/**
  * 3. Get sprint detail along with its backlog items
  * Role: All authenticated users
  */
