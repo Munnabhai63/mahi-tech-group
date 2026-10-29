@@ -32,3 +32,4 @@ export { ProfileScreen } from './ProfileScreen.js';
 export { SettingsScreen } from './SettingsScreen.js';
 export { MyGitHubScreen } from './MyGitHubScreen.js';
 export { AdminQuickActionsScreen } from './AdminQuickActionsScreen.js';
+export { LockScreen } from './LockScreen.js';

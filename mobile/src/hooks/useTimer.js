@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import React from 'react';
+const { useState } = React;
 import { timeApi } from '../api/time.api.js';
 
 export const useTimer = () => {

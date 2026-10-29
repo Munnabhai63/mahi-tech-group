@@ -158,6 +158,25 @@ router.post('/login', loginLimiter, async (req, res) => {
 
   logAccess({ userId: user.id, action: 'login', resource: '/api/auth/login', ipAddress });
 
+  // PRD 28: Upsert mobile device token on login if provided
+  if (req.body?.fcm_token || req.body?.device_token) {
+    const mobileToken = req.body.fcm_token || req.body.device_token;
+    const deviceId = req.body.device_id || `device-${user.id.substring(0, 8)}`;
+    const platform = (req.body.platform || req.body.device_type || 'ANDROID').toUpperCase();
+    execute(`
+      INSERT INTO device_tokens (user_id, platform, token, fcm_token, device_type, device_id, is_active, last_seen_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+      ON CONFLICT(user_id, device_id) DO UPDATE SET
+        token = excluded.token,
+        fcm_token = excluded.fcm_token,
+        platform = excluded.platform,
+        device_type = excluded.device_type,
+        is_active = 1,
+        last_seen_at = datetime('now'),
+        updated_at = datetime('now')
+    `, [user.id, platform, mobileToken, mobileToken, platform, deviceId]);
+  }
+
   return res.status(200).json({
     token,
     user: {
@@ -178,6 +197,13 @@ router.post('/logout', authenticate, (req, res) => {
   const ipAddress = req.ip || req.socket.remoteAddress;
 
   execute('UPDATE sessions SET is_revoked = 1 WHERE id = ?', [req.session.id]);
+
+  // PRD 28: Deactivate mobile device tokens on logout
+  if (req.body?.device_id) {
+    execute("UPDATE device_tokens SET is_active = 0, updated_at = datetime('now') WHERE user_id = ? AND device_id = ?", [req.user.id, req.body.device_id]);
+  } else {
+    execute("UPDATE device_tokens SET is_active = 0, updated_at = datetime('now') WHERE user_id = ?", [req.user.id]);
+  }
 
   logAccess({ userId: req.user.id, action: 'logout', resource: '/api/auth/logout', ipAddress });
 

@@ -5,6 +5,7 @@ export const usePushNotifications = () => {
   const registerToken = async (fcmToken, platform = 'ANDROID', deviceId = 'device-default') => {
     try {
       secureStorage.set('fcm_token', fcmToken);
+      secureStorage.set('device_id', deviceId);
       const res = await notificationsApi.registerDeviceToken({
         fcm_token: fcmToken,
         token: fcmToken,
@@ -21,8 +22,10 @@ export const usePushNotifications = () => {
 
   const unregisterToken = async (deviceId = 'device-default') => {
     try {
-      await notificationsApi.unregisterDeviceToken(deviceId);
+      const targetDeviceId = deviceId || secureStorage.getString('device_id') || 'device-default';
+      await notificationsApi.unregisterDeviceToken(targetDeviceId);
       secureStorage.delete('fcm_token');
+      secureStorage.delete('device_id');
     } catch (err) {
       console.warn('[Push] Unregister error:', err.message);
     }

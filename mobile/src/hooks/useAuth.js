@@ -24,15 +24,17 @@ export const useAuth = () => {
     return res.data;
   };
 
-  const logout = async () => {
+  const logout = async (deviceId) => {
+    const effectiveDeviceId = deviceId || secureStorage.getString('device_id');
     try {
-      await authApi.logout();
+      await authApi.logout({ device_id: effectiveDeviceId });
     } catch {
       // Best-effort remote logout
     }
     secureStorage.delete('auth_token');
     secureStorage.delete('refresh_token');
     secureStorage.delete('user_data');
+    secureStorage.delete('fcm_token');
   };
 
   return {

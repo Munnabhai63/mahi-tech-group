@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import React from 'react';
+const { useState } = React;
 import { secureStorage } from '../utils/cache.js';
 
 export const useOffline = () => {
