@@ -13,6 +13,19 @@
  */
 
 import { queryOne, queryAll, execute } from '../db/database.js';
+import {
+  executeAction,
+  executeActionsSequence,
+  resolveTemplateVariables,
+  SUPPORTED_ACTIONS
+} from './automationActionExecutor.js';
+
+export {
+  executeAction,
+  executeActionsSequence,
+  resolveTemplateVariables,
+  SUPPORTED_ACTIONS
+};
 
 let workerIntervalId = null;
 
@@ -485,28 +498,22 @@ export function processQueueBatch(limit = 10) {
         continue;
       }
 
-      // 4. Conditions Passed -> Execute actions (placeholder/recorded for Layer 2, full executor in Layer 3)
-      let actions = [];
-      try {
-        actions = typeof rule.actions === 'string' ? JSON.parse(rule.actions) : rule.actions;
-      } catch {
-        actions = [];
-      }
+      // 4. Conditions Passed -> Execute actions via Layer 3 Action Execution Engine
+      const execResult = executeActionsSequence(rule.actions, triggerData, {
+        automationId: rule.id,
+        queueId: job.id,
+        currentUserId: job.triggered_by_user_id,
+        attempt: job.attempts || 1,
+        maxAttempts: job.max_attempts || 3
+      });
 
-      const actionsExecuted = actions.map((act) => ({
-        action: act.action,
-        params: act.params || {},
-        status: 'SUCCESS',
-        executed_at: new Date().toISOString()
-      }));
-
-      // Insert append-only run log
+      // Insert append-only run log with actual outcome
       const logRes = execute(
         `INSERT INTO automation_run_log (
            automation_id, trigger_event, trigger_source_type, trigger_source_id,
            triggered_by_user_id, conditions_evaluated, conditions_passed,
            actions_executed, overall_status, error_message, started_at, completed_at
-         ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, 'SUCCESS', NULL, datetime('now'), datetime('now'));`,
+         ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, datetime('now'), datetime('now'));`,
         [
           rule.id,
           job.trigger_event,
@@ -514,25 +521,85 @@ export function processQueueBatch(limit = 10) {
           job.trigger_source_id,
           job.triggered_by_user_id,
           conditionsEvaluatedJson,
-          JSON.stringify(actionsExecuted)
+          JSON.stringify(execResult.actionsExecuted),
+          execResult.overallStatus,
+          execResult.errorMessage || null
         ]
       );
+      const runLogId = logRes.lastInsertRowid;
 
-      // Increment rule run count
-      execute(
-        `UPDATE automation_rules
-         SET run_count = run_count + 1, last_run_at = datetime('now'), updated_at = datetime('now')
-         WHERE id = ?;`,
-        [rule.id]
-      );
+      // 5. Store resolved variables in automation_variable_store
+      if (execResult.recordedVariables && execResult.recordedVariables.length > 0) {
+        const seen = new Set();
+        for (const v of execResult.recordedVariables) {
+          const key = `${v.name}:::${v.value}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            execute(
+              `INSERT INTO automation_variable_store (
+                 automation_id, run_log_id, variable_name, variable_value, created_at
+               ) VALUES (?, ?, ?, ?, datetime('now'));`,
+              [rule.id, runLogId, v.name, v.value]
+            );
+          }
+        }
+      }
 
-      // Mark queue item DONE
-      execute(
-        `UPDATE automation_queue
-         SET status = 'DONE', run_log_id = ?, updated_at = datetime('now')
-         WHERE id = ?;`,
-        [logRes.lastInsertRowid, job.id]
-      );
+      // 6. Handle failure, retry backoff or completion
+      if (execResult.overallStatus === 'FAILED' || execResult.overallStatus === 'PARTIAL') {
+        const currentAttempts = (job.attempts || 0) + 1;
+        const isRetry = currentAttempts < (job.max_attempts || 3);
+        execute(
+          `INSERT INTO automation_errors (
+             automation_id, run_log_id, error_type, error_message, action_index, retry_scheduled, created_at
+           ) VALUES (?, ?, 'ACTION_FAILED', ?, ?, ?, datetime('now'));`,
+          [rule.id, runLogId, execResult.errorMessage || 'Action execution failed', execResult.failedIndex || 0, isRetry ? 1 : 0]
+        );
+
+        if (isRetry) {
+          // Retry delays: attempt 1 = 60s, attempt 2 = 300s, attempt 3 = 900s
+          const delaySeconds = currentAttempts === 1 ? 60 : (currentAttempts === 2 ? 300 : 900);
+          execute(
+            `UPDATE automation_queue
+             SET status = 'QUEUED', scheduled_at = datetime('now', '+${delaySeconds} seconds'),
+                 run_log_id = ?, updated_at = datetime('now')
+             WHERE id = ?;`,
+            [runLogId, job.id]
+          );
+        } else {
+          // Max attempts reached -> permanent FAILED
+          execute(
+            `UPDATE automation_queue
+             SET status = 'FAILED', run_log_id = ?, updated_at = datetime('now')
+             WHERE id = ?;`,
+            [runLogId, job.id]
+          );
+        }
+      } else if (execResult.isWaiting) {
+        // Paused on WAIT: reschedule into future
+        execute(
+          `UPDATE automation_queue
+           SET status = 'QUEUED', scheduled_at = datetime('now', '+${execResult.waitDelaySeconds} seconds'),
+               run_log_id = ?, updated_at = datetime('now')
+           WHERE id = ?;`,
+          [runLogId, job.id]
+        );
+      } else {
+        // Complete SUCCESS
+        execute(
+          `UPDATE automation_rules
+           SET run_count = run_count + 1, last_run_at = datetime('now'), updated_at = datetime('now')
+           WHERE id = ?;`,
+          [rule.id]
+        );
+
+        execute(
+          `UPDATE automation_queue
+           SET status = 'DONE', run_log_id = ?, updated_at = datetime('now')
+           WHERE id = ?;`,
+          [runLogId, job.id]
+        );
+      }
 
       processedCount++;
     }
