@@ -94,9 +94,9 @@ export function createApp() {
     return res.sendFile(path.join(publicPath, 'setup.html'));
   });
 
-  // First-run detection redirect: On zero users in DB, redirect all browser GET requests to /setup
+  // First-run detection redirect: On zero users in DB, redirect all browser GET/HEAD requests to /setup
   app.use((req, res, next) => {
-    if (req.method !== 'GET') return next();
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
 
     const firstRunActive = isFirstRun();
     const p = req.path;
