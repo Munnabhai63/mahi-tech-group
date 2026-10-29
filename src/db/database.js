@@ -1236,6 +1236,170 @@ BEFORE DELETE ON budget_alerts
 BEGIN SELECT RAISE(ABORT, 'budget_alerts is append-only'); END;
 `;
 
+export const AUTOMATION_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS automation_rules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  project_id INTEGER REFERENCES projects(id),
+  scope TEXT NOT NULL DEFAULT 'PROJECT',
+  is_active INTEGER NOT NULL DEFAULT 1,
+  trigger_module TEXT NOT NULL,
+  trigger_event TEXT NOT NULL,
+  trigger_conditions TEXT,
+  condition_logic TEXT NOT NULL DEFAULT 'AND',
+  actions TEXT NOT NULL,
+  run_count INTEGER DEFAULT 0,
+  last_run_at TEXT,
+  is_ai_suggested INTEGER DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_run_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  trigger_event TEXT NOT NULL,
+  trigger_source_type TEXT,
+  trigger_source_id INTEGER,
+  triggered_by_user_id INTEGER REFERENCES users(id),
+  conditions_evaluated TEXT,
+  conditions_passed INTEGER NOT NULL DEFAULT 0,
+  actions_executed TEXT,
+  overall_status TEXT NOT NULL DEFAULT 'PENDING',
+  error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
+  started_at TEXT DEFAULT (datetime('now')),
+  completed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS automation_errors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  run_log_id INTEGER NOT NULL REFERENCES automation_run_log(id),
+  error_type TEXT NOT NULL,
+  error_message TEXT NOT NULL,
+  action_index INTEGER,
+  retry_scheduled INTEGER DEFAULT 0,
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  category TEXT NOT NULL,
+  trigger_module TEXT NOT NULL,
+  trigger_event TEXT NOT NULL,
+  trigger_conditions TEXT,
+  actions TEXT NOT NULL,
+  is_system_template INTEGER NOT NULL DEFAULT 1,
+  created_by INTEGER REFERENCES users(id),
+  usage_count INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_queue (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  run_log_id INTEGER REFERENCES automation_run_log(id),
+  trigger_event TEXT NOT NULL,
+  trigger_source_type TEXT,
+  trigger_source_id INTEGER,
+  triggered_by_user_id INTEGER REFERENCES users(id),
+  trigger_data TEXT,
+  status TEXT NOT NULL DEFAULT 'QUEUED',
+  scheduled_at TEXT DEFAULT (datetime('now')),
+  attempts INTEGER DEFAULT 0,
+  max_attempts INTEGER DEFAULT 3,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_variable_store (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  run_log_id INTEGER NOT NULL REFERENCES automation_run_log(id),
+  variable_name TEXT NOT NULL,
+  variable_value TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_ai_suggestions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  suggested_by_system TEXT NOT NULL DEFAULT 'INTERNAL_AI',
+  suggestion_context TEXT,
+  suggested_name TEXT NOT NULL,
+  suggested_description TEXT,
+  suggested_trigger_module TEXT NOT NULL,
+  suggested_trigger_event TEXT NOT NULL,
+  suggested_conditions TEXT,
+  suggested_actions TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  reviewed_by INTEGER REFERENCES users(id),
+  reviewed_at TEXT,
+  rejection_reason TEXT,
+  approved_automation_id INTEGER REFERENCES automation_rules(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_automation_rules_project ON automation_rules(project_id);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_module ON automation_rules(trigger_module);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_event ON automation_rules(trigger_event);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_active ON automation_rules(is_active);
+CREATE INDEX IF NOT EXISTS idx_automation_run_log_rule ON automation_run_log(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_run_log_status ON automation_run_log(overall_status);
+CREATE INDEX IF NOT EXISTS idx_automation_errors_rule ON automation_errors(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_errors_run ON automation_errors(run_log_id);
+CREATE INDEX IF NOT EXISTS idx_automation_templates_category ON automation_templates(category);
+CREATE INDEX IF NOT EXISTS idx_automation_templates_system ON automation_templates(is_system_template);
+CREATE INDEX IF NOT EXISTS idx_automation_queue_status ON automation_queue(status);
+CREATE INDEX IF NOT EXISTS idx_automation_queue_rule ON automation_queue(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_variable_store_run ON automation_variable_store(run_log_id);
+CREATE INDEX IF NOT EXISTS idx_automation_ai_suggestions_status ON automation_ai_suggestions(status);
+
+-- Append-Only DB Triggers
+CREATE TRIGGER IF NOT EXISTS prevent_run_log_update
+BEFORE UPDATE ON automation_run_log
+BEGIN SELECT RAISE(ABORT, 'automation_run_log is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_run_log_delete
+BEFORE DELETE ON automation_run_log
+BEGIN SELECT RAISE(ABORT, 'automation_run_log is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_automation_error_delete
+BEFORE DELETE ON automation_errors
+BEGIN SELECT RAISE(ABORT, 'automation_errors is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_variable_store_update
+BEFORE UPDATE ON automation_variable_store
+BEGIN SELECT RAISE(ABORT, 'automation_variable_store is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_variable_store_delete
+BEFORE DELETE ON automation_variable_store
+BEGIN SELECT RAISE(ABORT, 'automation_variable_store is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_ai_suggestion_update
+BEFORE UPDATE ON automation_ai_suggestions
+FOR EACH ROW
+WHEN (
+  OLD.suggested_name != NEW.suggested_name OR
+  OLD.suggested_trigger_module != NEW.suggested_trigger_module OR
+  OLD.suggested_trigger_event != NEW.suggested_trigger_event OR
+  OLD.suggested_actions != NEW.suggested_actions OR
+  OLD.id != NEW.id
+)
+BEGIN SELECT RAISE(ABORT, 'automation_ai_suggestions core fields are append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_ai_suggestion_delete
+BEFORE DELETE ON automation_ai_suggestions
+BEGIN SELECT RAISE(ABORT, 'automation_ai_suggestions is append-only'); END;
+`;
+
 
 
 export function seedBuiltInKpis(db) {
@@ -1436,6 +1600,230 @@ export function seedDefaultExpenseCategories(db) {
   }
 }
 
+export function seedBuiltInAutomationTemplates(db) {
+  try {
+    const adminRow = db.prepare("SELECT id FROM users WHERE role IN ('admin', 'superadmin') LIMIT 1").get();
+    const adminId = adminRow ? adminRow.id : 1;
+
+    const templates = [
+      {
+        name: 'Sprint Started Notification',
+        description: 'When sprint starts → notify all sprint members',
+        category: 'SPRINT',
+        trigger_module: 'SPRINT',
+        trigger_event: 'SPRINT_STARTED',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'PROJECT_MEMBERS', message: 'Sprint {{sprint.name}} has officially started!' } }])
+      },
+      {
+        name: 'Sprint Completed Backlog Rollover',
+        description: 'When sprint completed → move TODO items back to backlog',
+        category: 'SPRINT',
+        trigger_module: 'SPRINT',
+        trigger_event: 'SPRINT_COMPLETED',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'MOVE_ITEM_TO_BACKLOG', params: { item_id_from_trigger: '{{item.id}}' } }])
+      },
+      {
+        name: 'Task Completed Assignee Alert',
+        description: 'When backlog item status = DONE → notify assignee',
+        category: 'NOTIFICATIONS',
+        trigger_module: 'BACKLOG',
+        trigger_event: 'ITEM_STATUS_CHANGED',
+        trigger_conditions: JSON.stringify([{ field: 'status', operator: 'EQUALS', value: 'DONE' }]),
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'ASSIGNEE', message: 'Task {{item.title}} has been marked DONE.' } }])
+      },
+      {
+        name: 'Overdue Task Warning',
+        description: 'When backlog item overdue → notify assignee + Admin',
+        category: 'NOTIFICATIONS',
+        trigger_module: 'BACKLOG',
+        trigger_event: 'ITEM_STATUS_CHANGED',
+        trigger_conditions: JSON.stringify([{ field: 'is_overdue', operator: 'EQUALS', value: true }]),
+        actions: JSON.stringify([
+          { action: 'SEND_NOTIFICATION', params: { to: 'ASSIGNEE', message: 'Task {{item.title}} is overdue!' } },
+          { action: 'SEND_NOTIFICATION', params: { to: 'ADMIN', message: 'Task {{item.title}} is overdue (Assignee: {{member.name}}).' } }
+        ])
+      },
+      {
+        name: 'OKR Goal Achieved',
+        description: 'When OKR progress >= 100% → notify objective owner',
+        category: 'OKR',
+        trigger_module: 'OKR',
+        trigger_event: 'OKR_PROGRESS_REACHED',
+        trigger_conditions: JSON.stringify([{ field: 'progress_pct', operator: 'GREATER_THAN_OR_EQUAL', value: 100 }]),
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'SPECIFIC_USER', message: 'Congratulations! Objective {{objective.title}} has reached 100% completion.' } }])
+      },
+      {
+        name: 'OKR At Risk Admin Alert',
+        description: 'When OKR status = AT_RISK → notify Admin',
+        category: 'OKR',
+        trigger_module: 'OKR',
+        trigger_event: 'OKR_AT_RISK',
+        trigger_conditions: JSON.stringify([{ field: 'status', operator: 'EQUALS', value: 'AT_RISK' }]),
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'ADMIN', message: 'Objective {{objective.title}} is now AT RISK.' } }])
+      },
+      {
+        name: 'Missed Milestone Follow-up',
+        description: 'When gantt milestone missed → notify Admin + create follow-up backlog item',
+        category: 'GENERAL',
+        trigger_module: 'GANTT',
+        trigger_event: 'MILESTONE_MISSED',
+        trigger_conditions: null,
+        actions: JSON.stringify([
+          { action: 'SEND_NOTIFICATION', params: { to: 'ADMIN', message: 'Milestone {{milestone.title}} was missed.' } },
+          { action: 'CREATE_BACKLOG_ITEM', params: { title: 'Follow up: Missed milestone {{milestone.title}}', type: 'TASK', priority: 'HIGH' } }
+        ])
+      },
+      {
+        name: 'Member Overload Alert',
+        description: 'When member overloaded → notify Admin',
+        category: 'NOTIFICATIONS',
+        trigger_module: 'WORKLOAD',
+        trigger_event: 'MEMBER_OVERLOADED',
+        trigger_conditions: JSON.stringify([{ field: 'utilization_pct', operator: 'GREATER_THAN', value: 100 }]),
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'ADMIN', message: 'Member {{member.name}} is overloaded (>100% utilization).' } }])
+      },
+      {
+        name: 'Expense Approval Notification',
+        description: 'When expense approved → notify expense submitter',
+        category: 'FINANCE',
+        trigger_module: 'EXPENSE',
+        trigger_event: 'EXPENSE_APPROVED',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'SPECIFIC_USER', message: 'Your expense request for {{expense.amount}} INR has been approved.' } }])
+      },
+      {
+        name: 'Expense Rejection Notification',
+        description: 'When expense rejected → notify expense submitter with rejection reason',
+        category: 'FINANCE',
+        trigger_module: 'EXPENSE',
+        trigger_event: 'EXPENSE_REJECTED',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'SPECIFIC_USER', message: 'Your expense request was rejected: {{expense.rejection_reason}}' } }])
+      },
+      {
+        name: 'Budget Warning Threshold',
+        description: 'When budget threshold reached (80%) → notify Admin',
+        category: 'FINANCE',
+        trigger_module: 'EXPENSE',
+        trigger_event: 'BUDGET_THRESHOLD_REACHED',
+        trigger_conditions: JSON.stringify([{ field: 'spent_percentage', operator: 'GREATER_THAN_OR_EQUAL', value: 80 }]),
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'ADMIN', message: 'Project budget has reached 80% threshold.' } }])
+      },
+      {
+        name: 'Budget Exceeded Critical Alert',
+        description: 'When budget exceeded (100%) → notify Admin + Super Admin',
+        category: 'FINANCE',
+        trigger_module: 'EXPENSE',
+        trigger_event: 'BUDGET_EXCEEDED',
+        trigger_conditions: JSON.stringify([{ field: 'spent_percentage', operator: 'GREATER_THAN_OR_EQUAL', value: 100 }]),
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'ADMIN', message: 'URGENT: Budget exceeded for project {{project.name}}!' } }])
+      },
+      {
+        name: 'Overdue Invoice Reminder',
+        description: 'When invoice overdue → notify Admin',
+        category: 'FINANCE',
+        trigger_module: 'EXPENSE',
+        trigger_event: 'INVOICE_OVERDUE',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'ADMIN', message: 'Invoice {{invoice.invoice_number}} is overdue!' } }])
+      },
+      {
+        name: 'Client Order Intake Alert',
+        description: 'When client order submitted → notify Admin + assigned handler',
+        category: 'CLIENT',
+        trigger_module: 'CLIENT',
+        trigger_event: 'CLIENT_ORDER_SUBMITTED',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'ADMIN', message: 'New client order submitted: {{order.title}}' } }])
+      },
+      {
+        name: 'Client Milestone Sign-off Update',
+        description: 'When client milestone approved → update milestone status to ACHIEVED',
+        category: 'CLIENT',
+        trigger_module: 'CLIENT',
+        trigger_event: 'CLIENT_MILESTONE_APPROVED',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'CHANGE_STATUS', params: { entity_type: 'MILESTONE', new_status: 'ACHIEVED' } }])
+      },
+      {
+        name: 'GitHub PR Merged Team Update',
+        description: 'When PR merged → notify project team',
+        category: 'GITHUB',
+        trigger_module: 'GITHUB',
+        trigger_event: 'PR_MERGED',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'PROJECT_MEMBERS', message: 'Pull Request #{{pr.number}} merged: {{pr.title}}' } }])
+      },
+      {
+        name: 'Rejected Time Entry Notice',
+        description: 'When time entry rejected → notify submitter',
+        category: 'NOTIFICATIONS',
+        trigger_module: 'TIME',
+        trigger_event: 'TIME_ENTRY_REJECTED',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'SPECIFIC_USER', message: 'Your time entry has been rejected: {{time.rejection_reason}}' } }])
+      },
+      {
+        name: 'Member Offboarding Sprint Cleanup',
+        description: 'When member offboarded → notify Admin + remove from active sprint',
+        category: 'GENERAL',
+        trigger_module: 'MEMBER',
+        trigger_event: 'MEMBER_OFFBOARDED',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'ADMIN', message: 'Member {{member.name}} offboarded. Cleaning up sprint assignments.' } }])
+      },
+      {
+        name: 'Pipeline Stage Handover Alert',
+        description: 'When pipeline stage completed → notify next stage owner',
+        category: 'GENERAL',
+        trigger_module: 'PIPELINE',
+        trigger_event: 'PIPELINE_STAGE_COMPLETED',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'SPECIFIC_USER', message: 'Pipeline stage {{stage.name}} completed! Handoff ready for review.' } }])
+      },
+      {
+        name: 'Revenue Share Blocked Warning',
+        description: 'When revenue share blocked → notify Admin with member name + reason',
+        category: 'NOTIFICATIONS',
+        trigger_module: 'MEMBER',
+        trigger_event: 'REVENUE_SHARE_BLOCKED',
+        trigger_conditions: null,
+        actions: JSON.stringify([{ action: 'SEND_NOTIFICATION', params: { to: 'ADMIN', message: 'Revenue share blocked for {{member.name}}: {{block.reason}}' } }])
+      }
+    ];
+
+    const checkStmt = db.prepare('SELECT id FROM automation_templates WHERE name = ?');
+    const insertStmt = db.prepare(`
+      INSERT INTO automation_templates (
+        name, description, category, trigger_module, trigger_event,
+        trigger_conditions, actions, is_system_template, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+    `);
+
+    for (const t of templates) {
+      const existing = checkStmt.get(t.name);
+      if (!existing) {
+        insertStmt.run(
+          t.name,
+          t.description,
+          t.category,
+          t.trigger_module,
+          t.trigger_event,
+          t.trigger_conditions,
+          t.actions,
+          adminId
+        );
+      }
+    }
+  } catch (err) {
+    if (!err.message.includes('no such table')) {
+      console.error('[DB] Warning seeding built-in automation templates:', err.message);
+    }
+  }
+}
+
 export function getDatabase() {
   if (!dbInstance) {
     fs.mkdirSync(path.dirname(config.DB_PATH), { recursive: true });
@@ -1467,9 +1855,11 @@ export function getDatabase() {
     dbInstance.exec(ANALYTICS_SCHEMA_SQL);
     dbInstance.exec(CLIENT_PORTAL_SCHEMA_SQL);
     dbInstance.exec(BUDGET_FINANCIAL_SCHEMA_SQL);
+    dbInstance.exec(AUTOMATION_SCHEMA_SQL);
 
     seedBuiltInKpis(dbInstance);
     seedDefaultExpenseCategories(dbInstance);
+    seedBuiltInAutomationTemplates(dbInstance);
   }
   return dbInstance;
 }

@@ -1033,5 +1033,70 @@
       - `scripts/verify-prd23-integration.js` -> **197 / 197 PASS (100%)**
       - `npm test` -> **13 / 13 test suites PASS (100%)**
     - PRD 24 Status: **100% COMPLETE, VERIFIED & SEALED**.
-    - Next PRD: **PRD 25 (Budget & Financial Management)** pending explicit user GO-AHEAD.
+
+- **PRD 25 — Budget & Financial Management**:
+  - **Reverse Engineering Mandate (100% COMPLETE)**:
+    - Authored comprehensive Reverse Engineering Report (`docs/prd25_reverse_engineering_report.md`) dissecting 5 market leaders: Float, Harvest, QuickBooks, Scoro, and Forecast.
+    - Synthesized underlying financial logic: hierarchical budget allocations, multi-tiered burn rate tracking, 2-tier warning alerts (80% / 100%), immutable expense logs, and invoice lifecycles.
+    - Discarded all competitor UI branding, color schemes, and copy.
+  - **Layer 1 (Database, Schema & Immutability Triggers — 100% COMPLETE & VERIFIED)**:
+    - 8 relational tables: `project_budgets`, `budget_history`, `expense_categories`, `project_expenses`, `expense_history`, `invoices`, `invoice_line_items`, `budget_alerts`.
+    - 16 performance and integrity indexes in SQLite.
+    - 7 append-only DB triggers enforcing strict immutability.
+    - 8 default expense categories seeded with `is_active = 1`.
+    - Verified with `scripts/verify-prd25-layer1.js` -> **156 / 156 PASS (100%)**.
+  - **Layer 2 (Core Finance Service & Business Logic — 100% COMPLETE & VERIFIED)**:
+    - Built `src/services/financeService.js` with comprehensive business logic: budget creation/updating with history snapshots, burn rate calculations, automated threshold alerts (80% threshold reached, 100% budget exceeded), expense submission with receipt attachments, admin approval/rejection workflows, invoice lifecycle management (DRAFT -> SENT -> VIEWED -> PAID / OVERDUE / CANCELLED), and project P&L reports.
+    - Verified with `scripts/verify-prd25-layer2.js` -> **142 / 142 PASS (100%)**.
+  - **Layer 3 (API Routes & Access Governance — 100% COMPLETE & VERIFIED)**:
+    - Built `src/routes/finance.routes.js` with 26 REST endpoints mounted at `/api/finance`.
+    - Strict server-side RBAC: admin-only budget, invoice, and category management; member-restricted expense submission and self-view.
+    - Static sub-paths strictly ordered before parameterized routes.
+    - Verified with `scripts/verify-prd25-layer3.js` -> **164 / 164 PASS (100%)**.
+  - **Layer 4 (Automated Cron, Alerts & Reporting Engine — 100% COMPLETE & VERIFIED)**:
+    - Automated overdue invoice check cron worker transitioning past-due invoices to `OVERDUE` and logging `INVOICE_OVERDUE` alerts.
+    - Single-click alert acknowledgment with `acknowledged_by` and `acknowledged_at` tracking.
+    - Financial report exports supporting both JSON and RFC 4180 CSV formats.
+    - Verified with `scripts/verify-prd25-layer4.js` -> **138 / 138 PASS (100%)**.
+  - **Layer 5 (Frontend Views & UX Security — 100% COMPLETE & VERIFIED)**:
+    - Authored 5 dedicated production HTML views in `public/`:
+      - `public/finance-dashboard.html`: Executive financial KPI cards, budget health bars, revenue vs expense charts, project budget breakdown.
+      - `public/project-budget.html`: Project-specific budget detail, budget allocation modifier modal, live burn-rate bar, historical changes ledger.
+      - `public/my-expenses.html`: Contributor expense workspace, receipt upload modal, status pills (`PENDING`, `APPROVED`, `REJECTED`), real-time feedback.
+      - `public/invoice-manager.html`: Invoicing hub, invoice generator modal, dynamic line-item builder, status transition triggers, download/preview.
+      - `public/budget-alerts.html`: Centralized financial risk monitor, active/acknowledged alerts tables, project P&L reporting, CSV/JSON export buttons.
+    - Verified with `scripts/verify-prd25-layer5.js` -> **122 / 122 PASS (100%)**.
+  - **Layer 6 (Full End-to-End Integration Suite & PRD 25 Sealed — 100% COMPLETE & VERIFIED)**:
+    - Authored and verified `scripts/verify-prd25-layer6.js` (54/54 PASS) and `scripts/verify-prd25-integration.js` (107/107 PASS).
+    - Verified full 7-flow lifecycle with real HTTP and direct SQLite DB assertions (zero mocks).
+    - Total PRD 25 Passing Assertions: **883 / 883 PASS (100%)**.
+    - **PRD 25 Status**: 100% COMPLETE & PERMANENTLY SEALED (Commit `3903f72`).
+
+- **PRD 26 — Workflow Automation Engine**:
+  - **Reverse Engineering Mandate (100% COMPLETE)**:
+    - Authored comprehensive Reverse Engineering Report (`docs/prd26_reverse_engineering_report.md`) dissecting 6 market leaders: Monday.com, Zapier, ClickUp, Jira Automation, Asana, and n8n.
+    - Abstracted core state machines: async queue worker architecture, condition evaluators (`EQUALS`, `NOT_EQUALS`, `GREATER_THAN`, `LESS_THAN`, `CONTAINS`, `IS_EMPTY` with `AND`/`OR` logic), pre-save circular chain detection, dynamic template variable resolution (`{{ variable }}`), retry worker with exponential backoff (1m, 5m, 15m), and strict rate limiting (max 100 fires/proj/hour, max 10 fires/rule/min).
+    - Discarded all competitor visual branding, conversational sentence bubble UIs, pastel palettes, and proprietary billing mechanisms.
+  - **Layer 1 (Database, Schema, Triggers & Seed — 100% COMPLETE & VERIFIED)**:
+    - Created 7 relational tables in `src/db/schema.sql`, `src/db/database.js` (`AUTOMATION_SCHEMA_SQL`), and `src/db/migrate.js`:
+      - `automation_rules`: Core rule definitions with trigger module/event, conditions JSON, condition logic (`AND`/`OR`), actions JSON array, run count, and scope (`PROJECT`/`COMPANY`).
+      - `automation_run_log`: Append-only execution history recording conditions evaluated, actions executed, overall status (`PENDING`/`SUCCESS`/`PARTIAL`/`FAILED`/`SKIPPED`), error message, and timestamps.
+      - `automation_errors`: Detailed failure log with `error_type`, `error_message`, `action_index`, and acknowledgment tracking (`acknowledged_by`, `acknowledged_at`).
+      - `automation_templates`: Categorized template library pre-seeded with 20 built-in templates (`is_system_template = 1`) and custom template support.
+      - `automation_queue`: Asynchronous background task queue with `trigger_data` snapshot, status (`QUEUED`/`PROCESSING`/`DONE`/`FAILED`), retry attempts, and max attempts (3).
+      - `automation_variable_store`: Append-only audit table logging resolved template variables per run.
+      - `automation_ai_suggestions`: Human-in-the-loop suggestion repository strictly guarded by append-only trigger protecting core suggested fields while permitting admin review transitions (`PENDING` -> `APPROVED`/`REJECTED`).
+    - Created 14 performance and integrity indexes in SQLite.
+    - Created 7 append-only SQLite DB triggers enforcing immutability:
+      - `prevent_run_log_update` & `prevent_run_log_delete`
+      - `prevent_automation_error_delete`
+      - `prevent_variable_store_update` & `prevent_variable_store_delete`
+      - `prevent_ai_suggestion_update` (protects core suggested fields) & `prevent_ai_suggestion_delete`
+    - Seeded all 20 built-in templates with `is_system_template = 1` via `seedBuiltInAutomationTemplates(db)` across all 7 categories (`SPRINT`, `OKR`, `NOTIFICATIONS`, `FINANCE`, `CLIENT`, `GITHUB`, `GENERAL`).
+    - Verified with `scripts/verify-prd26-layer1.js` -> **172 / 172 PASS (100%)**.
+    - Core Platform Regression: `npm test` -> **13 / 13 test suites PASS (100%)**.
+    - PRD 25 Integration Regression: `scripts/verify-prd25-integration.js` -> **107 / 107 PASS (100%)**.
+    - **PRD 26 Layer 1 Status**: 100% COMPLETE & VERIFIED.
+    - Next Layer: **PRD 26 Layer 2 (Automation Engine Core: `automationEngine.js` & `automationService.js`)**.
+
 

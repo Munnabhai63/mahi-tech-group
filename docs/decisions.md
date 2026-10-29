@@ -780,3 +780,28 @@
      - Core Test Suite: 13 / 13 test suites PASS (100%)
 - **Consequences**: PRD 24 is 100% complete, fully verified, and sealed with 783/783 total passing assertions. Ready for PRD 25.
 
+## Decision 25-A: PRD 25 Budget & Financial Management Sealing
+- **Context**: PRD 25 establishes strict financial governance across project budgets, expense reporting with receipt attachments, multi-tiered burn rate tracking, 2-tier warning alerts (80% / 100%), and invoice generation with automated overdue checks.
+- **Decision**:
+  1. Financial Immutability: SQLite append-only triggers protect `budget_history`, `expense_history`, `invoice_line_items`, and `budget_alerts` from unauthorized mutation or deletion.
+  2. Strict Confidentiality: Internal project notes (`internal_notes`) are strictly stripped from client-facing invoice views.
+  3. Real-Time Math Integrity: Multi-layer integration tests confirmed exact reconciliation between database aggregation and API summaries across budgets, consumption, remaining allocations, and profit & loss margins.
+- **Consequences**: PRD 25 is 100% complete across all 6 layers and sealed with commit `3903f72`.
+
+## Decision 26-A: PRD 26 Workflow Automation Engine — Reverse Engineering & Layer 1 Schema + Triggers + Seed
+- **Context**: PRD 26 establishes an asynchronous event-driven Workflow Automation Engine allowing Admins to configure IF-THEN automation rules across all 11 platform modules.
+- **Decision**:
+  1. **Reverse Engineering Synthesis (`docs/prd26_reverse_engineering_report.md`)**:
+     - Dissected 6 market leaders (Monday.com, Zapier, ClickUp, Jira Automation, Asana, n8n).
+     - Discarded competitor visual branding, conversational bubble interfaces, and pastel palettes in favor of MTG dark glassmorphism.
+     - Extracted underlying queue architecture, condition evaluators, pre-save circular chain detection, template variable resolution (`{{ variable }}`), and retry backoff.
+  2. **Layer 1 Schema & Append-Only Triggers**:
+     - Created 7 core relational tables (`automation_rules`, `automation_run_log`, `automation_errors`, `automation_templates`, `automation_queue`, `automation_variable_store`, `automation_ai_suggestions`) and 14 performance indexes.
+     - Created 7 SQLite DB triggers strictly blocking unauthorized mutation/deletion of execution logs, variable audits, and errors.
+     - Special guard on `automation_ai_suggestions`: core suggested fields (`suggested_name`, `suggested_trigger_module`, `suggested_trigger_event`, `suggested_actions`, `id`) are strictly immutable via `prevent_ai_suggestion_update`, while legitimate review transitions (`status`, `reviewed_by`, `reviewed_at`, `approved_automation_id`, `rejection_reason`) are permitted for Admin reviews.
+  3. **Built-in Template Seeding**:
+     - Seeded 20 system templates (`is_system_template = 1`) across all 7 operational categories (`SPRINT`, `OKR`, `NOTIFICATIONS`, `FINANCE`, `CLIENT`, `GITHUB`, `GENERAL`) with valid actions JSON.
+     - Seeding verified idempotent.
+- **Consequences**: Layer 1 verified 172/172 PASS in `scripts/verify-prd26-layer1.js`. Core platform regression verified 13/13 test suites PASS (100%). Ready for Layer 2 implementation.
+
+

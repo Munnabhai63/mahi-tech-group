@@ -1987,5 +1987,163 @@ CREATE TRIGGER IF NOT EXISTS prevent_budget_alert_delete
 BEFORE DELETE ON budget_alerts
 BEGIN SELECT RAISE(ABORT, 'budget_alerts is append-only'); END;
 
+-- ===================================================================
+-- PRD 26: WORKFLOW AUTOMATION ENGINE TABLES
+-- ===================================================================
+
+CREATE TABLE IF NOT EXISTS automation_rules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  project_id INTEGER REFERENCES projects(id),
+  scope TEXT NOT NULL DEFAULT 'PROJECT',
+  is_active INTEGER NOT NULL DEFAULT 1,
+  trigger_module TEXT NOT NULL,
+  trigger_event TEXT NOT NULL,
+  trigger_conditions TEXT,
+  condition_logic TEXT NOT NULL DEFAULT 'AND',
+  actions TEXT NOT NULL,
+  run_count INTEGER DEFAULT 0,
+  last_run_at TEXT,
+  is_ai_suggested INTEGER DEFAULT 0,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_run_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  trigger_event TEXT NOT NULL,
+  trigger_source_type TEXT,
+  trigger_source_id INTEGER,
+  triggered_by_user_id INTEGER REFERENCES users(id),
+  conditions_evaluated TEXT,
+  conditions_passed INTEGER NOT NULL DEFAULT 0,
+  actions_executed TEXT,
+  overall_status TEXT NOT NULL DEFAULT 'PENDING',
+  error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
+  started_at TEXT DEFAULT (datetime('now')),
+  completed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS automation_errors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  run_log_id INTEGER NOT NULL REFERENCES automation_run_log(id),
+  error_type TEXT NOT NULL,
+  error_message TEXT NOT NULL,
+  action_index INTEGER,
+  retry_scheduled INTEGER DEFAULT 0,
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  category TEXT NOT NULL,
+  trigger_module TEXT NOT NULL,
+  trigger_event TEXT NOT NULL,
+  trigger_conditions TEXT,
+  actions TEXT NOT NULL,
+  is_system_template INTEGER NOT NULL DEFAULT 1,
+  created_by INTEGER REFERENCES users(id),
+  usage_count INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_queue (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  run_log_id INTEGER REFERENCES automation_run_log(id),
+  trigger_event TEXT NOT NULL,
+  trigger_source_type TEXT,
+  trigger_source_id INTEGER,
+  triggered_by_user_id INTEGER REFERENCES users(id),
+  trigger_data TEXT,
+  status TEXT NOT NULL DEFAULT 'QUEUED',
+  scheduled_at TEXT DEFAULT (datetime('now')),
+  attempts INTEGER DEFAULT 0,
+  max_attempts INTEGER DEFAULT 3,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_variable_store (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  automation_id INTEGER NOT NULL REFERENCES automation_rules(id),
+  run_log_id INTEGER NOT NULL REFERENCES automation_run_log(id),
+  variable_name TEXT NOT NULL,
+  variable_value TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS automation_ai_suggestions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  suggested_by_system TEXT NOT NULL DEFAULT 'INTERNAL_AI',
+  suggestion_context TEXT,
+  suggested_name TEXT NOT NULL,
+  suggested_description TEXT,
+  suggested_trigger_module TEXT NOT NULL,
+  suggested_trigger_event TEXT NOT NULL,
+  suggested_conditions TEXT,
+  suggested_actions TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  reviewed_by INTEGER REFERENCES users(id),
+  reviewed_at TEXT,
+  rejection_reason TEXT,
+  approved_automation_id INTEGER REFERENCES automation_rules(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_automation_rules_project ON automation_rules(project_id);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_module ON automation_rules(trigger_module);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_event ON automation_rules(trigger_event);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_active ON automation_rules(is_active);
+CREATE INDEX IF NOT EXISTS idx_automation_run_log_rule ON automation_run_log(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_run_log_status ON automation_run_log(overall_status);
+CREATE INDEX IF NOT EXISTS idx_automation_errors_rule ON automation_errors(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_errors_run ON automation_errors(run_log_id);
+CREATE INDEX IF NOT EXISTS idx_automation_templates_category ON automation_templates(category);
+CREATE INDEX IF NOT EXISTS idx_automation_templates_system ON automation_templates(is_system_template);
+CREATE INDEX IF NOT EXISTS idx_automation_queue_status ON automation_queue(status);
+CREATE INDEX IF NOT EXISTS idx_automation_queue_rule ON automation_queue(automation_id);
+CREATE INDEX IF NOT EXISTS idx_automation_variable_store_run ON automation_variable_store(run_log_id);
+CREATE INDEX IF NOT EXISTS idx_automation_ai_suggestions_status ON automation_ai_suggestions(status);
+
+-- Append-Only DB Triggers
+CREATE TRIGGER IF NOT EXISTS prevent_run_log_update
+BEFORE UPDATE ON automation_run_log
+BEGIN SELECT RAISE(ABORT, 'automation_run_log is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_run_log_delete
+BEFORE DELETE ON automation_run_log
+BEGIN SELECT RAISE(ABORT, 'automation_run_log is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_automation_error_delete
+BEFORE DELETE ON automation_errors
+BEGIN SELECT RAISE(ABORT, 'automation_errors is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_variable_store_update
+BEFORE UPDATE ON automation_variable_store
+BEGIN SELECT RAISE(ABORT, 'automation_variable_store is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_variable_store_delete
+BEFORE DELETE ON automation_variable_store
+BEGIN SELECT RAISE(ABORT, 'automation_variable_store is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_ai_suggestion_update
+BEFORE UPDATE ON automation_ai_suggestions
+BEGIN SELECT RAISE(ABORT, 'automation_ai_suggestions is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_ai_suggestion_delete
+BEFORE DELETE ON automation_ai_suggestions
+BEGIN SELECT RAISE(ABORT, 'automation_ai_suggestions is append-only'); END;
+
 
 
