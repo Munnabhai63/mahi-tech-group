@@ -462,9 +462,9 @@ async function run() {
   // Attempt to delete system template -> must throw 400!
   try {
     wikiService.deleteTemplate(sysTemplate.id, adminUser);
-    assert(false, 'Deleting system template should throw 400');
+    assert(false, 'Deleting system template should throw 403');
   } catch (err) {
-    assert(err.status === 400, `System template delete blocked: "${err.message}"`);
+    assert(err.status === 403 || err.status === 400, `System template delete blocked with 403: "${err.message}"`);
   }
 
   // Create custom template

@@ -470,8 +470,14 @@ export function getSpaceById(spaceId, currentUser) {
 
   const pages = getPagesBySpace(spaceId, currentUser);
 
+  const myMembership = members.find(m => m.user_id === currentUser?.id);
+  const user_role = ['admin', 'superadmin'].includes(currentUser?.role)
+    ? 'MANAGER'
+    : (myMembership ? myMembership.role : 'VIEWER');
+
   return {
     ...space,
+    user_role,
     members,
     pages
   };
@@ -1122,8 +1128,8 @@ export function getPageVersionById(pageId, versionId, currentUser) {
     `SELECT v.*, u.name as saved_by_name
      FROM wiki_page_versions v
      JOIN users u ON v.saved_by = u.id
-     WHERE v.page_id = ? AND v.id = ?;`,
-    [pageId, versionId]
+     WHERE v.page_id = ? AND (v.id = ? OR v.version_number = ?);`,
+    [pageId, versionId, versionId]
   );
 
   if (!version) throw createError(404, 'Page version not found');
@@ -1141,8 +1147,8 @@ export function restorePageVersion(pageId, versionId, currentUser, ipAddress = n
   }
 
   const targetVersion = queryOne(
-    'SELECT * FROM wiki_page_versions WHERE page_id = ? AND id = ?;',
-    [pageId, versionId]
+    'SELECT * FROM wiki_page_versions WHERE page_id = ? AND (id = ? OR version_number = ?);',
+    [pageId, versionId, versionId]
   );
   if (!targetVersion) throw createError(404, 'Version not found for restoration');
 
@@ -1486,7 +1492,7 @@ export function deleteTemplate(templateId, currentUser, ipAddress = null) {
   if (!template) throw createError(404, 'Template not found');
 
   if (template.is_system_template === 1) {
-    throw createError(400, 'System templates cannot be deleted: built-in templates are protected');
+    throw createError(403, 'System templates cannot be deleted: built-in templates are protected');
   }
 
   execute('DELETE FROM wiki_templates WHERE id = ?;', [templateId]);
