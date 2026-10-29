@@ -52,61 +52,66 @@ export async function runSeed() {
   }
   console.log(`>>> Seeded/Verified RBAC permissions: 48 entries (${permissionsInserted} newly inserted).`);
 
-  // 2. Seed Default Admin User (The initial system owner)
-  const adminEmail = 'admin@mahitechgroup.com';
-  const existingAdmin = queryOne('SELECT id, email FROM users WHERE email = ?', [adminEmail]);
+  // 2. Seed Default Admin User & Demo Users (Development and Testing only)
+  // In production, the first-run /setup wizard creates the initial Super Admin account.
+  if (process.env.NODE_ENV !== 'production' || process.env.SEED_DEFAULT_USERS === 'true') {
+    const adminEmail = 'admin@mahitechgroup.com';
+    const existingAdmin = queryOne('SELECT id, email FROM users WHERE email = ?', [adminEmail]);
 
-  if (!existingAdmin) {
-    const adminId = crypto.randomUUID();
-    const plainPassword = 'AdminPassword@2026';
-    const passwordHash = await bcrypt.hash(plainPassword, config.BCRYPT_SALT_ROUNDS);
+    if (!existingAdmin) {
+      const adminId = crypto.randomUUID();
+      const plainPassword = 'AdminPassword@2026';
+      const passwordHash = await bcrypt.hash(plainPassword, config.BCRYPT_SALT_ROUNDS);
 
-    execute(`
-      INSERT INTO users (
-        id, name, email, password_hash, role, sub_role, status,
-        rating_avg, idea_quota_used, quota_reset_date, wallet_balance,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    `, [
-      adminId,
-      'System Admin',
-      adminEmail,
-      passwordHash,
-      'admin',
-      null,
-      'active',
-      5.0,
-      0,
-      null,
-      0.0
-    ]);
-    console.log(`>>> Seeded Default Admin User: ${adminEmail} (Role: admin, Status: active)`);
-  } else {
-    console.log(`>>> Default Admin User already exists: ${adminEmail}`);
-  }
-
-  // 2b. Seed Default Role Demo Users (Researcher, Developer, Producer, Designer)
-  const defaultRoleUsers = [
-    { name: 'Dr. Priya Sharma', email: 'researcher@mahitechgroup.com', pass: 'ResearcherPass123!', role: 'researcher', subRole: null },
-    { name: 'Arjun Dev', email: 'developer@mahitechgroup.com', pass: 'DeveloperPass123!', role: 'developer', subRole: 'frontend' },
-    { name: 'Sameer Tester', email: 'producer@mahitechgroup.com', pass: 'ProducerPass123!', role: 'producer', subRole: null },
-    { name: 'Diya Designer', email: 'designer@mahitechgroup.com', pass: 'DesignerPass123!', role: 'designer', subRole: null }
-  ];
-
-  for (const ru of defaultRoleUsers) {
-    const existing = queryOne('SELECT id FROM users WHERE email = ?', [ru.email]);
-    if (!existing) {
-      const uId = crypto.randomUUID();
-      const pHash = await bcrypt.hash(ru.pass, config.BCRYPT_SALT_ROUNDS);
       execute(`
         INSERT INTO users (
           id, name, email, password_hash, role, sub_role, status,
           rating_avg, idea_quota_used, quota_reset_date, wallet_balance,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'active', 5.0, 0, null, 1500.0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      `, [uId, ru.name, ru.email, pHash, ru.role, ru.subRole]);
-      console.log(`>>> Seeded Default Role User: ${ru.email} (${ru.role})`);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `, [
+        adminId,
+        'System Admin',
+        adminEmail,
+        passwordHash,
+        'admin',
+        null,
+        'active',
+        5.0,
+        0,
+        null,
+        0.0
+      ]);
+      console.log(`>>> Seeded Default Admin User: ${adminEmail} (Role: admin, Status: active)`);
+    } else {
+      console.log(`>>> Default Admin User already exists: ${adminEmail}`);
     }
+
+    // 2b. Seed Default Role Demo Users (Researcher, Developer, Producer, Designer)
+    const defaultRoleUsers = [
+      { name: 'Dr. Priya Sharma', email: 'researcher@mahitechgroup.com', pass: 'ResearcherPass123!', role: 'researcher', subRole: null },
+      { name: 'Arjun Dev', email: 'developer@mahitechgroup.com', pass: 'DeveloperPass123!', role: 'developer', subRole: 'frontend' },
+      { name: 'Sameer Tester', email: 'producer@mahitechgroup.com', pass: 'ProducerPass123!', role: 'producer', subRole: null },
+      { name: 'Diya Designer', email: 'designer@mahitechgroup.com', pass: 'DesignerPass123!', role: 'designer', subRole: null }
+    ];
+
+    for (const ru of defaultRoleUsers) {
+      const existing = queryOne('SELECT id FROM users WHERE email = ?', [ru.email]);
+      if (!existing) {
+        const uId = crypto.randomUUID();
+        const pHash = await bcrypt.hash(ru.pass, config.BCRYPT_SALT_ROUNDS);
+        execute(`
+          INSERT INTO users (
+            id, name, email, password_hash, role, sub_role, status,
+            rating_avg, idea_quota_used, quota_reset_date, wallet_balance,
+            created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, 'active', 5.0, 0, null, 1500.0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `, [uId, ru.name, ru.email, pHash, ru.role, ru.subRole]);
+        console.log(`>>> Seeded Default Role User: ${ru.email} (${ru.role})`);
+      }
+    }
+  } else {
+    console.log('>>> Production mode: skipping demo user seeding. First-run /setup wizard will handle initial admin onboarding.');
   }
 
   // 3. Seed Default System Config (Step 02 & Step 03)
