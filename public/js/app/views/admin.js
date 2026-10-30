@@ -183,7 +183,7 @@ function openQuickInviteDialog(onComplete) {
         sendBtn.textContent = 'Generating invite...';
 
         try {
-          const res = await api.post('/admin/invites', { email, role, sub_role });
+          const res = await api.post('/api/admin/invites', { email, role, sub_role });
           closeDialog();
           toast(`Invitation link generated for ${email}!`, 'success');
           if (res.invite?.invite_url && navigator.clipboard) {
@@ -223,7 +223,7 @@ export function renderAdminDashboard() {
 
       async function refreshOnboardingChecklist() {
         try {
-          const res = await api.get('/admin/onboarding-status');
+          const res = await api.get('/api/admin/onboarding-status');
           const container = document.getElementById('admin-onboarding-card');
           if (!container) return;
 

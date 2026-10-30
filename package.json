@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "node src/server.js",
     "start": "node src/server.js",
     "migrate": "node src/db/migrate.js",
     "seed": "node src/db/seed.js",
@@ -24,5 +25,11 @@
     "multer": "^2.5.0",
     "playwright": "^1.64.1",
     "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@ai-sdk/google": "^4.0.108",
+    "@ai-sdk/openai-compatible": "^3.0.81",
+    "@e2e-dev/web": "^0.15.3",
+    "ai": "^7.0.157"
   }
 }

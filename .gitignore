@@ -29,3 +29,4 @@ certs/
 *.pem
 
 
+.e2e/
