@@ -29,7 +29,7 @@
   "devDependencies": {
     "@ai-sdk/google": "^4.0.108",
     "@ai-sdk/openai-compatible": "^3.0.81",
-    "@e2e-dev/web": "^0.15.3",
+    "@e2e-dev/web": "^0.15.5",
     "ai": "^7.0.157"
   }
 }
